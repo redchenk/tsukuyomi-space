@@ -17,16 +17,18 @@ const failed = ref(false);
 const device = ref('');
 const release = computed(() => chooseAppRelease(catalog.value, channel.value));
 const sourceLabel = computed(() => copy.value[source.value === 'github' ? 'latest' : source.value === 'cache' ? 'cached' : 'verified']);
-const platforms = computed(() => ['windows', 'macos', 'android', 'linux', 'ios'].map(key => ({
+const platforms = computed(() => ['windows', 'macos', 'android', 'ohos', 'linux', 'ios'].map(key => ({
   key, ...copy.value.platformsCopy[key], asset: release.value.assets[key],
-  icon: key === 'android' || key === 'ios' ? 'smartphone' : key === 'macos' ? 'laptop' : 'monitor',
+  icon: ['android', 'ios', 'ohos'].includes(key) ? 'smartphone' : key === 'macos' ? 'laptop' : 'monitor',
+  guideHref: key === 'ohos' ? release.value.assets.ohosInstall?.href || release.value.guideUrl : release.value.guideUrl,
+  checksumHref: key === 'ohos' ? release.value.assets.ohosChecksums?.href : '',
   extraKey: ({ windows: 'windowsPortable', android: 'androidEmulator', linux: 'linuxPortable' })[key],
   recommended: key === device.value
 })));
 const recommended = computed(() => platforms.value.find(platform => platform.recommended));
 const heroAsset = computed(() => release.value.assets[device.value]);
 const heroAction = computed(() => device.value === 'androidEmulator' ? copy.value.platformsCopy.android.extra : recommended.value?.action || copy.value.choose);
-const heroTarget = computed(() => device.value === 'androidEmulator' ? copy.value.platformsCopy.android.extra : recommended.value?.target);
+const heroTarget = computed(() => heroAsset.value ? (device.value === 'androidEmulator' ? copy.value.platformsCopy.android.extra : recommended.value?.target) : '');
 const publishedDate = computed(() => new Intl.DateTimeFormat(props.lang === 'zh' ? 'zh-CN' : props.lang, { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(release.value.publishedAt)));
 let request = null;
 let disposed = false;
@@ -98,7 +100,8 @@ onUnmounted(() => {
             <div class="download-package-label"><span>{{ platform.format }}</span><span v-if="platform.asset">{{ size(platform.asset.size) }}</span></div>
             <a v-if="platform.asset" class="download-button" :href="platform.asset.href" rel="noopener noreferrer" referrerpolicy="no-referrer"><TsIcon name="download" :size="17" />{{ platform.action }}</a>
             <p v-else class="download-status">{{ copy.unavailable }}</p>
-            <details class="download-platform-details"><summary>{{ copy.alternative }}</summary><p>{{ platform.extraNote }}</p><a v-if="platform.extraKey && release.assets[platform.extraKey]" :href="release.assets[platform.extraKey].href" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ platform.extra }} · {{ size(release.assets[platform.extraKey].size) }}<TsIcon name="download" :size="15" /></a><a :href="release.guideUrl" target="_blank" rel="noopener noreferrer">{{ copy.guide }}<TsIcon name="external" :size="14" /></a><p v-if="platform.asset" class="download-filename">{{ copy.file }}: {{ platform.asset.name }}</p></details>
+            <a v-if="platform.key === 'ohos' && platform.asset" class="download-signing-guide" :href="platform.guideHref" target="_blank" rel="noopener noreferrer">{{ platform.guideAction }}<TsIcon name="external" :size="14" /></a>
+            <details class="download-platform-details"><summary>{{ copy.alternative }}</summary><p>{{ platform.extraNote }}</p><a v-if="platform.extraKey && release.assets[platform.extraKey]" :href="release.assets[platform.extraKey].href" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ platform.extra }} · {{ size(release.assets[platform.extraKey].size) }}<TsIcon name="download" :size="15" /></a><a :href="platform.guideHref" target="_blank" rel="noopener noreferrer">{{ copy.guide }}<TsIcon name="external" :size="14" /></a><a v-if="platform.checksumHref" :href="platform.checksumHref" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ copy.checksum }}<TsIcon name="download" :size="15" /></a><p v-if="platform.asset" class="download-filename">{{ copy.file }}: {{ platform.asset.name }}</p></details>
           </article>
         </div>
         <p class="download-direct"><TsIcon name="github" :size="17" />{{ copy.direct }}</p>

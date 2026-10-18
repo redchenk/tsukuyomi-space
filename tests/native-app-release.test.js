@@ -22,7 +22,7 @@ function release(tag) {
 const response = values => new Response(JSON.stringify(values));
 
 test('concurrent visitors share one public GitHub request; cache refresh discovers a newer beta', async () => {
-    let time = 1000, calls = 0, version = 'v0.6.11-beta.1';
+    let time = 1000, calls = 0, version = 'v0.6.31-beta.1';
     const service = createAppReleaseService({ now: () => time, fetchImpl: async (url, options) => {
         calls++; assert.equal(url, RELEASES_API); assert.equal(options.credentials, 'omit');
         assert.equal(options.redirect, 'error'); assert.equal(options.headers.Authorization, undefined);
@@ -32,7 +32,7 @@ test('concurrent visitors share one public GitHub request; cache refresh discove
     assert.equal(calls, 1);
     for (const result of results) assert.equal(selectAppReleases(result.releases).latest.tag, version);
     assert.equal((await service.get()).source, 'cache');
-    version = 'v0.6.12-beta.1'; time += CACHE_MS + 1;
+    version = 'v0.6.32-beta.1'; time += CACHE_MS + 1;
     assert.equal(selectAppReleases((await service.get()).releases).latest.tag, version);
     assert.equal(calls, 2);
 });
@@ -41,12 +41,12 @@ test('a failed GitHub check keeps current links, marks stale and backs off befor
     let time = 1000, failed = false, calls = 0;
     const service = createAppReleaseService({ now: () => time, fetchImpl: async () => {
         calls++; if (failed) return new Response('', { status: 429 });
-        return response([release('v0.6.11-beta.1')]);
+        return response([release('v0.6.31-beta.1')]);
     } });
     await service.get(); time += CACHE_MS + 1; failed = true;
     const stale = await service.get();
     assert.equal(stale.source, 'cache'); assert.equal(stale.stale, true);
-    assert.equal(selectAppReleases(stale.releases).latest.tag, 'v0.6.11-beta.1');
+    assert.equal(selectAppReleases(stale.releases).latest.tag, 'v0.6.31-beta.1');
     await service.get(); assert.equal(calls, 2);
     time += RETRY_MS + 1; failed = false;
     assert.equal((await service.get()).stale, false); assert.equal(calls, 3);
@@ -57,7 +57,7 @@ test('successful metadata survives restart and an upstream outage; corrupt disk 
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
     const cachePath = path.join(directory, 'cache', 'release.json'); let time = 1000;
     const first = createAppReleaseService({ cachePath, now: () => time,
-        fetchImpl: async () => response([release('v0.6.11-beta.1')]) });
+        fetchImpl: async () => response([release('v0.6.31-beta.1')]) });
     await first.get();
     assert.equal(fs.statSync(cachePath).mode & 0o777, 0o600);
     time += CACHE_MS + 1;
@@ -65,7 +65,7 @@ test('successful metadata survives restart and an upstream outage; corrupt disk 
         fetchImpl: async () => { throw new Error('offline'); } });
     const result = await restarted.get();
     assert.equal(result.stale, true); assert.equal(result.source, 'cache');
-    assert.equal(selectAppReleases(result.releases).latest.tag, 'v0.6.11-beta.1');
+    assert.equal(selectAppReleases(result.releases).latest.tag, 'v0.6.31-beta.1');
     fs.writeFileSync(cachePath, 'broken');
     const corrupt = createAppReleaseService({ cachePath, now: () => time,
         fetchImpl: async () => { throw new Error('offline'); } });
@@ -80,18 +80,18 @@ test('a first-run outage returns the complete verified release with a visible st
 });
 
 test('drafts and incomplete uploads do not hide the newest complete release', async () => {
-    const draft = release('v0.6.13-beta.1'); draft.draft = true;
-    const incomplete = release('v0.6.12-beta.1');
+    const draft = release('v0.6.33-beta.1'); draft.draft = true;
+    const incomplete = release('v0.6.32-beta.1');
     incomplete.assets = incomplete.assets.filter(asset => !asset.name.endsWith('ios-arm64-unsigned.ipa'));
     const catalog = await fetchGitHubAppReleases({ fetchImpl: async () => response([
-        draft, incomplete, release('v0.6.11-beta.1'), release('v0.6.10')
+        draft, incomplete, release('v0.6.31-beta.1'), release('v0.6.10')
     ]) });
-    assert.equal(catalog.latest.tag, 'v0.6.11-beta.1');
+    assert.equal(catalog.latest.tag, 'v0.6.31-beta.1');
     assert.equal(catalog.stable.tag, 'v0.6.10');
 });
 
 test('invalid, oversized and tampered upstream metadata cannot replace verified links', async () => {
-    const tampered = release('v0.6.11-beta.1'); tampered.assets[0].browser_download_url = 'https://example.test/file';
+    const tampered = release('v0.6.31-beta.1'); tampered.assets[0].browser_download_url = 'https://example.test/file';
     for (const value of [response([tampered]), response([]), new Response('not json'),
         new Response('[]', { headers: { 'content-length': '1048577' } }), new Response(' '.repeat(1048577))]) {
         const service = createAppReleaseService({ fetchImpl: async () => value });
@@ -119,4 +119,21 @@ test('public endpoint only serves bounded metadata and query parameters cannot c
     }
     assert.equal(calls, 1);
     assert.equal((await fetch(base + '/api/app/releases', { method: 'POST' })).status, 404);
+});
+
+test('a HAP added to an existing release appears after cache refresh and survives an offline restart', async t => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'app-ohos-cache-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const cachePath = path.join(directory, 'release.json');
+    const old = structuredClone(snapshot); old.assets = old.assets.filter(asset => !/ohos/i.test(asset.name));
+    let time = 1000, current = old;
+    const service = createAppReleaseService({ cachePath, now: () => time, fallback: old, fetchImpl: async () => response([current]) });
+    assert.equal(selectAppReleases((await service.get()).releases).latest.assets.ohos, undefined);
+    current = snapshot; time += CACHE_MS + 1;
+    assert.ok(selectAppReleases((await service.get()).releases).latest.assets.ohos);
+    const restarted = createAppReleaseService({ cachePath, now: () => time, fallback: old, fetchImpl: async () => { throw Error('offline'); } });
+    assert.ok(selectAppReleases((await restarted.get()).releases).latest.assets.ohos);
+    fs.writeFileSync(cachePath, JSON.stringify({ releases: [old], checkedAt: time }));
+    const updatedFallback = createAppReleaseService({ cachePath, now: () => time, fallback: snapshot, offline: true });
+    assert.ok(selectAppReleases((await updatedFallback.get()).releases).latest.assets.ohos);
 });

@@ -68,3 +68,6 @@
   @media (max-width: 960px) { .download-hero { gap: 25px; grid-template-columns: 1fr 1fr; } .download-app-card { padding: 24px; } .download-platform-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 640px) { .download-container { width: calc(100% - 24px); margin-top: 10px; padding: 0 18px 25px; border-radius: 20px; } .download-hero { grid-template-columns: 1fr; gap: 25px; padding-top: 26px; padding-bottom: 26px; } .download-page h1 { font-size: clamp(28px, 7.7vw, 38px); } .download-page .download-lead { font-size: 14px; margin-block: 16px; } .download-feature-list { gap: 10px 14px; margin-bottom: 15px; } .download-platform-grid, .download-start ol { grid-template-columns: 1fr; } .download-platforms { padding-top: 30px; } .download-platform { padding: 20px; } .download-platform .download-badge { margin-left: 0; } .download-start ol { gap: 22px; } }
   @media (forced-colors: active) { .download-app-card, .download-platform, .download-button { border-color: CanvasText; } }
+
+  .download-signing-guide { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; margin-top: 8px; color: var(--ts-accent); font-size: 13px; text-align: center; overflow-wrap: anywhere; text-underline-offset: 3px; }
+  .download-signing-guide svg { flex-shrink: 0; }

@@ -30,10 +30,11 @@ function renderPublicPage(path, appRelease = appReleaseFallback) {
             ['windows', 'Windows 10 / 11 x64', '普通用户选择 EXE 安装器。便携 ZIP 用于解压运行。'],
             ['macos', 'macOS 通用版', '同一个 DMG 支持 Apple Silicon 与 Intel，将应用拖入 Applications。'],
             ['android', 'Android 常见手机', 'ARM64 APK 适合绝大多数手机；x86_64 文件用于对应模拟器。'],
+            ['ohos', '鸿蒙 HarmonyOS 自签包', '适用于 HarmonyOS 6.0.2 / API 22 及以上 ARM64 设备。未签名 HAP 需要使用 DevEco Studio 自行签名后安装，不能直接安装。'],
             ['linux', 'Linux x64', 'Ubuntu 22.04 / 兼容 Debian 环境推荐 DEB 安装包。'],
             ['ios', 'iPhone / iPad 自签包', '未签名 IPA 需要自己的 Apple 账号或证书签名，不能直接安装。']
         ];
-        items = packages.map(([key, title, description]) => ({
+        items = packages.filter(([key]) => release.assets[key]).map(([key, title, description]) => ({
             title, description, meta: release.tag, href: release.assets[key].href
         }));
         return renderSeoCollectionPage({ path, ...copy[path], items,
@@ -41,7 +42,11 @@ function renderPublicPage(path, appRelease = appReleaseFallback) {
             actions: [
                 { href: release.url, label: 'GitHub 版本说明' },
                 { href: release.guideUrl, label: '安装说明' },
-                { href: release.assets.checksums.href, label: 'SHA-256 校验清单' }
+                { href: release.assets.checksums.href, label: 'SHA-256 校验清单' },
+                ...(release.assets.ohos ? [
+                    { href: release.assets.ohosInstall.href, label: '鸿蒙安装与签名说明' },
+                    { href: release.assets.ohosChecksums.href, label: '鸿蒙 SHA-256 校验清单' }
+                ] : [])
             ] });
     }
     return renderSeoCollectionPage({ path, ...copy[path], items });

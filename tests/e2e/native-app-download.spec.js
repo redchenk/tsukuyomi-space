@@ -39,11 +39,11 @@ test('signed-in visitors can open App downloads directly from the header on desk
   await expect(page.locator('[data-platform="android"] > .download-button')).toBeVisible();
 });
 
-test('automatically chooses the newer beta and keeps all five downloads on the chosen version', async ({ page }) => {
+test('automatically chooses the newer beta and keeps all six downloads on the chosen version', async ({ page }) => {
   await page.route('**/api/app/releases', route => route.fulfill({ json: body([release('v0.6.10'), release('v0.6.11-beta.1')]) }));
   await page.goto('/download');
   await expect(page.locator('.download-version strong')).toHaveText('v0.6.11-beta.1');
-  for (const key of ['windows', 'macos', 'android', 'linux', 'ios']) {
+  for (const key of ['windows', 'macos', 'android', 'ohos', 'linux', 'ios']) {
     await expect(page.locator(`[data-platform="${key}"] > .download-button`)).toHaveAttribute('href', /\/v0\.6\.11-beta\.1\//);
   }
   await page.getByRole('button', { name: '正式版', exact: true }).click();

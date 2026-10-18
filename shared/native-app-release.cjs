@@ -4,9 +4,11 @@ const PACKAGE_SUFFIXES = Object.freeze({
   windows: 'windows-x64-setup.exe', windowsPortable: 'windows-x64.zip',
   macos: 'macos-universal.dmg', android: 'android-arm64-v8a.apk', androidEmulator: 'android-x86_64.apk',
   linux: 'linux-x64.deb', linuxPortable: 'linux-x64.tar.gz', ios: 'ios-arm64-unsigned.ipa',
-  checksums: 'SHA256SUMS.txt', notices: 'THIRD_PARTY_NOTICES.md', install: 'INSTALL.md'
+  checksums: 'SHA256SUMS.txt', notices: 'THIRD_PARTY_NOTICES.md', install: 'INSTALL.md',
+  ohos: 'ohos-arm64-unsigned.hap', ohosInstall: 'OHOS-INSTALL.md', ohosChecksums: 'OHOS-SHA256SUMS.txt'
 });
 const REQUIRED = ['windows', 'macos', 'android', 'linux', 'ios', 'checksums', 'install', 'notices'];
+const DOCUMENT_KEYS = new Set(['checksums', 'notices', 'install', 'ohosInstall', 'ohosChecksums']);
 const TAG_PATTERN = /^v(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:-([A-Za-z0-9][A-Za-z0-9.-]{0,59}))?$/;
 
 function normalizeAppRelease(value) {
@@ -20,8 +22,15 @@ function normalizeAppRelease(value) {
   if (value.html_url !== url) return null;
   const assets = {};
   for (const [key, suffix] of Object.entries(PACKAGE_SUFFIXES)) {
-    const name = key === 'checksums' || key === 'notices' || key === 'install'
+    let name = DOCUMENT_KEYS.has(key)
       ? suffix : `tsukuyomi-space-${version}-${suffix}`;
+    if (key === 'ohos') {
+      // OHOS builds include their versionCode; never mix a different release's HAP.
+      const pattern = new RegExp(`^tsukuyomi-space-${version.replaceAll('.', '\\.')}-[1-9]\\d{0,8}-ohos-arm64-unsigned\\.hap$`);
+      const packages = value.assets.filter(asset => typeof asset?.name === 'string' && pattern.test(asset.name));
+      if (packages.length !== 1) continue;
+      name = packages[0].name;
+    }
     const candidates = value.assets.filter(asset => asset?.name === name);
     if (candidates.length !== 1) continue;
     const asset = candidates[0];
@@ -32,6 +41,8 @@ function normalizeAppRelease(value) {
       sha256: typeof asset.digest === 'string' && /^sha256:[a-f0-9]{64}$/.test(asset.digest) ? asset.digest.slice(7) : '' };
   }
   if (REQUIRED.some(key => !assets[key])) return null;
+  // An unsigned package needs its own signing guide and separate checksum list.
+  if (!assets.ohosInstall || !assets.ohosChecksums || !assets.ohos?.sha256) delete assets.ohos;
   return { tag, version, url, assets, publishedAt: value.published_at,
     preview: value.prerelease || Boolean(match[4]), parts: match.slice(1, 4).map(Number), qualifier: match[4] || '',
     guideUrl: `${APP_REPOSITORY}/blob/${tag}/docs/release-guide.md` };
@@ -58,7 +69,13 @@ function compareAppReleases(a, b) {
 
 function selectAppReleases(values) {
   if (!Array.isArray(values)) return null;
-  const releases = values.slice(0, 20).map(normalizeAppRelease).filter(Boolean).sort((a, b) => compareAppReleases(b, a));
+  const byTag = new Map();
+  for (const release of values.slice(0, 20).map(normalizeAppRelease).filter(Boolean)) {
+    const previous = byTag.get(release.tag);
+    // A verified same-tag supplement must survive an older persisted cache.
+    if (!previous || (!previous.assets.ohos && release.assets.ohos)) byTag.set(release.tag, release);
+  }
+  const releases = [...byTag.values()].sort((a, b) => compareAppReleases(b, a));
   const stable = releases.find(release => !release.preview) || null;
   const preview = releases.find(release => release.preview) || null;
   return stable || preview ? { stable, preview, latest: releases[0] } : null;
@@ -66,6 +83,7 @@ function selectAppReleases(values) {
 
 function detectDownloadPlatform(device = {}) {
   const ua = String(device.userAgent || ''); const platform = String(device.platform || '');
+  if (/OpenHarmony|HarmonyOS|Harmony OS/i.test(ua + ' ' + platform)) return 'ohos';
   if (/iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(platform) && Number(device.maxTouchPoints) > 1)) return 'ios';
   if (/Android/i.test(ua)) return /armv[5-7]|armeabi\b/i.test(ua) ? '' : /x86_64|amd64/i.test(ua) ? 'androidEmulator' : 'android';
   if (/Windows|Win32|Win64/i.test(ua + ' ' + platform)) return /ARM|aarch64|Win32.*(?:WOW32|x86;)/i.test(ua) ? '' : 'windows';

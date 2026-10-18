@@ -18,14 +18,17 @@ function release(tag, preview = tag.includes('-')) {
   return value;
 }
 
-test('verified release exposes the five main packages and the correctly labeled alternatives', async () => {
+test('verified release exposes the six main packages and the correctly labeled alternatives', async () => {
   const { normalizeAppRelease } = await service();
   const value = normalizeAppRelease(snapshot);
   assert.ok(value?.preview);
-  assert.equal(Object.keys(value.assets).length, 11);
+  assert.equal(Object.keys(value.assets).length, 14);
   assert.match(value.assets.android.href, /android-arm64-v8a\.apk$/);
   assert.match(value.assets.androidEmulator.href, /android-x86_64\.apk$/);
   assert.match(value.assets.ios.href, /ios-arm64-unsigned\.ipa$/);
+  assert.match(value.assets.ohos.href, /-28-ohos-arm64-unsigned\.hap$/);
+  assert.match(value.assets.ohosInstall.href, /\/OHOS-INSTALL\.md$/);
+  assert.match(value.assets.ohosChecksums.href, /\/OHOS-SHA256SUMS\.txt$/);
   assert.match(value.guideUrl, /\/blob\/v[^/]+\/docs\/release-guide\.md$/);
   for (const asset of Object.values(value.assets)) {
     assert.equal(new URL(asset.href).origin, 'https://github.com');
@@ -74,6 +77,9 @@ test('device suggestions distinguish phones, emulators, iPad desktop mode and un
     [{ userAgent: 'Macintosh; Intel Mac OS X', platform: 'MacIntel', maxTouchPoints: 5 }, 'ios'],
     [{ userAgent: 'iPhone; CPU iPhone OS 18_0' }, 'ios'],
     [{ userAgent: 'Linux; Android 14; Pixel 8' }, 'android'],
+    [{ userAgent: 'Mozilla/5.0 (Phone; HarmonyOS 6.0.2) AppleWebKit' }, 'ohos'],
+    [{ userAgent: 'Linux; Android; OpenHarmony 6.0' }, 'ohos'],
+    [{ platform: 'HarmonyOS' }, 'ohos'],
     [{ userAgent: 'Linux; Android 13; x86_64' }, 'androidEmulator'],
     [{ userAgent: 'Linux; Android 10; armv7l' }, ''],
     [{ userAgent: 'X11; Linux x86_64' }, 'linux'],
@@ -139,4 +145,57 @@ test('all three download dictionaries cover the same guidance and platform actio
     assert.equal(context.copy(locale).help.length, 3);
     assert.ok(context.copy(locale).platformsCopy.ios.note.length > 20);
   }
+});
+
+test('OHOS remains optional and cannot borrow packages from another channel', async () => {
+  const { normalizeAppRelease, selectAppReleases, chooseAppRelease } = await service();
+  const old = release('v0.6.20', false);
+  old.assets = old.assets.filter(asset => !/ohos/i.test(asset.name));
+  assert.ok(normalizeAppRelease(old));
+  assert.equal(normalizeAppRelease(old).assets.ohos, undefined);
+  const catalog = selectAppReleases([old, snapshot]);
+  assert.ok(catalog.latest.assets.ohos);
+  assert.equal(chooseAppRelease(catalog, 'stable').assets.ohos, undefined);
+});
+
+test('OHOS requires a unique matching build, official link, checksum and signing guide', async () => {
+  const { normalizeAppRelease } = await service();
+  const cases = [
+    value => { value.assets.find(a => a.name.endsWith('.hap')).name = 'tsukuyomi-space-0.6.20-28-ohos-arm64-unsigned.hap'; },
+    value => { value.assets.find(a => a.name.endsWith('.hap')).browser_download_url += '?redirect=external'; },
+    value => { value.assets.find(a => a.name.endsWith('.hap')).digest = ''; },
+    value => { value.assets.find(a => a.name.endsWith('.hap')).state = 'new'; },
+    value => { value.assets.find(a => a.name.endsWith('.hap')).size = 0; },
+    value => { value.assets = value.assets.filter(a => a.name !== 'OHOS-INSTALL.md'); },
+    value => { value.assets = value.assets.filter(a => a.name !== 'OHOS-SHA256SUMS.txt'); },
+    value => { value.assets.push(structuredClone(value.assets.find(a => a.name.endsWith('.hap')))); },
+    value => { const second = structuredClone(value.assets.find(a => a.name.endsWith('.hap'))); second.name = second.name.replace('-28-', '-29-'); second.browser_download_url = second.browser_download_url.replace('-28-', '-29-'); value.assets.push(second); }
+  ];
+  for (const mutate of cases) {
+    const value = clone(); mutate(value);
+    const result = normalizeAppRelease(value);
+    assert.ok(result?.assets.android, 'other platforms must remain usable');
+    assert.equal(result.assets.ohos, undefined);
+  }
+});
+
+test('OHOS supplements survive normalized snapshots and stale same-tag metadata', async () => {
+  const { normalizeAppRelease, selectAppReleases, appReleaseSnapshot } = await service();
+  const old = clone(); old.assets = old.assets.filter(a => !/ohos/i.test(a.name));
+  for (const values of [[old, snapshot], [snapshot, old]]) {
+    const release = selectAppReleases(values).latest;
+    assert.ok(release.assets.ohos);
+    assert.equal(normalizeAppRelease(appReleaseSnapshot(release)).assets.ohos.href, release.assets.ohos.href);
+  }
+});
+
+test('a HarmonyOS visitor on a channel without a HAP gets the platform chooser without reading a missing package size', () => {
+  const script = fs.readFileSync(path.join(__dirname, '../src/frontend/pages/DownloadPage.vue'), 'utf8').split('<script setup>')[1].split('</script>')[0];
+  const ast = require('@babel/parser').parse(script, { sourceType: 'module' });
+  const declaration = ast.program.body.find(node => node.type === 'VariableDeclaration' && node.declarations[0].id.name === 'heroTarget');
+  const context = { computed: get => ({ get value() { return get(); } }), heroAsset: { value: undefined }, device: { value: 'ohos' }, recommended: { value: { target: 'HarmonyOS' } }, copy: { value: {} } };
+  vm.runInNewContext(script.slice(declaration.start, declaration.end) + '\nthis.target = heroTarget;', context);
+  assert.equal(context.target.value, '');
+  context.heroAsset.value = { size: 100 };
+  assert.equal(context.target.value, 'HarmonyOS');
 });
