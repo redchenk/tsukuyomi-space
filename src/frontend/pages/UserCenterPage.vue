@@ -4,6 +4,7 @@ import { useUploadProgress } from '../composables/useUploadProgress';
 
 import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
+import PaymentEntry from '../components/PaymentEntry.vue';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { apiUrl, authFetch, authHeaders, githubOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
@@ -1302,6 +1303,7 @@ onUnmounted(() => {
           </div>
         </section>
         <aside class="uc-support" :aria-label="ucCopy.account">
+          <PaymentEntry />
           <section class="panel uc-support-card">
             <h2><TsIcon name="sparkles" :size="19" />{{ ucCopy.growth }}</h2>
             <template v-if="ucGrowth?.level">

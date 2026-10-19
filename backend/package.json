@@ -12,6 +12,7 @@
     "test": "npm run check && npm run check:moderation && npm run check:migrations"
   },
   "dependencies": {
+    "alipay-sdk": "4.14.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",

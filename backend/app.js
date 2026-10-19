@@ -49,6 +49,7 @@ function createApp() {
     // Correlate even requests rejected by CORS, Origin, auth, rate limits or JSON parsing.
     app.use(require('./services/fushi-diagnostics').middleware);
     app.use(securityHeaders);
+    app.use('/api/payments', require('./routes/payments').notifyRouter);
     // Isolated protocol routers own parsing, authentication, origin checks and
     // OAuth errors. Keep them outside the site's cookie/AJAX write guard/CORS.
     const partnerOAuth = require('./routes/partner-oauth').createRouters();
@@ -111,6 +112,8 @@ function createApp() {
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
     app.use('/api/knowledge', createRateLimiter({ windowMs: 60 * 1000, max: 30, keyPrefix: 'site-knowledge' }));
     app.use('/api/knowledge', strictJson('4kb'));
+    app.use('/api/payments', strictJson('8kb'));
+    app.use('/api/admin/payments', strictJson('32kb'));
     app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
     app.use('/api/room/models', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 24, keyPrefix: 'room-models' }));
     app.use('/api/growth', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 120, keyPrefix: 'growth' }));
@@ -190,6 +193,7 @@ function createApp() {
     app.use('/api/assets', assetRoutes);
     app.use('/api/room', roomRoutes);
     app.use('/api/growth', growthRoutes);
+    app.use('/api/payments', require('./routes/payments').router);
     app.use('/api/mcp', mcpRoutes);
     app.use('/api/pixel-art', pixelArtRoutes);
     app.use('/api/hub-preview', hubPreviewRoutes);

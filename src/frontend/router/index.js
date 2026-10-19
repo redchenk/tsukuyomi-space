@@ -60,6 +60,7 @@ const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
 export const routes = [
+  { path: '/payments', name: 'payments', component: loadRoute(() => import('../pages/PaymentsPage.vue'), () => import('../styles/routes/payments.css')), meta: { title: '支付与订单', noindex: true } },
   {
     path: '/',
     name: 'access',

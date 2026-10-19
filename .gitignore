@@ -23,6 +23,14 @@ npm-debug.log*
 /data/
 
 # Environment
+# Payment credential files belong outside the checkout; these are fallback guards.
+/payment-secrets/
+/secrets/payments/
+**/*PrivateKey*.txt
+**/alipayPublicKey*.txt
+**/alipay-public-key*.pem
+**/*private-key*.pem
+**/*private_key*.pem
 .env
 .env.local
 .env.docker

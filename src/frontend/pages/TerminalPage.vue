@@ -5,6 +5,7 @@ import TsIcon from '../components/TsIcon.vue';
 import NoticeMarkdown from '../components/NoticeMarkdown.vue';
 import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
+import PaymentManager from '../components/terminal/PaymentManager.vue';
 import { formatDateTime } from '../utils/time';
 import { uiText } from '../i18n/runtime';
 
@@ -19,7 +20,8 @@ const panels = [
   { id: 'users', label: '用户', icon: 'users', code: '06', group: '系统', desc: '用户检索、角色和密码' },
   { id: 'account', label: '账号安全', icon: 'shield', code: '07', group: '系统', desc: '当前管理员安全设置' },
   { id: 'notifications', label: '通知设置', icon: 'bell', code: '08', group: '系统', desc: '审核提醒与邮件通知偏好' },
-  { id: 'settings', label: '设置', icon: 'settings', code: '09', group: '系统', desc: '站点、备案和对象存储' }
+  { id: 'settings', label: '设置', icon: 'settings', code: '09', group: '系统', desc: '站点、备案和对象存储' },
+  { id: 'payments', label: '支付与订单', icon: 'shield', code: '10', group: '系统', desc: '收款开关、商品和支付宝订单' }
 ];
 
 const terminal = reactive({
@@ -33,6 +35,7 @@ const terminal = reactive({
   messageType: 'success',
   loadError: '',
   notificationSaving: false,
+  paymentsRevision: 0,
   mailConfigured: false,
   moderationPreference: { emailNotifyModeration: false, email: '', canReceive: false },
   clock: '',
@@ -154,7 +157,7 @@ const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin' && !terminal.siteSession);
 const visiblePanels = computed(() => terminal.siteSession
   ? panels.filter((panel) => ['articles', 'messages', 'notifications'].includes(panel.id))
-  : panels);
+  : panels.filter(panel => panel.id !== 'payments' || canManageAccounts.value));
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
   .map((group) => ({ group, items: visiblePanels.value.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
@@ -404,6 +407,7 @@ async function loadPanel(panel = terminal.activePanel) {
     return data;
   };
   terminal.activePanel = panel;
+  if (panel === 'payments') terminal.paymentsRevision += 1;
   terminal.loading = true;
   terminal.message = '';
   terminal.loadError = '';
@@ -1001,6 +1005,7 @@ onUnmounted(() => {
               <button v-if="terminal.activePanel === 'notifications'" class="primary-btn" type="button" :disabled="terminal.notificationSaving" @click="saveNotificationSettings"><TsIcon name="bookmark" :size="16" />{{ terminal.notificationSaving ? '保存中' : '保存通知设置' }}</button>
             </div>
           </div>
+          <PaymentManager v-if="terminal.activePanel === 'payments' && canManageAccounts" :key="terminal.paymentsRevision" />
           <div v-if="terminal.message" class="form-message terminal-alert" :class="terminal.messageType" role="status">
             <TsIcon :name="terminal.messageType === 'error' ? 'shield' : 'userCheck'" :size="17" />
             <span>{{ terminal.message }}</span>

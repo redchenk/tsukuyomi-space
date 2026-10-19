@@ -1,0 +1,18 @@
+body .page.payments-page { width: min(1040px, 100%); margin: 0 auto; padding: 112px clamp(16px, 4vw, 36px) 64px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 28px; }
+.payments-heading h1 { font-size: clamp(28px, 5vw, 42px); margin: 12px 0; }
+.payments-page h2 { margin: 0 0 16px; font-size: 22px; }
+.payments-page h3 { margin: 0 0 8px; font-size: 18px; }
+.payments-page p { line-height: 1.8; overflow-wrap: anywhere; }
+body .page.payments-page .panel { width: 100%; border-radius: 20px; padding: clamp(20px, 4vw, 32px); }
+.payment-products { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; }
+.payment-product { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.payment-product p { flex: 1; white-space: pre-line; margin: 0; }
+.payment-price { font-size: 30px; }
+.payments-page .payment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.payments-page .payment-actions h2 { margin: 0 auto 0 0; }
+.payment-order-id { overflow-wrap: anywhere; font-size: 12px; }
+.payment-history-row { display: flex; gap: 20px; align-items: flex-start; justify-content: space-between; border-top: 1px solid var(--border-color, #ccc5); padding: 24px 0; }
+.payment-history-row > div { min-width: 0; }
+.payment-history-row p { margin: 4px 0 12px; }
+.payment-history-row > div:last-child { text-align: right; flex-shrink: 0; }
+@media (max-width: 480px) { .payment-history-row { flex-direction: column; } .payment-history-row > div:last-child { text-align: left; } }

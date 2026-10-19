@@ -9350,5 +9350,329 @@
   "对象存储上传失败，请稍后重试或联系管理员": {
     "en": "Object storage upload failed. Try again later or contact an administrator.",
     "ja": "オブジェクトストレージへのアップロードに失敗しました。後でもう一度試すか、管理者にお問い合わせください。"
+  },
+  "支付与订单": {
+    "en": "Payments & orders",
+    "ja": "支払いと注文"
+  },
+  "使用支付宝购买服务，随时核对订单状态。": {
+    "en": "Pay for services with Alipay and check your orders.",
+    "ja": "Alipayでサービスを購入し、注文状況を確認できます。"
+  },
+  "正在读取订单…": {
+    "en": "Loading orders…",
+    "ja": "注文を読み込み中…"
+  },
+  "登录后查看订单": {
+    "en": "Sign in to view orders",
+    "ja": "ログインして注文を表示"
+  },
+  "订单将关联到你的月读空间账号。": {
+    "en": "Orders are linked to your Tsukuyomi Space account.",
+    "ja": "注文は月読空間のアカウントに紐づきます。"
+  },
+  "付款后会自动核对结果。若状态未更新，可点击“核对支付结果”。": {
+    "en": "Payment is checked automatically after checkout. If needed, select “Check payment”.",
+    "ja": "お支払い後に自動確認します。更新されない場合は「支払い結果を確認」を押してください。"
+  },
+  "已收到支付结果，服务交付请以商品说明为准。": {
+    "en": "Payment received. See the product description for service delivery.",
+    "ja": "支払いを確認しました。サービスの提供については商品説明をご確認ください。"
+  },
+  "前往支付宝付款": {
+    "en": "Continue to Alipay",
+    "ja": "Alipayで支払う"
+  },
+  "核对中…": {
+    "en": "Checking…",
+    "ja": "確認中…"
+  },
+  "核对支付结果": {
+    "en": "Check payment",
+    "ja": "支払い結果を確認"
+  },
+  "可购买的服务": {
+    "en": "Available services",
+    "ja": "購入できるサービス"
+  },
+  "在线收款暂未开放，已有订单仍可在下方查看。": {
+    "en": "Purchases are currently unavailable. You can still view existing orders below.",
+    "ja": "現在新規購入はできません。既存の注文は下で確認できます。"
+  },
+  "创建订单中…": {
+    "en": "Creating order…",
+    "ja": "注文を作成中…"
+  },
+  "使用支付宝支付": {
+    "en": "Pay with Alipay",
+    "ja": "Alipayで支払う"
+  },
+  "我的订单": {
+    "en": "My orders",
+    "ja": "自分の注文"
+  },
+  "刷新列表": {
+    "en": "Refresh list",
+    "ja": "一覧を更新"
+  },
+  "暂无订单。": {
+    "en": "No orders yet.",
+    "ja": "注文はまだありません。"
+  },
+  "查看并核对": {
+    "en": "View & check",
+    "ja": "表示して確認"
+  },
+  "支付链接无效": {
+    "en": "Invalid payment link",
+    "ja": "支払いリンクが無効です"
+  },
+  "查看可购买的服务和自己的支付记录。": {
+    "en": "Browse services and your payment history.",
+    "ja": "サービスと自分の支払い履歴を確認します。"
+  },
+  "进入支付中心": {
+    "en": "Open payments",
+    "ja": "支払いページを開く"
+  },
+  "正在读取支付配置…": {
+    "en": "Loading payment settings…",
+    "ja": "支払い設定を読み込み中…"
+  },
+  "支付宝收款": {
+    "en": "Alipay payments",
+    "ja": "Alipayでの受取"
+  },
+  "仅超级管理员可配置": {
+    "en": "Super administrators only",
+    "ja": "スーパー管理者のみ設定可能"
+  },
+  "服务器支付配置已就绪": {
+    "en": "Server payment configuration is ready",
+    "ja": "サーバーの支払い設定は完了しています"
+  },
+  "服务器支付配置未就绪": {
+    "en": "Server payment configuration is incomplete",
+    "ja": "サーバーの支払い設定が未完了です"
+  },
+  "正式环境": {
+    "en": "Production",
+    "ja": "本番環境"
+  },
+  "沙箱环境": {
+    "en": "Sandbox",
+    "ja": "サンドボックス環境"
+  },
+  "需在服务器配置：": {
+    "en": "Configure on the server:",
+    "ja": "サーバーで設定が必要："
+  },
+  "密钥与收款账号信息仅从服务器环境变量或私有文件读取，此处不会返回或保存密钥。": {
+    "en": "Keys and merchant identifiers come only from server environment variables or private files. Keys are never returned or saved here.",
+    "ja": "鍵と受取アカウント情報はサーバーの環境変数または非公開ファイルからのみ読み取ります。この画面では鍵を返したり保存したりしません。"
+  },
+  "异步通知地址：": {
+    "en": "Notification URL:",
+    "ja": "非同期通知URL："
+  },
+  "单笔上限：¥": {
+    "en": "Per-order limit: ¥",
+    "ja": "1件あたりの上限：¥"
+  },
+  "开启在线收款": {
+    "en": "Enable online payments",
+    "ja": "オンライン決済を有効にする"
+  },
+  "关闭后停止创建新订单和打开收银台，已有订单仍可验签入账与查单。": {
+    "en": "Disabling blocks new orders and checkout links. Existing orders can still be verified and reconciled.",
+    "ja": "無効にすると新規注文と決済画面への移動を停止します。既存の注文の署名検証と確認は継続します。"
+  },
+  "商品": {
+    "en": "Product",
+    "ja": "商品"
+  },
+  "商品编号": {
+    "en": "Product ID",
+    "ja": "商品ID"
+  },
+  "商品名称": {
+    "en": "Product name",
+    "ja": "商品名"
+  },
+  "价格（元）": {
+    "en": "Price (CNY)",
+    "ja": "価格（人民元）"
+  },
+  "商品说明": {
+    "en": "Product description",
+    "ja": "商品説明"
+  },
+  "上架此商品": {
+    "en": "List this product",
+    "ja": "この商品を公開する"
+  },
+  "移除此商品配置": {
+    "en": "Remove product configuration",
+    "ja": "この商品設定を削除"
+  },
+  "尚未配置商品。添加名称、价格和交付说明后再开启收款。": {
+    "en": "No products configured. Add a name, price and delivery details before enabling payments.",
+    "ja": "商品が設定されていません。名称・価格・提供内容を入力してから決済を有効にしてください。"
+  },
+  "添加商品": {
+    "en": "Add product",
+    "ja": "商品を追加"
+  },
+  "保存支付配置": {
+    "en": "Save payment settings",
+    "ja": "支払い設定を保存"
+  },
+  "支付订单": {
+    "en": "Payment orders",
+    "ja": "支払い注文"
+  },
+  "仅记录支付结果，服务交付另行处理": {
+    "en": "Records payments only; service delivery is handled separately",
+    "ja": "支払い結果のみ記録し、サービス提供は別途処理します"
+  },
+  "订单状态": {
+    "en": "Order status",
+    "ja": "注文状況"
+  },
+  "待支付": {
+    "en": "Awaiting payment",
+    "ja": "支払い待ち"
+  },
+  "已支付": {
+    "en": "Paid",
+    "ja": "支払い済み"
+  },
+  "已到期，待确认": {
+    "en": "Expired; awaiting confirmation",
+    "ja": "期限切れ・確認待ち"
+  },
+  "刷新订单列表": {
+    "en": "Refresh orders",
+    "ja": "注文一覧を更新"
+  },
+  "支付订单列表，可横向滚动": {
+    "en": "Payment orders; scroll horizontally",
+    "ja": "支払い注文一覧・横スクロール可能"
+  },
+  "订单号": {
+    "en": "Order number",
+    "ja": "注文番号"
+  },
+  "金额": {
+    "en": "Amount",
+    "ja": "金額"
+  },
+  "账号 ID": {
+    "en": "Account ID",
+    "ja": "アカウントID"
+  },
+  "创建时间": {
+    "en": "Created",
+    "ja": "作成日時"
+  },
+  "已注销": {
+    "en": "Account deleted",
+    "ja": "削除済みアカウント"
+  },
+  "支付宝查单": {
+    "en": "Check with Alipay",
+    "ja": "Alipayで確認"
+  },
+  "暂无支付订单": {
+    "en": "No payment orders yet",
+    "ja": "支払い注文はまだありません"
+  },
+  "· 共": {
+    "en": "· Total",
+    "ja": "・合計"
+  },
+  "笔": {
+    "en": "orders",
+    "ja": "件"
+  },
+  "支付配置已保存": {
+    "en": "Payment settings saved",
+    "ja": "支払い設定を保存しました"
+  },
+  "收款开关、商品和支付宝订单": {
+    "en": "Payment toggle, products and Alipay orders",
+    "ja": "決済の有効化・商品・Alipay注文"
+  },
+  "支付设置格式无效": {
+    "en": "Invalid payment settings",
+    "ja": "支払い設定の形式が無効です"
+  },
+  "金额格式无效": {
+    "en": "Invalid amount format",
+    "ja": "金額の形式が無効です"
+  },
+  "商品信息无效，请检查编号、名称和说明": {
+    "en": "Check the product ID, name and description",
+    "ja": "商品ID・名称・説明を確認してください"
+  },
+  "商品金额超出范围": {
+    "en": "Product price is out of range",
+    "ja": "商品の価格が範囲外です"
+  },
+  "服务器支付配置未就绪，无法开启收款": {
+    "en": "Complete the server configuration before enabling payments",
+    "ja": "サーバー設定が未完了のため決済を有効にできません"
+  },
+  "请配置可售商品，且金额不得超过服务器单笔限额": {
+    "en": "Add a listed product within the server per-order limit",
+    "ja": "サーバーの1件あたりの上限以内で公開商品を設定してください"
+  },
+  "支付服务配置未就绪，请联系管理员": {
+    "en": "Payment configuration is incomplete. Contact an administrator.",
+    "ja": "支払い設定が未完了です。管理者にお問い合わせください。"
+  },
+  "订单所属支付配置已变更，请联系管理员": {
+    "en": "The payment configuration for this order changed. Contact an administrator.",
+    "ja": "この注文の支払い設定が変更されています。管理者にお問い合わせください。"
+  },
+  "订单不存在": {
+    "en": "Order not found",
+    "ja": "注文が見つかりません"
+  },
+  "订单请求无效": {
+    "en": "Invalid order request",
+    "ja": "注文リクエストが無効です"
+  },
+  "该请求编号已用于其他商品": {
+    "en": "This request ID was used for another product",
+    "ja": "このリクエストIDは別の商品に使用されています"
+  },
+  "该商品当前不可购买": {
+    "en": "This product is currently unavailable",
+    "ja": "この商品は現在購入できません"
+  },
+  "收款入口暂未开放": {
+    "en": "Payments are currently unavailable",
+    "ja": "現在お支払いを受け付けていません"
+  },
+  "该订单已完成或已到期，请刷新订单状态": {
+    "en": "This order is completed or expired. Refresh its status.",
+    "ja": "この注文は完了済みか期限切れです。状況を更新してください。"
+  },
+  "该订单金额超过当前单笔限额，请联系管理员": {
+    "en": "The order exceeds the current limit. Contact an administrator.",
+    "ja": "注文金額が現在の上限を超えています。管理者にお問い合わせください。"
+  },
+  "支付宝查单暂时失败，请稍后刷新": {
+    "en": "Unable to check Alipay right now. Try again shortly.",
+    "ja": "現在Alipayで確認できません。しばらくして更新してください。"
+  },
+  "支付服务暂时不可用": {
+    "en": "Payments are temporarily unavailable",
+    "ja": "支払いサービスを一時的に利用できません"
+  },
+  "该订单所属账号已注销，请通过支付宝商家平台核对": {
+    "en": "This account was deleted. Check the order in the Alipay merchant portal.",
+    "ja": "このアカウントは削除されています。Alipay加盟店画面で注文を確認してください。"
   }
 }

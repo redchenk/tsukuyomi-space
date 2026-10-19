@@ -275,6 +275,7 @@ router.post('/logout', async (req, res) => {
 
 router.use(authenticateToken);
 router.use(requireAdmin);
+router.use('/payments', require('./routes/payments').adminRouter);
 router.use('/notification-preferences', require('./routes/moderation-notification-settings'));
 router.use('/article-categories', require('./routes/article-categories').managementRouter);
 
