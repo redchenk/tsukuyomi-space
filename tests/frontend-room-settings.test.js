@@ -10,7 +10,8 @@ const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room
 let validateMcpEndpoint;
 let catalog;
 let oneclickTts;
-test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); catalog = await import('../src/frontend/services/room/roomModelCatalog.mjs'); oneclickTts = await import('../src/frontend/services/room/oneclickTts.mjs'); });
+let officialApi;
+test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); catalog = await import('../src/frontend/services/room/roomModelCatalog.mjs'); oneclickTts = await import('../src/frontend/services/room/oneclickTts.mjs'); officialApi = await import('../src/frontend/services/room/roomOfficialApi.mjs'); });
 function setup(options = {}) {
   const store = new Map();
   let failWrites = false;
@@ -23,6 +24,11 @@ function setup(options = {}) {
   const ctx = {
     URL, console, AbortController, setTimeout: () => 0, clearTimeout() {}, uiText: value => value,
     ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog, ...oneclickTts,
+    ...officialApi,
+    officialChatUrl: () => officialApi.officialChatUrl('https://example.test'),
+    isOfficialRoomApi: url => officialApi.isOfficialRoomApi(url, 'https://example.test'),
+    officialRoomSettings: (settings, dashboard) => officialApi.officialRoomSettings(settings, dashboard, 'https://example.test'),
+    ...(options.officialDashboard ? { fetchOfficialRoomDashboard: options.officialDashboard } : {}),
     ...(options.fetchCatalog ? { fetchModelCatalog: options.fetchCatalog, catalogScope: async () => 'fixture-scope', readCatalogCache: () => null, writeCatalogCache() {} } : {}),
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
@@ -41,7 +47,7 @@ function setup(options = {}) {
   vm.runInNewContext(knowledgeCode + '\n' + pageCode + `
     loadMemoryCount = () => {};
     globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings, storedUser, memorySourceMode, clearMemory,
-      saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom,
+      saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom, chooseSetupLlmMode, setupLlmMode, officialSupply,
       onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries, applyPreset, applyTtsPreset, modelCatalog, syncModelCatalog };
   `, ctx);
   ctx.api.loadSettings();
@@ -60,6 +66,37 @@ test('stale settings cannot clear cloud memories after a cross-tab source or acc
   h.liveAccount('two');
   await h.clearMemory();
   assert.equal(h.memoryWrites(), 0);
+});
+
+test('site mode loads the authenticated model, saves no supplier secret and preserves cloud drafts on switching', async () => {
+  const h = setup({ officialDashboard: async () => ({ enabled: true, me: { account_id: 'one' }, models: [{ id: 'site-model', enabled: true, max_output_tokens: 512 }] }) });
+  Object.assign(h.llm, { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'my-model', apiKey: 'private-draft', useProxy: true });
+  h.chooseSetupLlmMode('site');
+  await h.syncModelCatalog();
+  assert.equal(h.llm.model, 'site-model');
+  assert.equal(h.saveLLM(false), true);
+  const saved = h.read('roomLLMSettings');
+  assert.equal(saved.apiUrl, 'https://example.test/official-api/v1/chat/completions');
+  assert.equal(saved.apiKey, officialApi.OFFICIAL_SESSION_MARKER);
+  assert.equal(saved.useProxy, false);
+  assert.equal(require('../shared/model-runtime.cjs').resolveParameters(saved).maxOutputTokens.value, 512);
+  h.chooseSetupLlmMode('cloud');
+  assert.equal(h.llm.apiKey, 'private-draft');
+  assert.equal(h.llm.model, 'my-model');
+  assert.equal(h.llm.useProxy, true);
+  h.loadSettings();
+  assert.equal(h.setupLlmMode.value, 'site');
+});
+
+test('site discovery failure cannot save an empty configuration or discard the existing key', async () => {
+  const h = setup({ officialDashboard: async () => { throw new Error('请先登录'); } });
+  Object.assign(h.llm, { apiUrl: 'https://provider.test/v1/chat/completions', model: 'original', apiKey: 'original-private' });
+  h.saveLLM(false);
+  h.chooseSetupLlmMode('site');
+  await h.syncModelCatalog();
+  assert.equal(h.saveLLM(false), false);
+  assert.match(h.toast.text, /请先登录/);
+  assert.equal(h.read('roomLLMSettings').apiKey, 'original-private');
 });
 
 test('editing built-in knowledge reaches context, and removed/disabled entries stay removed', () => {

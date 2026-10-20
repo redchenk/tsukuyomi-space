@@ -17,6 +17,7 @@ import {
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
+import { roomChatConfigured, isOfficialRoomApi, fetchOfficialRoomDashboard, officialRoomSettings, officialRoomRequestBody } from '../../services/room/roomOfficialApi.mjs';
 import {
   describeAudioPlaybackError,
   prepareAsyncAudioSource,
@@ -676,6 +677,14 @@ function roomProvider(apiUrl, model = '') {
 }
 
 export async function requestRoomReply({ settings, systemPrompt, conversation = [], message, image, signal, onDelta = () => {}, onDiagnostic = () => {}, stream = true, tools = [], agentTurns = [] }) {
+  if (!roomChatConfigured(settings)) throw Object.assign(new Error('请先在房间设置中选择并配置聊天模型。'), { code: 'ROOM_MODEL_NOT_CONFIGURED' });
+  let officialModel;
+  if (isOfficialRoomApi(settings.apiUrl)) {
+    const dashboard = await fetchOfficialRoomDashboard({ signal });
+    settings = officialRoomSettings(settings, dashboard);
+    officialModel = dashboard.models.find(model => model.id === settings.model);
+    if (image && settings.visionMode !== 'mcp') throw new Error('当前站内直供仅支持文字，图片请在设置中选择 MCP 识图，或切换支持图片的模型。');
+  }
   const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
   const useLocalOllama = isOllamaApi(apiUrl);
   const activeSettings = { ...settings, apiUrl };
@@ -684,11 +693,6 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
   if (tools.length) llmProtocol.runtime.requireCapability(activeSettings, 'tools');
   stream = stream && llmProtocol.runtime.resolveCapabilities(activeSettings).streaming.value !== false;
   onDiagnostic({ type: 'request', protocol: roomProvider(apiUrl, settings.model), parameters: llmProtocol.runtime.resolveParameters(activeSettings) });
-  if (!settings.apiUrl && !settings.useProxy) {
-    const reply = fallbackReply(message, image);
-    onDelta(reply);
-    return { reply, model: 'preset' };
-  }
 
   const proxyPayload = {
     message: message || (image ? '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
@@ -729,14 +733,10 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
     return result;
   }
 
-  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
-    const reply = fallbackReply(message, image);
-    onDelta(reply);
-    return { reply, model: 'preset' };
-  }
   const provider = roomProvider(apiUrl, settings.model);
   const providerImage = settings.visionMode === 'mcp' ? null : image;
-  const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, stream, { tools, agentTurns });
+  const rawBody = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, stream, { tools, agentTurns });
+  const body = officialModel ? officialRoomRequestBody(rawBody, officialModel) : rawBody;
   const options = {
     method: 'POST',
     headers: chatRequestHeaders(apiUrl, settings.apiKey, body.model, settings.catalogWorkspaceId),
@@ -750,7 +750,7 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
     // Some OpenAI-compatible providers reject the stream flag. A no-stream
     // retry is safe only when the response explicitly says that is why it
     // rejected the request, before any reply bytes have been accepted.
-    if ([400, 422].includes(response.status) && /(?:stream[^.]{0,80}(?:unsupported|not supported|not available)|(?:unsupported|not supported)[^.]{0,80}stream)/i.test(errorText)) {
+    if (!officialModel && [400, 422].includes(response.status) && /(?:stream[^.]{0,80}(?:unsupported|not supported|not available)|(?:unsupported|not supported)[^.]{0,80}stream)/i.test(errorText)) {
       response = await fetchWithLocalOllamaGuidance(apiUrl, {
         ...options,
         body: JSON.stringify(makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, false, { tools, agentTurns }))
@@ -759,15 +759,15 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
       onDiagnostic({ type: 'response', httpStatus: response.status, contentType: response.headers.get('content-type') || '' });
       if (!response.ok) throw new Error(`LLM ${response.status}`);
     } else {
+      if (officialModel) {
+        let error; try { error = JSON.parse(errorText)?.error; } catch {}
+        const message = response.status === 401 ? '登录已失效，请重新登录后使用站内直供。' : response.status === 402 ? '网站余额不足，请前往「余额与支付」充值后重试。' : error?.message || '站内直供暂时无法响应，请稍后重试。';
+        throw Object.assign(new Error(message), { statusCode: response.status });
+      }
       throw new Error(`LLM ${response.status}，请检查模型设置或稍后重试`);
     }
   }
   return readRoomChatStream(response, { provider, onDelta, signal, allowTools: Boolean(tools.length), onEvent: () => onDiagnostic({ type: 'event' }) });
-}
-
-function fallbackReply(message, image) {
-  if (image) return '\u6211\u6536\u5230\u56fe\u7247\u4e86\u3002\u5982\u679c\u5f53\u524d\u6a21\u578b\u6216 MCP \u8fd8\u4e0d\u80fd\u89e3\u6790\u5b83\uff0c\u6211\u4f1a\u5148\u628a\u8fd9\u6b21\u753b\u9762\u8bb0\u5728\u5bf9\u8bdd\u91cc\u3002';
-  return message ? `\u6211\u542c\u89c1\u4e86\uff1a${message}` : '\u6211\u5728\u8fd9\u91cc\u3002';
 }
 
 function compactText(value, limit = 1200) {
@@ -1041,6 +1041,12 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const messages = ref([]);
   const input = ref('');
   const sending = ref(false);
+  const configurationRequired = ref(false);
+  function checkConfiguration() {
+    const ready = roomChatConfigured(readJson('roomLLMSettings', {}));
+    configurationRequired.value = !ready;
+    return ready;
+  }
   const resetting = ref(false);
   const generationState = ref({ status: 'idle', turnId: '', error: '' });
   const memoryTrace = ref({ backend: 'none', count: 0 });
@@ -1366,6 +1372,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   async function send({ opener = false, retry = null, replacement = null } = {}) {
     if (sending.value || imageUpload.state.active || resetting.value || endChatState.value.status === 'generating') return;
+    if (!checkConfiguration()) return false;
     if (lastFailedTurn?.kind === 'new' && !retry && !replacement) return false;
     if (opener && !retry && !replacement && !canStartConversation()) return;
     opener = replacement?.opener ?? retry?.opener ?? opener;
@@ -2000,6 +2007,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     messages,
     input,
     sending,
+    configurationRequired,
+    checkConfiguration,
     resetting,
     generationState,
     memoryTrace,

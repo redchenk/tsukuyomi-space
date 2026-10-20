@@ -305,15 +305,18 @@
 }
 .settings-mode-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
+.settings-official-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.settings-official-supply > div { min-width: 0; }
+.settings-official-supply p { overflow-wrap: anywhere; }
 .settings-mode {
   position: relative;
-  display: flex;
+  display: grid;
   align-items: center;
-  gap: 14px;
-  min-height: 100px;
+  gap: 10px;
+  min-height: 128px;
   padding: 18px;
   border: 1px solid var(--settings-line);
   border-radius: var(--ts-radius-card);
@@ -342,6 +345,9 @@
   color: var(--muted);
 }
 .settings-mode input[type='radio'] {
+  position: absolute;
+  top: 18px;
+  right: 18px;
   margin-left: auto;
   flex: 0 0 auto;
   width: 17px;
@@ -1182,15 +1188,17 @@
     font-size: 12px;
   }
   .settings-mode-grid {
+    grid-template-columns: 1fr;
     gap: 10px;
   }
   .settings-mode {
-    display: block;
-    min-height: 132px;
+    display: flex;
+    min-height: 82px;
     padding: 18px 14px;
   }
+  .settings-mode span { padding-right: 22px; }
   .settings-mode > .ts-icon {
-    margin-bottom: 8px;
+    margin-bottom: 0;
   }
   .settings-mode input[type='radio'] {
     position: absolute;

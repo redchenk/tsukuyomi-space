@@ -5,6 +5,7 @@ import llmRuntime from '../../../shared/model-runtime.cjs';
 import llmProtocol from '../../../shared/llm-protocol.cjs';
 import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
 import RoomModelRuntimePanel from '../components/room/RoomModelRuntimePanel.vue';
+import { officialChatUrl, isOfficialRoomApi, OFFICIAL_SESSION_MARKER, fetchOfficialRoomDashboard, officialRoomSettings, officialRoomRequestBody } from '../services/room/roomOfficialApi.mjs';
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
 import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -154,6 +155,10 @@ const memorySourceMode = ref(readMemorySource(storedUser.value?.id || '').mode);
 const memoryChoice = reactive({ visible: false, loading: false, pending: false, guestRows: [], localCount: 0, cloudCount: null, fingerprint: '', error: '', progress: '' });
 const modelCatalog = reactive({ loading: false, message: '', error: '', updatedAt: '', models: [] });
 const setupLlmMode = ref('ollama');
+const officialSupply = reactive({ dashboard: null });
+const llmModeDrafts = new Map();
+const officialSelectedModel = computed(() => officialSupply.dashboard?.models.find(item => item.id === llm.model));
+function officialMoney(atoms) { return Number(atoms || 0) / 1e9; }
 const setupCloudProvider = ref('openaiChat');
 const activeSection = ref('llm');
 const mobileSectionsOpen = ref(false);
@@ -453,7 +458,7 @@ function isOllamaNativeApi(apiUrl = '') {
 }
 
 function llmNeedsApiKey(apiUrl = llm.apiUrl) {
-  return !isOllamaApi(apiUrl);
+  return !isOllamaApi(apiUrl) && !isOfficialRoomApi(apiUrl);
 }
 
 function providerStaticModelOptions(provider) {
@@ -491,11 +496,33 @@ function queueModelCatalogRefresh() {
 }
 
 async function syncModelCatalog(force = true) {
+  clearTimeout(modelCatalogTimer);
   if (typeof force !== 'boolean') force = true; // Vue click event.
   cancelModelCatalog();
   const revision = modelCatalogRevision;
   const settings = { apiUrl: llm.apiUrl, apiKey: llm.apiKey, workspaceId: llm.catalogWorkspaceId || '' };
   modelCatalog.error = '';
+  if (isOfficialRoomApi(llm.apiUrl)) {
+    officialSupply.dashboard = null;
+    modelCatalog.models = [];
+    modelCatalog.loading = true;
+    modelCatalog.message = '正在读取当前账号的站内模型与余额…';
+    const controller = new AbortController();
+    modelCatalogController = controller;
+    try {
+      const dashboard = await fetchOfficialRoomDashboard({ signal: controller.signal });
+      if (revision !== modelCatalogRevision) return;
+      officialSupply.dashboard = dashboard;
+      modelCatalog.models = dashboard.models.map(item => ({ ...item, nativeId: item.id, label: item.id, source: 'site', capabilities: { text: true, image: false, tools: true, streaming: true } }));
+      if (!llm.model && dashboard.models[0]) llm.model = dashboard.models[0].id;
+      modelCatalog.message = dashboard.enabled && dashboard.models.length ? '使用当前登录账号，无需填写 API 密钥。' : '站内直供暂未开放，请稍后再试或选择其他连接方式。';
+    } catch (error) {
+      if (revision === modelCatalogRevision && !controller.signal.aborted) { modelCatalog.error = error.message; modelCatalog.message = ''; }
+    } finally {
+      if (revision === modelCatalogRevision) { modelCatalog.loading = false; modelCatalogController = null; }
+    }
+    return;
+  }
   try { catalogPlan(settings); }
   catch (error) {
     modelCatalog.models = []; modelCatalog.updatedAt = ''; modelCatalog.message = error.message;
@@ -1404,7 +1431,8 @@ function loadSettings() {
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
   Object.assign(mcp, { ...initialMcpSettings, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
-  setupLlmMode.value = isOllamaApi(llm.apiUrl) ? 'ollama' : 'cloud';
+  setupLlmMode.value = isOfficialRoomApi(llm.apiUrl) ? 'site' : isOllamaApi(llm.apiUrl) ? 'ollama' : 'cloud';
+  llmModeDrafts.clear();
   const activePreset = BEGINNER_LLM_PROVIDERS.find(({ value }) => {
     const preset = LLM_PRESETS[value];
     return preset && detectLLMProvider(preset.apiUrl, preset.model) === llmProviderKey.value;
@@ -1577,12 +1605,23 @@ function resetModel() {
 }
 
 function chooseSetupLlmMode(mode) {
+  if (mode === setupLlmMode.value) return;
+  llmModeDrafts.set(setupLlmMode.value, JSON.parse(JSON.stringify(llm)));
   setupLlmMode.value = mode;
-  if (mode === 'ollama') {
+  if (llmModeDrafts.has(mode)) {
+    Object.assign(llm, llmModeDrafts.get(mode));
+  } else if (mode === 'site') {
+    Object.assign(llm, { apiUrl: officialChatUrl(), apiKey: OFFICIAL_SESSION_MARKER, model: '', useProxy: false, catalogWorkspaceId: '' });
+  } else if (mode === 'ollama') {
     applyPreset('ollama');
-    return;
+  } else {
+    applySetupCloudProvider(setupCloudProvider.value);
   }
-  if (isOllamaApi(llm.apiUrl) || !llm.apiUrl) applySetupCloudProvider(setupCloudProvider.value);
+  cancelModelCatalog();
+  modelCatalog.models = [];
+  queueModelCatalogRefresh();
+  if (mode === 'site') void syncModelCatalog(false);
+  return;
 }
 
 function applySetupCloudProvider(provider) {
@@ -1669,6 +1708,10 @@ function applyTtsPreset(name) {
 }
 
 function normalizedLLMSettings() {
+  if (setupLlmMode.value === 'site') {
+    if (!officialSupply.dashboard) throw new Error(modelCatalog.error || '请等待站内模型加载完成，或点击刷新模型。');
+    return { ...officialRoomSettings(llm, officialSupply.dashboard), needsApiKey: false };
+  }
   const apiUrl = isOllamaApi(llm.apiUrl)
     ? normalizeOllamaUrl(llm.apiUrl)
     : String(llm.apiUrl || '').trim();
@@ -1704,7 +1747,7 @@ function saveLLM(showDialog = true) {
   llm.apiUrl = settings.apiUrl;
   llm.model = settings.model;
   llm.useProxy = settings.useProxy;
-  if (!settings.needsApiKey) llm.apiKey = '';
+  llm.apiKey = settings.apiKey;
   if (!persistSettings('roomLLMSettings', {
     ...readJson('roomLLMSettings', {}),
     apiUrl: settings.apiUrl,
@@ -1725,7 +1768,7 @@ function saveLLM(showDialog = true) {
       'llm',
       ready ? 'success' : 'warning',
       'LLM 设置已保存',
-      ready ? (settings.needsApiKey ? 'LLM API 设置已保存到当前浏览器。' : 'Ollama 本机设置已保存，无需 API Key。') : 'LLM API 设置已保存，但还没有填写 API Key。',
+      ready ? (isOfficialRoomApi(settings.apiUrl) ? '站内直供已保存，使用当前登录账号及网站统一余额。' : settings.needsApiKey ? 'LLM API 设置已保存到当前浏览器。' : 'Ollama 本机设置已保存，无需 API Key。') : 'LLM API 设置已保存，但还没有填写 API Key。',
       `端点：${settings.apiUrl || '未填写'}\n模型：${settings.model || '未填写'}\n请求方式：${settings.useProxy ? '服务器受限代理' : '浏览器直连'}\n图片理解策略：${settings.visionMode || 'auto'}`
     );
   }
@@ -1766,7 +1809,8 @@ async function testLLM() {
       headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
       body: JSON.stringify(settings.useProxy
         ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model, workspaceId: settings.catalogWorkspaceId, runtimeConfig: llmRuntime.transportRuntime(settings) }
-        : makeChatRequestBody(settings.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, settings.apiUrl))
+        : isOfficialRoomApi(settings.apiUrl) ? officialRoomRequestBody({ model: settings.model, messages: [{ role: 'user', content: '请只回复：连接成功' }], max_tokens: Math.min(120, officialSelectedModel.value.max_output_tokens) }, officialSelectedModel.value)
+          : makeChatRequestBody(settings.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, settings.apiUrl))
     });
     const raw = await response.json().catch(() => ({}));
     const data = settings.useProxy ? raw.data || raw : raw;
@@ -1784,7 +1828,7 @@ async function testLLM() {
     showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本', reply ? 'success' : 'error');
   } catch (error) {
     connectionCheck.status = 'error';
-    const corsHint = settings.needsApiKey
+    const corsHint = isOfficialRoomApi(settings.apiUrl) ? '请检查登录状态和网站统一余额；可前往「余额与支付」充值，或在直供控制台查看服务状态。' : settings.needsApiKey
       ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
       : `请允许浏览器访问本地网络。Windows PowerShell 运行：\n${ollamaRepairCommand.value}\n\n然后从任务栏完全退出并重新打开 Ollama。`;
     openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
@@ -2348,6 +2392,8 @@ async function testMCPWithDialog() {
 
 watch(() => props.user?.id || '', (userId, previousUserId) => {
   if (userId === previousUserId) return;
+  officialSupply.dashboard = null;
+  if (setupLlmMode.value === 'site') queueModelCatalogRefresh();
   refreshRoomMemorySync();
   resetMemoryIdentity();
   loadDiaryArchive();
@@ -2447,8 +2493,8 @@ onBeforeUnmount(() => {
         <p>语音、记忆和外观按需调整，不必一次填完所有设置。</p>
       </div>
       <ol class="settings-flow" aria-label="模型连接步骤">
-        <li><b>1</b>选择服务</li>
-        <li><b>2</b>填写密钥</li>
+        <li><b>1</b>选择连接方式</li>
+        <li><b>2</b>{{ setupLlmMode === 'site' ? '选择站内模型' : setupLlmMode === 'ollama' ? '填写本机模型' : '填写密钥' }}</li>
         <li><b>3</b>测试连接</li>
       </ol>
       <button
@@ -2550,6 +2596,10 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="settings-mode-grid">
+            <label class="settings-mode" :class="{ selected: setupLlmMode === 'site' }">
+              <TsIcon name="moon" :size="26" /><span><strong>站内直供</strong><small>账号直接使用 · 统一余额计费</small></span>
+              <input type="radio" name="settings-llm-mode" :checked="setupLlmMode === 'site'" @change="chooseSetupLlmMode('site')" />
+            </label>
             <label
               class="settings-mode"
               :class="{ selected: setupLlmMode === 'cloud' }"
@@ -2574,6 +2624,25 @@ onBeforeUnmount(() => {
                 :checked="setupLlmMode === 'ollama'"
                 @change="chooseSetupLlmMode('ollama')"
             /></label>
+          </div>
+          <div v-if="setupLlmMode === 'site'" class="settings-note settings-official-supply">
+            <TsIcon name="shield" :size="19" />
+            <div>
+              <strong>用月读空间账号直接聊天</strong>
+              <p v-if="officialSupply.dashboard">
+                {{ officialSupply.dashboard.me.nickname }} · {{ officialSupply.dashboard.me.unlimited ? '超级管理员不限额度' : `可用余额 ¥${officialMoney(officialSupply.dashboard.wallet.available_atoms).toFixed(2)}` }}
+              </p>
+              <p v-else>登录后读取可用模型，使用网站现有余额；无需购买或填写服务商密钥。</p>
+              <p v-if="officialSelectedModel?.price">
+                每百万 Token：输入 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.input_uncached) }}，缓存输入 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.input_cached) }}，输出 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.output) }}。按实际用量结算，测试连接也会产生用量。
+              </p>
+              <p v-if="officialSelectedModel">单次输出上限 {{ officialSelectedModel.max_output_tokens }} Token；当前直供支持文字聊天和工具调用，图片请配合 MCP 识图。</p>
+              <div class="settings-official-links">
+                <a class="ghost-btn compact" href="/payments" @click.prevent="emit('go', '/payments')">余额与支付</a>
+                <a class="ghost-btn compact" href="/official-api/">直供控制台</a>
+                <a v-if="!officialSupply.dashboard && !modelCatalog.loading" class="ghost-btn compact" href="/login?redirect=%2Froom%2Fsettings">登录账号</a>
+              </div>
+            </div>
           </div>
           <div v-if="setupLlmMode === 'cloud'" class="settings-field">
             <div class="settings-field-title">
@@ -2699,7 +2768,11 @@ onBeforeUnmount(() => {
                 }}
               </button>
             </div>
-            <input autocomplete="off" name="room-setting-llm-model"
+            <select v-if="setupLlmMode === 'site'" id="settings-llm-model" v-model="llm.model" :disabled="modelCatalog.loading || !modelCatalog.models.length">
+              <option value="">{{ modelCatalog.loading ? '正在加载站内模型…' : '请选择站内模型' }}</option>
+              <option v-for="option in modelCatalog.models" :key="option.id" :value="option.id">{{ option.label }}</option>
+            </select>
+            <input v-else autocomplete="off" name="room-setting-llm-model"
               id="settings-llm-model"
               v-model="llm.model"
               type="text"
@@ -2717,7 +2790,7 @@ onBeforeUnmount(() => {
             </datalist>
             <p class="field-hint">
               {{
-                setupLlmMode === 'ollama'
+                setupLlmMode === 'site' ? '选择站内已开放的模型，保存后返回房间即可使用。' : setupLlmMode === 'ollama'
                   ? '填写当前设备中已下载的模型名称。'
                   : '选择服务商提供的模型，或粘贴完整模型名称。'
               }}
@@ -2755,6 +2828,7 @@ onBeforeUnmount(() => {
               <label
                 >API 端点<input name="room-setting-llm-apiurl"
                   v-model="llm.apiUrl"
+                  :readonly="setupLlmMode === 'site'"
                   type="url"
                   autocomplete="off"
                   spellcheck="false"
@@ -2784,10 +2858,11 @@ onBeforeUnmount(() => {
                 ><input
                   v-model="llm.useProxy"
                   type="checkbox"
-                  :disabled="llmProviderKey === 'ollama'"
+                  :disabled="llmProviderKey === 'ollama' || setupLlmMode === 'site'"
                 />使用服务器受限代理</label
               >
-              <p class="field-hint">
+              <p v-if="setupLlmMode === 'site'" class="field-hint">站内直供通过当前网站安全连接，使用登录 Cookie 验证身份。</p>
+              <p v-else class="field-hint">
                 关闭时由浏览器直连服务商；开启时请求经过本站后端，仅支持已允许的服务商。Ollama
                 从当前设备直接连接。
               </p>
@@ -2813,7 +2888,7 @@ onBeforeUnmount(() => {
                   </option>
                 </select></label
               >
-              <p class="field-hint">
+              <p v-if="setupLlmMode !== 'site'" class="field-hint">
                 目录优先直连当前服务商；跨域受限时经本站只读转发，密钥不保存。缓存有效 6 小时，进入设置自动更新；实际可用性请测试确认。
               </p>
               <div class="model-recommend-card">

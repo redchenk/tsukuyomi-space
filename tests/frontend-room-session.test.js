@@ -19,12 +19,17 @@ async function setup(overrides = {}) {
   const { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } = await import('../src/frontend/services/room/roomContext.mjs');
   const oneclickTts = await import('../src/frontend/services/room/oneclickTts.mjs');
   const siteKnowledge = await import('../src/frontend/services/siteKnowledge.mjs');
+  const officialApi = await import('../src/frontend/services/room/roomOfficialApi.mjs');
+  const localTransport = await import('../src/frontend/services/room/localOllamaTransport.js');
   let onUpdate;
   let clearCount = 0;
   const saved = [];
   const requests = [];
   const context = {
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
+    ...officialApi,
+    ...localTransport,
+    roomChatConfigured: settings => officialApi.roomChatConfigured(settings, 'https://example.test'),
     memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
     console, Date, URL, AbortController, getSession: () => null, ...oneclickTts, ...siteKnowledge,
     document: { documentElement: { lang: 'zh' } },
@@ -68,12 +73,39 @@ async function setup(overrides = {}) {
     ...provided,
     ...(realContext ? { selectRecentRoomConversation } : {})
   };
+  // Session tests use an explicit configured proxy and a fake provider response.
+  // Missing configuration is covered separately, with the real readiness guard.
+  const originalRead = context.readJson;
+  context.readJson = (key, fallback) => {
+    const value = originalRead(key, fallback);
+    return key === 'roomLLMSettings' && !overrides.unconfigured
+      ? { apiUrl: 'https://fixture.test/v1/chat/completions', model: 'fixture-model', apiKey: 'fixture-key', useProxy: true, ...value } : value;
+  };
   vm.runInNewContext(uploadProgressCode + '\n' + code + (realContext ? '' : '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} });')
     + '\nglobalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
   await tick();
+  context.postJson = async () => ({ reply: '模拟模型回复', model: 'fixture-model' });
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }
 async function send(chat, text) { chat.input.value = text; await chat.send(); await tick(); }
+
+test('missing model opens configuration immediately and on send, preserving the draft without writing a turn', async () => {
+  let writes = 0;
+  const h = await setup({ unconfigured: true, writeRoomGenerationDraft: () => { writes++; }, saveRoomConversationTurn: async () => { writes++; } });
+  assert.equal(h.chat.checkConfiguration(), false);
+  assert.equal(h.chat.configurationRequired.value, true);
+  h.chat.configurationRequired.value = false;
+  const before = h.chat.messages.value.length;
+  h.chat.input.value = '保留这段草稿';
+  h.chat.imageAttachment.value = { name: 'draft.png' };
+  assert.equal(await h.chat.send(), false);
+  assert.equal(h.chat.configurationRequired.value, true);
+  assert.equal(h.chat.input.value, '保留这段草稿');
+  assert.equal(h.chat.imageAttachment.value.name, 'draft.png');
+  assert.equal(h.chat.messages.value.length, before);
+  assert.equal(writes, 0);
+  h.chat.destroy();
+});
 
 test('image messages retain previews after completion, history sync and reload; upload failure remains retryable', async () => {
   let history = [];
@@ -84,7 +116,7 @@ test('image messages retain previews after completion, history sync and reload; 
     saveRoomConversationTurn: async value => { turn = value; }
   });
   h.chat.imageAttachment.value = { name: 'IMG_5320.jpeg', dataUrl: 'data:image/png;base64,test' };
-  assert.equal(await h.chat.send(), true);
+  assert.equal(await h.chat.send(), true, h.chat.generationState.value.error);
   assert.equal(history[0].image.id, turn.imageId);
   assert.doesNotMatch(history[0].content, /\[image:/);
   assert.equal(history[0].image.dataUrl, undefined, 'persistent history carries only a reference');

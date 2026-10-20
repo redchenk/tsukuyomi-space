@@ -10,6 +10,7 @@ import RoomProfilePanel from '../components/room/RoomProfilePanel.vue';
 import RoomStage from '../components/room/RoomStage.vue';
 import RoomWeatherCard from '../components/room/RoomWeatherCard.vue';
 import RoomShareDialog from '../components/room/RoomShareDialog.vue';
+import RoomSetupDialog from '../components/room/RoomSetupDialog.vue';
 import { getSession } from '../api/client';
 import { useRoomState } from '../composables/room/useRoomState';
 import { useRoomBackdrop } from '../composables/room/useRoomBackdrop';
@@ -101,6 +102,7 @@ function selectMobilePanel(panelId) {
 
 onMounted(() => {
   panelHostReady.value = true;
+  if (!props.shareId) room.chat.checkConfiguration();
   mobileQuery = window.matchMedia('(max-width: 860px)');
   mobileQuery.addEventListener('change', updateMobileRoom);
   document.addEventListener('pointerdown', closeMobileTools);
@@ -264,6 +266,11 @@ watch(() => props.shareId, loadSharedConversation);
         @save="room.note.saveNote()"
       />
     </Teleport>
+    <RoomSetupDialog
+      :open="room.chat.configurationRequired.value"
+      @close="room.chat.configurationRequired.value = false"
+      @configure="room.chat.configurationRequired.value = false; emit('go', '/room/settings')"
+    />
     <RoomShareDialog
       :open="shareDialogOpen"
       :turn="selectedShareTurn"
