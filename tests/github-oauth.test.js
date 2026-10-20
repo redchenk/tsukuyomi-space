@@ -83,6 +83,15 @@ test('authorization uses minimal identity scopes, PKCE, and a browser-bound stat
     assert.equal(calls, previous);
 });
 
+test('current-user API reports refreshed official API entitlement from the database', async () => {
+    const read = async () => (await (await fetch(`${base}/api/auth/me`, { headers: headers('existing') })).json()).data;
+    assert.equal((await read()).official_api_unlimited, false);
+    db.prepare("UPDATE users SET role='super_admin' WHERE id='existing'").run();
+    try { assert.equal((await read()).official_api_unlimited, true); }
+    finally { db.prepare("UPDATE users SET role='user' WHERE id='existing'").run(); }
+    assert.equal((await read()).official_api_unlimited, false);
+});
+
 test('new GitHub identity always requires site email verification, including a verified matching email', async () => {
     const flow = await pending('existing@example.test');
     assert.equal(flow.completionUrl.searchParams.get('oauth'), 'github');

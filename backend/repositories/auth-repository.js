@@ -20,6 +20,19 @@ function findCurrentUserById(id) {
     return db.prepare("SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, email, role, avatar, bio, created_at FROM users WHERE id = ?").get(id);
 }
 
+// The public user table intentionally stores linked console admins as 'admin'.
+// Match both unique username and current password hash before inheriting the
+// console's super-admin entitlement; no browser claim or cookie scope is used.
+function hasOfficialApiUnlimited(id) {
+    return Boolean(db.prepare(`
+        SELECT 1 FROM users u WHERE u.id = ? AND u.role <> 'banned'
+        AND (u.role = 'super_admin' OR EXISTS (
+            SELECT 1 FROM admins a WHERE a.username = u.username
+            AND a.password_hash = u.password_hash AND a.role = 'super_admin'
+        ))
+    `).get(id));
+}
+
 function isUsernameTaken(username) {
     return Boolean(db.prepare('SELECT id FROM users WHERE username = ?').get(username));
 }
@@ -189,6 +202,7 @@ module.exports = {
     findUserByUsernameOrEmail,
     findUserByUsernameOrEmailPair,
     findCurrentUserById,
+    hasOfficialApiUnlimited,
     isUsernameTaken,
     createUser,
     findUserByOAuthAccount,

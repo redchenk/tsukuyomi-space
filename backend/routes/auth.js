@@ -743,7 +743,10 @@ router.get('/me', authenticateToken, (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
-        res.json({ success: true, data: userResponse(user) });
+        res.json({ success: true, data: {
+            ...userResponse(user),
+            official_api_unlimited: authRepository.hasOfficialApiUnlimited(user.id)
+        } });
     } catch (error) {
         console.error('Get current user failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
