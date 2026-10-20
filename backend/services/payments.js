@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const db = require('../db');
 const { AlipaySdk } = require('alipay-sdk');
 const configuration = require('./payment-config');
+const siteWallet = require('./site-wallet');
 
 function failure(statusCode, message) { return Object.assign(new Error(message), { statusCode }); }
 function amount(cents) { return (cents / 100).toFixed(2); }
@@ -19,14 +20,15 @@ function saveSettings(input) {
         || Object.keys(input).some(key => !['enabled', 'products'].includes(key))) throw failure(400, '支付设置格式无效');
     const ids = new Set();
     const products = input.products.map(product => {
-        if (!product || Object.keys(product).some(key => !['id', 'title', 'description', 'price', 'enabled'].includes(key))
+        if (!product || Object.keys(product).some(key => !['id', 'title', 'description', 'price', 'enabled', 'walletCredit'].includes(key))
+            || (product.walletCredit !== undefined && typeof product.walletCredit !== 'boolean')
             || typeof product.id !== 'string' || !/^[a-zA-Z0-9_-]{1,40}$/.test(product.id) || ids.has(product.id)
             || typeof product.title !== 'string' || !product.title.trim() || product.title.trim().length > 60
             || typeof product.description !== 'string' || product.description.length > 500 || typeof product.enabled !== 'boolean') throw failure(400, '商品信息无效，请检查编号、名称和说明');
         const priceCents = cents(product.price);
         if (priceCents < 1 || priceCents > 100000000) throw failure(400, '商品金额超出范围');
         ids.add(product.id);
-        return { id: product.id, title: product.title.trim(), description: product.description.trim(), price: amount(priceCents), enabled: product.enabled };
+        return { id: product.id, title: product.title.trim(), description: product.description.trim(), price: amount(priceCents), enabled: product.enabled, walletCredit: product.walletCredit === true };
     });
     if (input.enabled) {
         const config = configuration.readConfig();
@@ -53,7 +55,8 @@ function runtime(order = null) {
 function view(order) {
     return { id: order.id, productId: order.product_id, title: order.title, description: order.description, amount: amount(order.amount_cents),
         status: order.status, expired: order.status === 'pending' && order.expires_at <= Date.now(),
-        createdAt: order.created_at, expiresAt: order.expires_at, paidAt: order.paid_at, closedAt: order.closed_at };
+        createdAt: order.created_at, expiresAt: order.expires_at, paidAt: order.paid_at, closedAt: order.closed_at,
+        walletCredit: order.wallet_credit_cents > 0, walletCredited: siteWallet.creditedOrder(order), walletCreditAmount: amount(order.wallet_credit_cents || 0) };
 }
 function findOrder(id, userId = null) {
     if (typeof id !== 'string' || !/^TS[a-f0-9]{32}$/.test(id)) throw failure(404, '订单不存在');
@@ -77,8 +80,8 @@ function createOrder(userId, input) {
         const config = runtime();
         const id = `TS${crypto.randomBytes(16).toString('hex')}`, now = Date.now();
         db.prepare(`INSERT INTO payment_orders (id, user_id, request_key, product_id, title, description, amount_cents,
-            app_id, seller_id, environment, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(id, userId, input.requestKey, product.id, product.title, product.description, cents(product.price), config.appId, config.sellerId, config.environment, now, now + 15 * 60000);
+            app_id, seller_id, environment, created_at, expires_at, wallet_credit_cents) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(id, userId, input.requestKey, product.id, product.title, product.description, cents(product.price), config.appId, config.sellerId, config.environment, now, now + 15 * 60000, product.walletCredit === true ? cents(product.price) : 0);
         return view(findOrder(id, userId));
     }).immediate();
 }
@@ -108,7 +111,7 @@ function applyResult(id, data, notification = true) {
             || (order.trade_no && order.trade_no !== data.trade_no)) throw failure(400, '支付结果与订单不一致');
         const state = data.trade_status;
         if (!['WAIT_BUYER_PAY', 'TRADE_CLOSED', 'TRADE_SUCCESS', 'TRADE_FINISHED'].includes(state)) throw failure(400, '支付状态无效');
-        if (order.status === 'paid') return view(order);
+        if (order.status === 'paid') { siteWallet.creditOrder(order); return view(order); }
         if (state === 'TRADE_SUCCESS' || state === 'TRADE_FINISHED') {
             db.prepare(`UPDATE payment_orders SET status = 'paid', trade_no = ?, provider_status = ?, paid_at = ?, closed_at = NULL WHERE id = ?`)
                 .run(data.trade_no, state, Date.now(), order.id);
@@ -116,7 +119,9 @@ function applyResult(id, data, notification = true) {
             db.prepare(`UPDATE payment_orders SET status = 'closed', trade_no = ?, provider_status = ?, closed_at = ? WHERE id = ?`)
                 .run(data.trade_no, state, Date.now(), order.id);
         }
-        return view(findOrder(id));
+        const updated = findOrder(id);
+        siteWallet.creditOrder(updated);
+        return view(updated);
     }).immediate();
 }
 function notification(body) {

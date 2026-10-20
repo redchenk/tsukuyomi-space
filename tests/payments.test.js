@@ -181,3 +181,79 @@ test('old product prices are immutable, expired orders cannot open a cashier, an
     process.env.ALIPAY_PRIVATE_KEY_PATH = privatePath; process.env.ALIPAY_PRIVATE_KEY = '';
     assert.equal((await fetch(base + '/payments')).status, 503, 'the payment SPA route is recognized when the frontend build is deliberately disabled');
 });
+
+test('wallet recharge uses verified existing orders, immutable amounts and atomic exactly-once credit', async () => {
+    const wallet = require('../backend/services/site-wallet');
+    payments.saveSettings({ enabled: true, products: [{ ...product, walletCredit: true }] });
+    const created = await order();
+    assert.equal(created.walletCredit, true);
+    assert.equal(wallet.wallet('owner').balance_atoms, '0');
+    payments.saveSettings({ enabled: true, products: [{ ...product, price: '2.34', walletCredit: false }] });
+    const good = signed(payload(created));
+    assert.equal((await notify({ ...good, sign: 'forged' })).status, 400);
+    assert.equal(wallet.wallet('owner').balance_atoms, '0');
+    db.exec("CREATE TRIGGER fixture_wallet_failure BEFORE INSERT ON billing_wallet_entries WHEN NEW.operation='credit' BEGIN SELECT RAISE(ABORT,'fixture'); END");
+    assert.equal((await notify(good)).status, 400);
+    assert.equal(payments.findOrder(created.id).status, 'pending', 'payment and wallet credit roll back together');
+    db.exec('DROP TRIGGER fixture_wallet_failure');
+    for (let n = 0; n < 3; n++) assert.equal((await notify(good)).status, 200);
+    assert.equal(wallet.wallet('owner').balance_atoms, '1230000000');
+    assert.equal(wallet.wallet('other').balance_atoms, '0');
+    assert.equal(payments.view(payments.findOrder(created.id)).walletCreditAmount, '1.23');
+    assert.equal(payments.view(payments.findOrder(created.id)).walletCredited, true);
+    assert.equal(db.prepare("SELECT count(*) n FROM billing_wallet_entries WHERE operation='credit'").get().n, 1);
+    const ordinary = await order();
+    assert.equal((await notify(signed(payload(ordinary)))).status, 200);
+    assert.equal(wallet.wallet('owner').balance_atoms, '1230000000', 'ordinary services never mint money');
+    assert.equal((await call('/api/payments/wallet', { token: other })).data.data.balance_atoms, '0');
+});
+
+test('private wallet bridge rejects forgery, replay, stale timestamps and cross-account admissions', async () => {
+    const key = crypto.randomBytes(32), file = path.join(directory, 'wallet-bridge.key');
+    fs.writeFileSync(file, key, { mode: 0o600 }); process.env.OFFICIAL_WALLET_KEY_PATH = file;
+    const endpoint = '/api/internal/official-wallet';
+    async function rpc(body, { token = owner, nonce = crypto.randomBytes(16).toString('hex'), time = String(Date.now()), bad = false } = {}) {
+        const raw = JSON.stringify(body), digest = crypto.createHash('sha256').update(raw).digest('hex');
+        const signature = crypto.createHmac('sha256', key).update(`POST\n${endpoint}\n${time}\n${nonce}\n${digest}`).digest('hex');
+        const response = await fetch(base + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json',
+            'X-Wallet-Time': time, 'X-Wallet-Nonce': nonce, 'X-Wallet-Signature': bad ? '0'.repeat(64) : signature,
+            ...(token ? { Cookie: `tsukuyomi_session=${token}` } : {}) }, body: raw });
+        const text = await response.text(); let data; try { data = JSON.parse(text); } catch { data = text; }
+        return { status: response.status, data };
+    }
+    const overview = { action: 'overview', user_id: 'owner', month: '2026-10' };
+    assert.equal((await rpc(overview, { bad: true })).status, 403);
+    assert.equal((await rpc(overview, { time: String(Date.now() - 120000) })).status, 403);
+    const nonce = crypto.randomBytes(16).toString('hex');
+    assert.equal((await rpc(overview, { nonce })).status, 200);
+    assert.equal((await rpc(overview, { nonce })).status, 403);
+    const price = { id: 'central-fixture', currency: 'CNY', rates_per_million_money_atoms: { input_uncached: '2200000000', input_cached: '44000000', output: '8800000000' } };
+    const input = { action: 'reserve', user_id: 'owner', request_id: 'req_central', request_fingerprint: 'a'.repeat(64), hold_atoms: '100000000', pricing_snapshot: price, sponsored: false };
+    assert.equal((await rpc(input, { token: other })).status, 403);
+    assert.equal((await rpc(input, { token: admin })).status, 403);
+    assert.equal((await rpc({ ...input, sponsored: true, hold_atoms: '0' })).status, 409);
+    assert.equal((await rpc(input)).status, 200);
+    assert.equal((await rpc(input)).status, 200, 'reservation replay cannot double hold');
+    assert.equal(require('../backend/services/site-wallet').wallet('owner').held_atoms, '100000000');
+    const settle = { action: 'settle', request_id: input.request_id, request_fingerprint: input.request_fingerprint, usage: { input_uncached: '10', input_cached: '0', output: '5' } };
+    for (let n = 0; n < 2; n++) assert.equal((await rpc(settle, { token: '' })).status, 200);
+    assert.equal(require('../backend/services/site-wallet').wallet('owner').balance_atoms, '1229934000');
+    assert.equal(require('../backend/services/site-wallet').wallet('owner').held_atoms, '0');
+    assert.equal((await rpc({ ...settle, usage: { ...settle.usage, output: '6' } })).status, 409);
+    const empty = await rpc({ ...input, user_id: 'other', request_id: 'req_no_funds' }, { token: other });
+    assert.equal(empty.status, 402);
+    assert.equal(db.prepare("SELECT count(*) n FROM billing_requests WHERE request_id='req_no_funds'").get().n, 0);
+    assert.equal((await fetch(base + endpoint, { method: 'POST', headers: headers(owner), body: JSON.stringify(overview) })).status, 403, 'browser origin and bearer tokens never authorize the private bridge');
+});
+
+test('main-site sponsored mode survives demotion for admitted requests and is denied for new ones', () => {
+    const wallet = require('../backend/services/site-wallet');
+    db.prepare("UPDATE users SET role='super_admin' WHERE id='other'").run();
+    const pricing_snapshot = { id: 'sponsored-fixture', currency: 'CNY', rates_per_million_money_atoms: { input_uncached: '2200000000', input_cached: '44000000', output: '8800000000' } };
+    const input = { user_id: 'other', request_id: 'req_sponsored', request_fingerprint: 'b'.repeat(64), hold_atoms: '0', pricing_snapshot, sponsored: true };
+    wallet.admission(input);
+    db.prepare("UPDATE users SET role='user' WHERE id='other'").run();
+    assert.equal(wallet.settle({ request_id: input.request_id, request_fingerprint: input.request_fingerprint, usage: { input_uncached: '20', input_cached: '0', output: '50' } }).request.money_atoms, '0');
+    assert.equal(wallet.wallet('other').balance_atoms, '0');
+    assert.throws(() => wallet.admission({ ...input, request_id: 'req_demoted' }), /权限已变化/);
+});

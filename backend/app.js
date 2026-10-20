@@ -49,6 +49,7 @@ function createApp() {
     // Correlate even requests rejected by CORS, Origin, auth, rate limits or JSON parsing.
     app.use(require('./services/fushi-diagnostics').middleware);
     app.use(securityHeaders);
+    app.use(require('./routes/official-wallet').router());
     app.use('/api/payments', require('./routes/payments').notifyRouter);
     // Isolated protocol routers own parsing, authentication, origin checks and
     // OAuth errors. Keep them outside the site's cookie/AJAX write guard/CORS.

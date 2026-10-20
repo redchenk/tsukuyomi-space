@@ -13,6 +13,9 @@ router.get('/catalog', (req, res) => {
     try { res.json({ success: true, data: payments.catalog() }); } catch (error) { sendError(res, error); }
 });
 router.use(authenticateToken);
+router.get('/wallet', (req, res) => {
+    try { res.json({ success: true, data: require('../services/site-wallet').wallet(req.user.id) }); } catch (error) { sendError(res, error); }
+});
 router.get('/orders', (req, res) => {
     try { res.json({ success: true, data: payments.listOrders(req.user.id, req.query) }); } catch (error) { sendError(res, error); }
 });

@@ -32,7 +32,7 @@ async function query(order) {
   finally { querying.value = ''; }
 }
 function addProduct() {
-  settings.value.products.push({ id: `item-${crypto.randomUUID().slice(0, 8)}`, title: '', description: '', price: '', enabled: false });
+  settings.value.products.push({ id: `item-${crypto.randomUUID().slice(0, 8)}`, title: '', description: '', price: '', enabled: false, walletCredit: false });
 }
 onMounted(async () => {
   try { settings.value = await request('/settings'); await loadOrders(); }
@@ -64,6 +64,7 @@ onMounted(async () => {
             <label>价格（元）<input v-model="product.price" required inputmode="decimal" pattern="(?:0|[1-9][0-9]{0,6})(?:\.[0-9]{1,2})?" placeholder="0.00"></label>
             <label class="payment-editor-description">商品说明<textarea v-model="product.description" maxlength="500" rows="3" /></label>
             <label class="terminal-check"><input v-model="product.enabled" type="checkbox"> 上架此商品</label>
+            <label class="terminal-check"><input v-model="product.walletCredit" type="checkbox"> 支付成功后按实付金额充值到网站余额</label>
             <button class="danger-btn" type="button" @click="settings.products.splice(index, 1)">移除此商品配置</button>
           </fieldset>
           <p v-if="!settings.products.length">尚未配置商品。添加名称、价格和交付说明后再开启收款。</p>
@@ -74,7 +75,7 @@ onMounted(async () => {
         </div>
       </form>
       <section class="terminal-settings-block">
-        <div class="terminal-settings-title"><h2>支付订单</h2><span>仅记录支付结果，服务交付另行处理</span></div>
+        <div class="terminal-settings-title"><h2>支付订单</h2><span>充值商品验签后自动入账，其他服务按商品说明交付</span></div>
         <div class="payment-actions">
           <label>订单状态<select v-model="filter" @change="loadOrders(1)"><option value="">全部</option><option value="pending">待支付</option><option value="paid">已支付</option><option value="closed">已关闭</option></select></label>
           <button class="ghost-btn" type="button" @click="loadOrders(orders.page)">刷新订单列表</button>
