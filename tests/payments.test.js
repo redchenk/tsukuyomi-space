@@ -20,7 +20,10 @@ const db = require('../backend/db');
 const { generateToken } = require('../backend/middleware/auth');
 const payments = require('../backend/services/payments');
 const config = require('../backend/services/payment-config');
-const urllib = require('urllib').default;
+// Resolve the SDK's actual transport under both npm and pnpm layouts. Mocking
+// an unrelated hoisted copy could accidentally send fixture requests online.
+const sdkRequire = require('node:module').createRequire(require.resolve('alipay-sdk'));
+const urllib = sdkRequire('urllib').default;
 const realRequest = urllib.request;
 let server, base, owner, other, admin, staff, tradeCounter = 0, queryResult, unsignedQuery = false, queryCalls = 0;
 const product = { id: 'service', title: '测试服务', description: '仅订单测试', price: '1.23', enabled: true };
