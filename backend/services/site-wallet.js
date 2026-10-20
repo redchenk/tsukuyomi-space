@@ -2,6 +2,8 @@ const db = require('../db');
 const { BillingLedger } = require('./site-wallet-ledger');
 const { priceUsage } = require('./site-wallet-pricing');
 const auth = require('../repositories/auth-repository');
+// Acknowledged payment and wallet commits must survive a host power loss.
+db.pragma('synchronous = FULL');
 const ledger = new BillingLedger(db);
 const fail = (code, message, statusCode = 400) => { throw Object.assign(new Error(message), { code, statusCode }); };
 function user(id) {
