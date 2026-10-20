@@ -11,6 +11,7 @@ const { queueLoginLocationCheck } = require('./services/login-location-alert');
 const { approveAndNotify } = require('./services/approved-reply-notification');
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
+const { prepareOssSettingsUpdate } = require('./services/oss-settings');
 const responseCache = require('./services/response-cache');
 const { publicEmail, validateNickname } = require('./validators');
 const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./services/friend-links');
@@ -753,7 +754,7 @@ router.get('/settings', (req, res) => {
         ));
         ok(res, {
             ...Object.fromEntries(rows.map(row => [row.key, parseSettingValue(row.value)])),
-            ...(superAdmin ? { ...emailNotificationSettings(), mailConfigured: Boolean(config.smtp.user && config.smtp.pass) } : {})
+            ...(superAdmin ? { ...emailNotificationSettings(), mailConfigured: Boolean(config.smtp.user && config.smtp.pass), ossCredentialsConfigured: objectStorage.hasUploadParams() } : {})
         });
     } catch (error) {
         console.error('Admin settings get error:', error);
@@ -763,9 +764,9 @@ router.get('/settings', (req, res) => {
 
 router.post('/settings', async (req, res) => {
     try {
-        const settings = { ...(req.body || {}) };
+        let settings = { ...(req.body || {}) };
         const superAdmin = req.user.role === 'super_admin';
-        if (!superAdmin && Object.keys(settings).some(key => OSS_SETTING_KEY_SET.has(key) || EMAIL_NOTIFICATION_KEY_SET.has(key))) {
+        if (!superAdmin && Object.keys(settings).some(key => OSS_SETTING_KEY_SET.has(key) || key === 'ossUpdateCredentials' || EMAIL_NOTIFICATION_KEY_SET.has(key))) {
             return fail(res, 403, '需要超级管理员权限');
         }
         if (superAdmin && EMAIL_NOTIFICATION_KEYS.some(key =>
@@ -776,13 +777,12 @@ router.post('/settings', async (req, res) => {
         const allowed = superAdmin
             ? [...SITE_SETTING_KEYS, ...OSS_SETTING_KEYS, ...EMAIL_NOTIFICATION_KEYS]
             : SITE_SETTING_KEYS;
-        if (superAdmin && !String(settings.ossAccessKeySecret || '').trim()) {
-            delete settings.ossAccessKeySecret;
-        }
+        if (superAdmin) settings = prepareOssSettingsUpdate(settings, objectStorage.getSettings());
         if (superAdmin) await objectStorage.validateSettingsUrls(settings);
         adminRepository.saveSettings(settings, allowed);
         ok(res, null, '配置已保存');
     } catch (error) {
+        if (error.code === 'OSS_CREDENTIAL_UPDATE_INVALID') return fail(res, 400, error.message);
         console.error('Admin settings save error:', error);
         fail(res, error.message?.includes('对象存储') || error.message?.includes('HTTPS') || error.message?.includes('禁止访问') ? 400 : 500, '无法保存系统配置：对象存储地址不安全或无效');
     }
@@ -790,12 +790,9 @@ router.post('/settings', async (req, res) => {
 
 router.post('/settings/oss-test', requireSuperAdmin, async (req, res) => {
     try {
-        const providedSettings = req.body || {};
         const savedSettings = objectStorage.getSettings();
+        const providedSettings = prepareOssSettingsUpdate(req.body || {}, savedSettings);
         const settings = { ...savedSettings, ...providedSettings };
-        if (!String(providedSettings.ossAccessKeySecret || '').trim()) {
-            settings.ossAccessKeySecret = savedSettings.ossAccessKeySecret || '';
-        }
         const checks = [];
         let hasFailure = false;
         let hasPassedNetworkCheck = false;
@@ -876,6 +873,7 @@ router.post('/settings/oss-test', requireSuperAdmin, async (req, res) => {
             checks
         }, usable ? '对象存储测试通过' : '对象存储测试完成，请查看检查结果');
     } catch (error) {
+        if (error.code === 'OSS_CREDENTIAL_UPDATE_INVALID') return fail(res, 400, error.message);
         const aborted = error?.name === 'AbortError';
         ok(res, {
             publicBaseUrl: normalizePublicBaseUrl(req.body?.ossPublicBaseUrl),

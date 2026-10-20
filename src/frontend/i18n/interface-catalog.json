@@ -1,4 +1,10 @@
 {
+  "更换访问密钥": { "en": "Replace access credentials", "ja": "アクセスキーを変更" },
+  "访问密钥已配置。保存其他设置会保留现有密钥；需要更换时再勾选并填写。": { "en": "Access credentials are configured. Saving other settings preserves them. Enable replacement only when you need to change them.", "ja": "アクセスキーは設定済みです。他の設定を保存しても既存のキーを保持します。変更するときだけ選択して入力してください。" },
+  "尚未配置访问密钥，请勾选“更换访问密钥”后填写。": { "en": "No access credentials are configured. Enable replacement, then enter them.", "ja": "アクセスキーが未設定です。「アクセスキーを変更」を選択して入力してください。" },
+  "新的 AccessKey Secret": { "en": "New AccessKey Secret", "ja": "新しい AccessKey Secret" },
+  "填写阿里云 AccessKey Secret，不是网站登录密码": { "en": "Enter your Alibaba Cloud AccessKey Secret, not your site password", "ja": "サイトのパスワードではなく、Alibaba Cloud の AccessKey Secret を入力してください" },
+  "更换访问密钥时，请完整填写 AccessKey ID 和 AccessKey Secret": { "en": "To replace credentials, enter both AccessKey ID and AccessKey Secret", "ja": "キーを変更する場合は AccessKey ID と AccessKey Secret を両方入力してください" },
   "支付成功后按实付金额充值到网站余额": { "en": "Credit the actual payment to the site wallet after payment succeeds", "ja": "支払い成功後、実際の支払額をサイト残高にチャージ" },
   "充值商品验签后自动入账，其他服务按商品说明交付": { "en": "Top-ups are credited after signature verification; other services follow the product description", "ja": "チャージ商品は署名検証後に自動入金し、その他のサービスは商品説明に従います" },
   "网站统一余额": { "en": "Shared site wallet", "ja": "サイト共通残高" },

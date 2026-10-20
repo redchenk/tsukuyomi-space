@@ -633,7 +633,16 @@ async function putObject({
     } finally { if (filePath) payload.destroy(); }
     if (!response.ok) {
         const text = (await readBodyLimited(response, MAX_OSS_LIST_BYTES)).toString('utf8');
-        throw new Error(`OSS upload failed: HTTP ${response.status} ${text.slice(0, 160)}`);
+        // OSS error XML can contain the AccessKey ID, signatures and signing
+        // strings. Keep only safe diagnostic fields in application logs.
+        const ossCode = textBetween(text, 'Code');
+        const requestId = response.headers.get('x-oss-request-id') || textBetween(text, 'RequestId');
+        throw Object.assign(new Error(`OSS upload failed: HTTP ${response.status}`), {
+            code: 'OSS_UPLOAD_FAILED',
+            providerStatus: response.status,
+            ossCode: /^[A-Za-z0-9_]{1,80}$/.test(ossCode) ? ossCode : '',
+            requestId: /^[A-Za-z0-9-]{1,100}$/.test(requestId) ? requestId : ''
+        });
     }
     return {
         storage: 'oss',

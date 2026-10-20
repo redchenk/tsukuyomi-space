@@ -4124,6 +4124,41 @@ describe('admin API permissions', () => {
         );
     });
 
+    it('protects saved OSS credentials from an autofilled password and requires an explicit valid replacement', async () => {
+        const keys = ['ossProvider', 'ossAccessKeyId', 'ossAccessKeySecret', 'siteTitle'];
+        const old = keys.map(key => db.prepare('SELECT * FROM site_settings WHERE key = ?').get(key));
+        const id = 'LTAI' + 'a'.repeat(20), secret = 's'.repeat(30);
+        const save = db.prepare('INSERT OR REPLACE INTO site_settings (key,value,updated_at) VALUES (?,?,CURRENT_TIMESTAMP)');
+        save.run('ossProvider', 'aliyun'); save.run('ossAccessKeyId', id); save.run('ossAccessKeySecret', secret);
+        const title = db.prepare("SELECT value FROM site_settings WHERE key='siteTitle'").get()?.value;
+        try {
+            for (const payload of [
+                { ossAccessKeySecret: 'password9', siteTitle: 'must-not-save' },
+                { ossUpdateCredentials: true, ossAccessKeySecret: 'password9' },
+                { ossUpdateCredentials: true, ossAccessKeyId: 'LTAI' + 'b'.repeat(20) }
+            ]) {
+                const result = await postJson('/api/admin/settings', payload, adminToken);
+                assert.equal(result.response.status, 400);
+                assert.equal(db.prepare("SELECT value FROM site_settings WHERE key='ossAccessKeySecret'").get().value, secret);
+                assert.equal(db.prepare("SELECT value FROM site_settings WHERE key='siteTitle'").get()?.value, title);
+            }
+            const normal = await postJson('/api/admin/settings', { ossUpdateCredentials: false, ossAccessKeyId: id, ossAccessKeySecret: '' }, adminToken);
+            assert.equal(normal.response.status, 200);
+            const explicit = await postJson('/api/admin/settings', { ossUpdateCredentials: true, ossAccessKeySecret: 'n'.repeat(30) }, adminToken);
+            assert.equal(explicit.response.status, 200);
+            assert.equal(db.prepare("SELECT value FROM site_settings WHERE key='ossAccessKeySecret'").get().value, 'n'.repeat(30));
+            assert.equal(db.prepare("SELECT value FROM site_settings WHERE key='ossUpdateCredentials'").get(), undefined);
+            const response = await request('/api/admin/settings', { headers: jsonHeaders(adminToken) });
+            assert.equal(Object.hasOwn(response.body.data, 'ossAccessKeySecret'), false);
+            assert.equal(typeof response.body.data.ossCredentialsConfigured, 'boolean');
+        } finally {
+            for (let i = 0; i < keys.length; i++) {
+                if (old[i]) db.prepare('INSERT OR REPLACE INTO site_settings (key,value,updated_at) VALUES (?,?,?)').run(old[i].key, old[i].value, old[i].updated_at);
+                else db.prepare('DELETE FROM site_settings WHERE key=?').run(keys[i]);
+            }
+        }
+    });
+
     it('exposes content moderation only through the administrator site session', async () => {
         const anonymous = await request('/api/moderation/me');
         assert.equal(anonymous.response.status, 401);

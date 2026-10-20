@@ -8,6 +8,7 @@ import ArticleCategoryManager from '../components/terminal/ArticleCategoryManage
 import PaymentManager from '../components/terminal/PaymentManager.vue';
 import { formatDateTime } from '../utils/time';
 import { uiText } from '../i18n/runtime';
+import { terminalSettingsPayload } from '../services/terminalSettings.mjs';
 
 const emit = defineEmits(['go', 'auth-changed']);
 
@@ -37,6 +38,8 @@ const terminal = reactive({
   notificationSaving: false,
   paymentsRevision: 0,
   mailConfigured: false,
+  ossCredentialsConfigured: false,
+  ossCredentialsEditing: false,
   moderationPreference: { emailNotifyModeration: false, email: '', canReceive: false },
   clock: '',
   login: { username: '', password: '' },
@@ -445,9 +448,11 @@ async function loadPanel(panel = terminal.activePanel) {
     if (panel === 'links') terminal.links = await read('/links') || [];
     if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await read('/analytics') || {}) };
     if (panel === 'settings' || (panel === 'notifications' && canManageAccounts.value)) {
-      const { mailConfigured, ...settings } = await read('/settings') || {};
+      const { mailConfigured, ossCredentialsConfigured, ...settings } = await read('/settings') || {};
       terminal.mailConfigured = mailConfigured === true;
-      terminal.settings = { ...terminal.settings, ...settings };
+      terminal.ossCredentialsConfigured = ossCredentialsConfigured === true;
+      terminal.ossCredentialsEditing = false;
+      terminal.settings = { ...terminal.settings, ...settings, ossAccessKeySecret: '' };
     }
     if (panel === 'notifications') {
       const { mailConfigured, ...preference } = await read('/notification-preferences');
@@ -702,11 +707,16 @@ async function deleteLink(id) {
 }
 
 async function saveSettings() {
-  const settings = canManageAccounts.value
-    ? terminal.settings
-    : Object.fromEntries(SITE_SETTING_KEYS.map((key) => [key, terminal.settings[key]]));
-  await adminApi('/settings', { method: 'POST', body: JSON.stringify(settings) });
-  showMessage('配置已保存');
+  try {
+    const settings = canManageAccounts.value
+      ? terminalSettingsPayload(terminal.settings, terminal.ossCredentialsEditing)
+      : Object.fromEntries(SITE_SETTING_KEYS.map((key) => [key, terminal.settings[key]]));
+    await adminApi('/settings', { method: 'POST', body: JSON.stringify(settings) });
+    if (terminal.ossCredentialsEditing) terminal.ossCredentialsConfigured = true;
+    terminal.ossCredentialsEditing = false;
+    terminal.settings.ossAccessKeySecret = '';
+    showMessage('配置已保存');
+  } catch (error) { showMessage(error.message, 'error'); }
 }
 
 async function saveNotificationSettings() {
@@ -741,7 +751,7 @@ async function testOssSettings() {
   try {
     const result = await adminApi('/settings/oss-test', {
       method: 'POST',
-      body: JSON.stringify(terminal.settings)
+      body: JSON.stringify(terminalSettingsPayload(terminal.settings, terminal.ossCredentialsEditing))
     });
     terminal.ossTest.type = result?.usable ? 'success' : 'error';
     terminal.ossTest.message = result?.usable ? '测试通过：对象存储配置可用' : '测试完成：请查看对象存储检查结果';
@@ -1467,8 +1477,10 @@ onUnmounted(() => {
                   <option value="timestamp">时间戳 + UUID</option>
                 </select>
               </label>
-              <label>AccessKey ID<input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="oss-access-key-id" v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
-              <label>AccessKey Secret<input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="oss-access-key-secret" v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="off"></label>
+              <label class="terminal-check"><input v-model="terminal.ossCredentialsEditing" type="checkbox" @change="terminal.settings.ossAccessKeySecret = ''"> 更换访问密钥</label>
+              <p class="terminal-setting-note">{{ terminal.ossCredentialsConfigured ? '访问密钥已配置。保存其他设置会保留现有密钥；需要更换时再勾选并填写。' : '尚未配置访问密钥，请勾选“更换访问密钥”后填写。' }}</p>
+              <label>AccessKey ID<input :readonly="!terminal.ossCredentialsEditing" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="oss-access-key-id" v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
+              <label v-if="terminal.ossCredentialsEditing">新的 AccessKey Secret<input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="oss-replacement-secret" v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="new-password" placeholder="填写阿里云 AccessKey Secret，不是网站登录密码"></label>
               <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>
               <div class="terminal-oss-actions">
                 <button class="primary-btn" type="submit">保存对象存储设置</button>

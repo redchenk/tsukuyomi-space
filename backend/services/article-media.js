@@ -187,6 +187,14 @@ function articleMediaError(message, status = 400) {
     return error;
 }
 
+function storageUploadError(error) {
+    const denied = ['SignatureDoesNotMatch', 'InvalidAccessKeyId', 'AccessDenied'].includes(error?.ossCode);
+    return Object.assign(articleMediaError(denied ? '对象存储访问授权失败，请联系管理员检查访问密钥和权限' : '对象存储上传失败，请稍后重试或联系管理员', 503), {
+        code: denied ? 'OSS_AUTH_FAILED' : 'OSS_UPLOAD_FAILED',
+        ossCode: error?.ossCode || '', providerStatus: error?.providerStatus || 0, requestId: error?.requestId || ''
+    });
+}
+
 function findCoverAsset(id) {
     return db.prepare(`
         SELECT id, article_id, owner_id, asset_type, mime_type
@@ -263,7 +271,7 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
         }
         throw articleMediaError('对象存储暂不可用，请稍后重试', 503);
     } catch (error) {
-        throw articleMediaError('对象存储上传失败，请稍后重试或联系管理员', 503);
+        throw storageUploadError(error);
     }
 
     return saveParsedImageLocal(parsed, { id, articleId, ownerId, role, alt, uploadPath });
@@ -347,7 +355,7 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
         }
         throw articleMediaError('对象存储暂不可用，请稍后重试', 503);
     } catch (error) {
-        throw articleMediaError('对象存储上传失败，请稍后重试或联系管理员', 503);
+        throw storageUploadError(error);
     }
 
     saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: assetRole, alt, fileName, uploadPath: managedUploadPath });
