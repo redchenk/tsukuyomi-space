@@ -80,6 +80,8 @@ function loadGeneration(llmSettings = {}) {
         localStorage: storage,
         window: { location: { origin: 'https://example.test' } },
         llmRuntime: require('../shared/model-runtime.cjs'),
+        runtime: require('../shared/model-runtime.cjs'),
+        ReadableStream, AbortController, setTimeout, clearTimeout,
         llmProtocol: require('../shared/llm-protocol.cjs'),
         getSession: () => null,
         crypto: { randomUUID: () => 'uuid-test' },
@@ -88,6 +90,7 @@ function loadGeneration(llmSettings = {}) {
     const code = `${stripExports(source('src/frontend/services/room/roomStorage.js'))}\n`
         .concat(stripExports(source('src/frontend/services/room/localOllamaTransport.js')))
         .concat(stripExports(source('src/frontend/services/room/roomDiaryArchive.js')))
+        .concat(stripExports(source('src/frontend/services/room/roomOfficialApi.mjs')))
         .concat(stripExports(source('src/frontend/services/room/roomDiaryGeneration.js')))
         .concat(`
 globalThis.__generation = {
@@ -507,12 +510,12 @@ it('generates diaries through the existing server proxy without a client key', a
     const generation = loadGeneration({ useProxy: true });
     const result = await generation.generateDiaryEntry([{ role: 'user', content: 'hello' }], {
         fetchProxy: async (url, options) => {
-            assert.equal(url, '/api/chat');
+            assert.equal(url, '/api/chat/stream');
             assert.equal(options.headers['Content-Type'], 'application/json');
             const body = JSON.parse(options.body);
             assert.match(body.message, /hello/);
             assert.match(body.systemPrompt, /第一人称/);
-            return { ok: true, json: async () => ({ success: true, data: { reply: '今天我们聊了许多有趣的事，我会把这段温暖的时光记在心里。' } }) };
+            return diaryStream([': keepalive\n\n', 'event: delta\ndata: {"text":"今天我们聊了许多有趣的事，我会把这段温暖的时光记在心里。"}\n\n', 'event: done\ndata: {"reply":"今天我们聊了许多有趣的事，我会把这段温暖的时光记在心里。"}\n\n']);
         }
     });
     assert.match(result.body, /温暖的时光/);
@@ -559,4 +562,121 @@ test('all-day diary prompts retain morning and evening instead of only the last 
     assert.match(result[0].content, /^moment-0 /);
     assert.match(result.at(-1).content, /^moment-239 /);
     assert.ok(result.reduce((sum, turn) => sum + turn.content.length, 0) <= 180240);
+});
+
+function diaryStream(chunks, contentType = 'text/event-stream') {
+    const encoder = new TextEncoder();
+    return new Response(new ReadableStream({ start(controller) {
+        // Split at arbitrary byte boundaries, including inside Chinese UTF-8.
+        const bytes = encoder.encode(chunks.join(''));
+        for (let offset = 0; offset < bytes.length; offset += 7) controller.enqueue(bytes.slice(offset, offset + 7));
+        controller.close();
+    } }), { headers: { 'Content-Type': contentType } });
+}
+const completeDiary = '今天和你一起走过回家的路，聊起月亮和明天的小事。这些平常的片刻，我想好好记住。';
+const diaryTurns = [{ role: 'user', content: '今天一起走回家' }];
+const diaryDelta = text => `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: 'stop' }] })}\n\n`;
+const officialSettings = { apiUrl: 'https://example.test/official-api/v1/chat/completions', model: 'site-model', apiKey: 'obsolete-key', useProxy: true };
+const diaryDashboard = { enabled: true, me: { account_id: 'u-fixture' }, models: [{ id: 'site-model', provider: 'deepseek', enabled: true, max_output_tokens: 1024 }] };
+
+test('official diary refreshes model limits, uses site authentication and waits for settlement DONE', async () => {
+    const generation = loadGeneration(officialSettings);
+    let calls = 0;
+    const result = await generation.generateDiaryEntry(diaryTurns, { fetchImpl: async (url, options) => {
+        calls++;
+        assert.equal(options.credentials, 'same-origin'); assert.equal(options.cache, 'no-store');
+        if (url === '/official-api/api/dashboard') return Response.json(diaryDashboard);
+        assert.equal(url, officialSettings.apiUrl);
+        assert.equal(options.headers.Authorization, 'Bearer tsukuyomi-site-session');
+        assert.equal(options.headers.Accept, 'text/event-stream');
+        assert.doesNotMatch(options.body, /obsolete-key/);
+        const body = JSON.parse(options.body);
+        assert.equal(body.stream, true); assert.equal(body.max_tokens, 1024);
+        assert.equal(body.thinking.type, 'disabled'); assert.equal(body.stream_options.include_usage, true);
+        assert.match(body.messages[0].content, /265 到 409 字/);
+        return diaryStream([': keepalive\n\n', diaryDelta(completeDiary), 'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":40}}\n\n', 'data: [DONE]\n\n']);
+    }, fetchProxy: async () => { throw new Error('official requests must not use the custom-key proxy'); } });
+    assert.equal(calls, 2); assert.equal(result.content, completeDiary);
+});
+
+test('official diary refuses a disabled model before making a paid request', async () => {
+    let calls = 0;
+    await assert.rejects(loadGeneration(officialSettings).generateDiaryEntry(diaryTurns, { fetchImpl: async () => {
+        calls++;
+        return Response.json({ ...diaryDashboard, enabled: false });
+    } }), /暂未开放/);
+    assert.equal(calls, 1);
+});
+
+test('official diary never accepts a stream lost after text finish but before settlement', async () => {
+    let modelCalls = 0;
+    await assert.rejects(loadGeneration(officialSettings).generateDiaryEntry(diaryTurns, { fetchImpl: async url => {
+        if (url === '/official-api/api/dashboard') return Response.json(diaryDashboard);
+        modelCalls++;
+        return diaryStream([diaryDelta(completeDiary)]);
+    } }), { code: 'LLM_STREAM_INCOMPLETE' });
+    assert.equal(modelCalls, 1, 'do not automatically repeat a potentially billed request');
+});
+
+test('custom API diaries stream directly across supported protocols', async () => {
+    for (const [apiUrl, model, chunks, type] of [
+        ['https://api.deepseek.com/chat/completions', 'deepseek-chat', [diaryDelta(completeDiary), 'data: [DONE]\n\n']],
+        ['https://api.openai.com/v1/responses', 'gpt-4o-mini', [`event: response.output_text.delta\ndata: ${JSON.stringify({ type: 'response.output_text.delta', delta: completeDiary })}\n\n`, 'event: response.completed\ndata: {"type":"response.completed","response":{"status":"completed"}}\n\n']],
+        ['https://api.anthropic.com/v1/messages', 'claude-sonnet-4-6', [`event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: completeDiary } })}\n\n`, 'event: message_stop\ndata: {"type":"message_stop"}\n\n']],
+        ['http://localhost:11434/api/chat', 'qwen2.5:7b', [JSON.stringify({ message: { content: completeDiary }, done: true }) + '\n'], 'application/x-ndjson']
+    ]) {
+        const result = await loadGeneration({ apiUrl, model, apiKey: 'fixture-key' }).generateDiaryEntry(diaryTurns, { fetchImpl: async (_, options) => {
+            assert.equal(JSON.parse(options.body).stream, true);
+            return diaryStream(chunks, type);
+        } });
+        assert.equal(result.content, completeDiary, apiUrl);
+    }
+});
+
+test('proxy diary never saves partial text when the stream fails or is cut off', async () => {
+    for (const tail of ['', 'event: error\ndata: {"message":"模型响应超时","statusCode":504}\n\n']) {
+        let calls = 0;
+        await assert.rejects(loadGeneration({ useProxy: true }).generateDiaryEntry(diaryTurns, { fetchProxy: async () => {
+            calls++;
+            return diaryStream([`event: delta\ndata: ${JSON.stringify({ text: completeDiary })}\n\n`, tail]);
+        } }));
+        assert.equal(calls, 1);
+    }
+});
+
+test('custom API HTTP 504 never retries or parses a gateway HTML error as a diary', async () => {
+    let calls = 0;
+    await assert.rejects(loadGeneration({ apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat', apiKey: 'fixture-key' }).generateDiaryEntry(diaryTurns, { fetchImpl: async () => {
+        calls++;
+        return new Response('<html>504 Gateway Timeout</html>', { status: 504 });
+    } }), { statusCode: 504, message: '模型响应超时，原对话已保留，请稍后重试。' });
+    assert.equal(calls, 1);
+});
+
+test('custom API retries only an explicit stream rejection and preserves user parameter mappings', async () => {
+    let calls = 0;
+    const settings = { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat', apiKey: 'fixture-key' };
+    settings.runtimeConfig = { models: { [require('../shared/model-runtime.cjs').scopes(settings).model]: { parameters: { maxOutputTokens: 2048 }, mappings: { maxOutputTokens: 'max_completion_tokens' } } } };
+    const result = await loadGeneration(settings).generateDiaryEntry(diaryTurns, { fetchImpl: async (_, options) => {
+        const body = JSON.parse(options.body);
+        assert.equal(body.max_completion_tokens, 2048);
+        assert.equal(body.stream, ++calls === 1);
+        return calls === 1 ? new Response('{"error":"stream is not supported"}', { status: 400 }) : Response.json({ choices: [{ message: { content: completeDiary }, finish_reason: 'stop' }] });
+    } });
+    assert.equal(calls, 2); assert.equal(result.content, completeDiary);
+});
+
+test('a manually disabled streaming capability retains the legacy proxy JSON path', async () => {
+    const settings = { useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', model: 'server-model' };
+    settings.runtimeConfig = { models: { [require('../shared/model-runtime.cjs').scopes(settings).model]: { capabilities: { streaming: false } } } };
+    const result = await loadGeneration(settings).generateDiaryEntry(diaryTurns, { fetchProxy: async (url, options) => {
+        assert.equal(url, '/api/chat');
+        assert.equal(options.headers.Accept, 'application/json');
+        return Response.json({ success: true, data: { reply: completeDiary } });
+    } });
+    assert.equal(result.content, completeDiary);
+});
+
+test('an OpenAI JSON length cut is rejected just like a streaming cut', async () => {
+    await assert.rejects(loadGeneration({ apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat', apiKey: 'fixture-key' }).generateDiaryEntry(diaryTurns, { fetchImpl: async () => Response.json({ choices: [{ message: { content: completeDiary }, finish_reason: 'length' }] }) }), { code: 'LLM_INCOMPLETE' });
 });

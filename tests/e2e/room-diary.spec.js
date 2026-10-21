@@ -6,7 +6,7 @@ for (const width of [1280, 390]) {
   test(`Room diary generates and exports without changing chat identity at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.addInitScript(() => {
-      localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+      localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat', apiKey: 'fixture-key' }));
       localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
       localStorage.setItem('roomDiaryArchive:guest', JSON.stringify({ data: {
         prompts: { sample: { id: 'sample', data: { name: 'Aoi', description: '旧书店店员' } } },
@@ -17,11 +17,13 @@ for (const width of [1280, 390]) {
     await page.route('**/api/chat/stream', async (route) => {
       const body = route.request().postDataJSON();
       chatRequests.push(body);
-      const reply = '（轻轻挥手）欢迎来到书店。';
+      const reply = body.systemPrompt.includes('私人日记')
+        ? '今天我们又在旧书店聊了很久。窗外的阳光很暖，我也会记得这一段愉快的时光。'
+        : '（轻轻挥手）欢迎来到书店。';
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
-        body: `event: delta\ndata: ${JSON.stringify({ text: reply })}\n\nevent: done\ndata: ${JSON.stringify({ reply, model: 'test' })}\n\n`
+        body: `: keepalive\n\nevent: delta\ndata: ${JSON.stringify({ text: reply })}\n\nevent: done\ndata: ${JSON.stringify({ reply, model: 'test' })}\n\n`
       });
     });
     await page.route('**/api/chat', async (route) => {

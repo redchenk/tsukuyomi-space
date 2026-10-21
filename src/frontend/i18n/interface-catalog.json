@@ -1,4 +1,11 @@
 {
+  "模型响应超时，原对话已保留，请稍后重试。": { "en": "The model timed out. Your conversation is kept; try again later.", "ja": "モデルの応答がタイムアウトしました。会話は保持されています。後で再試行してください。" },
+  "登录已失效，请重新登录后使用站内直供。": { "en": "Your session expired. Sign in again to use site models.", "ja": "ログインの有効期限が切れました。再ログインしてサイトのモデルを利用してください。" },
+  "网站余额不足，请前往支付页面充值后重试。": { "en": "Your site balance is insufficient. Top up on the payment page, then retry.", "ja": "サイト残高が不足しています。支払いページでチャージしてから再試行してください。" },
+  "正在等待模型完成日记，原对话会保留到保存成功。": { "en": "Waiting for the model to finish the diary. Your conversation stays until saving succeeds.", "ja": "モデルが日記を書き終えるのを待っています。保存が完了するまで元の会話は保持されます。" },
+  "日记同步未完成：{0}": { "en": "Diary sync did not complete: {0}", "ja": "日記の同期が完了しませんでした：{0}" },
+  "原对话已保留，可以稍后重试。": { "en": "Your conversation is kept. You can retry later.", "ja": "元の会話は保持されています。後で再試行できます。" },
+  "日记回复中断，未保存未完成的内容，原对话已保留。": { "en": "The diary response was interrupted. Incomplete content was not saved; your conversation is kept.", "ja": "日記の応答が中断されました。未完成の内容は保存されず、元の会話は保持されています。" },
   "更换访问密钥": { "en": "Replace access credentials", "ja": "アクセスキーを変更" },
   "访问密钥已配置。保存其他设置会保留现有密钥；需要更换时再勾选并填写。": { "en": "Access credentials are configured. Saving other settings preserves them. Enable replacement only when you need to change them.", "ja": "アクセスキーは設定済みです。他の設定を保存しても既存のキーを保持します。変更するときだけ選択して入力してください。" },
   "尚未配置访问密钥，请勾选“更换访问密钥”后填写。": { "en": "No access credentials are configured. Enable replacement, then enter them.", "ja": "アクセスキーが未設定です。「アクセスキーを変更」を選択して入力してください。" },

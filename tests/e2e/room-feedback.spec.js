@@ -33,10 +33,10 @@ test('another device generates a complete cloud diary and retains messages sent 
   let releaseDiary;
   const waitForDiary = new Promise(resolve => { releaseDiary = resolve; });
   let prompt;
-  await page.route('**/api/chat', async route => {
+  await page.route('**/api/chat/stream', async route => {
     prompt = route.request().postDataJSON().message;
     await waitForDiary;
-    await route.fulfill({ json: { success: true, data: { reply: '从早上的早餐和旅行计划，到晚上的月亮和晚安，今天的每一次交谈我都记在了心里。' } } });
+    await route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '从早上的早餐和旅行计划，到晚上的月亮和晚安，今天的每一次交谈我都记在了心里。' })+'\n\n' });
   });
   await page.goto('/room');
   await expect(page.locator('#chatMessages')).toContainText('手机晚上的月亮和晚安');

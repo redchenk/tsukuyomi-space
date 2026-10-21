@@ -11,7 +11,7 @@ for (const width of [390, 1280]) {
             const originalFetch = window.fetch;
             window.fetch = async function (input, init) {
                 const url = typeof input === 'string' ? input : input.url || String(input);
-                if (new URL(url, location.href).pathname !== '/api/chat/stream') return originalFetch.call(this, input, init);
+                if (new URL(url, location.href).pathname !== '/api/chat/stream' || JSON.parse(init.body || '{}').systemPrompt?.includes('私人日记')) return originalFetch.call(this, input, init);
                 const encoder = new TextEncoder();
                 return new Response(new ReadableStream({ start(controller) {
                     window.__diaryDelta = text => controller.enqueue(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text })}\n\n`));
@@ -23,9 +23,9 @@ for (const width of [390, 1280]) {
             };
         });
         let diaryRequest;
-        await page.route('**/api/chat', route => {
+        await page.route('**/api/chat/stream', route => {
             diaryRequest = route.request().postDataJSON();
-            return route.fulfill({ json: { success: true, data: { reply: '今天从清晨到夜晚，我们聊起了早餐、读书和月亮，我会好好记得这一天。' } } });
+            return route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '今天从清晨到夜晚，我们聊起了早餐、读书和月亮，我会好好记得这一天。' })+'\n\n' });
         });
         await page.goto('/room');
         await page.locator('#chatInput').fill('早上一起吃早餐');

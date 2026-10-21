@@ -24,7 +24,9 @@ router.post('/stream', async (req, res) => {
     }
 
     const controller = new AbortController();
+    let heartbeat;
     const onClose = () => {
+        clearInterval(heartbeat);
         if (!res.writableEnded) controller.abort(new Error('客户端已断开连接'));
     };
     res.once('close', onClose);
@@ -35,6 +37,13 @@ router.post('/stream', async (req, res) => {
         'X-Accel-Buffering': 'no'
     });
     res.flushHeaders();
+    // Send body bytes while the provider queues/thinks. Headers alone do not
+    // prevent CDN idle timeouts, including providers that only support JSON.
+    res.write(': connected\n\n');
+    heartbeat = setInterval(() => {
+        if (!res.destroyed && !res.writableEnded) res.write(': keepalive\n\n');
+    }, 15000);
+    heartbeat.unref?.();
     try {
         const data = await createChatCompletionStream({
             message, conversation, apiKey, apiUrl, model, workspaceId, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true,
@@ -52,6 +61,7 @@ router.post('/stream', async (req, res) => {
                 ...(diagnostic === true && Number.isInteger(error.statusCode) && error.statusCode >= 400 && error.statusCode <= 599 ? { statusCode: error.statusCode } : {}) });
         }
     } finally {
+        clearInterval(heartbeat);
         res.off('close', onClose);
         if (!res.destroyed && !res.writableEnded) res.end();
     }

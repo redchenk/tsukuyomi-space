@@ -982,3 +982,26 @@ test('pending local turns are saved before the diary snapshot and failures keep 
   assert.equal(h.storage.get('roomChatPending:account-a'), undefined);
   assert.match(requested.at(-1), /chat\/diary/);
 });
+
+test('diary sync and model failures identify their stage without clearing the conversation', async () => {
+  for (const stage of ['sync', 'model', 'interrupted']) {
+    let modelCalls = 0;
+    const h = await setup({
+      syncDiaryArchive: async () => { if (stage === 'sync') throw new Error('HTTP 504'); },
+      generateDiaryEntry: async () => {
+        modelCalls++;
+        throw Object.assign(new Error('HTTP 504'), stage === 'interrupted' ? { code: 'LLM_STREAM_INCOMPLETE' } : {});
+      }
+    });
+    await send(h.chat, '把今天这段话留在日记里');
+    await h.chat.confirmEndChat();
+    assert.equal(h.saved.length, 0);
+    assert.equal(h.clearCount(), 0);
+    assert.equal(h.chat.sessionTurnCount(), 2);
+    assert.equal(h.chat.endChatState.value.status, 'error');
+    assert.match(h.chat.endChatState.value.detail, /原对话已保留/);
+    assert.match(h.chat.endChatState.value.message, stage === 'sync' ? /日记同步未完成/ : stage === 'interrupted' ? /日记回复中断/ : /日记生成失败/);
+    assert.equal(modelCalls, stage === 'sync' ? 0 : 1);
+    h.chat.destroy();
+  }
+});

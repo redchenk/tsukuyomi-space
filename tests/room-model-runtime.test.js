@@ -195,3 +195,55 @@ test('declared unsupported tests make no request; timeout and user cancellation 
     assert.equal(report.error.code, code); assert.equal(report.status, code === 'TIMEOUT' ? 'error' : 'cancelled');
   }
 });
+
+test('chat proxy keeps an idle model request alive and stops heartbeats on completion or disconnect', async t => {
+  const express = require('express');
+  const { setImmediate: nextTurn } = require('node:timers/promises');
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const app = express(); app.use(express.json());
+  const writes = [];
+  app.use((req, res, next) => {
+    const write = res.write.bind(res);
+    res.write = (...args) => { writes.push(String(args[0])); return write(...args); };
+    next();
+  });
+  app.use('/api/chat', require('../backend/routes/chat'));
+  const server = await new Promise(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const original = global.fetch;
+  let release, upstreamAborted;
+  global.fetch = (url, options) => new Promise((resolve, reject) => {
+    release = resolve;
+    options.signal.addEventListener('abort', () => { upstreamAborted = true; reject(options.signal.reason); }, { once: true });
+  });
+  const request = () => original(base + '/api/chat/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'fixture', apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-key' }) });
+  try {
+    const response = await request();
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    assert.match(decoder.decode((await reader.read()).value), /: connected/);
+    // No model headers or body have arrived. These bytes must still reach the CDN.
+    t.mock.timers.tick(15000);
+    assert.match(decoder.decode((await reader.read()).value), /: keepalive/);
+    release(new Response('data: {"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } }));
+    let body = '';
+    while (true) { const part = await reader.read(); if (part.done) break; body += decoder.decode(part.value); }
+    assert.match(body, /event: done/);
+    const count = writes.length;
+    t.mock.timers.tick(30000);
+    assert.equal(writes.length, count, 'finished responses must release their heartbeat');
+
+    const disconnected = await request();
+    const secondReader = disconnected.body.getReader();
+    await secondReader.read();
+    await secondReader.cancel();
+    for (let i = 0; i < 20 && !upstreamAborted; i++) await nextTurn();
+    assert.equal(upstreamAborted, true);
+    const stopped = writes.length;
+    t.mock.timers.tick(30000);
+    assert.equal(writes.length, stopped, 'disconnected responses must release their heartbeat');
+  } finally {
+    global.fetch = original;
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  }
+});

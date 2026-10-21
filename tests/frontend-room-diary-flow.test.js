@@ -34,6 +34,8 @@ localStorage.setItem('roomLLMSettings', JSON.stringify({
 
 const context = {
     llmRuntime: require('../shared/model-runtime.cjs'),
+        runtime: require('../shared/model-runtime.cjs'),
+        ReadableStream, AbortController, setTimeout, clearTimeout,
     llmProtocol: require('../shared/llm-protocol.cjs'),
     console, Date, JSON, Number, String, Math, Object, Array, Boolean, URL, Promise, RegExp,
     localStorage,
@@ -49,6 +51,7 @@ const code = [
     strip(src('src/frontend/services/room/roomStorage.js')),
     strip(src('src/frontend/services/room/localOllamaTransport.js')),
     strip(src('src/frontend/services/room/roomDiaryArchive.js')),
+    strip(src('src/frontend/services/room/roomOfficialApi.mjs')),
     strip(src('src/frontend/services/room/roomDiaryGeneration.js')),
     'globalThis.__api = { readDiaryArchive, writeDiaryArchive, appendDiaryEntry, generateDiaryEntry, activePersonaPrompt, updatePersonaPrompt, parseDiaryArchive, serializeDiaryArchive, diaryArchiveKey, archiveFileName, diarySortKey };'
 ].join('\n');

@@ -4,6 +4,7 @@ import llmProtocol from '../../../../shared/llm-protocol.cjs';
 import { readJson } from './roomStorage';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import { activePersonaPrompt, diaryTimestampLabel } from './roomDiaryArchive';
+import { isOfficialRoomApi, fetchOfficialRoomDashboard, officialRoomSettings, officialRoomRequestBody } from './roomOfficialApi.mjs';
 
 /**
  * Turns one finished room conversation into a diary entry written in the
@@ -82,33 +83,11 @@ function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '', workspaceI
   };
 }
 
-function chatTemperatureFor(apiUrl = '', modelName = '', fallback = null) {
-  return isKimiChatTarget(apiUrl, modelName) ? 1 : fallback;
-}
-
-function pickReply(data) {
-  if (data?.output_text) return String(data.output_text || '').trim();
-  if (Array.isArray(data?.output)) {
-    return data.output
-      .flatMap((item) => (Array.isArray(item?.content) ? item.content : []))
-      .filter((block) => block?.type === 'output_text' || block?.type === 'text')
-      .map((block) => block.text || '')
-      .join('\n')
-      .trim();
-  }
-  if (Array.isArray(data?.content)) {
-    return data.content
-      .filter((block) => block?.type === 'text')
-      .map((block) => block.text || '')
-      .join('\n')
-      .trim();
-  }
-  return data?.choices?.[0]?.message?.content
-    || data?.choices?.[0]?.text
-    || data?.message?.content
-    || data?.response
-    || data?.reply
-    || '';
+function diaryProvider(apiUrl, model) {
+  if (isOllamaNativeApi(apiUrl)) return 'ollama';
+  if (isOpenAIResponsesApi(apiUrl)) return 'responses';
+  if (isAnthropicChatApi(apiUrl, model)) return 'anthropic';
+  return 'openai';
 }
 
 function compact(value, limit = DIARY_MAX_CHARS_PER_MESSAGE) {
@@ -143,12 +122,16 @@ export function diaryConversationLength(turns) {
   return Array.isArray(turns) ? turns.length : 0;
 }
 
-export function buildDiarySystemPrompt(persona = activePersonaPrompt()) {
+export function buildDiarySystemPrompt(persona = activePersonaPrompt(), { maxOutputTokens } = {}) {
   const name = persona?.data?.name || '角色';
   const description = String(persona?.data?.description || '').trim();
   const personality = String(persona?.data?.personality || '').trim();
   const scenario = String(persona?.data?.scenario || '').trim();
   const notes = String(persona?.data?.creator_notes || '').trim();
+  // Leave room for punctuation and the provider's tokenization when the chat
+  // model has a small output allowance. A diary must finish inside that limit.
+  const maxChars = Number.isFinite(maxOutputTokens) ? Math.max(20, Math.min(900, Math.floor(maxOutputTokens * 0.4))) : 900;
+  const minChars = Math.min(400, Math.floor(maxChars * 0.65));
 
   return [
     `你是「${name}」，请以「${name}」的第一人称，把刚刚结束的这段对话写成一篇私人日记。`,
@@ -160,7 +143,7 @@ export function buildDiarySystemPrompt(persona = activePersonaPrompt()) {
     '1. 严格只输出日记正文，不要输出 JSON、Markdown 代码块、标题行、写作说明或额外解释。',
     '2. 用第一人称写，语气、称呼和说话习惯必须和角色设定一致。',
     '3. 只依据提供的对话内容来写，可以合理补足环境、动作与心理描写，但不要编造对话里不存在的重要事件或新角色。',
-    '4. 篇幅以 400 到 900 字为宜，分成若干自然段；允许使用少量颜文字，不要每段都加。',
+    `4. 篇幅以 ${minChars} 到 ${maxChars} 字为宜，分成若干自然段；允许使用少量颜文字，不要每段都加。`,
     '5. 不要在正文里写日期标题、时间戳或「日记书写时间」这类附加行，系统会统一补上。'
   ].filter(Boolean).join('\n');
 }
@@ -272,6 +255,7 @@ export function diarySettings() {
 }
 
 export function isDiaryGenerationConfigured(settings = diarySettings()) {
+  if (isOfficialRoomApi(settings.apiUrl)) return Boolean(settings.model);
   if (settings.useProxy) return true;
   if (settings.useLocalOllama) return Boolean(settings.apiUrl);
   return Boolean(settings.apiUrl && settings.apiKey);
@@ -284,57 +268,96 @@ export function isDiaryGenerationConfigured(settings = diarySettings()) {
  */
 function makeDiaryRequestBody(args) {
   llmRuntime.requireCapability({ ...args.settings, apiUrl: args.apiUrl, model: args.model }, 'text');
-  return llmRuntime.applyParameters(makeBaseDiaryRequestBody(args), { ...args.settings, apiUrl: args.apiUrl, model: args.model }).payload;
+  return { ...llmRuntime.applyParameters(makeBaseDiaryRequestBody(args), { ...args.settings, apiUrl: args.apiUrl, model: args.model }).payload, stream: args.stream };
+}
+
+async function diaryHttpError(response, signal, official = false) {
+  if (response.status === 504) return Object.assign(new Error('模型响应超时，原对话已保留，请稍后重试。'), { statusCode: 504 });
+  let message = `模型请求失败（HTTP ${response.status}）`;
+  if (official) {
+    const data = await llmProtocol.readJson(response, signal, 8192).catch(() => ({}));
+    message = response.status === 401 ? '登录已失效，请重新登录后使用站内直供。'
+      : response.status === 402 ? '网站余额不足，请前往支付页面充值后重试。'
+      : data?.error?.message || message;
+  }
+  return Object.assign(new Error(message), { statusCode: response.status });
 }
 
 export async function generateDiaryEntry(turns, {
   persona = activePersonaPrompt(),
   now = new Date(),
   fetchImpl = fetchWithLocalOllamaGuidance,
-  fetchProxy = (...args) => apiFetch(...args)
+  fetchProxy = (...args) => apiFetch(...args),
+  signal
 } = {}) {
   const conversation = normalizeDiaryConversation(turns);
   if (!conversation.length) throw new Error('本次没有可记录的对话内容。');
 
-  const settings = diarySettings();
+  let settings = diarySettings();
   if (!isDiaryGenerationConfigured(settings)) {
     throw new Error('请先在 Room 设置中配置 LLM，然后才能生成日记。');
   }
 
+  let officialModel;
+  if (isOfficialRoomApi(settings.apiUrl)) {
+    const dashboard = await fetchOfficialRoomDashboard({ signal, request: fetchImpl });
+    settings = officialRoomSettings(settings, dashboard);
+    officialModel = dashboard.models.find(model => model.id === settings.model);
+  }
+  llmRuntime.requireCapability(settings, 'text');
+  const stream = typeof ReadableStream !== 'undefined' && llmRuntime.resolveCapabilities(settings).streaming.value !== false;
+  const provider = diaryProvider(settings.apiUrl, settings.model);
   const personaName = persona?.data?.name || '角色';
   const timestampLabel = diaryTimestampLabel(now);
-  const systemPrompt = buildDiarySystemPrompt(persona);
+  const systemPrompt = buildDiarySystemPrompt(persona, { maxOutputTokens: llmRuntime.resolveParameters(settings).maxOutputTokens.value });
   const userPrompt = buildDiaryUserPrompt(conversation, { timestampLabel, personaName });
 
   let reply = '';
   if (settings.useProxy && !settings.useLocalOllama) {
-    const response = await fetchProxy('/api/chat', {
+    const response = await fetchProxy(stream ? '/api/chat/stream' : '/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: stream ? 'text/event-stream' : 'application/json' },
+      signal,
       body: JSON.stringify({ message: userPrompt, conversation: [], systemPrompt,
         apiUrl: settings.apiUrl, apiKey: settings.apiKey, model: settings.model, workspaceId: settings.catalogWorkspaceId, runtimeConfig: llmRuntime.transportRuntime(settings) })
     });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.message || '日记代理请求失败');
-    reply = pickReply(result.data);
+    if (!response.ok) throw await diaryHttpError(response, signal);
+    if (stream) reply = (await llmProtocol.readStream(response, { provider: 'proxy', signal })).reply;
+    else {
+      const result = await llmProtocol.readJson(response, signal);
+      if (!result.success) throw new Error(result.message || '日记代理请求失败');
+      reply = llmProtocol.fromJson(result.data, { provider: 'proxy' }).reply;
+    }
   } else {
     const requestBody = makeDiaryRequestBody({
       settings,
       apiUrl: settings.apiUrl,
       model: settings.model,
       systemPrompt,
-      userPrompt
+      userPrompt,
+      stream
     });
-    const response = await fetchImpl(settings.apiUrl, {
+    const options = {
       method: 'POST',
-      headers: chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
-      body: JSON.stringify(requestBody)
-    });
-    if (!response.ok) throw new Error(`日记生成失败：LLM ${response.status}`);
-    const data = await response.json();
-    // Claude reports refusals and length cuts as HTTP 200; never save a partial diary.
-    if (isAnthropicChatApi(settings.apiUrl, settings.model)) llmProtocol.checkStatus(data);
-    reply = pickReply(data);
+      headers: { ...chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId), Accept: stream ? 'text/event-stream' : 'application/json' },
+      body: JSON.stringify(officialModel ? officialRoomRequestBody(requestBody, officialModel) : requestBody),
+      ...(officialModel ? { credentials: 'same-origin', cache: 'no-store' } : {}),
+      signal
+    };
+    let response = await fetchImpl(settings.apiUrl, options);
+    if (!response.ok) {
+      // Retry only an explicit stream rejection, before any reply is accepted.
+      // Network errors and 504s can have incurred usage and must never retry here.
+      const errorText = !officialModel && stream && [400, 422].includes(response.status)
+        ? await llmProtocol.readText(response, signal, 8192).catch(() => '') : '';
+      if (/(?:stream[^.]{0,80}(?:unsupported|not supported|not available)|(?:unsupported|not supported)[^.]{0,80}stream)/i.test(errorText)) {
+        response = await fetchImpl(settings.apiUrl, { ...options, headers: { ...options.headers, Accept: 'application/json' }, body: JSON.stringify({ ...requestBody, stream: false }) });
+      }
+      if (!response.ok) throw await diaryHttpError(response, signal, Boolean(officialModel));
+    }
+    // Official [DONE] is emitted only after wallet settlement; finish_reason
+    // alone is not confirmation that the complete request succeeded.
+    reply = (await llmProtocol.readStream(response, { provider, signal, requireDone: Boolean(officialModel && stream) })).reply;
   }
 
   const content = cleanDiaryContent(reply);

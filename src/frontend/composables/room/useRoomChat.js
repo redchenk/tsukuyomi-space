@@ -1715,6 +1715,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       detail: existingEntry ? '已有日记不会再次生成。' : '正在同步各设备的完整对话...',
       entry: existingEntry
     };
+    let diaryPhase = 'sync';
     try {
       const conversation = existingEntry
         ? { messages: [], snapshot: pendingDiaryEntry.snapshot }
@@ -1726,8 +1727,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
       endChatState.value = { ...endChatState.value, detail: existingEntry ? '已有日记不会再次生成。' : `正在阅读本次完整的 ${turns.length} 条对话。`, turnCount: existingEntry ? existingEntry.conversationLength : turns.length };
       if (!existingEntry) await syncDiaryArchive();
       if (!stillCurrent()) return null;
+      if (!existingEntry) {
+        diaryPhase = 'generation';
+        endChatState.value = { ...endChatState.value, detail: '正在等待模型完成日记，原对话会保留到保存成功。' };
+      }
       const currentPersona = activePersonaPrompt(readDiaryArchive());
       const generated = existingEntry ? null : await generateDiaryEntry(turns, { persona: currentPersona, now });
+      diaryPhase = 'sync';
       await validateRoomDiarySnapshot(conversation.snapshot);
       if (destroyed || revision !== conversationRevision || archiveKey !== diaryArchiveKey()) {
         if (!destroyed) endChatState.value = { ...endChatState.value, status: 'idle', visible: false };
@@ -1763,14 +1769,16 @@ export function useRoomChat({ live2d, world, diary = null }) {
       endChatState.value = {
         ...endChatState.value,
         status: 'error',
-        message: endChatState.value.entry ? `日记已保存在本机，但同步或结束会话未完成：${error.message}` : endChatErrorMessage(error),
-        detail: endChatState.value.entry ? '对话仍可保留；重试不会重复生成日记。' : '\u53ef\u4ee5\u91cd\u8bd5\uff0c\u6216\u5148\u5230 Room \u8bbe\u7f6e\u91cc\u68c0\u67e5 LLM\u3002'
+        message: endChatState.value.entry ? `日记已保存在本机，但同步或结束会话未完成：${error.message}`
+          : diaryPhase === 'sync' ? `日记同步未完成：${error.message}` : endChatErrorMessage(error),
+        detail: endChatState.value.entry ? '对话仍可保留；重试不会重复生成日记。' : '原对话已保留，可以稍后重试。'
       };
       return null;
     }
   }
 
   function endChatErrorMessage(error) {
+    if (error?.code === 'LLM_STREAM_INCOMPLETE') return '日记回复中断，未保存未完成的内容，原对话已保留。';
     const message = String(error?.message || error || '').trim();
     if (!message) return '\u65e5\u8bb0\u751f\u6210\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5\u3002';
     if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {

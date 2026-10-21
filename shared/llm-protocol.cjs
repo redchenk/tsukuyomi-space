@@ -136,7 +136,7 @@ async function readBody(response, signal, maxBytes = LIMIT, json = true) {
 const readJson = (response, signal, maxBytes) => readBody(response, signal, maxBytes);
 const readText = (response, signal, maxBytes) => readBody(response, signal, maxBytes, false);
 
-async function readStream(response, { provider = 'openai', onDelta = () => {}, onEvent = () => {}, signal, allowTools = false } = {}) {
+async function readStream(response, { provider = 'openai', onDelta = () => {}, onEvent = () => {}, signal, allowTools = false, requireDone = false } = {}) {
     if (!response?.ok) throw error('LLM_HTTP', `LLM ${response?.status || 'request failed'}`);
     const contentType = response.headers?.get?.('content-type') || '';
     if (!response.body?.getReader || /application\/json/i.test(contentType)) {
@@ -238,7 +238,7 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
         }
         buffer += decoder.decode(); await drain(true);
         if (signal?.aborted) throw signal.reason || error('LLM_ABORTED', '请求已取消');
-        if (!completed) throw error('LLM_STREAM_INCOMPLETE', 'LLM stream ended before completion');
+        if (!completed || (requireDone && !terminal)) throw error('LLM_STREAM_INCOMPLETE', 'LLM stream ended before completion');
         if (provider === 'anthropic') {
             // A declined attempt can stop mid tool input; fromJson drops blocks before the last fallback.
             const ordered = [...blocks.values()], cut = ordered.map(p => p.type).lastIndexOf('fallback');
