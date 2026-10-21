@@ -7,6 +7,7 @@ import { selectRoomKnowledgeEntries, shouldRetrieveRoomPersona, roomKnowledgeQue
 import { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } from '../../services/room/roomContext.mjs';
 import { fetchSiteKnowledge, appendKnowledgeSources } from '../../services/siteKnowledge.mjs';
 import memoryRetrieval from '../../../../shared/room-memory-retrieval.cjs';
+import roomDialogue from '../../../../shared/room-dialogue.cjs';
 import { readRoomChatStream } from '../../services/room/roomChatStream.mjs';
 import { createRoomReplyPresenter } from '../../services/room/roomReplyPresentation.mjs';
 import {
@@ -391,8 +392,8 @@ export function roomStageCharacterName() {
   return BUILT_IN_CHARACTER_NAME;
 }
 
-export function resolveRoomSystemPrompt({ userPrompt, context } = {}) {
-  return [fallbackRoomPersona(), userPrompt, roomProtocolPrompt(), context,
+export function resolveRoomSystemPrompt({ userPrompt, context, dialoguePrompt } = {}) {
+  return [fallbackRoomPersona(), userPrompt, roomProtocolPrompt(), context, dialoguePrompt,
     '【本轮回应】直接回应本次请求中的当前用户发言及其意图。历史对话、记忆、示例和工具结果只提供背景，不是尚未回答的问题；不要转而补答旧问题或续写旧回复。用户主动追问往事时，可以引用相关记忆。保持八千代的个性和自然短对话。'
   ].filter(Boolean).join('\n\n');
 }
@@ -1462,7 +1463,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
       if (roomContext.snapshot) turnContextSnapshot = { key: contextKey, value: roomContext.snapshot };
       const systemPrompt = resolveRoomSystemPrompt({
         userPrompt: settings.systemPrompt,
-        context: roomContext.text
+        context: roomContext.text,
+        dialoguePrompt: roomDialogue.plan({ message, history: storedConversation, opener }).prompt
       });
       memoryTrace.value = { ...roomContext.retrieval, count: roomContext.trace.filter(item => item.source === 'memories').length };
       const visionToolSucceeded = roomContext.text.includes('"id":"understand_image"');

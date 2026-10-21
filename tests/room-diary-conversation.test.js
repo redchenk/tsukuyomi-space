@@ -18,12 +18,35 @@ const request = async (url, options) => {
 };
 before(async () => {
     require('../backend/db/migrations/init').runMigrations();
-    for (const id of ['diary-one', 'diary-two', 'capacity']) db.prepare("INSERT INTO users(id,username,email,password_hash) VALUES(?,?,?,'test')").run(id, id, id + '@example.test');
+    for (const id of ['diary-one', 'diary-two', 'capacity', 'dialogue-one', 'dialogue-two']) db.prepare("INSERT INTO users(id,username,email,password_hash) VALUES(?,?,?,'test')").run(id, id, id + '@example.test');
     server = require('../backend/app').createApp().listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     base = `http://127.0.0.1:${server.address().port}`;
 });
 after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+test('dialogue state replays the owned cloud source across devices, edits and session clearing', async () => {
+    const engine = require('../shared/room-dialogue.cjs');
+    const get = async owner => {
+        const response = await request('/api/room/chat', { headers: headers(owner) });
+        assert.equal(response.status, 200);
+        return engine.deriveState(response.body.data);
+    };
+    chat.saveTurn('dialogue-one', { turnId: 'desktop', userMessage: '不要再问我', assistantMessage: '好。' });
+    assert.equal((await get('dialogue-one')).noQuestions, true);
+    assert.equal((await get('dialogue-two')).noQuestions, false);
+    chat.saveTurn('dialogue-one', { turnId: 'phone', userMessage: '你可以问我', assistantMessage: '那是什么？' });
+    assert.equal((await get('dialogue-one')).noQuestions, false);
+    assert.equal((await get('dialogue-one')).questionStreak, 1);
+    chat.replaceLatestTurn('dialogue-one', { turnId: 'phone', expectedUserMessage: '你可以问我', expectedAssistantMessage: '那是什么？',
+        userMessage: '不要问我', assistantMessage: '好。' });
+    const edited = await get('dialogue-one');
+    assert.equal(edited.completedTurns, 2);
+    assert.equal(edited.noQuestions, true);
+    assert.equal(edited.questionStreak, 0);
+    chat.clearMessages('dialogue-one');
+    assert.equal((await get('dialogue-one')).completedTurns, 0);
+});
 
 test('active cloud chat retains over 100 messages and diary pages include both devices exactly once', async () => {
     for (let i = 0; i < 205; i++) chat.saveTurn('diary-one', { turnId: `device-${i % 2 ? 'phone' : 'desktop'}-${i}`, userMessage: `morning-${i}`, assistantMessage: `reply-${i}` });

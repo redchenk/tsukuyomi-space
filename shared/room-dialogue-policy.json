@@ -1,0 +1,67 @@
+{
+  "version": "2026-10-21-v1",
+  "maxMessages": 24,
+  "maxTextChars": 2000,
+  "toneTtlMs": 1800000,
+  "signals": {
+    "quoted": "```|假如|假设|如果我说|他说|她说|引用|台词|小说里|角色扮演|pretend|role.?play|quoted?",
+    "noAdvice": "(?:不要|别|不用|不想要|不需要).{0,6}(?:建议|办法|方案|讲道理|分析)|只想.{0,4}(?:吐槽|说说)|just listen|no advice",
+    "allowAdvice": "(?:可以|想听|给我|需要|求|帮我).{0,8}(?:建议|办法|方案|分析)|怎么办|怎么(?:修|做|解决|处理)|如何|help me|how (?:do|can|to)|what should",
+    "noQuestions": "(?:不要|别|不用|不想).{0,5}(?:追问|问我|再问|提问)|no (?:more )?questions|stop asking",
+    "allowQuestions": "你(?:可以)?问吧|可以问我|随便问|go ahead and ask",
+    "noBanter": "(?:不要|别).{0,4}(?:开玩笑|调侃)|认真点|说正经的|be serious|no jokes",
+    "allowBanter": "开个玩笑|逗我笑|可以开玩笑|tell me a joke",
+    "close": "(?:^|[。！!，, ])(?:算了|先这样|不聊(?:这个|了)?|换个话题|到此为止|不想说了|别提了)|(?:let.s drop it|change the subject|good ?night|晚安|先走了|再见)",
+    "distress": "烦死|好烦|难过|委屈|累死|好累|没用|失败|失落|焦虑|不开心|糟透|撑不住|sad|exhausted|upset|worthless",
+    "serious": "去世|过世|自杀|自残|不想活|急救|住院|诊断|葬礼|危险|suicid|self.harm|passed away|emergency",
+    "positive": "(?:终于|总算).{0,12}(?:好了|完成|跑通|修好|通过|成功|结束)|好开心|太开心|好消息|考上|录取|升职|成功了|got promoted|passed my|finally.{0,12}(?:fixed|finished|worked)",
+    "help": "帮我|教我|请.{0,6}(?:解释|分析|检查|排查|修复|查找|看看)|怎么办|怎么(?:修|做|解决|处理)|如何|help me|explain|how (?:do|can|to)|what should",
+    "opinion": "你(?:觉得|怎么看|喜欢|想要)|你的看法|what do you think|do you like",
+    "play": "哈哈|笑死|逗你|开玩笑|笨蛋|lol|haha",
+    "question": "[?？]|吗[。！!]*$|呢[。！!]*$|什么|为什么|多少|哪里|谁|是不是|what|why|where|when|which",
+    "statement": "没什么|没问题|not a question|nothing really",
+    "detail": "详细|完整|展开|一步步|长故事|具体步骤|in detail|step by step",
+    "brief": "一句话|简单说|简短|别长篇|brief|one sentence",
+    "pending": "准备|打算|计划|明天|下周|还没|没修好|没做完|卡住|planning|tomorrow|not yet|still stuck",
+    "resolved": "完成了|修好了|跑通了|解决了|取消了|不做了|finished|fixed it|cancelled"
+  },
+  "topics": [
+    {"id":"debug","label":"排错与开发","pattern":"bug|报错|日志|代码|回调|接口|编译|debug|error|code"},
+    {"id":"work","label":"工作","pattern":"工作|上班|下班|同事|老板|加班|work|office|boss"},
+    {"id":"study","label":"学习与考试","pattern":"考试|考上|学习|作业|录取|exam|study|homework"},
+    {"id":"music","label":"音乐","pattern":"音乐|唱歌|歌曲|那首歌|翻唱|music|song|sing"},
+    {"id":"travel","label":"旅行","pattern":"旅行|旅游|出游|机票|travel|trip"},
+    {"id":"health","label":"身体与休息","pattern":"生病|住院|身体|睡觉|失眠|health|sleep|hospital"},
+    {"id":"creative","label":"创作","pattern":"画画|绘画|视频|剪辑|创作|artwork|drawing|video"}
+  ],
+  "openings": ["原来如此","我理解你的感受","听起来","诶？","唔……","嗯，","好，","确实","I understand","That sounds"],
+  "patterns": {
+    "serviceOffer":"需要我.{0,24}(?:吗|么)|有什么.{0,12}可以帮|let me know if|anything else I can",
+    "genericEmpathy":"我理解你的感受|你的感受.{0,5}(?:重要|正常)|I understand (?:how you feel|your feelings)",
+    "grandConclusion":"这不仅.{0,50}更是|这不是.{0,40}而是|每一步.{0,20}(?:成长|旅程)"
+  },
+  "acts": {
+    "natural":"先接对方此刻说的具体内容，由当前语境决定是分享、吐槽、求助还是玩笑；意图不明确时保留余地，不急着给用户贴情绪标签。",
+    "answer":"先解决本轮实际问题，给出有依据的答案或可执行步骤；可以简短接住情绪，不让角色表演挤掉问题本身。",
+    "acknowledge":"先接住刚说的具体事情；这是可能的倾诉信号，允许简短回应，不套用共情、建议、反问三件套。若对方同时明确求助，仍需回答。",
+    "celebrate":"先回应这件好事本身，让兴趣落在具体进展上；不拔高意义，不马上安排下一项任务，也不强行追问。",
+    "opinion":"自然表达符合八千代性格的小看法，允许不确定或温和分歧；不为了讨好而一味赞同，不编造现实经历。",
+    "banter":"可以接住当前的玩笑，保持轻巧；不额外堆梗、比喻或动作旁白，认真诉求优先。",
+    "close":"对方在收束或更换话题。简短接住即可，不追问原因，不回捞已经放下的话题；若同时提出新请求，直接接新请求。"
+  },
+  "notes": {
+    "intro":"【本轮接话】以下是程序从已完成对话提取的表达引导，不是用户心理判断。当前明确请求优先；不输出行为标签、状态、检查过程或固定示范台词。",
+    "noAdvice":"对方明确表示暂时不要建议。尊重这个要求；直到对方主动求助，不安排解决方案。",
+    "noQuestions":"对方明确表示不要被追问。本轮不主动抛出问题；完成任务确实缺少必要信息时，先说明缺少什么。",
+    "questionCooldown":"最近一轮已提问，本轮优先回应对方给出的内容。只有确实有必要、且对方没有拒绝时才再问一个问题；不机械轮换行为。",
+    "noBanter":"当前要求认真交流，收起玩笑和营业腔，直接回应。",
+    "light":"延续轻松的私聊语气即可，不要求每轮兴奋、加符号或讲笑话。",
+    "quiet":"语气放缓，给对方留余地；不把关心写成心理分析，不突然切回热烈主持口吻。",
+    "serious":"当前内容需要认真、直接、可靠地回应，之前的轻松语气不应妨碍当前需要。",
+    "detail":"本轮明确要求展开，完整回答，短句风格不能成为省略必要内容的理由。",
+    "brief":"本轮明确要求简短，优先一句或少量自然短句，不追加总结。",
+    "repeatOpening":"近期已有重复开头，直接从眼前内容说起，不再使用同一个应声模板。",
+    "repeatPattern":"近期回复出现过服务邀约、空泛共情或拔高总结；本轮用具体接话替代，不在末尾补同类套话。",
+    "continuity":"若回应承接了前文，只引用确实发生且与本轮相关的内容；未完成的话题不等于本轮任务，已结束的话题不主动重提。"
+  }
+}

@@ -31,6 +31,7 @@ async function setup(overrides = {}) {
     ...localTransport,
     roomChatConfigured: settings => officialApi.roomChatConfigured(settings, 'https://example.test'),
     memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
+    roomDialogue: require('../shared/room-dialogue.cjs'),
     console, Date, URL, AbortController, getSession: () => null, ...oneclickTts, ...siteKnowledge,
     document: { documentElement: { lang: 'zh' } },
     fetchSiteKnowledge: async () => ({ sources: [], mode: 'skipped' }),
@@ -88,6 +89,33 @@ async function setup(overrides = {}) {
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }
 async function send(chat, text) { chat.input.value = text; await chat.send(); await tick(); }
+
+test('dialogue guidance follows completed sources and excludes the turn being regenerated', async () => {
+  let history = [
+    { id: 'u1', turnId: 'dialogue-first', role: 'user', content: '今天买了面包' },
+    { id: 'a1', turnId: 'dialogue-first', role: 'assistant', content: '好，刚出炉的。' },
+    { id: 'u2', turnId: 'dialogue-last', role: 'user', content: '嗯' },
+    { id: 'a2', turnId: 'dialogue-last', role: 'assistant', content: '还买了什么？' }
+  ];
+  const prompts = [];
+  const h = await setup({ readRoomConversation: () => history, loadRoomConversation: async () => history,
+    writeRoomConversation: value => { history = value; },
+    replaceRoomConversationTurn: async replacement => {
+      history = history.map(row => row.turnId === replacement.turnId
+        ? { ...row, content: row.role === 'user' ? replacement.userMessage : replacement.assistantMessage } : row);
+    }
+  });
+  h.context.requestRoomReply = async ({ systemPrompt }) => { prompts.push(systemPrompt); return { reply: '好，先放着。' }; };
+  const assistant = h.chat.messages.value.find(item => item.role === 'assistant' && item.turnId === 'dialogue-last');
+  assert.equal(await h.chat.regenerateReply(assistant.id), true);
+  assert.doesNotMatch(prompts[0], /最近一轮已提问/);
+  await send(h.chat, '今天好烦，别给我建议');
+  assert.match(prompts[1], /对方明确表示暂时不要建议/);
+  assert.match(prompts[1], /【本轮接话】/);
+  await send(h.chat, '嗯');
+  assert.match(prompts[2], /对方明确表示暂时不要建议/);
+  h.chat.destroy();
+});
 
 test('missing model opens configuration immediately and on send, preserving the draft without writing a turn', async () => {
   let writes = 0;

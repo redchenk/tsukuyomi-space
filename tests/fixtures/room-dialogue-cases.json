@@ -1,0 +1,1534 @@
+{
+  "now": 1792541400000,
+  "cases": [
+    {
+      "id": "vent-with-explicit-boundary",
+      "input": {
+        "message": "今天好烦，别给我建议",
+        "history": []
+      },
+      "expect": {
+        "act": "acknowledge",
+        "advice": "no"
+      },
+      "notes": [
+        "noAdvice"
+      ]
+    },
+    {
+      "id": "distress-and-help",
+      "input": {
+        "message": "这破代码烦死了，帮我看看日志",
+        "history": []
+      },
+      "expect": {
+        "act": "answer",
+        "tone": "quiet"
+      },
+      "notes": []
+    },
+    {
+      "id": "rhetorical-self-doubt",
+      "input": {
+        "message": "我是不是很没用？",
+        "history": []
+      },
+      "expect": {
+        "act": "acknowledge"
+      },
+      "notes": []
+    },
+    {
+      "id": "celebrate-concrete-progress",
+      "input": {
+        "message": "终于把那个 bug 修好了",
+        "history": []
+      },
+      "expect": {
+        "act": "celebrate",
+        "tone": "light"
+      },
+      "notes": []
+    },
+    {
+      "id": "close-topic",
+      "input": {
+        "message": "算了，不聊这个了",
+        "history": []
+      },
+      "expect": {
+        "act": "close"
+      },
+      "notes": []
+    },
+    {
+      "id": "close-and-new-task",
+      "input": {
+        "message": "算了，先帮我看看日志",
+        "history": []
+      },
+      "expect": {
+        "act": "answer",
+        "topic": "debug"
+      },
+      "notes": []
+    },
+    {
+      "id": "facts",
+      "input": {
+        "message": "这首歌叫什么？",
+        "history": []
+      },
+      "expect": {
+        "act": "answer"
+      },
+      "notes": []
+    },
+    {
+      "id": "personal-opinion",
+      "input": {
+        "message": "你喜欢这首歌吗？",
+        "history": []
+      },
+      "expect": {
+        "act": "opinion"
+      },
+      "notes": []
+    },
+    {
+      "id": "ambiguous-short-message",
+      "input": {
+        "message": "嗯",
+        "history": []
+      },
+      "expect": {
+        "act": "natural",
+        "advice": "unknown"
+      },
+      "notes": []
+    },
+    {
+      "id": "quoted-distress-is-not-user-state",
+      "input": {
+        "message": "小说里他说我好难过",
+        "history": []
+      },
+      "expect": {
+        "act": "natural",
+        "tone": "neutral"
+      },
+      "notes": []
+    },
+    {
+      "id": "hypothetical-does-not-set-boundary",
+      "input": {
+        "message": "假如有人说不要给建议，你怎么想？",
+        "history": []
+      },
+      "expect": {
+        "act": "natural",
+        "advice": "unknown"
+      },
+      "notes": []
+    },
+    {
+      "id": "explicit-detail",
+      "input": {
+        "message": "请详细解释代码的完整步骤",
+        "history": []
+      },
+      "expect": {
+        "act": "answer"
+      },
+      "notes": [
+        "detail"
+      ]
+    },
+    {
+      "id": "explicit-brief",
+      "input": {
+        "message": "一句话解释这个错误",
+        "history": []
+      },
+      "expect": {
+        "act": "natural"
+      },
+      "notes": [
+        "brief"
+      ]
+    },
+    {
+      "id": "serious-event",
+      "input": {
+        "message": "亲人去世了",
+        "history": []
+      },
+      "expect": {
+        "act": "acknowledge",
+        "tone": "serious"
+      },
+      "notes": [
+        "serious"
+      ]
+    },
+    {
+      "id": "english-no-advice",
+      "input": {
+        "message": "I am upset, just listen, no advice",
+        "history": []
+      },
+      "expect": {
+        "act": "acknowledge",
+        "advice": "no"
+      },
+      "notes": [
+        "noAdvice"
+      ]
+    },
+    {
+      "id": "no-interrogation-after-answer",
+      "input": {
+        "message": "也没什么",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "最近有点烦",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "怎么回事？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "act": "natural"
+      },
+      "notes": [
+        "questionCooldown"
+      ]
+    },
+    {
+      "id": "boundary-survives-turns",
+      "input": {
+        "message": "嗯",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "别再问我了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好，不问。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "user",
+            "content": "只是有点累",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "assistant",
+            "content": "那先歇会儿。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "noQuestions": true
+      },
+      "notes": [
+        "noQuestions"
+      ]
+    },
+    {
+      "id": "boundary-can-be-revoked",
+      "input": {
+        "message": "你可以问我",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "不要问我",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好，不问。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "noQuestions": false
+      },
+      "notes": []
+    },
+    {
+      "id": "no-advice-persists",
+      "input": {
+        "message": "今天还是好烦",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "只想吐槽，不要建议",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "user",
+            "content": "同事又拖延了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "assistant",
+            "content": "又等了很久啊。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "advice": "no"
+      },
+      "notes": [
+        "noAdvice"
+      ]
+    },
+    {
+      "id": "new-help-overrides-old-advice-refusal",
+      "input": {
+        "message": "帮我想个办法",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "不要给建议",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "act": "answer",
+        "advice": "yes"
+      },
+      "notes": []
+    },
+    {
+      "id": "repeated-opening-feedback",
+      "input": {
+        "message": "然后呢",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "买了水",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "原来如此。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "user",
+            "content": "还有茶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "assistant",
+            "content": "原来如此。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "act": "answer"
+      },
+      "notes": [
+        "repeatOpening"
+      ]
+    },
+    {
+      "id": "service-offer-feedback",
+      "input": {
+        "message": "我继续说",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "今天买了茶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "需要我帮你推荐吗？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "act": "natural"
+      },
+      "notes": [
+        "repeatPattern"
+      ]
+    },
+    {
+      "id": "cheerful-tone-carries",
+      "input": {
+        "message": "嗯",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "我考上了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "太好了！",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "tone": "light"
+      },
+      "notes": [
+        "light"
+      ]
+    },
+    {
+      "id": "serious-topic-overrides-cheer",
+      "input": {
+        "message": "朋友住院了",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "我考上了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "太好了！",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "tone": "serious"
+      },
+      "notes": [
+        "serious"
+      ]
+    },
+    {
+      "id": "resolved-topic-does-not-persist",
+      "input": {
+        "message": "今天想聊歌",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "明天准备修 bug",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "等有精神再看。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "user",
+            "content": "bug 修好了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-6",
+            "role": "assistant",
+            "content": "终于好了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-7",
+            "role": "user",
+            "content": "不聊这个了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-7",
+            "role": "assistant",
+            "content": "好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "topic": ""
+      },
+      "notes": []
+    },
+    {
+      "id": "pending-topic-has-grounding",
+      "input": {
+        "message": "那个 bug 还没修好",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "明天准备修 bug",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "topic": "debug"
+      },
+      "notes": [
+        "continuity"
+      ]
+    },
+    {
+      "id": "banter-refusal-persists",
+      "input": {
+        "message": "哈哈",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "别开玩笑，认真点",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "noBanter": true,
+        "tone": "serious"
+      },
+      "notes": [
+        "noBanter"
+      ]
+    },
+    {
+      "id": "banter-boundary-can-be-revoked",
+      "input": {
+        "message": "可以开玩笑了，逗我笑",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "别开玩笑",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "noBanter": false,
+        "tone": "light"
+      },
+      "notes": []
+    },
+    {
+      "id": "quiet-tone-carries",
+      "input": {
+        "message": "嗯",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "今天好累",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "听着就累。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "tone": "quiet"
+      },
+      "notes": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "necessary-task-not-blocked-by-question-cooldown",
+      "input": {
+        "message": "请帮我排查错误",
+        "history": [
+          {
+            "turnId": "turn-0",
+            "role": "user",
+            "content": "今天去买了面包",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-0",
+            "role": "assistant",
+            "content": "刚出炉的？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "user",
+            "content": "嗯，热的",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-1",
+            "role": "assistant",
+            "content": "那正好。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "user",
+            "content": "买了两个",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-2",
+            "role": "assistant",
+            "content": "够当早餐了。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "user",
+            "content": "还买了牛奶",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-3",
+            "role": "assistant",
+            "content": "搭起来方便。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "user",
+            "content": "已经吃完了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-4",
+            "role": "assistant",
+            "content": "好，吃饱就行。",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "user",
+            "content": "代码又报错了",
+            "createdAt": "2026-10-21T00:00:00Z"
+          },
+          {
+            "turnId": "turn-5",
+            "role": "assistant",
+            "content": "是什么错误？",
+            "createdAt": "2026-10-21T00:00:00Z"
+          }
+        ]
+      },
+      "expect": {
+        "act": "answer"
+      },
+      "notes": [
+        "questionCooldown"
+      ]
+    }
+  ]
+}
