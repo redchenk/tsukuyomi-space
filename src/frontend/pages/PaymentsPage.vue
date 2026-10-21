@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { loadCurrentSession } from '../api/client';
 import { paymentRequest, checkoutDestination, paymentStatus } from '../services/payments';
 import { formatDateTime } from '../utils/time';
@@ -8,7 +8,7 @@ import { moneyAtoms } from '../services/official-service.mjs';
 import OfficialServicePanel from '../components/OfficialServicePanel.vue';
 import TsIcon from '../components/TsIcon.vue';
 
-const route = useRoute(), router = useRouter();
+const route = useRoute();
 const catalog = ref({ enabled: false, products: [] }), orders = ref({ items: [], page: 1, totalPages: 1 });
 const current = ref(null), authed = ref(false), loading = ref(true), busy = ref(''), error = ref('');
 const wallet = ref(null), siteUserId = ref('');
@@ -57,8 +57,6 @@ function schedule() {
   }, 10000);
 }
 onMounted(async () => {
-  const legacyHash = ({ '#overview': '#models', '#payments': '#topup', '#admin': '#service-settings' })[route.hash];
-  if (legacyHash) router.replace({ path: '/payments', query: route.query, hash: legacyHash });
   try {
     const [products, identity] = await Promise.allSettled([paymentRequest('/api/payments/catalog'), loadCurrentSession()]);
     if (disposed) return;
