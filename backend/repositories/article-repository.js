@@ -1,11 +1,13 @@
 const db = require('../db');
 const articleCategories = require('./article-category-repository');
-const { ensureDailyRecommendations } = require('../services/article-recommendations');
+const { ensureDiscoverySnapshot, invalidateDiscovery } = require('../services/article-discovery');
+const { routineReason, TASK_CATEGORY } = require('../services/article-content-policy');
 const { createSlug } = require('../utils/slug');
 const { publicAvatarUrl } = require('../utils/avatar');
 const { contentQuality, MAX_CONTENT_LENGTH } = require('../services/article-ranking');
 const { summarizeArticle, resolveArticleExcerpt } = require('../services/article-summary');
 
+db.function('article_is_routine', { deterministic: true }, (title,category,content,content_format) => routineReason({title,category,content,content_format}) ? 1 : 0);
 db.function('article_content_quality', { deterministic: true }, (content, format) => contentQuality(content, format));
 db.function('article_auto_excerpt', { deterministic: true }, (content, format) => summarizeArticle(content, format));
 
@@ -64,32 +66,34 @@ function compactArticleRows(rows) {
     return rows.map(compactArticleRow);
 }
 
-function listArticles({ category, query: searchQuery, limit, offset, sort = 'pinned', now = Date.now() }) {
+function listArticles({ category, query: searchQuery, limit, offset, sort = 'pinned', now = Date.now(), snapshot = '' }) {
     const ranked = sort === 'featured' || sort === 'daily';
-    const day = ranked ? ensureDailyRecommendations(now) : '';
+    const version = ranked ? ensureDiscoverySnapshot({ now, snapshot }) : '';
+    const routine = (prefix='a.') => `article_is_routine(${prefix}title,${prefix}category,${prefix}content,${prefix}content_format)`;
     let query = `
         SELECT a.id, a.title, a.slug, ${ARTICLE_EXCERPT}, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             ${ARTICLE_COUNTS},
             ${ranked ? `article_content_quality(CASE WHEN a.content_format = 'block' THEN a.content ELSE substr(a.content, 1, ${MAX_CONTENT_LENGTH}) END, a.content_format)` : '0'} AS content_quality,
-            ${ranked ? 'r.score AS featured_score, r.recommended AS daily_recommended,' : ''}
+            ${ranked ? `CASE WHEN ${routine()}=1 AND r.routine=0 THEN r.score*0.05 ELSE r.score END AS featured_score, CASE WHEN ${routine()}=1 THEN 0 ELSE r.recommended END AS daily_recommended, r.slot AS discovery_slot,` : ''}
             u.username AS author_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname,
             u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
-        ${ranked ? `JOIN article_daily_recommendations r ON r.article_id = a.id AND r.day = '${day}'` : ''}
+        ${ranked ? `JOIN article_discovery_items r ON r.article_id = a.id AND r.snapshot_id = '${version}'` : ''}
         LEFT JOIN users u ON a.author_id = u.id
         LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE COALESCE(a.status, 'published') = 'published'
     `;
     let countQuery = "SELECT COUNT(*) AS total FROM articles WHERE COALESCE(status, 'published') = 'published'";
+    if (ranked && sort !== 'daily') countQuery += ` AND id IN (SELECT article_id FROM article_discovery_items WHERE snapshot_id = '${version}')`;
     const params = [];
     if (sort === 'daily') {
-        query += ' AND r.recommended = 1';
-        countQuery += ` AND id IN (SELECT article_id FROM article_daily_recommendations WHERE day = '${day}' AND recommended = 1)`;
+        query += ` AND r.recommended = 1 AND ${routine()} = 0`;
+        countQuery += ` AND id IN (SELECT article_id FROM article_discovery_items WHERE snapshot_id = '${version}' AND recommended = 1) AND ${routine('')} = 0`;
     }
 
     if (category) {
@@ -109,13 +113,14 @@ function listArticles({ category, query: searchQuery, limit, offset, sort = 'pin
     }
 
     if (ranked) {
-        query += ' ORDER BY r.position ASC, a.id DESC LIMIT ? OFFSET ?';
+        query += ` ORDER BY ${routine()} ASC, r.position ASC, a.id DESC LIMIT ? OFFSET ?`;
     } else {
         query += ` ORDER BY ${sort === 'pinned' ? 'a.pinned_at IS NULL, a.pinned_at DESC,' : ''}
             COALESCE(a.published_at, a.created_at, a.publish_date) DESC, a.id DESC LIMIT ? OFFSET ?`;
     }
 
     return {
+        snapshot: version || undefined,
         total: db.prepare(countQuery).get(...params).total,
         articles: compactArticleRows(db.prepare(query).all(...params, limit, offset))
     };
@@ -136,12 +141,20 @@ function listRecentPublishedArticles(limit = 8) {
         LEFT JOIN users u ON a.author_id = u.id
         LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE COALESCE(a.status, 'published') = 'published'
-        ORDER BY COALESCE(a.updated_at, a.created_at, a.publish_date) DESC, a.id DESC
+        ORDER BY article_is_routine(a.title,a.category,a.content,a.content_format) ASC, COALESCE(a.updated_at, a.created_at, a.publish_date) DESC, a.id DESC
         LIMIT ?
     `).all(safeLimit));
 }
 
+function taskCategory(article) {
+    if (!routineReason({ ...article, content_format: article.contentFormat })) return article.category;
+    const added = db.prepare("INSERT OR IGNORE INTO article_categories(name) VALUES (?)").run(TASK_CATEGORY);
+    if (added.changes) db.prepare('UPDATE article_category_revision SET version=version+1 WHERE id=1').run();
+    return TASK_CATEGORY;
+}
+
 function createArticle(article) {
+    article.category = taskCategory(article);
     article.category = articleCategories.resolveCategory(article.category);
     const slug = uniqueArticleSlug(article.title);
     const result = db.prepare(`
@@ -165,6 +178,7 @@ function createArticle(article) {
         article.coverImage || null,
         article.coverImageAssetId || null
     );
+    invalidateDiscovery();
     return findArticleById(result.lastInsertRowid);
 }
 
@@ -196,6 +210,7 @@ function findPublishedArticleById(id) {
 }
 
 function updateArticle(id, article) {
+    article.category = taskCategory(article);
     article.category = articleCategories.resolveCategory(article.category, db.prepare('SELECT category FROM articles WHERE id = ?').get(id)?.category || '其他');
     const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
@@ -225,6 +240,7 @@ function updateArticle(id, article) {
         article.coverImageAssetId || null,
         id
     );
+    invalidateDiscovery();
     return findArticleById(id);
 }
 
@@ -299,6 +315,7 @@ function listSeoArticles(limit = 500) {
 }
 
 function updateUserArticle(id, article) {
+    article.category = taskCategory(article);
     article.category = articleCategories.resolveCategory(article.category, db.prepare('SELECT category FROM articles WHERE id = ?').get(id)?.category || '其他');
     const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
@@ -326,6 +343,7 @@ function updateUserArticle(id, article) {
         article.coverImageAssetId || null,
         id
     );
+    invalidateDiscovery();
     return findArticleById(id);
 }
 

@@ -82,6 +82,13 @@ router.post('/actions/share', authenticateToken, (req, res) => {
     }
 });
 
+router.post('/actions/stage-visit', authenticateToken, (req, res) => {
+    try {
+        const result = userGrowth.recordDailyActivity(req.user.id, 'stage_visit');
+        return res.json({ success: true, data: result || { award: { awarded: false, xp: 0 }, state: userGrowth.getState(req.user.id) } });
+    } catch (error) { return sendError(res, error, '主舞台访问记录失败'); }
+});
+
 router.post('/referrals/claim', authenticateToken, (req, res) => {
     try {
         return res.json({ success: true, data: userGrowth.claimReferral(req.user.id, req.body?.code) });

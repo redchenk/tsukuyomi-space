@@ -8,12 +8,12 @@ const MEDIA_TYPES = new Set(['image', 'video', 'audio', 'iframe', 'media', 'bili
 const BLOCK_TAGS = new Set(['p', 'div', 'br', 'li', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'tr']);
 const IGNORED_TAGS = new Set(['script', 'style', 'noscript', 'template', 'svg']);
 
-function contentQuality(content, format = 'markdown') {
+function contentFeatures(content, format = 'markdown') {
     // Parse block JSON intact so long articles and embedded images stay valid.
     const source = format === 'block' ? String(content || '') : String(content || '').slice(0, MAX_CONTENT_LENGTH);
     const key = createHash('sha256').update(`${format}\0${source}`).digest('hex');
     if (qualityCache.has(key)) return qualityCache.get(key);
-    const media = new Set();
+    const media = new Set(), links = new Set();
     const addMedia = (url) => {
         const value = String(url || '').trim();
         if (/^(?:https?:\/\/|\/(?!\/)|data:image\/|BV[\da-z]+)/i.test(value)) media.add(value);
@@ -27,6 +27,7 @@ function contentQuality(content, format = 'markdown') {
             for (const block of Array.isArray(blocks) ? blocks : []) {
                 if (remaining <= 0) break;
                 if (MEDIA_TYPES.has(block?.type)) addMedia(block.url || block.bvid);
+                if (['file', 'attachment', 'link'].includes(block?.type) && block.url) links.add(block.url);
                 const value = [block?.text, block?.content, block?.title, block?.description]
                     .filter(value => typeof value === 'string').join(' ').slice(0, remaining);
                 visible.push(value);
@@ -41,7 +42,7 @@ function contentQuality(content, format = 'markdown') {
             .replace(/!\[[^\]]*\]\(([^\s)]+)[^)]*\)/g, (_, url) => { addMedia(url); return ''; })
             .replace(/^::(?:bilibili|media|iframe)\[[^\]]*\]\(([^)]+)\).*$/gm, (_, url) => { addMedia(url); return ''; })
             .replace(/^\s*\[[^\]]+\]:\s*\S+.*$/gm, '')
-            .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+            .replace(/\[([^\]]+)\]\(([^)]*)\)/g, (_, label, url) => { if (/^(?:https?:|\/(?!\/))/.test(url)) links.add(url); return label; })
             .replace(/^\s*```[^\n]*$/gm, '')
             .replace(/^\s{0,3}(?:#{1,6}|>|[-*+]|\d+\.)\s+/gm, '');
     }
@@ -53,6 +54,7 @@ function contentQuality(content, format = 'markdown') {
                 || attributes['aria-hidden'] === 'true' || /display\s*:\s*none|visibility\s*:\s*hidden/i.test(attributes.style || '');
             ignored.push(Boolean(ignored.at(-1) || hidden));
             if (ignored.at(-1)) return;
+            if (name === 'a' && /^(?:https?:|\/(?!\/))/.test(attributes.href || '')) links.add(attributes.href);
             if (['img', 'video', 'audio', 'iframe', 'source'].includes(name)) addMedia(attributes.src);
             if (BLOCK_TAGS.has(name)) chunks.push('\n');
         },
@@ -75,8 +77,10 @@ function contentQuality(content, format = 'markdown') {
     const mixedMedia = 6 * (1 - Math.exp(-media.size / 2)) * Math.min(1, units / 200);
     const quality = Math.min(40, depth + structure + mixedMedia);
     if (qualityCache.size >= 256) qualityCache.delete(qualityCache.keys().next().value);
-    qualityCache.set(key, quality);
-    return quality;
+    const visible = paragraphs.join(' ').normalize('NFKC').trim();
+    const features = Object.freeze({ quality, text: visible.slice(0, 512), textLength: [...visible].length, mediaCount: media.size, linkCount: links.size });
+    qualityCache.set(key, features);
+    return features;
 }
 
 function count(value) {
@@ -103,4 +107,6 @@ function featuredScore(quality, views, likes, bookmarks, publishedAt, now = Date
         + engagement(bookmarks, 20, 0.04) + freshness) * 10000) / 10000;
 }
 
-module.exports = { contentQuality, featuredScore, MAX_CONTENT_LENGTH };
+function contentQuality(content, format = 'markdown') { return contentFeatures(content, format).quality; }
+
+module.exports = { contentFeatures, contentQuality, featuredScore, MAX_CONTENT_LENGTH };

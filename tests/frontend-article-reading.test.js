@@ -10,7 +10,7 @@ function fixture() {
     let clock = 0, next = 0, watchCallback, unmount;
     const timers = new Map(), listeners = new Map(), calls = [];
     const document = { visibilityState: 'visible', addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) };
-    const context = vm.createContext({ document, onMounted: fn => fn(), onBeforeUnmount: fn => { unmount = fn; }, watch: (_, fn) => { watchCallback = fn; },
+    const context = vm.createContext({ discoveryReadToken: () => 'discovery-receipt', document, onMounted: fn => fn(), onBeforeUnmount: fn => { unmount = fn; }, watch: (_, fn) => { watchCallback = fn; },
         setTimeout: (fn, ms) => { timers.set(++next, { at: clock + ms, fn }); return next; }, clearTimeout: id => timers.delete(id),
         authFetch: async (url, options) => { calls.push({ url, options }); return { success: true, data: { viewCount: 10 } }; }, parseResponse: async result => result });
     vm.runInContext(source, context);

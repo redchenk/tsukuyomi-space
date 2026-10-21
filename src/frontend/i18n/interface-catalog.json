@@ -1,4 +1,6 @@
 {
+  "访问主舞台": { "en": "Visit the Stage", "ja": "ステージを開く" },
+  "参考内容与真实曝光反馈，给新作、低曝光作品和优质旧文留出位置；任务帖后置。": { "en": "Content and feedback after real exposure make room for new, less-seen and valuable older work. Task posts appear later.", "ja": "内容と実際の表示後の反応を参考に、新作・未発見の作品・良質な過去作を紹介。タスク投稿は後方に表示します。" },
   "模型响应超时，原对话已保留，请稍后重试。": { "en": "The model timed out. Your conversation is kept; try again later.", "ja": "モデルの応答がタイムアウトしました。会話は保持されています。後で再試行してください。" },
   "登录已失效，请重新登录后使用站内直供。": { "en": "Your session expired. Sign in again to use site models.", "ja": "ログインの有効期限が切れました。再ログインしてサイトのモデルを利用してください。" },
   "网站余额不足，请前往支付页面充值后重试。": { "en": "Your site balance is insufficient. Top up on the payment page, then retry.", "ja": "サイト残高が不足しています。支払いページでチャージしてから再試行してください。" },

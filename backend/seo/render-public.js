@@ -55,12 +55,12 @@ function renderStagePage(query = {}) {
     const page = Math.min(10000, Math.max(1, Number.parseInt(query.page, 10) || 1));
     const params = new URLSearchParams();
     if (page > 1) params.set('page', page);
-    const sort = ['latest', 'pinned', 'featured', 'daily'].includes(query.sort) ? query.sort : 'latest';
+    const sort = ['latest', 'pinned', 'featured', 'daily'].includes(query.sort) ? query.sort : 'featured';
     const category = typeof query.category === 'string' ? query.category.slice(0, 80) : '';
     const search = typeof query.q === 'string' ? query.q.slice(0, 120) : '';
     const result = articles.listArticles({ limit: 6, offset: (page - 1) * 6, sort, category, query: search });
-    const noindex = Boolean(search || category || sort !== 'latest' || (page > 1 && !result.articles.length));
-    const actions = [{ href: '/stage', label: '最新文章首页' }, ...(page > 1 ? [{ href: page === 2 ? '/stage' : `/stage?page=${page - 1}`, label: '上一页' }] : []), ...(result.total > page * 6 ? [{ href: `/stage?page=${page + 1}`, label: '下一页' }] : [])];
+    const noindex = Boolean(search || category || sort !== 'featured' || (page > 1 && !result.articles.length));
+    const actions = [{ href: '/stage', label: '主舞台首页' }, ...(page > 1 ? [{ href: page === 2 ? '/stage' : `/stage?page=${page - 1}`, label: '上一页' }] : []), ...(result.total > page * 6 ? [{ href: `/stage?page=${page + 1}`, label: '下一页' }] : [])];
     let html = renderSeoCollectionPage({ path: `/stage${params.size ? `?${params}` : ''}`, ...copy['/stage'], title: copy['/stage'].title + (page > 1 ? `｜第 ${page} 页` : ''), items: articleItems(result.articles), actions });
     if (noindex) html = html.replace(/content="index,follow[^"]*"/, 'content="noindex,follow"');
     return { html, noindex };

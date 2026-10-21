@@ -210,18 +210,8 @@ describe('growth API', () => {
         const task = current.body.data.today.tasks.find((item) => item.type === 'rotating');
         let result;
 
-        if (task.key === 'daily_article_publish') {
-            result = await call('/api/articles', {
-                method: 'POST',
-                headers: headers(true, actionToken),
-                body: JSON.stringify({
-                    title: 'Growth integration article',
-                    excerpt: 'A real article action for the rotating growth task.',
-                    content: 'Growth integration content',
-                    category: '其他',
-                    read_time: '1 min'
-                })
-            });
+        if (task.key === 'daily_stage_visit') {
+            result = await call('/api/growth/actions/stage-visit', { method: 'POST', headers: headers(true, actionToken) });
         } else if (task.key === 'daily_plaza_engage') {
             result = await call('/api/messages', {
                 method: 'POST',

@@ -100,7 +100,8 @@ test('featured rotation ranks substance above empty pins with stable pagination'
     assert.equal(pinned.body.data[0].id, emptyId);
     assert.notEqual(latest.body.data[0].id, emptyId); // old pins do not override latest
     assert.equal(featured.body.data[0].id, strongId);
-    assert.equal(featured.body.data[1].id, emptyId);
+    assert.notEqual(featured.body.data[1].id, emptyId); // meaningless placeholder posts are now placed last
+    assert.equal(repository.listArticles({ category: 'ranking-fixture', limit: 200, offset: 0, sort: 'featured' }).articles.at(-1).id, emptyId);
     assert.equal(featured.body.pagination.total, 107);
     const daily = await call(query + '&sort=daily');
     assert.deepEqual(daily.body.data.map(a => a.id), [strongId]);

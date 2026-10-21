@@ -69,7 +69,7 @@ describe('user growth service', () => {
         const secondShare = growth.recordShare('daily-user', 'weibo', now);
         const rotatingTask = growth.getState('daily-user', now).today.tasks.find((task) => task.type === 'rotating');
         const activityByTask = {
-            daily_article_publish: 'article_publish',
+            daily_stage_visit: 'stage_visit',
             daily_plaza_engage: 'plaza_like',
             daily_pixel_engage: 'pixel_publish',
             daily_gallery_upload: 'gallery_upload',

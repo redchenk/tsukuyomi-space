@@ -124,6 +124,14 @@ export async function recordShareGrowth(platform = 'native') {
   return result;
 }
 
+export async function recordStageVisitGrowth() {
+  const owner = currentUserId();
+  if (!owner) return null;
+  const result = await requestGrowth('/api/growth/actions/stage-visit', { method: 'POST', headers: authHeaders({ Accept: 'application/json' }) });
+  if (currentUserId() === owner) publish(result.state, result.award);
+  return result;
+}
+
 async function gameRequest(request, signal) {
   const controller = new AbortController();
   let timedOut = false;

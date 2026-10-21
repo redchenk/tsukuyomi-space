@@ -47,7 +47,8 @@ describe('growth frontend integration', () => {
 
     it('awards rotating tasks only from successful server-side content actions', () => {
         const growthService = source('backend/services/user-growth.js');
-        const articles = source('backend/routes/articles.js');
+        const growthRoute = source('backend/routes/growth.js');
+        const stage = source('src/frontend/pages/StagePage.vue');
         const messages = source('backend/routes/messages.js');
         const pixel = source('backend/routes/pixel-art.js');
         const assets = source('backend/routes/assets.js');
@@ -56,7 +57,8 @@ describe('growth frontend integration', () => {
         assert.match(growthService, /daily_kaguya_run/);
         assert.match(growthService, /kaguya_score/);
         assert.match(growthService, /rotatingDailyTask\(userId, today\)/);
-        assert.match(articles, /recordDailyActivity\(userId, 'article_publish'/);
+        assert.match(growthRoute, /recordDailyActivity\(req.user.id, 'stage_visit'/);
+        assert.match(stage, /recordStageVisitGrowth/);
         assert.match(messages, /recordDailyActivity\(userId, activityKey/);
         assert.match(messages, /review\.status === 'approved' && !article_id/);
         assert.match(pixel, /recordPixelGrowth\(req\.user\.id, 'pixel_publish'/);

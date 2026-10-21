@@ -2,6 +2,8 @@
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { recordStageVisitGrowth } from '../services/userGrowth';
+import { createArticleDiscoveryTracker } from '../services/articleDiscovery.mjs';
 import { getAuthToken } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
@@ -28,13 +30,22 @@ const articlePagination = ref({ page: 1, limit: STAGE_PAGE_SIZE, total: 0, total
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
-const stageOrder = ref('latest');
+const stageOrder = ref('featured');
+const recommendationSnapshot = ref('');
+const stageGrid = ref(null);
+let discoveryTracker;
+let visitRequest;
+function recordStageVisit() {
+  if (!stageMounted || document.visibilityState === 'hidden' || visitRequest) return;
+  visitRequest = recordStageVisitGrowth().catch(() => null).finally(() => { visitRequest = null; });
+}
+
 const recommendationDate = ref('');
 const stageSortCopy = computed(() => ({ zh: ['精选优先', '每日推荐', '最新优先', '编辑推荐'], ja: ['おすすめ順', '今日のおすすめ', '新着順', '編集部おすすめ'], en: ['Featured first', 'Daily picks', 'Latest first', 'Editor pick'] }[props.lang]));
 const stageRankingCopy = computed(() => ({
-  zh: { hint: '综合内容、有效阅读、点赞与收藏，每日轮换推荐，也让新作与较少曝光的创作被看见。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
-  ja: { hint: '本文・閲覧・いいね・保存から毎日更新。新作やまだ見つかっていない作品も紹介します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
-  en: { hint: 'Daily rotation balances content, qualified reads, likes and saves, making room for new and less-seen work.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
+  zh: { hint: '参考内容与真实曝光反馈，给新作、低曝光作品和优质旧文留出位置；任务帖后置。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
+  ja: { hint: '内容と実際の表示後の反応を参考に、新作・未発見の作品・良質な過去作を紹介。タスク投稿は後方に表示します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
+  en: { hint: 'Content and feedback after real exposure make room for new, less-seen and valuable older work. Task posts appear later.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
 }[props.lang]));
 let applyingStageQuery = false;
 const { categories: articleCategories, revision: categoryRevision } = useArticleCategories({ enabled: computed(() => route.name === 'stage') });
@@ -96,7 +107,7 @@ const stageRangeSummary = computed(() => stageTotalArticles.value
 const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
-  if (stageOrder.value !== 'latest') params.set('sort', stageOrder.value);
+  if (stageOrder.value !== 'featured') params.set('sort', stageOrder.value);
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
   if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
   const search = stageSearch.value.trim();
@@ -117,7 +128,7 @@ function queryPage(value) {
 
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
-  stageOrder.value = ['featured', 'daily'].includes(queryValue(query.sort)) ? queryValue(query.sort) : 'latest';
+  stageOrder.value = ['featured', 'daily', 'latest'].includes(queryValue(query.sort)) ? queryValue(query.sort) : 'featured';
   const category = queryValue(query.category);
   stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);
@@ -183,6 +194,7 @@ function stageArticleRequest() {
     page: stagePage.value,
     limit: STAGE_PAGE_SIZE,
     sort: stageOrder.value,
+    snapshot: recommendationSnapshot.value,
     category: stageCategory.value === 'all' ? '' : stageCategory.value,
     search: stageSearch.value
   };
@@ -197,10 +209,11 @@ async function loadArticles({ background = false } = {}) {
     const result = await loadStageArticles(options);
     if (requestRevision !== stageRequestRevision) return;
     articles.value = reconcileArticleCategories(result.articles);
+    recommendationSnapshot.value = result.recommendationSnapshot || '';
     articlePagination.value = result.pagination;
     recommendationDate.value = result.recommendationDate;
     stageLoadedAt = Date.now();
-    stageLoadedRequest = JSON.stringify(options);
+    stageLoadedRequest = JSON.stringify(stageArticleRequest());
     if (stagePage.value > result.pagination.totalPages) {
       stagePage.value = result.pagination.totalPages;
       return;
@@ -208,12 +221,20 @@ async function loadArticles({ background = false } = {}) {
     hydrateUserLevels(result.articles.map((article) => article.author_id)).catch(() => {});
   } catch (error) {
     if (requestRevision !== stageRequestRevision) return;
+    if (error.status === 409 && recommendationSnapshot.value) { recommendationSnapshot.value = ''; stagePage.value = 1; scheduleArticleReload(); return; }
     if (background) return;
     articles.value = [];
     articlePagination.value = { page: 1, limit: STAGE_PAGE_SIZE, total: 0, totalPages: 1 };
     articlesError.value = error.message || props.t.loadFailed;
   } finally {
-    if (requestRevision === stageRequestRevision) articlesLoading.value = false;
+    if (requestRevision === stageRequestRevision) {
+      articlesLoading.value = false;
+      await nextTick();
+      if (stageMounted && !articlesError.value) {
+        discoveryTracker ||= createArticleDiscoveryTracker();
+        void discoveryTracker.start(stageGrid.value, stageArticleRequest());
+      }
+    }
   }
 }
 
@@ -267,6 +288,7 @@ watch([stagePage, stageCategory, stageSearch, stageOrder], (nextValues, previous
   const [, nextCategory, nextSearch, nextOrder] = nextValues;
   const [, previousCategory, previousSearch, previousOrder] = previousValues;
   const filtersChanged = nextCategory !== previousCategory || nextSearch !== previousSearch || nextOrder !== previousOrder;
+  if (filtersChanged) recommendationSnapshot.value = '';
   if (filtersChanged && stagePage.value !== 1) {
     stagePage.value = 1;
     return;
@@ -292,11 +314,19 @@ watch(categoryRevision, () => {
 });
 onMounted(() => {
   stageMounted = true;
+  document.addEventListener('visibilitychange', recordStageVisit);
+  recordStageVisit();
   loadArticles();
 });
 onActivated(() => {
   stageMounted = true;
+  recordStageVisit();
+  if (stageGrid.value) {
+    discoveryTracker ||= createArticleDiscoveryTracker();
+    void discoveryTracker.start(stageGrid.value, stageArticleRequest());
+  }
   window.clearTimeout(stageReloadTimer);
+  if (stagePage.value === 1 && Date.now() - stageLoadedAt > 30000) recommendationSnapshot.value = '';
   const changed = JSON.stringify(stageArticleRequest()) !== stageLoadedRequest;
   if (!articlesLoading.value && (changed || Date.now() - stageLoadedAt > 30000)) {
     loadArticles({ background: !changed });
@@ -304,10 +334,13 @@ onActivated(() => {
 });
 onDeactivated(() => {
   stageMounted = false;
+  discoveryTracker?.stop();
   window.clearTimeout(stageReloadTimer);
 });
 onBeforeUnmount(() => {
   stageMounted = false;
+  discoveryTracker?.destroy();
+  document.removeEventListener('visibilitychange', recordStageVisit);
   stageRequestRevision += 1;
   window.clearTimeout(stageReloadTimer);
 });
@@ -370,10 +403,10 @@ onBeforeUnmount(() => {
     <LoadingSkeleton v-if="articlesLoading" variant="stage" :count="6" :label="t.loading" />
     <div v-else-if="articlesError" class="stage-status error" role="alert">{{ articlesError }}</div>
     <div v-else-if="!filteredArticles.length" class="stage-status">{{ t.noArticles }}</div>
-    <div v-else class="stage-list stage-list-region">
+    <div v-else class="stage-list stage-list-region" ref="stageGrid">
       <a
         v-for="(article, articleIndex) in pagedArticles"
-        :key="article.id"
+        :key="article.id" :data-article-id="article.id"
         :href="articlePath(article)"
         class="stage-card"
         @click.prevent="$emit('go', articlePath(article))"

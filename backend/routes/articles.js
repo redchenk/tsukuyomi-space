@@ -12,17 +12,10 @@ const { parsePositiveInt, safeJsonParse } = require('../validators');
 const engagement = require('../services/article-engagement');
 const { createRateLimiter } = require('../middleware/security');
 const router = express.Router();
+const discoveryMetrics = require('../services/article-discovery-metrics');
+const { invalidateDiscovery } = require('../services/article-discovery');
 
 router.post('/summarize', authenticateToken, require('./article-summary'));
-
-function recordArticleGrowth(userId, articleId) {
-    try {
-        return userGrowth.recordDailyActivity(userId, 'article_publish', articleId);
-    } catch (error) {
-        console.error('Record article growth failed:', error);
-        return null;
-    }
-}
 
 function withParsedTags(article, categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]))) {
     return {
@@ -40,7 +33,7 @@ function listArticlesPayload(req) {
     const offset = (page - 1) * limit;
 
     const sort = ['featured', 'daily', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
-    const result = articleRepository.listArticles({ category, query, limit, offset, sort });
+    const result = articleRepository.listArticles({ category, query, limit, offset, sort, snapshot: typeof req.query.snapshot === 'string' ? req.query.snapshot : '' });
     const categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]));
     const articles = result.articles.map(article => withParsedTags(article, categoryIds));
 
@@ -48,6 +41,8 @@ function listArticlesPayload(req) {
         success: true,
         data: articles,
         recommendationDate: ['featured', 'daily'].includes(sort) ? userGrowth.hongKongDate() : null,
+        recommendationSnapshot: result.snapshot || '',
+        recommendationEngine: 'native-v1',
         pagination: {
             page,
             limit,
@@ -61,7 +56,7 @@ function articleListCacheKey(req) {
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
     const sort = ['featured', 'daily', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
     const query = String(req.query.q || '').trim().slice(0, 120);
-    return `public:articles:${userGrowth.hongKongDate()}:${sort}:${String(req.query.category || '')}:${query}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
+    return `public:articles:${userGrowth.hongKongDate()}:${String(req.query.snapshot || '').slice(0, 24)}:${sort}:${String(req.query.category || '')}:${query}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
 }
 
 function sendArticleList(req, res) {
@@ -70,7 +65,7 @@ function sendArticleList(req, res) {
         res.json(responseCache.remember(articleListCacheKey(req), 15000, () => listArticlesPayload(req)));
     } catch (error) {
         console.error('List articles failed:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : 'Server error' });
     }
 }
 
@@ -99,6 +94,29 @@ function sendArticleMessages(req, res) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 }
+
+router.get('/discovery/report', authenticateToken, requireAdmin, (req,res) => {
+    res.setHeader('Cache-Control','private, no-store');
+    res.json({success:true,data:require('../services/article-discovery-report').report(req.query.days)});
+});
+
+// Personal measurement receipts are issued separately from public cacheable lists.
+router.post('/discovery/session', optionalAuth, createRateLimiter({ windowMs: 60000, max: 40, keyPrefix: 'article-discovery-session' }), (req,res)=>{
+    try {
+        const body=req.body||{}, sort=['featured','daily','latest'].includes(body.sort)?body.sort:'featured';
+        const query={sort,page:Math.min(10000,Math.max(1,parsePositiveInt(body.page,1))),limit:Math.min(24,parsePositiveInt(body.limit,6)),
+            snapshot:typeof body.snapshot==='string'?body.snapshot:'',category:typeof body.category==='string'?body.category.slice(0,48):'',q:typeof body.search==='string'?body.search.slice(0,120):''};
+        if (query.category==='all')query.category='';
+        const list=listArticlesPayload({query});
+        const items=list.data.map((a,index)=>({id:a.id,position:(query.page-1)*query.limit+index}));
+        res.setHeader('Cache-Control','private, no-store');
+        res.json({success:true,data:discoveryMetrics.issueSession(req,res,items,`stage-${sort}`)});
+    } catch(error) {res.status(error.statusCode||500).json({success:false,message:error.statusCode?error.message:'推荐记录暂不可用'});}
+});
+router.post('/discovery/impressions', optionalAuth, createRateLimiter({ windowMs: 60000, max: 60, keyPrefix: 'article-discovery-impressions' }), (req,res)=>{
+    try {res.setHeader('Cache-Control','private, no-store');res.json({success:true,data:discoveryMetrics.recordImpressions(req)});}
+    catch(error) {res.status(error.statusCode||500).json({success:false,message:error.statusCode?error.message:'曝光记录暂不可用'});}
+});
 
 router.get('/', sendArticleList);
 
@@ -138,10 +156,11 @@ router.post('/', authenticateToken, async (req, res) => {
         });
         const newArticle = articleRepository.createArticle(mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, newArticle.id);
+        invalidateDiscovery();
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:stats');
         responseCache.delPrefix('public:site-feed');
-        const growth = recordArticleGrowth(req.user.id, newArticle.id);
+        const growth = null;
         res.status(201).json({ success: true, message: '操作成功', data: newArticle, growth });
     } catch (error) {
         console.error('Create article failed:', error);
@@ -199,6 +218,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         });
         const updatedArticle = articleRepository.updateArticle(req.params.id, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
+        invalidateDiscovery();
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:site-feed');
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
@@ -214,6 +234,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         articleRepository.deleteArticle(req.params.id);
+        invalidateDiscovery();
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:article-messages:');
         responseCache.delPrefix('public:stats');

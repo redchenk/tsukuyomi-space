@@ -18,17 +18,23 @@ function deviceCookie(req) {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest(id))) ? id : '';
 }
 
-function beginRead(req, res, articleId, now = Date.now()) {
+function readerContext(req, res) {
     let device = deviceCookie(req);
-    if (!device) {
+    if (!device && res) {
         device = crypto.randomBytes(20).toString('hex');
         res.cookie(COOKIE, `${device}.${digest(device)}`, {
             httpOnly: true, secure: Boolean(req.secure), sameSite: 'lax', path: '/', maxAge: 365 * 86400000
         });
     }
+    if (!device) return null;
+    return { device: digest(device), user: actorId(req), network: digest(`${getClientIp(req)}|${String(req.headers['user-agent'] || '').slice(0, 400)}`) };
+}
+
+function beginRead(req, res, articleId, now = Date.now()) {
+    const reader = readerContext(req, res);
     return {
         seconds: READ_SECONDS,
-        token: jwt.sign({ article: String(articleId), device: digest(device), user: actorId(req), iat: Math.floor(now / 1000) }, config.jwtSecret,
+        token: jwt.sign({ article: String(articleId), device: reader.device, user: reader.user, iat: Math.floor(now / 1000) }, config.jwtSecret,
             { algorithm: 'HS256', audience: 'article-read', expiresIn: '1h' })
     };
 }
@@ -74,8 +80,13 @@ function completeRead(req, now = Date.now()) {
     }
     if (!Number.isFinite(claims.iat) || now - claims.iat * 1000 < READ_SECONDS * 1000) return { counted: false, reason: 'too_soon' };
     if (/bot|crawler|spider|headless|preview|facebookexternalhit/i.test(req.headers['user-agent'] || '')) return { counted: false, reason: 'automated' };
-    return countRead.immediate({ articleId: claims.article, device: claims.device, user: claims.user, now,
+    const result = countRead.immediate({ articleId: claims.article, device: claims.device, user: claims.user, now,
         network: digest(`${getClientIp(req)}|${String(req.headers['user-agent'] || '').slice(0, 400)}`) });
+    if (!['author', 'unavailable'].includes(result.reason)) {
+        try { require('./article-discovery-metrics').recordQualified(req, claims.article, now); }
+        catch (_) { console.error('Article discovery read feedback unavailable'); }
+    }
+    return result;
 }
 
 function rewardInteraction(articleId, userId, kind, now = Date.now()) {
@@ -83,7 +94,11 @@ function rewardInteraction(articleId, userId, kind, now = Date.now()) {
     const article = db.prepare("SELECT author_id FROM articles WHERE id = ? AND COALESCE(status, 'published') = 'published'").get(articleId);
     if (!article || !article.author_id || article.author_id === userId) return;
     const receipt = db.prepare('INSERT OR IGNORE INTO article_reward_receipts(article_id, kind, actor_id) VALUES (?, ?, ?)').run(articleId, kind, userId);
-    if (receipt.changes) reward(article.author_id, kind, `${articleId}:${userId}`, articleId, RATES[kind], now);
+    if (receipt.changes) {
+        reward(article.author_id, kind, `${articleId}:${userId}`, articleId, RATES[kind], now);
+        try { require('./article-discovery-metrics').recordInteraction(articleId, userId, kind, now); }
+        catch (_) { console.error('Article discovery endorsement feedback unavailable'); }
+    }
 }
 
 const backfillHistorical = db.transaction(() => {
@@ -112,4 +127,4 @@ const backfillHistorical = db.transaction(() => {
     db.prepare("INSERT INTO article_growth_backfills(version, users, xp) VALUES ('v1', ?, ?)").run(users, total);
 });
 
-module.exports = { beginRead, completeRead, rewardInteraction, backfillHistorical: () => backfillHistorical.immediate(), READ_SECONDS };
+module.exports = { readerContext, digest, beginRead, completeRead, rewardInteraction, backfillHistorical: () => backfillHistorical.immediate(), READ_SECONDS };

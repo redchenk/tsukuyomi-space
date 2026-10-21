@@ -1,4 +1,5 @@
 import { onBeforeUnmount, onMounted, watch } from 'vue';
+import { discoveryReadToken } from '../services/articleDiscovery.mjs';
 import { authFetch, parseResponse } from '../api/client';
 
 // Count only while this article is actually open and the tab stays visible.
@@ -18,7 +19,7 @@ export function useQualifiedArticleRead(article, reading) {
       if (current !== revision || document.visibilityState !== 'visible') return;
       try {
         const response = await authFetch(`/api/articles/${encodeURIComponent(id)}/read`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token })
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, discoveryToken: discoveryReadToken(id) })
         });
         const result = await parseResponse(response);
         if (current !== revision) return;

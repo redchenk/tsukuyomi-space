@@ -4677,13 +4677,13 @@ describe('legacy page paths', () => {
                 ids.push(result.lastInsertRowid);
             }
 
-            const crawler = await request('/stage', {
+            const crawler = await request('/stage?sort=latest', {
                 headers: { 'User-Agent': 'Googlebot/2.1' }
             });
             assert.equal(crawler.response.status, 200);
             assert.doesNotMatch(crawler.response.headers.get('vary') || '', /User-Agent/i);
             assert.match(crawler.body, /Stage complete article 30/);
-            const older = await request('/stage?page=6', { headers: { 'User-Agent': 'ChatGPT-User' } });
+            const older = await request('/stage?sort=latest&page=6', { headers: { 'User-Agent': 'ChatGPT-User' } });
             assert.match(older.body, /Stage complete article 01/);
             assert.match(older.body, /canonical" href="https:\/\/yachiyo.hk\/stage\?page=6"/);
         } finally {
