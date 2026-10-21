@@ -15,6 +15,8 @@ const wallet = ref(null), siteUserId = ref('');
 const requestKeys = new Map();
 let timer, disposed = false, polls = 0;
 const canPay = computed(() => current.value && current.value.status === 'pending' && !current.value.expired && catalog.value.enabled);
+const mobileCheckout = () => /Android|iPhone|iPad|iPod/i.test(globalThis.navigator?.userAgent || '')
+  || (globalThis.navigator?.platform === 'MacIntel' && globalThis.navigator?.maxTouchPoints > 1);
 async function history(page = orders.value.page) {
   const results = await Promise.all([paymentRequest(`/api/payments/orders?page=${page}`), paymentRequest('/api/payments/wallet')]);
   [orders.value, wallet.value] = results;
@@ -32,7 +34,9 @@ async function pay(order) {
   if (disposed) return;
   busy.value = order.id; error.value = '';
   try {
-    const checkout = await paymentRequest(`/api/payments/orders/${order.id}/checkout`, { method: 'POST' });
+    const channel = mobileCheckout() ? 'mobile' : 'web';
+    if (channel === 'mobile' && !catalog.value.mobileCheckout) throw new Error('手机支付尚未开放，请联系管理员开通支付宝手机网站支付。');
+    const checkout = await paymentRequest(`/api/payments/orders/${order.id}/checkout`, { method: 'POST', body: JSON.stringify({ channel }) });
     window.location.assign(checkoutDestination(checkout.url));
   } catch (cause) { error.value = cause.message; }
   finally { busy.value = ''; }
@@ -41,6 +45,7 @@ async function purchase(product) {
   if (busy.value) return;
   busy.value = product.id; error.value = '';
   try {
+    if (mobileCheckout() && !catalog.value.mobileCheckout) throw new Error('手机支付尚未开放，请联系管理员开通支付宝手机网站支付。');
     if (!requestKeys.has(product.id)) requestKeys.set(product.id, crypto.randomUUID());
     current.value = await paymentRequest('/api/payments/orders', { method: 'POST', body: JSON.stringify({ productId: product.id, requestKey: requestKeys.get(product.id) }) });
     requestKeys.delete(product.id);

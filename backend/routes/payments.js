@@ -27,7 +27,7 @@ router.post('/orders', writeLimit, (req, res) => {
     try { res.status(201).json({ success: true, data: payments.createOrder(req.user.id, req.body) }); } catch (error) { sendError(res, error); }
 });
 router.post('/orders/:id/checkout', writeLimit, (req, res) => {
-    try { res.json({ success: true, data: payments.checkout(req.user.id, req.params.id) }); } catch (error) { sendError(res, error); }
+    try { res.json({ success: true, data: payments.checkout(req.user.id, req.params.id, req.body) }); } catch (error) { sendError(res, error); }
 });
 router.post('/orders/:id/refresh', writeLimit, async (req, res) => {
     try { res.json({ success: true, data: await payments.refreshOrder(req.user.id, req.params.id) }); } catch (error) { sendError(res, error); }

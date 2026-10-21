@@ -43,10 +43,11 @@ function saveSettings(input) {
 function catalog() {
     const saved = settings(), ready = configuration.readiness();
     const enabled = saved.enabled && ready.configured;
-    return { enabled, products: enabled ? saved.products.filter(p => p.enabled && cents(p.price) <= ready.maxAmountCents).map(({ enabled, ...p }) => p) : [] };
+    return { enabled, mobileCheckout: enabled && ready.mobileCheckout, appCheckout: enabled && ready.appCheckout,
+        products: enabled ? saved.products.filter(p => p.enabled && cents(p.price) <= ready.maxAmountCents).map(({ enabled, ...p }) => p) : [] };
 }
-function runtime(order = null) {
-    const config = configuration.readConfig();
+function runtime(order = null, channel = 'web') {
+    const config = configuration.readConfig(order?.payment_channel || channel);
     if (!config.configured) throw failure(503, '支付服务配置未就绪，请联系管理员');
     if (order && (order.app_id !== config.appId || order.seller_id !== config.sellerId || order.environment !== config.environment)) throw failure(503, '订单所属支付配置已变更，请联系管理员');
     return { ...config, sdk: new AlipaySdk({ appId: config.appId, privateKey: config.privateKey, alipayPublicKey: config.alipayPublicKey,
@@ -56,7 +57,8 @@ function view(order) {
     return { id: order.id, productId: order.product_id, title: order.title, description: order.description, amount: amount(order.amount_cents),
         status: order.status, expired: order.status === 'pending' && order.expires_at <= Date.now(),
         createdAt: order.created_at, expiresAt: order.expires_at, paidAt: order.paid_at, closedAt: order.closed_at,
-        walletCredit: order.wallet_credit_cents > 0, walletCredited: siteWallet.creditedOrder(order), walletCreditAmount: amount(order.wallet_credit_cents || 0) };
+        walletCredit: order.wallet_credit_cents > 0, walletCredited: siteWallet.creditedOrder(order), walletCreditAmount: amount(order.wallet_credit_cents || 0),
+        channel: order.payment_channel || 'web' };
 }
 function findOrder(id, userId = null) {
     if (typeof id !== 'string' || !/^TS[a-f0-9]{32}$/.test(id)) throw failure(404, '订单不存在');
@@ -66,38 +68,55 @@ function findOrder(id, userId = null) {
     return row;
 }
 function createOrder(userId, input) {
-    if (!input || Object.keys(input).some(key => !['productId', 'requestKey'].includes(key))
+    if (!input || Object.keys(input).some(key => !['productId', 'requestKey', 'channel'].includes(key))
+        || (input.channel !== undefined && !['web', 'mobile', 'app'].includes(input.channel))
         || typeof input.productId !== 'string' || !/^[A-Za-z0-9_-]{1,40}$/.test(input.productId)
         || typeof input.requestKey !== 'string' || !/^[A-Za-z0-9_-]{16,80}$/.test(input.requestKey)) throw failure(400, '订单请求无效');
     return db.transaction(() => {
         const previous = db.prepare('SELECT * FROM payment_orders WHERE user_id = ? AND request_key = ?').get(userId, input.requestKey);
         if (previous) {
-            if (previous.product_id !== input.productId) throw failure(409, '该请求编号已用于其他商品');
+            if (previous.product_id !== input.productId || previous.payment_channel !== (input.channel || 'web')) throw failure(409, '该请求编号已用于其他商品或支付渠道');
             return view(previous);
         }
         const product = catalog().products.find(product => product.id === input.productId);
         if (!product) throw failure(409, '该商品当前不可购买');
-        const config = runtime();
+        const channel = input.channel || 'web', config = runtime(null, channel);
+        if ((channel === 'app' && !config.appCheckout) || (channel === 'mobile' && !config.mobileCheckout)) throw failure(409, '该手机支付渠道尚未开放，请联系管理员');
         const id = `TS${crypto.randomBytes(16).toString('hex')}`, now = Date.now();
         db.prepare(`INSERT INTO payment_orders (id, user_id, request_key, product_id, title, description, amount_cents,
-            app_id, seller_id, environment, created_at, expires_at, wallet_credit_cents) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(id, userId, input.requestKey, product.id, product.title, product.description, cents(product.price), config.appId, config.sellerId, config.environment, now, now + 15 * 60000, product.walletCredit === true ? cents(product.price) : 0);
+            app_id, seller_id, environment, created_at, expires_at, wallet_credit_cents, payment_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(id, userId, input.requestKey, product.id, product.title, product.description, cents(product.price), config.appId, config.sellerId, config.environment, now, now + 15 * 60000, product.walletCredit === true ? cents(product.price) : 0, channel);
         return view(findOrder(id, userId));
     }).immediate();
 }
-function checkout(userId, id) {
+function checkout(userId, id, input = {}) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)
+        || Object.keys(input).some(key => key !== 'channel')
+        || (input.channel !== undefined && !['web', 'mobile', 'app'].includes(input.channel))) throw failure(400, '支付渠道无效');
     const order = findOrder(id, userId);
     if (!catalog().enabled) throw failure(409, '收款入口暂未开放');
     if (order.status !== 'pending' || order.expires_at <= Date.now()) throw failure(409, '该订单已完成或已到期，请刷新订单状态');
     const config = runtime(order);
+    const channel = input.channel || order.payment_channel || 'web';
+    if ((order.payment_channel === 'app') !== (channel === 'app')) throw failure(409, '此订单使用不同的支付应用，请重新创建订单');
+    const mobile = channel === 'mobile';
+    if (channel === 'app' && !config.appCheckout) throw failure(409, 'App 支付尚未开放，请联系管理员');
+    if (mobile && !config.mobileCheckout) throw failure(409, '手机支付尚未开放，请联系管理员开通支付宝手机网站支付');
     if (order.amount_cents > config.maxAmountCents) throw failure(409, '该订单金额超过当前单笔限额，请联系管理员');
     const returnUrl = new URL('/payments', config.baseUrl);
     returnUrl.searchParams.set('order', order.id);
     const remainingMinutes = Math.max(1, Math.floor((order.expires_at - Date.now()) / 60000));
-    return { url: config.sdk.pageExecute('alipay.trade.page.pay', 'GET', {
+    if (channel === 'app') return { type: 'app', environment: config.environment, appId: config.appId,
+        orderString: config.sdk.sdkExecute('alipay.trade.app.pay', {
+            notifyUrl: `${config.baseUrl}/api/payments/alipay/notify`,
+            bizContent: { out_trade_no: order.id, product_code: 'QUICK_MSECURITY_PAY', seller_id: order.seller_id,
+                subject: order.title, total_amount: amount(order.amount_cents), timeout_express: `${remainingMinutes}m` }
+        }) };
+    return { url: config.sdk.pageExecute(mobile ? 'alipay.trade.wap.pay' : 'alipay.trade.page.pay', 'GET', {
         notifyUrl: `${config.baseUrl}/api/payments/alipay/notify`, returnUrl: returnUrl.toString(),
-        bizContent: { out_trade_no: order.id, product_code: 'FAST_INSTANT_TRADE_PAY', seller_id: order.seller_id,
-            subject: order.title, total_amount: amount(order.amount_cents), timeout_express: `${remainingMinutes}m` }
+        bizContent: { out_trade_no: order.id, product_code: mobile ? 'QUICK_WAP_WAY' : 'FAST_INSTANT_TRADE_PAY', seller_id: order.seller_id,
+            subject: order.title, total_amount: amount(order.amount_cents), timeout_express: `${remainingMinutes}m`,
+            ...(mobile ? { quit_url: returnUrl.toString() } : {}) }
     }) };
 }
 function applyResult(id, data, notification = true) {

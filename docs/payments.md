@@ -22,6 +22,10 @@
 | --- | --- |
 | `ALIPAY_ENV` | `production`（默认）或 `sandbox`；固定使用对应的支付宝官方网关，不能指定任意网关 |
 | `ALIPAY_APP_ID` | 自己的支付宝应用 AppID，必须是 16 位数字 |
+| `ALIPAY_WAP_ENABLED` | 完成当前网页应用的手机网站支付签约后设置 `true`；默认关闭 |
+| `ALIPAY_APP_PAY_ENABLED` | 完成移动应用的 App 支付签约、独立凭据配置及验收后设置 `true`；默认关闭 |
+| `ALIPAY_MOBILE_APP_ID`、`ALIPAY_MOBILE_SELLER_ID` | 移动应用的 AppID 和绑定商户 PID，不回退使用网页应用的标识 |
+| `ALIPAY_MOBILE_PRIVATE_KEY_PATH`、`ALIPAY_MOBILE_PUBLIC_KEY_PATH` | 移动应用私钥与该应用的支付宝公钥文件；只由服务器读取 |
 | `ALIPAY_SELLER_ID` | 实际收款商户的 PID，必须是 16 位数字，与签约主体一致 |
 | `ALIPAY_PRIVATE_KEY_PATH` | 应用私钥文件的绝对路径；支持 PKCS#1 / PKCS#8 和官方工具导出的纯 Base64 |
 | `ALIPAY_PUBLIC_KEY_PATH` | 支付宝公钥文件的绝对路径；支持 PEM 或官方导出的纯 Base64 文本 |
@@ -60,4 +64,16 @@
 
 回滚时先在 Terminal 关闭新收款，继续保留通知处理、配置和数据库以结算已有订单。不要删除订单表；订单记录在用户注销后保留，账号归属字段置空。
 
-官方参考：[Node SDK](https://github.com/alipay/alipay-sdk-nodejs-all)、[电脑网站支付](https://open.alipay.com/api/detail?code=I1080300001000041203)。本实现沿用电脑网站支付的 V2 `pageExecute` 和 `exec` 查单协议，明确启用 RSA2 及响应验签；未申请手机网站支付签约，不调用 WAP 或 App 支付产品。
+## 原生应用与手机网站支付
+
+迁移 `047_payment_app_channel` 为已有订单补上 `web` 渠道，新订单可明确选择 `web`、`mobile` 或 `app`。`POST /api/payments/orders` 接受可选的 `channel`，默认 `web`；相同幂等编号不能更换商品或渠道。`checkout` 接受 `{ "channel": "app" }` 或 `mobile`，没有参数时沿用订单渠道。App 订单不能切换到网页应用支付，网页订单也不能用移动应用签名。
+
+`GET /api/payments/catalog` 增加 `appCheckout` 和 `mobileCheckout`，供原生应用在下单前判断渠道是否开放。维护者的 readiness 中同时提供缺失的移动配置变量名；不会返回实际密钥、AppID 或 PID。新增开关不会自动打开总收款开关或修改商品。
+
+App 渠道使用移动应用的独立配置，经官方 SDK `sdkExecute('alipay.trade.app.pay', ...)` 生成 `QUICK_MSECURITY_PAY` 签名订单，返回 `{type, orderString, appId, environment}`。Android 客户端交给官方 App SDK 唤起支付宝。App 的 SDK 回调只触发主站查单，不直接记账。WAP 渠道仍使用网页应用配置，通过 `alipay.trade.wap.pay` 和 `QUICK_WAP_WAY` 打开手机收银台；网站手机端也请求该渠道，未开放时提示并停止下单。
+
+两类应用共用通知路径和钱包，按订单创建时保存的 AppID、PID、环境及渠道选择相应密钥。关闭新渠道后仍处理旧订单的合法通知与查单；不能删除尚有待付订单的旧凭据。回跳、查单、异步通知沿用已有的金额核验、RSA2 验签和事务幂等入账规则。
+
+部署时先备份主站数据库并验证迁移；安全注入移动应用的专用私钥及支付宝公钥，不将它们交给 Flutter。确认移动应用已开通 **App 支付**，通过沙箱和设备验收后再开启 App 渠道。仅有“移动应用已上线”或电脑网站支付产品，不等于已获得 App 支付权限。iOS 还需登记对应平台并配置 SDK 回跳及 Universal Link。没有这些材料时保持新渠道关闭，既有网页订单照常可核对。
+
+官方参考：[Node SDK](https://github.com/alipay/alipay-sdk-nodejs-all)、[电脑网站支付](https://open.alipay.com/api/detail?code=I1080300001000041203)、[App 支付与服务端结果核对](https://aipay.alipay.com/article/83)。所有渠道启用 RSA2 及主动查单响应验签。

@@ -75,7 +75,7 @@ before(async () => {
 after(async () => { urllib.request = realRequest; await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(directory, { recursive: true, force: true }); });
 
 test('starts disabled, never returns credentials, and reserves settings for the super admin', async () => {
-    assert.deepEqual((await call('/api/payments/catalog', { token: '' })).data.data, { enabled: false, products: [] });
+    assert.deepEqual((await call('/api/payments/catalog', { token: '' })).data.data, { enabled: false, mobileCheckout: false, appCheckout: false, products: [] });
     assert.equal((await call('/api/payments/orders', { token: '' })).response.status, 401);
     for (const token of [owner, staff]) assert.equal((await call('/api/admin/payments/settings', { token })).response.status, 403);
     const response = await call('/api/admin/payments/settings', { token: admin });
@@ -259,4 +259,85 @@ test('main-site sponsored mode survives demotion for admitted requests and is de
     assert.equal(wallet.settle({ request_id: input.request_id, request_fingerprint: input.request_fingerprint, usage: { input_uncached: '20', input_cached: '0', output: '50' } }).request.money_atoms, '0');
     assert.equal(wallet.wallet('other').balance_atoms, '0');
     assert.throws(() => wallet.admission({ ...input, request_id: 'req_demoted' }), /权限已变化/);
+});
+
+test('mobile WAP and native App payments preserve channel identity, prices, signatures and settlement', async () => {
+    payments.saveSettings({ enabled: true, products: [{ ...product, walletCredit: true }] });
+    db.prepare('INSERT INTO users(id,username,email,password_hash) VALUES (?,?,?,?)').run('mobile','mobile','mobile@example.test','fixture');
+    const mobileToken = generateToken({ id: 'mobile', username: 'mobile', role: 'user' });
+    const callAsMobile = (endpoint, options = {}) => call(endpoint, { token: mobileToken, ...options });
+    assert.equal(config.readiness().appCheckout, false);
+    let result = await callAsMobile('/api/payments/orders', { method: 'POST', body: {
+        productId: product.id, requestKey: crypto.randomUUID(), channel: 'app'
+    } });
+    assert.equal(result.response.status, 503); // No mobile credentials: do not borrow website credentials.
+    process.env.ALIPAY_WAP_ENABLED = 'true';
+    result = await callAsMobile('/api/payments/orders', { method: 'POST', body: {
+        productId: product.id, requestKey: crypto.randomUUID(), channel: 'mobile'
+    } });
+    const wap = result.data.data;
+    assert.equal(wap.channel, 'mobile');
+    const wapResult = await callAsMobile(`/api/payments/orders/${wap.id}/checkout`, { method: 'POST', body: { channel: 'mobile' } });
+    const wapUrl = new URL(wapResult.data.data.url);
+    assert.equal(wapUrl.searchParams.get('method'), 'alipay.trade.wap.pay');
+    assert.equal(JSON.parse(wapUrl.searchParams.get('biz_content')).product_code, 'QUICK_WAP_WAY');
+    const mobileMerchant = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const mobileAlipay = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    Object.assign(process.env, {
+        ALIPAY_APP_PAY_ENABLED: 'true', ALIPAY_MOBILE_APP_ID: '2099000000000002', ALIPAY_MOBILE_SELLER_ID: '2088000000000002',
+        ALIPAY_MOBILE_PRIVATE_KEY: mobileMerchant.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+        ALIPAY_MOBILE_PUBLIC_KEY: mobileAlipay.publicKey.export({ type: 'spki', format: 'pem' })
+    });
+    assert.equal(config.readiness().appCheckout, true);
+    const key = crypto.randomUUID();
+    result = await callAsMobile('/api/payments/orders', { method: 'POST', body: { productId: product.id, requestKey: key, channel: 'app' } });
+    assert.equal(result.response.status, 201);
+    const appOrder = result.data.data;
+    assert.equal(appOrder.channel, 'app');
+    const replay = await callAsMobile('/api/payments/orders', { method: 'POST', body: { productId: product.id, requestKey: key, channel: 'app' } });
+    assert.equal(replay.data.data.id, appOrder.id);
+    assert.equal((await callAsMobile('/api/payments/orders', { method: 'POST', body: { productId: product.id, requestKey: key, channel: 'web' } })).response.status, 409);
+    const checkout = await callAsMobile(`/api/payments/orders/${appOrder.id}/checkout`, { method: 'POST', body: { channel: 'app' } });
+    assert.equal(checkout.response.status, 200);
+    assert.equal(checkout.data.data.type, 'app');
+    const params = new URLSearchParams(checkout.data.data.orderString);
+    assert.equal(params.get('app_id'), process.env.ALIPAY_MOBILE_APP_ID);
+    assert.equal(params.get('method'), 'alipay.trade.app.pay');
+    const biz = JSON.parse(params.get('biz_content'));
+    assert.equal(biz.product_code, 'QUICK_MSECURITY_PAY');
+    assert.equal(biz.out_trade_no, appOrder.id); assert.equal(biz.total_amount, '1.23');
+    const signature = params.get('sign'); params.delete('sign');
+    const canonical = [...params.entries()].filter(([,value]) => value !== '').sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}=${value}`).join('&');
+    assert.equal(crypto.verify('RSA-SHA256', Buffer.from(canonical), mobileMerchant.publicKey, Buffer.from(signature, 'base64')), true);
+    assert.equal(crypto.verify('RSA-SHA256', Buffer.from(canonical), merchant.publicKey, Buffer.from(signature, 'base64')), false);
+    assert.equal((await callAsMobile(`/api/payments/orders/${appOrder.id}/checkout`, { method: 'POST', body: { channel: 'web' } })).response.status, 409);
+    assert.equal((await callAsMobile(`/api/payments/orders/${appOrder.id}/checkout`, { method: 'POST', token: other, body: { channel: 'app' } })).response.status, 404);
+    const notification = payload(appOrder, { app_id: process.env.ALIPAY_MOBILE_APP_ID, seller_id: process.env.ALIPAY_MOBILE_SELLER_ID });
+    assert.equal((await notify(signed(notification))).status, 400); // Website signing key is invalid for an App order.
+    const signText = Object.keys(notification).filter(key => !['sign', 'sign_type'].includes(key) && notification[key] !== '').sort().map(key => `${key}=${notification[key]}`).join('&');
+    const valid = { ...notification, sign: crypto.sign('RSA-SHA256', Buffer.from(signText), mobileAlipay.privateKey).toString('base64') };
+    assert.equal((await notify(valid)).status, 200);
+    assert.equal((await notify(valid)).status, 200);
+    assert.equal(payments.findOrder(appOrder.id).status, 'paid');
+    const queried = payments.createOrder('mobile', { productId: product.id, requestKey: crypto.randomUUID(), channel: 'app' });
+    const originalQuery = urllib.request;
+    let mobileQuerySigned = false;
+    urllib.request = async (url, options) => {
+        assert.equal(new URL(url).searchParams.get('app_id'), process.env.ALIPAY_MOBILE_APP_ID);
+        assert.equal(new URL(url).searchParams.get('method'), 'alipay.trade.query');
+        assert.equal(JSON.parse(options.data.biz_content).out_trade_no, queried.id);
+        const body = { code: '10000', out_trade_no: queried.id, total_amount: queried.amount, seller_id: process.env.ALIPAY_MOBILE_SELLER_ID,
+            trade_no: '202610210000000000099999', trade_status: 'TRADE_SUCCESS' };
+        return { status: 200, headers: {}, data: JSON.stringify({ alipay_trade_query_response: body,
+            sign: crypto.sign('RSA-SHA256', Buffer.from(JSON.stringify(body)), mobileQuerySigned ? mobileAlipay.privateKey : alipay.privateKey).toString('base64') }) };
+    };
+    try {
+        await assert.rejects(payments.refreshOrder('mobile', queried.id), /查单暂时失败/);
+        assert.equal(payments.findOrder(queried.id).status, 'pending');
+        db.prepare('UPDATE payment_orders SET last_query_at = 0 WHERE id = ?').run(queried.id);
+        mobileQuerySigned = true;
+        assert.equal((await payments.refreshOrder('mobile', queried.id)).status, 'paid');
+    } finally { urllib.request = originalQuery; }
+    process.env.ALIPAY_APP_PAY_ENABLED = 'false'; process.env.ALIPAY_WAP_ENABLED = 'false';
+    payments.saveSettings({ enabled: false, products: [] });
 });

@@ -24,12 +24,14 @@ function keyPem(value, privateKey = false) {
     return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
 }
 
-function readConfig() {
+function readConfig(channel = 'web') {
     const missing = [];
-    const appId = String(process.env.ALIPAY_APP_ID || '').trim();
-    const sellerId = String(process.env.ALIPAY_SELLER_ID || '').trim();
-    if (!/^\d{16}$/.test(appId)) missing.push('ALIPAY_APP_ID');
-    if (!/^\d{16}$/.test(sellerId)) missing.push('ALIPAY_SELLER_ID');
+    const prefix = channel === 'app' ? 'ALIPAY_MOBILE' : 'ALIPAY';
+    const idName = channel === 'app' ? 'ALIPAY_MOBILE_APP_ID' : 'ALIPAY_APP_ID';
+    const appId = String(process.env[idName] || '').trim();
+    const sellerId = String(process.env[`${prefix}_SELLER_ID`] || '').trim();
+    if (!/^\d{16}$/.test(appId)) missing.push(idName);
+    if (!/^\d{16}$/.test(sellerId)) missing.push(`${prefix}_SELLER_ID`);
     const environment = process.env.ALIPAY_ENV || 'production';
     if (!Object.hasOwn(GATEWAYS, environment)) missing.push('ALIPAY_ENV');
     let baseUrl = '';
@@ -40,7 +42,7 @@ function readConfig() {
         baseUrl = url.origin;
     } catch (_) { missing.push('PAYMENT_PUBLIC_BASE_URL'); }
     let privateKey = '', alipayPublicKey = '';
-    for (const [name, isPrivate] of [['ALIPAY_PRIVATE_KEY', true], ['ALIPAY_PUBLIC_KEY', false]]) {
+    for (const [name, isPrivate] of [[`${prefix}_PRIVATE_KEY`, true], [`${prefix}_PUBLIC_KEY`, false]]) {
         try {
             const value = keyValue(name);
             if (!value) throw new Error();
@@ -58,12 +60,16 @@ function readConfig() {
     const maxAmountCents = Math.round(Number(process.env.PAYMENT_MAX_ORDER_YUAN || '50') * 100);
     if (!Number.isSafeInteger(maxAmountCents) || maxAmountCents < 1 || maxAmountCents > 100000000) missing.push('PAYMENT_MAX_ORDER_YUAN');
     return { appId, sellerId, environment, gateway: GATEWAYS[environment], baseUrl, privateKey, alipayPublicKey,
-        maxAmountCents, missing, configured: missing.length === 0 };
+        maxAmountCents, mobileCheckout: process.env.ALIPAY_WAP_ENABLED === 'true',
+        appCheckout: process.env.ALIPAY_APP_PAY_ENABLED === 'true', missing, configured: missing.length === 0 };
 }
 
 function readiness() {
-    const config = readConfig();
+    const config = readConfig(), app = readConfig('app');
     return { configured: config.configured, environment: config.environment, missing: config.missing,
+        mobileCheckout: config.configured && config.mobileCheckout,
+        appCheckout: app.configured && app.appCheckout,
+        appMissing: app.missing,
         maxAmountCents: Number.isSafeInteger(config.maxAmountCents) ? config.maxAmountCents : 0,
         notifyUrl: config.baseUrl ? `${config.baseUrl}/api/payments/alipay/notify` : '' };
 }
