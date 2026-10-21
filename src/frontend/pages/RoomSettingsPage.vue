@@ -1828,7 +1828,7 @@ async function testLLM() {
     showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本', reply ? 'success' : 'error');
   } catch (error) {
     connectionCheck.status = 'error';
-    const corsHint = isOfficialRoomApi(settings.apiUrl) ? '请检查登录状态和网站统一余额；可前往「余额与支付」充值，或在直供控制台查看服务状态。' : settings.needsApiKey
+    const corsHint = isOfficialRoomApi(settings.apiUrl) ? '请检查登录状态和网站余额；可前往「支付中心」充值并查看模型、用量和订单。' : settings.needsApiKey
       ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
       : `请允许浏览器访问本地网络。Windows PowerShell 运行：\n${ollamaRepairCommand.value}\n\n然后从任务栏完全退出并重新打开 Ollama。`;
     openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
@@ -2638,8 +2638,7 @@ onBeforeUnmount(() => {
               </p>
               <p v-if="officialSelectedModel">单次输出上限 {{ officialSelectedModel.max_output_tokens }} Token；当前直供支持文字聊天和工具调用，图片请配合 MCP 识图。</p>
               <div class="settings-official-links">
-                <a class="ghost-btn compact" href="/payments" @click.prevent="emit('go', '/payments')">余额与支付</a>
-                <a class="ghost-btn compact" href="/official-api/">直供控制台</a>
+                <a class="ghost-btn compact" href="/payments" @click.prevent="emit('go', '/payments')">支付中心</a>
                 <a v-if="!officialSupply.dashboard && !modelCatalog.loading" class="ghost-btn compact" href="/login?redirect=%2Froom%2Fsettings">登录账号</a>
               </div>
             </div>

@@ -1,18 +1,17 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { loadCurrentSession } from '../api/client';
 import { paymentRequest, checkoutDestination, paymentStatus } from '../services/payments';
 import { formatDateTime } from '../utils/time';
+import { moneyAtoms } from '../services/official-service.mjs';
+import OfficialServicePanel from '../components/OfficialServicePanel.vue';
+import TsIcon from '../components/TsIcon.vue';
 
-const route = useRoute();
+const route = useRoute(), router = useRouter();
 const catalog = ref({ enabled: false, products: [] }), orders = ref({ items: [], page: 1, totalPages: 1 });
 const current = ref(null), authed = ref(false), loading = ref(true), busy = ref(''), error = ref('');
-const wallet = ref(null);
-function moneyAtoms(value) {
-  const n = BigInt(value || '0');
-  return `${n / 1000000000n}.${String(n % 1000000000n).padStart(9, '0').replace(/0+$/, '').padEnd(2, '0')}`;
-}
+const wallet = ref(null), siteUserId = ref('');
 const requestKeys = new Map();
 let timer, disposed = false, polls = 0;
 const canPay = computed(() => current.value && current.value.status === 'pending' && !current.value.expired && catalog.value.enabled);
@@ -30,6 +29,7 @@ async function refresh(order = current.value) {
   finally { busy.value = ''; }
 }
 async function pay(order) {
+  if (disposed) return;
   busy.value = order.id; error.value = '';
   try {
     const checkout = await paymentRequest(`/api/payments/orders/${order.id}/checkout`, { method: 'POST' });
@@ -38,6 +38,7 @@ async function pay(order) {
   finally { busy.value = ''; }
 }
 async function purchase(product) {
+  if (busy.value) return;
   busy.value = product.id; error.value = '';
   try {
     if (!requestKeys.has(product.id)) requestKeys.set(product.id, crypto.randomUUID());
@@ -56,10 +57,17 @@ function schedule() {
   }, 10000);
 }
 onMounted(async () => {
+  const legacyHash = ({ '#overview': '#models', '#payments': '#topup', '#admin': '#service-settings' })[route.hash];
+  if (legacyHash) router.replace({ path: '/payments', query: route.query, hash: legacyHash });
   try {
-    catalog.value = await paymentRequest('/api/payments/catalog');
-    const session = await loadCurrentSession();
+    const [products, identity] = await Promise.allSettled([paymentRequest('/api/payments/catalog'), loadCurrentSession()]);
+    if (disposed) return;
+    if (products.status === 'fulfilled') catalog.value = products.value;
+    else error.value = products.reason.message;
+    if (identity.status !== 'fulfilled') throw identity.reason;
+    const session = identity.value;
     authed.value = Boolean(session && !session.admin);
+    siteUserId.value = session?.user?.id || '';
     if (authed.value) {
       await history(1);
       const id = String(route.query.order || '');
@@ -77,18 +85,17 @@ onUnmounted(() => { disposed = true; window.clearTimeout(timer); });
 
 <template>
   <main class="page payments-page">
-    <header class="payments-heading"><span class="eyebrow">TSUKUYOMI SPACE</span><h1>支付与订单</h1><p>使用支付宝购买服务，随时核对订单状态。</p></header>
+    <header class="payments-heading"><div><span class="eyebrow">TSUKUYOMI · YOUR BALANCE & USAGE</span><h1>支付中心</h1><p>充值、订单与聊天用量，在这里一起查看。</p></div><span class="payment-heading-mark" aria-hidden="true"><TsIcon name="moonStar" :size="42" :stroke-width="1.25" /></span></header>
     <p v-if="error" class="form-message error" role="alert">{{ error }}</p>
-    <p v-if="loading" role="status">正在读取订单…</p>
+    <p v-if="loading" role="status">正在读取支付中心…</p>
     <template v-else>
-      <section v-if="!authed" class="panel payments-notice"><h2>登录后查看订单</h2><p>订单将关联到你的月读空间账号。</p><RouterLink class="primary-btn" to="/login?redirect=/payments">登录</RouterLink></section>
+      <section v-if="!authed" class="panel payments-notice"><h2>登录后查看支付中心</h2><p>充值、余额和用量均关联到你的月读空间账号。</p><RouterLink class="primary-btn" to="/login?redirect=/payments">登录</RouterLink></section>
       <template v-else>
-        <section v-if="wallet" class="panel payments-notice" aria-label="网站统一余额">
-          <h2>网站余额</h2>
-          <p v-if="wallet.unlimited">超级管理员不限余额，官方 API 用量正常记录，免扣充值余额。</p>
-          <p><strong>可用 ¥{{ moneyAtoms(wallet.available_atoms) }}</strong> · 账面 ¥{{ moneyAtoms(wallet.balance_atoms) }} · 待结算冻结 ¥{{ moneyAtoms(wallet.held_atoms) }}</p>
-          <p>充值到账后可直接用于官方 API，所有页面共用这份余额。冻结金额尚未扣费。</p>
-          <a class="ghost-btn" href="/official-api/">官方 API 中心</a>
+        <nav class="payment-section-nav" aria-label="支付中心导航"><a href="#topup">充值</a><a href="#orders">我的订单</a><a href="#models">直供模型</a><a href="#usage">用量账单</a></nav>
+        <section v-if="wallet" class="panel payment-wallet" aria-label="网站统一余额">
+          <div class="payment-wallet-main"><span class="eyebrow">网站可用余额</span><strong class="payment-balance">{{ wallet.unlimited ? '不限额度' : `¥${moneyAtoms(wallet.available_atoms)}` }}</strong><p v-if="wallet.unlimited" class="payment-muted">超级管理员免扣余额，用量照常记录。</p><p v-else class="payment-muted">充值到账后，可直接在 Room 使用站内直供。</p><a class="primary-btn" href="#topup">查看充值选项<TsIcon name="chevronRight" :size="16" /></a></div>
+          <dl class="payment-wallet-detail"><div><dt>账面余额</dt><dd>¥{{ moneyAtoms(wallet.balance_atoms) }}</dd></div><div><dt>待结算冻结</dt><dd>¥{{ moneyAtoms(wallet.held_atoms) }}</dd></div></dl>
+          <p class="payment-wallet-note">全站共用一份余额，冻结金额尚未扣费。</p>
         </section>
         <section v-if="current" class="panel payment-receipt" aria-live="polite">
           <h2>{{ paymentStatus(current) }}</h2><p>{{ current.title }} · ¥{{ current.amount }}</p><p class="payment-order-id">{{ current.id }}</p>
@@ -96,15 +103,16 @@ onUnmounted(() => { disposed = true; window.clearTimeout(timer); });
           <p v-if="current.status === 'paid'">{{ current.walletCredited ? `已充值 ¥${current.walletCreditAmount} 到网站余额。` : '已收到支付结果，服务交付请以商品说明为准。' }}</p>
           <div class="payment-actions"><button v-if="canPay" class="primary-btn" type="button" :disabled="Boolean(busy)" @click="pay(current)">前往支付宝付款</button><button v-if="current.status !== 'paid'" class="ghost-btn" type="button" :disabled="Boolean(busy)" @click="refresh()">{{ busy === current.id ? '核对中…' : '核对支付结果' }}</button></div>
         </section>
-        <section aria-label="可购买的服务"><h2>选择服务</h2>
+        <section id="topup" aria-labelledby="payment-topup-title"><div class="payment-section-heading"><div><span class="eyebrow">TOP UP & SERVICES</span><h2 id="payment-topup-title">充值与服务</h2></div><span class="payment-fine">支付宝安全支付</span></div>
           <p v-if="!catalog.enabled" class="panel payments-notice">在线收款暂未开放，已有订单仍可在下方查看。</p>
           <div v-else class="payment-products"><article v-for="product in catalog.products" :key="product.id" class="panel payment-product"><h3>{{ product.title }}</h3><p>{{ product.description }}</p><p v-if="product.walletCredit">支付成功后充值 ¥{{ product.price }} 到网站余额。</p><strong class="payment-price">¥{{ product.price }}</strong><button class="primary-btn" type="button" :disabled="Boolean(busy)" @click="purchase(product)">{{ busy === product.id ? '创建订单中…' : '使用支付宝支付' }}</button></article></div>
         </section>
-        <section class="panel payment-history"><div class="payment-actions"><h2>我的订单</h2><button class="ghost-btn" type="button" :disabled="Boolean(busy)" @click="history().catch(cause => error = cause.message)">刷新列表</button></div>
+        <section id="orders" class="panel payment-history"><div class="payment-actions"><h2>我的订单</h2><button class="ghost-btn" type="button" :disabled="Boolean(busy)" @click="history().catch(cause => error = cause.message)">刷新列表</button></div>
           <p v-if="!orders.items.length">暂无订单。</p>
           <article v-for="order in orders.items" :key="order.id" class="payment-history-row"><div><h3>{{ order.title }}</h3><p>{{ formatDateTime(order.createdAt, 'zh-CN') }}</p><code class="payment-order-id">{{ order.id }}</code></div><div><strong>¥{{ order.amount }}</strong><p>{{ paymentStatus(order) }}</p><button class="ghost-btn" type="button" :disabled="Boolean(busy)" @click="current = order; refresh(order)">查看并核对</button></div></article>
           <div v-if="orders.totalPages > 1" class="payment-actions"><button class="ghost-btn" type="button" :disabled="orders.page <= 1" @click="history(orders.page - 1).catch(cause => error = cause.message)">上一页</button><span>{{ orders.page }} / {{ orders.totalPages }}</span><button class="ghost-btn" type="button" :disabled="orders.page >= orders.totalPages" @click="history(orders.page + 1).catch(cause => error = cause.message)">下一页</button></div>
         </section>
+        <OfficialServicePanel v-if="siteUserId" :site-user-id="siteUserId" />
       </template>
     </template>
   </main>
