@@ -112,7 +112,7 @@ onUnmounted(() => { disposed = true; window.clearTimeout(timer); });
           <article v-for="order in orders.items" :key="order.id" class="payment-history-row"><div><h3>{{ order.title }}</h3><p>{{ formatDateTime(order.createdAt, 'zh-CN') }}</p><code class="payment-order-id">{{ order.id }}</code></div><div><strong>¥{{ order.amount }}</strong><p>{{ paymentStatus(order) }}</p><button class="ghost-btn" type="button" :disabled="Boolean(busy)" @click="current = order; refresh(order)">查看并核对</button></div></article>
           <div v-if="orders.totalPages > 1" class="payment-actions"><button class="ghost-btn" type="button" :disabled="orders.page <= 1" @click="history(orders.page - 1).catch(cause => error = cause.message)">上一页</button><span>{{ orders.page }} / {{ orders.totalPages }}</span><button class="ghost-btn" type="button" :disabled="orders.page >= orders.totalPages" @click="history(orders.page + 1).catch(cause => error = cause.message)">下一页</button></div>
         </section>
-        <OfficialServicePanel v-if="siteUserId" :site-user-id="siteUserId" />
+        <OfficialServicePanel v-if="siteUserId" :site-user-id="siteUserId" @wallet-updated="wallet = $event" />
       </template>
     </template>
   </main>

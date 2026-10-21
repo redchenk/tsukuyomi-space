@@ -52,7 +52,7 @@ async function reconcile(item, action) {
 <template>
   <details id="service-settings" class="panel payment-service-settings" @toggle="opened = $event.target.open">
     <summary><span>直供服务管理</span><span class="payment-fine">仅维护者可见</span></summary>
-    <p v-if="error" class="form-message error" role="alert">{{ error }}</p><p v-if="notice" class="form-message success" role="status">{{ notice }}</p>
+    <p v-if="error && !draft" class="form-message error" role="alert">{{ error }}</p>
     <div class="payment-actions"><button type="button" class="ghost-btn" :disabled="busy" @click="load">重新读取配置</button><button type="button" class="ghost-btn" :disabled="busy" @click="emit('updated')">更新页面用量</button><RouterLink class="ghost-btn" to="/terminal">管理充值商品</RouterLink></div>
     <form v-if="draft" class="payment-settings-form" @submit.prevent="save">
       <fieldset :disabled="busy"><legend>供应商与模型</legend><div class="payment-form-grid"><label>供应商<select v-model="draft.provider" @change="changeProvider"><option v-for="item in settings.providers" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>模型 ID<input v-model="draft.model" required maxlength="128" pattern="[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}" /></label></div>
@@ -63,6 +63,7 @@ async function reconcile(item, action) {
       <fieldset :disabled="busy"><legend>请求限制</legend><div class="payment-form-grid"><label>输入 Token 上限<input v-model.number="draft.maxInputTokens" type="number" min="4096" max="262144" required /></label><label>输出 Token 上限<input v-model.number="draft.maxOutputTokens" type="number" min="16" max="16384" required /></label><label>每人并发数<input v-model.number="draft.perUserConcurrent" type="number" min="1" max="4" required /></label><label>每分钟请求数<input v-model.number="draft.requestsPerMinute" type="number" min="1" max="60" required /></label></div></fieldset>
       <fieldset :disabled="busy"><legend>服务状态</legend><label class="payment-check"><input v-model="draft.published" type="checkbox" />公布售价</label><label class="payment-check"><input v-model="draft.usageVerified" type="checkbox" />已核验供应商最终用量协议</label><label class="payment-check"><input v-model="draft.boundVerified" type="checkbox" />已核验请求费用上限</label><label class="payment-check"><input v-model="draft.enabled" type="checkbox" />启用站内直供</label></fieldset>
       <p class="payment-fine">保存后仅影响新请求。充值金额、商品和支付开关沿用网站支付管理。</p>
+      <p v-if="error" class="form-message error" role="alert">{{ error }}</p><p v-if="notice" class="form-message success" role="status">{{ notice }}</p>
       <button class="primary-btn" type="submit" :disabled="busy">{{ busy ? '处理中…' : '保存服务配置' }}</button>
     </form>
     <section class="payment-reconciliation"><h3>待核对请求</h3><p v-if="!reviews.length" class="payment-muted">目前没有待核对的请求。</p>

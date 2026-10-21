@@ -5,7 +5,9 @@ import { formatDateTime } from '../utils/time';
 import OfficialServiceSettings from './OfficialServiceSettings.vue';
 
 const props = defineProps({ siteUserId: { type: String, required: true } });
+const emit = defineEmits(['wallet-updated']);
 const dashboard = ref(null), loading = ref(false), error = ref(''), usage = ref(null), statement = ref(null);
+const usageError = ref('');
 const month = ref(new Date().toISOString().slice(0, 7)), moreBusy = ref(false), monthBusy = ref(false);
 const maxMonth = new Date().toISOString().slice(0, 7);
 const account = computed(() => dashboard.value?.me.account_id);
@@ -19,34 +21,35 @@ async function request(path, options = {}) {
   finally { clearTimeout(timer); controllers.delete(controller); }
 }
 async function load() {
-  const revision = ++generation; cancel(); loading.value = true; error.value = '';
+  const revision = ++generation; cancel(); loading.value = true; error.value = ''; usageError.value = '';
   // Hide account-specific records until a fresh main-site identity is verified.
   dashboard.value = null; usage.value = null; statement.value = null;
   try {
     const data = assertDashboardAccount(await request('/api/dashboard'), props.siteUserId);
     if (disposed || revision !== generation) return;
     dashboard.value = data; usage.value = data.usage; statement.value = data.statement;
+    if (data.wallet_backend === 'site' && data.wallet) emit('wallet-updated', data.wallet);
     month.value = data.statement.month;
   } catch (cause) { if (!disposed && revision === generation) error.value = cause.message; }
   finally { if (!disposed && revision === generation) loading.value = false; }
 }
 async function loadMonth() {
   if (monthBusy.value || !account.value) return;
-  monthBusy.value = true; error.value = ''; statement.value = null;
+  monthBusy.value = true; usageError.value = ''; statement.value = null;
   const revision = generation;
   try {
     const data = await request(`/api/statements/monthly?month=${encodeURIComponent(month.value)}`);
     if (!disposed && revision === generation) statement.value = data;
-  } catch (cause) { if (!disposed && revision === generation) error.value = cause.message; }
+  } catch (cause) { if (!disposed && revision === generation) usageError.value = cause.message; }
   finally { monthBusy.value = false; }
 }
 async function more() {
   if (!usage.value?.next_cursor || moreBusy.value) return;
-  const revision = generation; moreBusy.value = true; error.value = '';
+  const revision = generation; moreBusy.value = true; usageError.value = '';
   try {
     const data = await request(`/api/usage?cursor=${encodeURIComponent(usage.value.next_cursor)}`);
     if (!disposed && revision === generation) usage.value = { ...data, items: [...usage.value.items, ...data.items] };
-  } catch (cause) { if (!disposed && revision === generation) error.value = cause.message; }
+  } catch (cause) { if (!disposed && revision === generation) usageError.value = cause.message; }
   finally { moreBusy.value = false; }
 }
 onMounted(load);
@@ -78,6 +81,7 @@ defineExpose({ reload: load });
 
   <section id="usage" class="panel payment-usage" aria-labelledby="payment-usage-title">
     <div class="payment-section-heading"><div><span class="eyebrow">YOUR USAGE</span><h2 id="payment-usage-title">用量账单</h2></div><label class="payment-month">账单月份<input v-model="month" type="month" min="2020-01" :max="maxMonth" :disabled="monthBusy || !dashboard" @change="loadMonth" /></label></div>
+    <p v-if="usageError" class="form-message error" role="alert">{{ usageError }}</p>
     <p class="payment-fine">按 UTC 自然月统计。余额不按月清零，账单汇总不会再次扣费。</p>
     <div v-if="statement" class="payment-metrics" aria-live="polite"><div><span>已结算消费</span><strong>¥{{ moneyAtoms(statement.charged_atoms) }}</strong></div><div><span>已到账充值</span><strong>¥{{ moneyAtoms(statement.credited_atoms) }}</strong></div><div><span>待核对冻结</span><strong>¥{{ moneyAtoms(statement.pending_hold_atoms) }}</strong></div></div>
     <p v-else-if="monthBusy" role="status">正在读取月账单…</p>

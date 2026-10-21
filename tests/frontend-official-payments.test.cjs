@@ -34,3 +34,11 @@ function pageRuntime({catalogFailure=false}={}) {
 test('payment page still loads site wallet and orders if the catalog read fails',async()=>{
   const page=pageRuntime({catalogFailure:true});await page.start();assert.equal(page.context.state.loading.value,false);assert.equal(page.context.state.authed.value,true);assert.equal(page.context.state.wallet.value.available_atoms,'5000000000');assert.equal(page.context.state.siteUserId.value,'site-a');assert.ok(page.calls.includes('/api/payments/orders?page=1'));
 });
+test('refreshing usage updates the visible site balance only for the same verified account and central wallet',async()=>{
+  const {assertDashboardAccount}=await load();
+  for(const [id,backend,count] of [['site-a','site',1],['site-a','isolated',0],['site-b','site',0]]){
+    const mounted=[],events=[];const code=fs.readFileSync('src/frontend/components/OfficialServicePanel.vue','utf8').match(/<script setup>([\s\S]*?)<\/script>/)[1].replace(/^import .*;\n/gm,'');
+    const wallet={available_atoms:'42000000000'};const context={defineProps:()=>({siteUserId:'site-a'}),defineEmits:()=>((...args)=>events.push(args)),defineExpose:()=>{},ref:value=>({value}),computed:fn=>({get value(){return fn();}}),onMounted:fn=>mounted.push(fn),onUnmounted:()=>{},assertDashboardAccount,officialRequest:async()=>({me:{site_user_id:id,account_id:'acct-a'},models:[],usage:{items:[]},statement:{month:'2026-10'},wallet_backend:backend,wallet}),Date,Set,AbortController,setTimeout,clearTimeout};
+    vm.createContext(context);vm.runInContext(code,context);await mounted[0]();assert.equal(events.length,count);if(count){assert.equal(events[0][0],'wallet-updated');assert.equal(events[0][1],wallet);}
+  }
+});
