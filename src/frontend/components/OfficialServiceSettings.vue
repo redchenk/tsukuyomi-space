@@ -3,7 +3,7 @@ import { computed, onUnmounted, ref, watch } from 'vue';
 import { moneyAtoms, officialRequest, rateAtoms, usageStatus } from '../services/official-service.mjs';
 const props = defineProps({ account: { type: String, required: true } });
 const emit = defineEmits(['updated']);
-const opened = ref(false), settings = ref(null), draft = ref(null), key = ref(''), removeKey = ref(false);
+const opened = ref(false), settings = ref(null), draft = ref(null), key = ref(''), replaceKey = ref(false), removeKey = ref(false);
 const busy = ref(false), error = ref(''), notice = ref(''), reviews = ref([]), proofs = ref({});
 const provider = computed(() => settings.value?.providers.find(item => item.id === draft.value?.provider));
 const controller = new AbortController();
@@ -11,7 +11,7 @@ onUnmounted(() => { controller.abort(); key.value = ''; });
 const api = (path, options = {}) => officialRequest(path, { account: props.account, ...options, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) });
 function apply(data) {
   settings.value = data; draft.value = { ...data, rates: Object.fromEntries(Object.entries(data.rates).map(([name, value]) => [name, moneyAtoms(value)])) };
-  key.value = ''; removeKey.value = false;
+  key.value = ''; replaceKey.value = false; removeKey.value = false;
 }
 async function run(action) {
   if (busy.value) return;
@@ -26,7 +26,7 @@ async function load() {
   });
 }
 watch(opened, value => { if (value && !settings.value) load(); });
-function changeProvider() { key.value = ''; removeKey.value = false; if (draft.value.provider !== settings.value.provider) draft.value.model = ''; }
+function changeProvider() { key.value = ''; replaceKey.value = false; removeKey.value = false; if (draft.value.provider !== settings.value.provider) draft.value.model = ''; }
 async function save() {
   await run(async () => {
     const value = draft.value;
@@ -34,7 +34,7 @@ async function save() {
     // Payment products and amounts remain solely in the existing site manager.
     body.paymentsEnabled = false;
     body.rates = Object.fromEntries(Object.entries(value.rates).map(([name, price]) => [name, rateAtoms(price)]));
-    if (key.value) body.apiKey = key.value;
+    if (replaceKey.value && key.value) body.apiKey = key.value;
     if (removeKey.value) body.removeKey = true;
     apply(await api('/api/admin/settings', { method: 'POST', body }));
     notice.value = '服务配置已保存，新请求采用新设置。';
@@ -57,7 +57,7 @@ async function reconcile(item, action) {
     <form v-if="draft" class="payment-settings-form" @submit.prevent="save">
       <fieldset :disabled="busy"><legend>供应商与模型</legend><div class="payment-form-grid"><label>供应商<select v-model="draft.provider" @change="changeProvider"><option v-for="item in settings.providers" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>模型 ID<input v-model="draft.model" required maxlength="128" pattern="[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}" /></label></div>
         <p class="payment-fine">{{ provider?.host }} · {{ provider?.hasKey ? '已加密保存密钥' : '尚未配置密钥' }}</p>
-        <label>更换供应商密钥<input v-model="key" type="password" autocomplete="new-password" placeholder="留空保留已保存的密钥" :disabled="settings.simulation" /></label><label class="payment-check"><input v-model="removeKey" type="checkbox" />删除所选供应商密钥</label>
+        <label class="payment-check"><input v-model="replaceKey" type="checkbox" :disabled="settings.simulation || removeKey" @change="key = ''" />更换供应商密钥</label><label v-if="replaceKey">新供应商密钥<input v-model="key" type="password" autocomplete="new-password" placeholder="留空保留已保存的密钥" /></label><label class="payment-check"><input v-model="removeKey" type="checkbox" @change="replaceKey = false; key = ''" />删除所选供应商密钥</label>
       </fieldset>
       <fieldset :disabled="busy"><legend>每百万 Token 售价（元）</legend><div class="payment-form-grid payment-form-three"><label>未缓存输入<input v-model="draft.rates.input_uncached" inputmode="decimal" required /></label><label>缓存输入<input v-model="draft.rates.input_cached" inputmode="decimal" required /></label><label>输出<input v-model="draft.rates.output" inputmode="decimal" required /></label></div></fieldset>
       <fieldset :disabled="busy"><legend>请求限制</legend><div class="payment-form-grid"><label>输入 Token 上限<input v-model.number="draft.maxInputTokens" type="number" min="4096" max="262144" required /></label><label>输出 Token 上限<input v-model.number="draft.maxOutputTokens" type="number" min="16" max="16384" required /></label><label>每人并发数<input v-model.number="draft.perUserConcurrent" type="number" min="1" max="4" required /></label><label>每分钟请求数<input v-model.number="draft.requestsPerMinute" type="number" min="1" max="60" required /></label></div></fieldset>

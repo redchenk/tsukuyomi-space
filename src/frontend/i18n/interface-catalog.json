@@ -9825,5 +9825,8 @@
   "请刷新支付中心，确认当前账号后重试。": {"en": "Refresh the payment centre to verify your account, then retry.", "ja": "お支払いセンターを更新してアカウントを確認し、再試行してください。"},
   "登录账号已变化，请刷新支付中心后重试。": {"en": "Your signed-in account changed. Refresh the payment centre and retry.", "ja": "ログインアカウントが変わりました。お支払いセンターを更新して再試行してください。"},
   "请检查登录状态和网站余额；可前往「支付中心」充值并查看模型、用量和订单。": {"en": "Check your sign-in and site balance. Open the payment centre to top up and view models, usage and orders.", "ja": "ログイン状態とサイト残高を確認してください。「お支払いセンター」でチャージ、モデル、使用量、注文を確認できます。"},
-  "模型用量暂不可用，请在“站内直供”刷新重试。": { "en": "Model usage is unavailable. Refresh the hosted service above to retry.", "ja": "モデル使用量を取得できません。上のサイト提供サービスで更新して再試行してください。" }
+  "模型用量暂不可用，请在“站内直供”刷新重试。": { "en": "Model usage is unavailable. Refresh the hosted service above to retry.", "ja": "モデル使用量を取得できません。上のサイト提供サービスで更新して再試行してください。" },
+  "未产生消费，冻结已释放": { "en": "No consumption; hold released", "ja": "利用なし。保留を解除しました" },
+  "未扣费": { "en": "Not charged", "ja": "引き落としなし" },
+  "新供应商密钥": { "en": "New provider key", "ja": "新しいプロバイダーキー" }
 }
