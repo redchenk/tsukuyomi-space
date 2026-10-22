@@ -26,7 +26,7 @@ test('verified release exposes the six main packages and the correctly labeled a
   assert.match(value.assets.android.href, /android-arm64-v8a\.apk$/);
   assert.match(value.assets.androidEmulator.href, /android-x86_64\.apk$/);
   assert.match(value.assets.ios.href, /ios-arm64-unsigned\.ipa$/);
-  assert.match(value.assets.ohos.href, /-33-ohos-arm64-unsigned\.hap$/);
+  assert.match(value.assets.ohos.href, /-34-ohos-arm64-unsigned\.hap$/);
   assert.match(value.assets.ohosInstall.href, /\/OHOS-INSTALL\.md$/);
   assert.match(value.assets.ohosChecksums.href, /\/OHOS-SHA256SUMS\.txt$/);
   assert.match(value.guideUrl, /\/releases\/v[^/]+\/INSTALL\.md$/);

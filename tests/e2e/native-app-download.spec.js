@@ -13,10 +13,10 @@ function release(tag) {
 }
 const body = releases => ({ success: true, data: { releases, source: 'distribution', stale: false } });
 
-test('signed-in visitors can open App downloads directly from the header on desktop and small phones', async ({ page }) => {
+test('signed-in visitors can open App downloads directly from the header on desktop and small phones', async ({ page, baseURL }) => {
   await page.route('**/api/app/releases', route => route.fulfill({ json: body([snapshot]) }));
   const login = await page.request.post('/api/auth/login', {
-    headers: { Origin: 'http://127.0.0.1:4174', 'X-Requested-With': 'XMLHttpRequest' },
+    headers: { Origin: baseURL, 'X-Requested-With': 'XMLHttpRequest' },
     data: { username: 'e2e-user', password: 'e2e-password' }
   });
   expect((await login.json()).success).toBe(true);
