@@ -24,6 +24,12 @@ const audienceInput = ref('');
 const audienceQueue = ref([]);
 const showLog = ref([]);
 const stagePose = ref('');
+const actionNotice = ref('');
+function checkStageAction() {
+  if (!live2d.ready.value) { actionNotice.value = '角色还未就绪，请先等待加载完成。'; return; }
+  const result = dispatchRoomLive2D({ bodyPose: 'nod', durationMs: 2600, intensity: 0.85 });
+  actionNotice.value = result ? '点头指令已发送，请观察上方角色。如果没有动作，请重新进入舞台后重试。' : '动作暂时不可用，请重试。';
+}
 const llmState = ref({
   loading: false,
   error: '',
@@ -549,6 +555,13 @@ onUnmounted(() => {
         <strong>{{ statusLabel }}</strong>
       </div>
 
+      <section class="live2d-start-help" aria-label="舞台使用指引">
+        <strong>第一次玩舞台？</strong><p>① 等待角色就绪 → ② 点一次“试试点头” → ③ 再尝试 AI 演出。</p>
+        <p role="status">{{ live2d.error.value ? '角色加载失败，请重新进入舞台重试。文字输出不代表动作已执行。' : live2d.ready.value ? '角色已就绪，可以试表情和动作。' : '正在加载角色，动作按钮将在就绪后开放。' }}</p>
+        <button class="live2d-action-btn" type="button" :disabled="!live2d.ready.value" @click="checkStageAction">试试点头</button>
+        <p v-if="actionNotice" role="status">{{ actionNotice }}</p>
+        <details><summary>有文字，却没动作或声音？</summary><p>文字、动作与语音分别运行。先用点头按钮检查角色；AI 演出需要配置聊天模型，声音还需要语音服务。没有声音时也可以先试动作。</p><a href="/room/settings?setup=1">配置聊天模型</a> · <a href="/room/settings">语音与其他设置</a></details>
+      </section>
       <section class="live2d-live-director" :aria-busy="llmState.loading" aria-label="Live director">
         <input v-model="liveTopic" type="text" spellcheck="false" placeholder="Stream topic">
         <div class="live2d-live-actions">
@@ -634,3 +647,7 @@ onUnmounted(() => {
     </div>
   </main>
 </template>
+
+<style scoped>
+.live2d-start-help{font-size:13px;line-height:1.7;padding:12px;border:1px solid #ffffff35;border-radius:14px;margin:12px 0}.live2d-start-help p{margin:8px 0}.live2d-start-help a{color:inherit;text-decoration:underline}.live2d-start-help summary{cursor:pointer}
+</style>

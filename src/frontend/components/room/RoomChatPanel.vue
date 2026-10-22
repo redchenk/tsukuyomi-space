@@ -16,7 +16,7 @@ const props = defineProps({
   panelStyle: { type: Object, required: true }
 });
 
-const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth', 'open-diary']);
+const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth', 'open-diary', 'help']);
 const imageInputRef = ref(null);
 const transcriptRef = ref(null);
 const composerRef = ref(null);
@@ -324,6 +324,8 @@ function endChatStatusLabel() {
           <TsIcon name="message" :size="23" />
           <strong>这一刻，慢慢聊</strong>
           <p>今天的小事、想说的话，都可以留在这里。</p>
+          <p class="field-hint">先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。</p>
+          <button v-if="!chat.sharedConversation.value" class="ghost-btn" type="button" @click="emit('help')">第一次使用 / 发现功能</button>
           <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
             :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
             @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>

@@ -11,6 +11,8 @@ import RoomStage from '../components/room/RoomStage.vue';
 import RoomWeatherCard from '../components/room/RoomWeatherCard.vue';
 import RoomShareDialog from '../components/room/RoomShareDialog.vue';
 import RoomSetupDialog from '../components/room/RoomSetupDialog.vue';
+import RoomHelpDialog from '../components/room/RoomHelpDialog.vue';
+import { roomChatConfigured } from '../services/room/roomOfficialApi.mjs';
 import { getSession } from '../api/client';
 import { useRoomState } from '../composables/room/useRoomState';
 import { useRoomBackdrop } from '../composables/room/useRoomBackdrop';
@@ -31,6 +33,28 @@ const roomStyle = computed(() => ({ ...room.roomStyle.value, ...backdrop.style.v
 const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
 const desktopPanel = ref('chatPanel');
 const panelHostReady = ref(false);
+const helpOpen = ref(false);
+const configuredForHelp = ref(false);
+const completedConversation = computed(() => room.chat.messages.value.some(message =>
+  message.role === 'assistant' && !message.pending && !message.failed && message.content?.trim()
+  && room.chat.messages.value.some(user => user.role === 'user' && !user.failed && user.turnId === message.turnId)
+));
+function openHelp() {
+  closeMobileTools();
+  room.chat.configurationRequired.value = false;
+  try { configuredForHelp.value = roomChatConfigured(JSON.parse(localStorage.getItem('roomLLMSettings') || '{}')); }
+  catch (_) { configuredForHelp.value = false; }
+  helpOpen.value = true;
+}
+function helpNavigate(path) { helpOpen.value = false; emit('go', path); }
+async function helpChat() {
+  helpOpen.value = false;
+  desktopPanel.value = 'chatPanel';
+  room.panels.openPanel('chatPanel');
+  await nextTick();
+  document.getElementById('chatInput')?.focus();
+}
+
 const desktopTabs = [
   { id: 'chatPanel', label: '聊天', icon: 'message' },
   { id: 'diaryPanel', label: '日记', icon: 'book' },
@@ -187,6 +211,7 @@ watch(() => props.shareId, loadSharedConversation);
         <summary aria-label="房间功能"><TsIcon name="message" :size="22" /></summary>
         <nav class="room-mobile-tools" aria-label="房间功能">
           <span class="room-tools-heading">这一刻，慢慢聊</span>
+          <button v-if="!shareId" type="button" @click="openHelp"><TsIcon name="helpCircle" :size="18" /><span>开始使用与发现功能</span></button>
           <button type="button" :disabled="mobileSessionBusy" @click="newMobileConversation"><TsIcon name="plus" :size="18" /><span>{{ room.chat.resetting.value ? '正在新建' : '新建会话' }}</span></button>
           <button type="button" @click="showMobileHistory"><TsIcon name="undo" :size="18" /><span>查看对话开头</span></button>
           <button v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)"><TsIcon :name="button.icon" :size="18" /><span>{{ button.label }}</span></button>
@@ -219,6 +244,7 @@ watch(() => props.shareId, loadSharedConversation);
         <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
           <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
         </button>
+        <button v-if="!shareId" type="button" aria-label="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
         <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /></a>
       </nav>
       <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">
@@ -234,6 +260,7 @@ watch(() => props.shareId, loadSharedConversation);
           @share="openConversationShare"
           @growth="emit('go', '/growth')"
           @open-diary="openDiary"
+          @help="openHelp"
         />
       </div>
       <div id="room-desktop-panel-host" v-show="!mobileRoom && desktopPanel !== 'chatPanel'" role="tabpanel" :aria-labelledby="`room-tab-${desktopPanel}`"></div>
@@ -269,8 +296,10 @@ watch(() => props.shareId, loadSharedConversation);
     <RoomSetupDialog
       :open="room.chat.configurationRequired.value"
       @close="room.chat.configurationRequired.value = false"
-      @configure="room.chat.configurationRequired.value = false; emit('go', '/room/settings')"
+      @configure="room.chat.configurationRequired.value = false; emit('go', '/room/settings?setup=1')"
+      @explore="openHelp"
     />
+    <RoomHelpDialog :open="helpOpen" :configured="configuredForHelp" :completed="completedConversation" @close="helpOpen = false" @go="helpNavigate" @chat="helpChat" @diary="helpOpen = false; openDiary()" />
     <RoomShareDialog
       :open="shareDialogOpen"
       :turn="selectedShareTurn"

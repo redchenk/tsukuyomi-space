@@ -31,9 +31,10 @@ function notify(message) {
   feedbackTimer = setTimeout(() => { feedback.value = ''; }, 3200);
 }
 function act(kind, item) {
-  dispatchRoomLive2D({ [kind]: item.id, durationMs: 2400, intensity: 0.65 });
+  if (!props.live2d.ready.value) return notify('角色尚未就绪，请等待加载完成。');
+  const accepted = dispatchRoomLive2D({ [kind]: item.id, durationMs: 2400, intensity: 0.65 });
   openMenu.value = '';
-  notify(item.label);
+  notify(accepted ? `已发送“${item.label}”动作，请观察角色；文字聊天与语音分别运行。` : '这个动作暂时不可用，请尝试其他动作。');
 }
 function closeMenus(event) {
   if (event.type === 'keydown' ? event.key === 'Escape' : !event.target.closest?.('.room-stage-menu-anchor')) openMenu.value = '';
@@ -128,6 +129,6 @@ onBeforeUnmount(() => {
         <button type="button" class="room-stage-voice" aria-label="语音设置" @click="emit('settings')"><TsIcon name="volume" :size="18" /><span>语音设置</span></button>
       </div>
     </div>
-    <div v-if="live2d.error.value" class="room-stage-error">{{ live2d.error.value }}</div>
+    <div v-if="live2d.error.value" class="room-stage-error" role="alert">角色加载失败：{{ live2d.error.value }}。文字聊天仍可使用；请重新进入房间重试。</div>
   </section>
 </template>

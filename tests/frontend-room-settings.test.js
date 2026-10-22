@@ -32,6 +32,7 @@ function setup(options = {}) {
     ...(options.fetchCatalog ? { fetchModelCatalog: options.fetchCatalog, catalogScope: async () => 'fixture-scope', readCatalogCache: () => null, writeCatalogCache() {} } : {}),
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
+    useRoute: () => ({ query: options.query || {} }),
     onMounted() {}, onBeforeUnmount() {}, watch() {}, onBeforeRouteLeave: fn => { routeGuard = fn; },
     nextTick: fn => fn?.(), getSession: () => session,
     readMemorySource: id => id ? JSON.parse(store.get(`roomMemorySource:${id}`) || '{"mode":"cloud","fingerprint":""}') : ({ mode: 'local', fingerprint: '' }),

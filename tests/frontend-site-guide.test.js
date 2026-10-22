@@ -16,7 +16,7 @@ describe('global AI guide and visible user levels', () => {
         assert.match(pet, /role="dialog"/);
         assert.match(pet, /aria-modal="true"/);
         assert.match(pet, /v-if="!llmStatus\.configured"/);
-        assert.match(pet, /navigate\('\/room\/settings'\)/);
+        assert.match(pet, /navigate\('\/room\/settings\?setup=1'\)/);
         assert.doesNotMatch(pet, /v-html/);
         assert.match(guide, /readJson\('roomLLMSettings'/);
         assert.match(guide, /fetchWithLocalOllamaGuidance/);

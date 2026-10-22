@@ -57,10 +57,22 @@ const COPY = Object.freeze({
 
 const GUIDES = Object.freeze([
   {
-    key: 'room', icon: 'message', path: '/room/settings', routes: ['room', 'roomSettings'],
-    zh: ['Room 与记忆', '在 Room 设置中接入模型、语音、知识库和长期记忆。'],
-    ja: ['Room と記憶', 'Room 設定でモデル、音声、知識、長期記憶を接続します。'],
-    en: ['Room and memory', 'Connect your model, voice, knowledge and long-term memory in Room Settings.']
+    key: 'room', icon: 'message', path: '/room/settings?setup=1', routes: ['room', 'roomSettings'],
+    zh: ['第一次聊天', '选择聊天服务，测试并保存，再回到房间说第一句话。语音、记忆可以稍后设置。'],
+    ja: ['はじめての会話', 'モデルを選んで接続をテストし、保存してから話しかけてみましょう。音声や記憶は後から設定できます。'],
+    en: ['Your first chat', 'Choose a service, test and save the connection, then send your first message. Voice and memory can wait.']
+  },
+  {
+    key: 'game', icon: 'play', path: '/game', routes: ['game'],
+    zh: ['辉夜快跑', '跟着音乐跑一局，进入后查看键盘或触屏操作，不需要聊天模型。'],
+    ja: ['かぐやラン', '音楽に合わせて遊びましょう。チャットモデルは不要です。'],
+    en: ['Kaguya Run', 'Play along with the music. No chat model is needed.']
+  },
+  {
+    key: 'live2d', icon: 'sparkles', path: '/live2d', routes: ['live2d'],
+    zh: ['Live2D 舞台', '等角色就绪后先试一次点头；动作、文字和语音分别运行。'],
+    ja: ['Live2D ステージ', '読み込み後にうなずきを試しましょう。動作、テキスト、音声は個別に動きます。'],
+    en: ['Live2D stage', 'Wait for the character, then try a nod. Motion, text and voice run separately.']
   },
   {
     key: 'stage', icon: 'fileText', path: '/editor', routes: ['stage', 'article', 'articleDetail', 'editor'],
@@ -334,7 +346,7 @@ onBeforeUnmount(() => {
               <strong>{{ llmStatus.configured ? copy.connected : copy.noModel }}</strong>
               <span>{{ llmStatus.configured ? modelLabel : copy.noModelBody }}</span>
             </div>
-            <button v-if="!llmStatus.configured" class="site-guide-setup" type="button" @click="navigate('/room/settings')">
+            <button v-if="!llmStatus.configured" class="site-guide-setup" type="button" @click="navigate('/room/settings?setup=1')">
               {{ copy.setup }}
             </button>
           </div>

@@ -71,6 +71,11 @@ function onImportFile(event) {
         <input ref="fileInputRef" type="file" accept="application/json,.json" hidden @change="onImportFile">
       </div>
 
+      <details class="diary-notice diary-affection-help">
+        <summary>当前好感度 {{ diary.affection?.value ?? 0 }} · 存档 {{ diary.slotId?.value ?? 1 }} · 如何变化？</summary>
+        <p>好感度来自当前日记存档。结束聊天并成功生成、保存日记后，会记录本次好感度；不会按消息条数或点击角色次数自动增加，也可能保持不变。导入或同步存档后，数值可能改变。</p>
+        <p>{{ entries.length ? `最近记录：${entries[entries.length - 1].date || ''} ${entries[entries.length - 1].time || ''}` : '还没有生成日记。先聊几句，再使用“结束并写日记”。' }}</p>
+      </details>
       <!-- A backup can hold several diary authors; chat identity is separate. -->
       <label v-if="personas.length > 1" class="diary-persona-picker">
         <span>日记人设</span>

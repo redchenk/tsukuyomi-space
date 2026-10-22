@@ -9,7 +9,7 @@ import { officialChatUrl, isOfficialRoomApi, OFFICIAL_SESSION_MARKER, fetchOffic
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
 import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, useRoute } from 'vue-router';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries, ROOM_KNOWLEDGE_VERSION } from '../constants/room/knowledgeEntries';
@@ -164,6 +164,25 @@ const activeSection = ref('llm');
 const mobileSectionsOpen = ref(false);
 const settingsSearch = ref('');
 const setupGuideVisible = ref(true);
+const guidedSetup = ref(useRoute().query.setup === '1');
+const setupStep = ref(1);
+async function startGuidedSetup() {
+  guidedSetup.value = true;
+  setupStep.value = 1;
+  await selectSettingsSection('llm');
+}
+async function moveSetupStep(step) {
+  toast.visible = false;
+  setupStep.value = step;
+  await nextTick();
+  settingsPanel.value?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  settingsPanel.value?.focus({ preventScroll: true });
+}
+function finishGuidedSetup() {
+  if (connectionCheck.status === 'loading' || !llmSetupReady.value) return;
+  if (saveLLM(false)) emit('go', '/room');
+}
+
 const showLlmKey = ref(false);
 const savingSettings = ref(false);
 const knowledgeDraftOpen = ref(false);
@@ -2484,7 +2503,13 @@ onBeforeUnmount(() => {
       <p v-if="memoryChoice.progress" class="field-hint" role="status">{{ memoryChoice.progress }}</p>
       <div v-if="memoryChoice.error" class="field-hint error" role="alert">{{ memoryChoice.error }} <button class="ghost-btn" type="button" :disabled="memoryChoice.pending" @click="refreshMemoryChoice(true)">重新读取</button></div>
     </section>
-    <section v-if="setupGuideVisible" class="settings-welcome">
+    <section v-if="guidedSetup" class="settings-welcome settings-first-use" aria-label="首次聊天配置">
+      <div><strong>第一次聊天，跟着这三步就好</strong><p>语音、记忆和外观可以稍后设置。当前填写的内容会保留到你离开页面。</p>
+        <ol class="settings-flow"><li v-for="(label, index) in ['选择服务', '填写连接信息', '测试并保存']" :key="label" :aria-current="setupStep === index + 1 ? 'step' : undefined"><b>{{ index + 1 }}</b>{{ label }}</li></ol>
+      </div>
+      <button type="button" class="ghost-btn" @click="guidedSetup = false">查看全部设置</button>
+    </section>
+    <section v-else-if="setupGuideVisible" class="settings-welcome">
       <span class="settings-welcome-icon"
         ><TsIcon name="sparkles" :size="24"
       /></span>
@@ -2506,9 +2531,9 @@ onBeforeUnmount(() => {
         <TsIcon name="x" :size="16" />
       </button>
     </section>
-    <div class="settings-workspace">
+    <div class="settings-workspace" :class="{ 'settings-guided': guidedSetup }">
       <button
-        class="ghost-btn settings-mobile-menu"
+        v-if="!guidedSetup" class="ghost-btn settings-mobile-menu"
         type="button"
         :aria-expanded="mobileSectionsOpen"
         aria-controls="settings-navigation"
@@ -2520,7 +2545,7 @@ onBeforeUnmount(() => {
         ><span>全部设置</span><TsIcon name="chevronDown" :size="18" />
       </button>
       <aside
-        id="settings-navigation"
+        v-if="!guidedSetup" id="settings-navigation"
         class="settings-navigation"
         :class="{ 'is-open': mobileSectionsOpen }"
       >
@@ -2566,8 +2591,7 @@ onBeforeUnmount(() => {
               class="ghost-btn settings-text-btn"
               type="button"
               @click="
-                setupGuideVisible = true;
-                selectSettingsSection('llm');
+                startGuidedSetup();
               "
             >
               查看配置指引<TsIcon name="arrowRight" :size="14" />
@@ -2595,7 +2619,7 @@ onBeforeUnmount(() => {
               <p>连接一个模型，让八千代开始回应你。</p>
             </div>
           </div>
-          <div class="settings-mode-grid">
+          <div v-show="!guidedSetup || setupStep === 1" class="settings-mode-grid">
             <label class="settings-mode" :class="{ selected: setupLlmMode === 'site' }">
               <TsIcon name="moon" :size="26" /><span><strong>站内直供</strong><small>账号直接使用 · 统一余额计费</small></span>
               <input type="radio" name="settings-llm-mode" :checked="setupLlmMode === 'site'" @change="chooseSetupLlmMode('site')" />
@@ -2625,6 +2649,7 @@ onBeforeUnmount(() => {
                 @change="chooseSetupLlmMode('ollama')"
             /></label>
           </div>
+          <div v-show="!guidedSetup || setupStep === 2">
           <div v-if="setupLlmMode === 'site'" class="settings-note settings-official-supply">
             <TsIcon name="shield" :size="19" />
             <div>
@@ -2903,8 +2928,10 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </details>
-          <RoomModelRuntimePanel v-model="llm.runtimeConfig" :settings="llm" :declaration="selectedModelDeclaration" />
-          <div class="settings-test-footer">
+          <RoomModelRuntimePanel v-if="!guidedSetup" v-model="llm.runtimeConfig" :settings="llm" :declaration="selectedModelDeclaration" />
+          </div>
+          <div v-if="guidedSetup && setupStep === 3" class="settings-note"><TsIcon name="info" :size="18" /><div><strong>接下来，确认能收到回复</strong><p>当前模型：{{ llm.model }}。测试会调用所选服务，可能产生用量；不会自动发送聊天。</p><p>通过后点击“保存，去说第一句话”。也可以跳过测试，保存后直接尝试聊天。</p><p v-if="testedConnectionStatus === 'error'">请查看测试结果中的原因。可以回到上一步修改信息，或保留设置后稍后重试。</p></div></div>
+          <div v-show="!guidedSetup || setupStep === 3" class="settings-test-footer">
             <div class="settings-connection" role="status">
               <span class="settings-status" :class="testedConnectionStatus"
                 ><TsIcon
@@ -4046,7 +4073,7 @@ onBeforeUnmount(() => {
         </article>
         <p class="settings-caption">TSUKUYOMI SPACE · ROOM SETTINGS</p>
       </div>
-      <aside class="settings-context">
+      <aside v-if="!guidedSetup" class="settings-context">
         <section class="settings-context-card">
           <h2>
             当前房间
@@ -4115,7 +4142,14 @@ onBeforeUnmount(() => {
         </section>
       </aside>
     </div>
-    <footer class="settings-savebar">
+    <footer v-if="guidedSetup" class="settings-savebar"><div class="settings-savebar-inner">
+      <p role="status">第 {{ setupStep }} / 3 步 · {{ setupStep === 3 ? connectionStatusText : setupStep === 2 ? (llmSetupReady ? '信息已填写，可以继续' : '请填写当前服务所需的信息') : '选择适合你的连接方式' }}</p>
+      <div class="button-row"><button v-if="setupStep > 1" type="button" class="ghost-btn" :disabled="connectionCheck.status === 'loading'" @click="moveSetupStep(setupStep - 1)">上一步</button>
+        <button v-if="setupStep < 3" type="button" class="primary-btn" :disabled="setupStep === 2 && !llmSetupReady" @click="moveSetupStep(setupStep + 1)">下一步</button>
+        <button v-else type="button" class="primary-btn" :disabled="!llmSetupReady || connectionCheck.status === 'loading'" @click="finishGuidedSetup">{{ testedConnectionStatus === 'success' ? '保存，去说第一句话' : '跳过测试并保存' }}</button>
+      </div>
+    </div></footer>
+    <footer v-else class="settings-savebar">
       <div class="settings-savebar-inner">
         <div class="settings-save-state" role="status">
           <TsIcon :name="hasUnsavedSettings ? 'penLine' : 'check'" :size="16" />
@@ -4217,3 +4251,7 @@ onBeforeUnmount(() => {
     </div>
   </main>
 </template>
+
+<style scoped>
+.settings-workspace.settings-guided{grid-template-columns:minmax(0,760px);justify-content:center}.settings-first-use .settings-flow{margin-top:12px;flex-wrap:wrap}.settings-flow [aria-current="step"]{font-weight:700;color:var(--text)}.settings-guided .settings-main{min-width:0}.settings-first-use{display:flex;align-items:start;gap:12px}.settings-first-use>div{flex:1;min-width:0}.settings-first-use>button{position:static;width:auto;min-height:44px;flex-shrink:0}@media(max-width:600px){.settings-first-use{flex-direction:column}.settings-first-use>button{align-self:flex-start}.settings-first-use .settings-flow{display:flex;gap:12px}}
+</style>

@@ -2,7 +2,7 @@
 import { useModalDialog } from '../../composables/useModalDialog';
 import TsIcon from '../TsIcon.vue';
 const props = defineProps({ open: Boolean });
-const emit = defineEmits(['close', 'configure']);
+const emit = defineEmits(['close', 'configure', 'explore']);
 const modal = useModalDialog(() => props.open);
 </script>
 
@@ -11,11 +11,12 @@ const modal = useModalDialog(() => props.open);
     <dialog v-if="open" ref="modal" class="room-setup-dialog" aria-labelledby="room-setup-title" aria-describedby="room-setup-description" @cancel.prevent="emit('close')" @click.self="emit('close')">
       <div class="room-setup-content">
         <TsIcon name="message" :size="32" />
-        <h2 id="room-setup-title">先为八千代选择一个聊天模型</h2>
-        <p id="room-setup-description">还没有配置聊天 API。前往房间设置，选择「站内直供」即可使用网站账号和余额，也可以连接自己的云端 API 或本机 Ollama。</p>
+        <h2 id="room-setup-title">第一次来，先和八千代聊起来</h2>
+        <p id="room-setup-description">跟着三步完成：选择聊天服务 → 测试并保存 → 发出第一句话。站内直供需要登录账号与可用额度；也可以连接自己的服务。语音和其他设置可以稍后再做。</p>
         <p class="room-setup-hint">完成配置前不会发送聊天请求或产生模型费用。</p>
         <div class="room-setup-actions">
-          <button type="button" class="primary-btn" @click="emit('configure')">去配置聊天模型 <TsIcon name="arrowRight" :size="16" /></button>
+          <button type="button" class="primary-btn" @click="emit('configure')">开始分步配置 <TsIcon name="arrowRight" :size="16" /></button>
+          <button type="button" class="ghost-btn" @click="emit('explore')">先看看能做什么</button>
           <button type="button" class="ghost-btn" @click="emit('close')">稍后设置</button>
         </div>
       </div>
