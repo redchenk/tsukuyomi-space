@@ -18,6 +18,17 @@ async function fixtures(page) {
   ` }));
 }
 
+test('Live2D discovery destination supports direct loads and explains action feedback', async ({ page }) => {
+  await fixtures(page);
+  const response = await page.goto('/live2d');
+  expect(response.status()).toBe(200);
+  await expect(page.locator('.live2d-start-help')).toBeVisible();
+  await expect(page.getByRole('button', { name: '试试点头', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: '试试点头', exact: true }).click();
+  await expect(page.locator('.live2d-start-help')).toContainText('点头指令已发送');
+  expect(await page.evaluate(() => localStorage.getItem('roomLLMSettings'))).toBeNull();
+});
+
 for (const width of [390, 1280]) {
   test(`first-use flow preserves drafts, invalidates tests and saves at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 844 });
