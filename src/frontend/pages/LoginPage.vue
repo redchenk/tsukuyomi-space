@@ -734,7 +734,7 @@ onMounted(() => {
               </button>
             </div>
           </div>
-          <div class="auth-card-footer">
+          <div class="auth-card-footer"><RouterLink to="/privacy">Privacy · 隐私政策</RouterLink>
             <div class="panel-links">{{ t.noAccount }} <a :href="registerPath" @click.prevent="go(registerPath)">{{ t.register }}</a></div>
             <a class="auth-home-link" href="/" @click.prevent="go('/')">{{ authHomeLabel }}</a>
           </div>

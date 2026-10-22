@@ -1191,6 +1191,7 @@ onUnmounted(() => {
           </div>
 
           <div v-if="uc.tab === 'security'" :aria-busy="uc.passwordChanging">
+            <div class="panel-links" style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:24px"><RouterLink to="/privacy">{{ lang === 'zh' ? '隐私政策' : 'Privacy policy' }}</RouterLink><RouterLink to="/delete-account">{{ lang === 'zh' ? '申请注销账号' : 'Request account deletion' }}</RouterLink></div>
             <div class="uc-section-head">
               <h2 class="uc-section-title">{{ t.ucSecurity }}</h2>
               <button type="button" class="ghost-btn" @click="go('/oauth/connections')">{{ lang === 'en' ? 'Authorized apps' : lang === 'ja' ? '連携アプリ' : '已授权应用' }}</button>

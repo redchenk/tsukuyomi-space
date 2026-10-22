@@ -9837,5 +9837,109 @@
   "模型用量暂不可用，请在“站内直供”刷新重试。": { "en": "Model usage is unavailable. Refresh the hosted service above to retry.", "ja": "モデル使用量を取得できません。上のサイト提供サービスで更新して再試行してください。" },
   "未产生消费，冻结已释放": { "en": "No consumption; hold released", "ja": "利用なし。保留を解除しました" },
   "未扣费": { "en": "Not charged", "ja": "引き落としなし" },
-  "新供应商密钥": { "en": "New provider key", "ja": "新しいプロバイダーキー" }
+  "新供应商密钥": { "en": "New provider key", "ja": "新しいプロバイダーキー" },
+  "隐私政策 / Privacy": {
+    "en": "Privacy policy",
+    "ja": "プライバシーポリシー"
+  },
+  "账号注销 / Delete account": {
+    "en": "Delete account",
+    "ja": "アカウント削除"
+  },
+  "注销申请": {
+    "en": "Deletion requests",
+    "ja": "削除申請"
+  },
+  "Privacy · 隐私政策": {
+    "en": "Privacy policy",
+    "ja": "プライバシーポリシー"
+  },
+  "申请注销账号 / Delete account": {
+    "en": "Request account deletion",
+    "ja": "アカウント削除を申請"
+  },
+  "隐私政策": {
+    "en": "Privacy policy",
+    "ja": "プライバシーポリシー"
+  },
+  "申请注销账号": {
+    "en": "Request account deletion",
+    "ja": "アカウント削除を申請"
+  },
+  "月读空间隐私政策": {
+    "en": "Tsukuyomi Space privacy policy",
+    "ja": "月読空間のプライバシーポリシー"
+  },
+  "月读空间账号注销与数据删除": {
+    "en": "Tsukuyomi Space account and data deletion",
+    "ja": "月読空間のアカウント・データ削除"
+  },
+  "注销申请工作台": {
+    "en": "Account deletion requests",
+    "ja": "アカウント削除申請の管理"
+  },
+  "仅超级管理员可查看。核验后按清单处理；“开始处理”不会删除用户，“完成”也不会代替实际清理。": {
+    "en": "Super administrators only. Verify and follow the checklist. Starting processing does not delete an account; marking complete does not perform cleanup.",
+    "ja": "最高管理者のみ閲覧できます。確認後にチェックリストに沿って処理してください。処理開始や完了登録だけではデータは削除されません。"
+  },
+  "返回管理中心": {
+    "en": "Back to administration",
+    "ja": "管理画面に戻る"
+  },
+  "申请状态": {
+    "en": "Request status",
+    "ja": "申請状況"
+  },
+  "暂无此状态的申请。": {
+    "en": "No requests with this status.",
+    "ja": "この状態の申請はありません。"
+  },
+  "账号已移除": {
+    "en": "Account removed",
+    "ja": "アカウント削除済み"
+  },
+  "编号：": {
+    "en": "Reference:",
+    "ja": "申請番号："
+  },
+  "核验邮箱：": {
+    "en": "Verification email:",
+    "ja": "確認用メール："
+  },
+  "请查阅受控处理回执": {
+    "en": "See the restricted processing receipt",
+    "ja": "アクセス制限された処理記録を確認してください"
+  },
+  "收到：": {
+    "en": "Received:",
+    "ja": "受付日："
+  },
+  "· 预计处理：": {
+    "en": "Expected handling:",
+    "ja": "処理予定日："
+  },
+  "（已逾期，请优先联系）": {
+    "en": "(Overdue, contact the requester promptly)",
+    "ja": "（期限超過・優先して連絡してください）"
+  },
+  "开始核验处理": {
+    "en": "Start verification",
+    "ja": "確認・処理を開始"
+  },
+  "先保存受控的数据清理清单，再删除账号；原有“删除用户”操作不代表关联内容、存储及备份已清理。不要在下方填写密码、密钥、身份证或聊天内容。": {
+    "en": "Save a restricted cleanup inventory before removing the account. Delete user does not clear all content, storage or backups. Do not enter passwords, keys, identity documents or chat content below.",
+    "ja": "削除前にアクセス制限付きの削除対象一覧を保存してください。ユーザー削除だけでは関連内容やバックアップは消去されません。パスワード、キー、身分証や会話内容は記入しないでください。"
+  },
+  "处理回执摘要（至少 10 字，保留依据与期限，不含敏感原文）": {
+    "en": "Processing summary (at least 10 characters; retention basis and deadline, without sensitive source data)",
+    "ja": "処理概要（10文字以上、保存根拠と期限、機密情報は除く）"
+  },
+  "账号仍存在，清理前无法登记完成。": {
+    "en": "The account still exists. Clean up before recording completion.",
+    "ja": "アカウントがまだ存在します。削除前に完了登録はできません。"
+  },
+  "登记已核验完成": {
+    "en": "Record verified completion",
+    "ja": "確認済みの完了を記録"
+  }
 }

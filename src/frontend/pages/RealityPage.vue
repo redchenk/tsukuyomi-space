@@ -138,7 +138,7 @@ function go(path) {
     <div class="reality-container">
       <section class="reality-hero">
         <div class="reality-hero-kicker">{{ t.realityEyebrow }}</div>
-        <h1>{{ t.realityTitle }}</h1>
+        <nav style="display:flex;flex-wrap:wrap;gap:16px;margin-block:16px"><RouterLink to="/privacy">隐私政策 / Privacy</RouterLink><RouterLink to="/delete-account">申请注销账号 / Delete account</RouterLink></nav><h1>{{ t.realityTitle }}</h1>
         <p class="reality-hero-copy">{{ t.realitySubtitle }}</p>
         <div class="reality-hero-actions">
           <a class="reality-btn" href="#contact">{{ t.realityContactTitle }}</a>

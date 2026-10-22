@@ -1,0 +1,26 @@
+const { test, expect } = require('@playwright/test');
+test('public mobile policy and authenticated request, receipt and cancellation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/privacy');
+  await expect(page.getByRole('heading', { name: '隐私政策', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: '申请注销账号', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('link', { name: '申请注销账号', exact: true }).click();
+  await expect(page.getByRole('link', { name: '登录后在线提交' })).toBeVisible();
+  const login = await page.request.post('/api/auth/login', { data: { username: 'e2e-user', password: 'e2e-password' }, headers: { Origin: new URL(page.url()).origin, 'X-Requested-With': 'XMLHttpRequest' } });
+  expect(login.ok()).toBe(true);
+  await page.reload();
+  const submit = page.getByRole('button', { name: '提交注销申请', exact: true });
+  await expect(submit).toBeDisabled();
+  await page.getByRole('checkbox').check();
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect(page.getByText('等待站长核验', { exact: true })).toBeVisible();
+  await expect(submit).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/account-deletion-mobile.png', fullPage: true });
+  await page.reload();
+  await expect(page.getByText('等待站长核验', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '撤回申请' }).click();
+  await expect(page.getByText('已撤回申请', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

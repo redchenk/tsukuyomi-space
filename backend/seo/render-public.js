@@ -10,6 +10,15 @@ const appReleaseFallback = normalizeAppRelease(require('../../shared/native-app-
 const destinations = Object.entries(copy).filter(([path]) => path !== '/').map(([href, value]) => ({ href, title: value.title, description: value.description }));
 function articleItems(rows) { return rows.map(a => ({ href: articlePath(a), title: a.title, description: a.excerpt, meta: `${a.author_nickname || a.author_username || '月读空间'} · ${a.published_at || a.created_at || a.publish_date || ''}`, image: a.cover_image })); }
 function renderPublicPage(path, appRelease = appReleaseFallback) {
+    if (path === '/privacy' || path === '/delete-account') {
+        const policy = require('../../shared/privacy-policy.json');
+        const deleting = path === '/delete-account';
+        return renderSeoCollectionPage({ path, ...copy[path],
+            sections: deleting ? policy.zh.sections.slice(7, 10) : policy.zh.sections,
+            facts: [['适用应用', policy.app], ['更新日期', policy.updatedAt], ['隐私联系邮箱', policy.contact]],
+            actions: [{ href: deleting ? '/login?redirect=/delete-account' : '/delete-account', label: deleting ? '登录后在线申请' : '申请注销账号' }, { href: '/privacy', label: '完整隐私政策' }]
+        });
+    }
     let items = destinations;
     if (path === '/hub' || path === '/') items = [...destinations, ...articleItems(articles.listRecentPublishedArticles(8))];
     if (path === '/plaza') items = messages.listRecentPublicMessages(12).map(m => ({ href: `/plaza#message-${m.id}`, title: `${m.author_nickname || m.author}的公开留言`, description: m.content, meta: m.created_at }));

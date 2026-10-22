@@ -46,6 +46,8 @@ const SEO_ROUTES = [
     { path: '/gallery', priority: '0.8', changefreq: 'daily' },
     { path: '/wiki', priority: '0.8', changefreq: 'monthly' },
     { path: '/friend-links', priority: '0.6', changefreq: 'weekly' },
+    { path: '/privacy', priority: '0.5', changefreq: 'monthly' },
+    { path: '/delete-account', priority: '0.5', changefreq: 'monthly' },
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
     { path: '/download', priority: '0.7', changefreq: 'weekly' },
     { path: '/pixel', priority: '0.7', changefreq: 'weekly' },
@@ -381,7 +383,7 @@ function serveStaticFiles(app) {
         return res.type('html').send(addDiscovery(composePage(frontendIndexHtml, html), req.path));
     };
     app.get('/indexnow-:key.txt', (req, res, next) => indexNow.serveKey(req, res, next));
-    for (const pathname of ['/', '/hub', '/plaza', '/room', '/reality']) {
+    for (const pathname of ['/', '/hub', '/plaza', '/room', '/reality', '/privacy', '/delete-account']) {
         app.get(pathname, (req, res) => sendPublic(req, res, renderPublicPage(pathname)));
     }
     app.get('/download', async (req, res) => {
@@ -488,7 +490,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/download', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/payments', '/payments/', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game']);
+        const vueRoutes = new Set(['/privacy', '/delete-account', '/admin/account-deletions', '/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/download', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/payments', '/payments/', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game']);
         const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
         if (vueRoutes.has(req.path) || ['/fushi/connect', '/fushi/astrbot/callback'].includes(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {

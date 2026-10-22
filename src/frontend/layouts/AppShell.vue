@@ -338,7 +338,7 @@ onUnmounted(() => {
 
     <SiteMusicDrawer v-if="showChrome && music && routeName !== 'game'" :music="music" :lang="lang" />
     <slot></slot>
-    <footer v-if="showSiteBeian" class="site-beian-footer">
+    <footer v-if="showSiteBeian" class="site-beian-footer"><nav aria-label="Privacy" style="display:flex;justify-content:center;flex-wrap:wrap;gap:16px;margin-bottom:10px"><RouterLink style="color:inherit;text-underline-offset:4px" to="/privacy">隐私政策 / Privacy</RouterLink><RouterLink style="color:inherit;text-underline-offset:4px" to="/delete-account">账号注销 / Delete account</RouterLink></nav>
       <BeianLink />
     </footer>
   </div>

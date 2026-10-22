@@ -1,0 +1,150 @@
+{
+  "version": "2026-10-22",
+  "contact": "redchenk919@gmail.com",
+  "app": "月读空间 · Tsukuyomi Space",
+  "updatedAt": "2026-10-22",
+  "zh": {
+    "title": "隐私政策",
+    "intro": "你的数据如何使用，以及如何带走或删除。",
+    "sections": [
+      {
+        "title": "适用范围与联系方式",
+        "paragraphs": [
+          "本政策适用于月读空间（Tsukuyomi Space）网站 yachiyo.hk 及同名原生 App，包括 Android / Google Play 版本。运营与隐私联络人为 redchenk（站长），联系邮箱 redchenk919@gmail.com。你可以通过该邮箱提出访问、更正、导出、删除个人信息或注销账号的请求。"
+        ]
+      },
+      {
+        "title": "账号与登录",
+        "paragraphs": [
+          "注册和登录会处理用户名、昵称、邮箱、密码哈希、头像、登录会话与必要的安全记录。通过 QQ 或 GitHub 登录时，我们接收授权范围内的账号标识、公开资料及邮箱，用于建立或绑定本站账号。我们不获取你的第三方账号密码。第三方授权也可在对应服务的账号设置中撤销。"
+        ]
+      },
+      {
+        "title": "创作、互动与附件",
+        "paragraphs": [
+          "文章、评论、广场留言、图库、像素作品及公开资料会按发布设置向其他人展示。上传的文件由本站服务器或已配置的对象存储（例如阿里云 OSS）保存；公开附件可通过其链接访问。请勿在公开内容中上传不希望他人看到的信息。站内通知、关注、点赞、收藏、成长任务及游戏成绩用于相应社区功能。"
+        ]
+      },
+      {
+        "title": "私人房间、AI 与语音",
+        "paragraphs": [
+          "聊天、记忆、日记和相关图片用于私人房间功能。游客数据通常保存在浏览器或 App 本机；登录后启用的云端功能会将相应数据与账号关联。调用模型、嵌入或语音服务时，请求所需的文本、上下文、选中的记忆和图片会发送至所选服务商或你配置的端点。站内直供会记录用量和费用。不同供应商的保存和处理规则由其政策决定；如有隐私疑问，请先停用对应服务并联系站长。AI 输出可能有误，请勿输入不必要的敏感信息。"
+        ]
+      },
+      {
+        "title": "本机设置、邮箱与可选权限",
+        "paragraphs": [
+          "语言、主题、模型连接配置、会话凭据和缓存等用于记住设置与保持登录，可能保存在浏览器存储或 App 本机。配置第三方 API 时，密钥会用于向对应端点鉴权。启用站内邮箱功能时，会处理连接配置、授权凭据及你请求的邮件内容。定位仅在你选择使用位置或天气功能并授权后使用；文件和图片由你主动选择。拒绝可选权限不会阻止基本浏览。你可以在系统设置撤销权限、清除本机数据或移除第三方连接。"
+        ]
+      },
+      {
+        "title": "支付、统计与安全",
+        "paragraphs": [
+          "支付功能会处理订单、金额、支付渠道、交易状态、余额及用量账本；支付账户信息由支付宝等所选渠道处理。网站还会处理访问时间、IP 或其派生标识、客户端信息、文章曝光及有效阅读等记录，用于运行统计、推荐公平性、故障排查和防滥用。我们采用访问控制、传输加密等措施保护数据，但无法承诺任何系统绝对安全。"
+        ]
+      },
+      {
+        "title": "数据接收方与跨境连接",
+        "paragraphs": [
+          "按你使用的功能，托管、对象存储、邮件、支付、登录、模型和语音服务商可能处理实现该功能所需的信息。QQ、GitHub、支付宝、阿里云 OSS 及你选择的 AI/语音服务只在对应功能涉及它们时使用；服务配置可能变化。选择境外模型、自定义端点或第三方链接，可能使相关请求在境外处理。站长可说明当前站内直供的供应商。依法应履行的告知或同意程序另行提供。"
+        ]
+      },
+      {
+        "title": "保存、删除与备份",
+        "paragraphs": [
+          "账号资料和你选择保存的内容通常保留至你删除或提出注销申请。申请后，站长核验身份、余额和数据范围，通常自收到申请起 30 日内处理；需要补充材料或存在法定限制时，会通过绑定邮箱说明原因、所需资料及预计日期。注销涉及账号标识、登录绑定、私人聊天、记忆、日记、附件和公开作品的删除或无法关联个人的匿名化。公开作品默认纳入清理，不以保留作品作为注销条件。"
+        ]
+      },
+      {
+        "title": "必要留存与第三方副本",
+        "paragraphs": [
+          "余额、未完成订单和争议由站长先核对并与你确认，不会因提交申请自动扣除余额或退款。依法必须保留的最少交易、安全或争议记录会隔离使用，并在处理回执中说明类别、依据、期限与删除安排。备份、对象存储版本、CDN 缓存以及受托处理方数据也纳入人工清理清单；未能立即删除的副本将限制访问并说明清除安排，恢复备份时须重新执行删除。其他人自行保存、转发或搜索引擎留存的公开副本可能不受本站控制。"
+        ]
+      },
+      {
+        "title": "如何申请与本机数据",
+        "paragraphs": [
+          "在用户中心的“账号安全”打开“申请注销账号”，或直接访问 https://yachiyo.hk/delete-account。卸载 App 后也可使用该网页；无法登录时，从绑定邮箱发送“月读空间账号注销申请”至 redchenk919@gmail.com，说明用户名及请求范围即可，请勿发送密码、验证码或 API 密钥。只想删除部分数据也可使用相同邮箱。注销完成通过核验后的邮箱通知；请自行清除各设备上的本机缓存、导出文件及备份。"
+        ]
+      },
+      {
+        "title": "未成年人及政策更新",
+        "paragraphs": [
+          "未成年人应在监护人指导下使用服务，避免公开真实联系方式等敏感信息。监护人可以通过隐私邮箱联系站长处理相关个人信息。政策发生变化时会更新版本和日期；涉及新的敏感数据或用途时，不会仅以继续使用代替依法需要的单独同意。"
+        ]
+      }
+    ]
+  },
+  "en": {
+    "title": "Privacy policy",
+    "intro": "How your data is used, and how to access or delete it.",
+    "sections": [
+      {
+        "title": "Scope and contact",
+        "paragraphs": [
+          "This policy covers the Tsukuyomi Space website (yachiyo.hk) and native apps, including the Android / Google Play app. The operator and privacy contact is redchenk, the site administrator: redchenk919@gmail.com. Contact us to access, correct, export or delete personal data or request account deletion."
+        ]
+      },
+      {
+        "title": "Accounts and sign-in",
+        "paragraphs": [
+          "We process usernames, display names, email addresses, password hashes, avatars, sessions and necessary security records for account access. QQ or GitHub sign-in provides the authorized account identifier, profile and email to create or link your account. We do not receive your third-party password. You may also revoke authorization in that provider’s account settings."
+        ]
+      },
+      {
+        "title": "Content, interactions and uploads",
+        "paragraphs": [
+          "Articles, comments, plaza messages, gallery images, pixel art and profiles are shown according to their publication settings. Uploads are held on our server or configured object storage, such as Alibaba Cloud OSS. Public uploads may be accessed by their URLs. Do not publish information you want to keep private. Notifications, follows, likes, bookmarks, growth activities and game scores support the corresponding community features."
+        ]
+      },
+      {
+        "title": "Private Room, AI and speech",
+        "paragraphs": [
+          "Chats, memories, diaries and related images support the private Room. Guest data is generally stored on your device; enabled cloud features associate the relevant data with your signed-in account. Model, embedding and speech requests send the necessary text, context, selected memories and images to the selected provider or your configured endpoint. The official service records usage and charges. Provider retention and processing follow their policies. Disable the relevant service and contact the administrator if you have privacy concerns. AI output can be inaccurate; avoid unnecessary sensitive information."
+        ]
+      },
+      {
+        "title": "Device settings, mailbox and optional permissions",
+        "paragraphs": [
+          "Language, theme, model connection settings, session credentials and caches may be stored in browser storage or on your device. Configured API keys authenticate to the relevant endpoint. The optional mailbox feature processes connection settings, authorization credentials and requested mail content. Location is used when you select a location or weather feature and grant permission; files and images are selected by you. Refusing optional permissions does not prevent basic browsing. You can revoke permissions, clear device data and remove third-party connections."
+        ]
+      },
+      {
+        "title": "Payments, measurements and security",
+        "paragraphs": [
+          "Payments process orders, amounts, payment channels, transaction status, balances and usage ledgers. Payment account details are handled by the chosen payment provider, such as Alipay. Access times, IP addresses or derived identifiers, client information, article impressions and qualified reads support operations, fair recommendations, troubleshooting and abuse prevention. We use access controls and encrypted transport, but no system can guarantee absolute security."
+        ]
+      },
+      {
+        "title": "Recipients and cross-border connections",
+        "paragraphs": [
+          "Hosting, storage, email, payment, sign-in, model and speech providers may process data needed for the features you use. QQ, GitHub, Alipay, Alibaba Cloud OSS and your selected AI/speech services apply only where the feature uses them; configurations may change. Overseas models, custom endpoints and third-party links may process requests outside your country. Contact the administrator for current official-service providers. Any separately required notices or consent will be provided for the relevant processing."
+        ]
+      },
+      {
+        "title": "Retention, deletion and backups",
+        "paragraphs": [
+          "Account details and saved content are generally retained until you delete them or request account deletion. The administrator verifies identity, balance and scope and normally handles requests within 30 days of receipt. If information is missing or a legal restriction applies, we explain the reason, required information and expected date by your linked email. Deletion covers account identifiers, sign-in links, private chats, memories, diaries, uploads and public works, through deletion or irreversible anonymization. Public works are included by default; retaining them is not a condition of deletion."
+        ]
+      },
+      {
+        "title": "Necessary retention and third-party copies",
+        "paragraphs": [
+          "Balances, pending orders and disputes are reviewed with you; submitting a request does not automatically charge, forfeit or refund a balance. Minimal transaction, security or dispute records that must legally be retained are restricted to that purpose, with categories, basis, period and deletion plan explained in your receipt. Backups, object versions, CDN caches and processor data are included in manual cleanup. Any remaining copies are restricted and assigned a removal plan; deletion must be reapplied after a backup restore. Copies saved or shared by other people or search engines may be outside our control."
+        ]
+      },
+      {
+        "title": "How to request deletion and clear device data",
+        "paragraphs": [
+          "Open Request account deletion in User center > Account security, or visit https://yachiyo.hk/delete-account, even after uninstalling the app. If you cannot sign in, email redchenk919@gmail.com from your linked address with the subject “Tsukuyomi Space account deletion”, your username and requested scope. Never send passwords, verification codes or API keys. You can also request deletion of selected data by email. Completion is sent to the verified email address. Clear local caches, exports and backups on each of your devices separately."
+        ]
+      },
+      {
+        "title": "Minors and policy updates",
+        "paragraphs": [
+          "Minors should use the service with guardian guidance and avoid publishing sensitive contact information. Guardians can contact the privacy email about a minor’s data. Policy updates change the version and date. Continued use does not replace separately required consent for new sensitive data or purposes."
+        ]
+      }
+    ]
+  }
+}
