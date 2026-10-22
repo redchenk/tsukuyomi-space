@@ -237,7 +237,9 @@ def install(root, release, read=fetch, reserve_bytes=5 * 1024**3):
             public = json.loads(json.dumps(release))
             for asset in public['assets']:
                 del asset['api_download_url']
+                upstream_url = asset['browser_download_url']
                 asset['browser_download_url'] = f"{ORIGIN}/releases/{release['tag_name']}/{asset['name']}"
+                public['body'] = public['body'].replace(upstream_url, asset['browser_download_url'])
             write_json(pending / 'public' / 'releases.json', [public])
             write_json(pending / 'source.json', release)
             # mkdtemp is private; allow Nginx to traverse only the verified generation.

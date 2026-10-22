@@ -51,12 +51,15 @@ class SyncTest(unittest.TestCase):
 
     def test_publish_atomic_catalog_and_no_repeat_download(self):
         release, files = fixture()
+        release['body'] = '[Download](' + release['assets'][0]['browser_download_url'] + ') [History](' + sync.UPSTREAM + '/releases)'
         self.assertEqual(self.install(release, files)['status'], 'published')
         active = sync.active_generation(self.root)
         catalog = json.loads((self.root / 'current/releases.json').read_text())
         self.assertEqual(len(catalog), 1)
         self.assertEqual(len(catalog[0]['assets']), 11)
         self.assertTrue(all(a['browser_download_url'].startswith(sync.ORIGIN + '/releases/') for a in catalog[0]['assets']))
+        self.assertIn('[Download](' + sync.ORIGIN + '/releases/', catalog[0]['body'])
+        self.assertIn('[History](' + sync.UPSTREAM + '/releases)', catalog[0]['body'])
         result = sync.install(self.root, sync.candidate(release), lambda _: self.fail('Downloaded twice'))
         self.assertEqual(result['status'], 'unchanged')
         self.assertEqual(sync.active_generation(self.root), active)
