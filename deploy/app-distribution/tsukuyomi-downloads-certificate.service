@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew only the Tsukuyomi download domain certificate
+After=docker.service network-online.target
+[Service]
+Type=oneshot
+ExecStart=/opt/tsukuyomi-app-distribution/certificate.sh
+TimeoutStartSec=5min

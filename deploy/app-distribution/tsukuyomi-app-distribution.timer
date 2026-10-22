@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for newly published Tsukuyomi App installers
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=10s
+Unit=tsukuyomi-app-distribution.service
+
+[Install]
+WantedBy=timers.target
+

@@ -70,10 +70,10 @@ test('short article shares redirect to the existing canonical, including renamed
         db.prepare("UPDATE articles SET slug='seo-test' WHERE id=?").run(articleId);
     }
 });
-test('native app downloads are public, usable without JavaScript and go directly to official GitHub assets', async () => {
+test('native app downloads are public, usable without JavaScript and go directly to official distribution assets', async () => {
     const snapshot = require('../shared/native-app-release.json');
     const html = await (await fetch(base + '/download')).text();
-    const downloads = [...html.matchAll(/href="(https:\/\/github\.com\/redchenk\/tsukuyomi-space-app\/releases\/download\/[^\"]+)"/g)].map(match => match[1]);
+    const downloads = [...html.matchAll(/href="(https:\/\/downloads\.yachiyo\.hk\/releases\/[^\"]+)"/g)].map(match => match[1]);
     for (const suffix of ['windows-x64-setup.exe', 'macos-universal.dmg', 'android-arm64-v8a.apk', 'linux-x64.deb', 'ios-arm64-unsigned.ipa', 'ohos-arm64-unsigned.hap', 'OHOS-INSTALL.md', 'OHOS-SHA256SUMS.txt', 'SHA256SUMS.txt']) {
         const asset = snapshot.assets.find(asset => asset.name.endsWith(suffix));
         assert.ok(downloads.includes(asset.browser_download_url), suffix);

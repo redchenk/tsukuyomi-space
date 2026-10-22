@@ -7,7 +7,7 @@ const express = require('express');
 const snapshot = require('../shared/native-app-release.json');
 const { createAppReleaseService, CACHE_MS, RETRY_MS } = require('../backend/services/native-app-release');
 const { createAppReleaseRouter } = require('../backend/routes/app-releases');
-const { RELEASES_API, selectAppReleases, fetchGitHubAppReleases } = require('../shared/native-app-release.cjs');
+const { RELEASES_API, selectAppReleases, fetchDistributedAppReleases } = require('../shared/native-app-release.cjs');
 
 function release(tag) {
     const value = structuredClone(snapshot); const version = tag.slice(1).split('-')[0];
@@ -15,13 +15,13 @@ function release(tag) {
     value.html_url = `https://github.com/redchenk/tsukuyomi-space-app/releases/tag/${tag}`;
     for (const asset of value.assets) {
         asset.name = asset.name.replace(/tsukuyomi-space-\d+\.\d+\.\d+-/, `tsukuyomi-space-${version}-`);
-        asset.browser_download_url = `https://github.com/redchenk/tsukuyomi-space-app/releases/download/${tag}/${asset.name}`;
+        asset.browser_download_url = `https://downloads.yachiyo.hk/releases/${tag}/${asset.name}`;
     }
     return value;
 }
 const response = values => new Response(JSON.stringify(values));
 
-test('concurrent visitors share one public GitHub request; cache refresh discovers a newer beta', async () => {
+test('concurrent visitors share one public distribution request; cache refresh discovers a newer beta', async () => {
     let time = 1000, calls = 0, version = 'v0.6.31-beta.1';
     const service = createAppReleaseService({ now: () => time, fetchImpl: async (url, options) => {
         calls++; assert.equal(url, RELEASES_API); assert.equal(options.credentials, 'omit');
@@ -37,7 +37,7 @@ test('concurrent visitors share one public GitHub request; cache refresh discove
     assert.equal(calls, 2);
 });
 
-test('a failed GitHub check keeps current links, marks stale and backs off before retrying', async () => {
+test('a failed distribution check keeps current links, marks stale and backs off before retrying', async () => {
     let time = 1000, failed = false, calls = 0;
     const service = createAppReleaseService({ now: () => time, fetchImpl: async () => {
         calls++; if (failed) return new Response('', { status: 429 });
@@ -83,7 +83,7 @@ test('drafts and incomplete uploads do not hide the newest complete release', as
     const draft = release('v0.6.33-beta.1'); draft.draft = true;
     const incomplete = release('v0.6.32-beta.1');
     incomplete.assets = incomplete.assets.filter(asset => !asset.name.endsWith('ios-arm64-unsigned.ipa'));
-    const catalog = await fetchGitHubAppReleases({ fetchImpl: async () => response([
+    const catalog = await fetchDistributedAppReleases({ fetchImpl: async () => response([
         draft, incomplete, release('v0.6.31-beta.1'), release('v0.6.10')
     ]) });
     assert.equal(catalog.latest.tag, 'v0.6.31-beta.1');

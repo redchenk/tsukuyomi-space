@@ -1,107 +1,107 @@
 {
-  "tag_name": "v0.6.21-beta.1",
-  "html_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/tag/v0.6.21-beta.1",
-  "published_at": "2026-10-13T04:46:17Z",
+  "tag_name": "v0.6.26-beta.1",
+  "html_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/tag/v0.6.26-beta.1",
+  "published_at": "2026-10-22T12:03:30Z",
   "prerelease": true,
   "draft": false,
   "assets": [
     {
-      "name": "tsukuyomi-space-0.6.21-windows-x64-setup.exe",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-windows-x64-setup.exe",
-      "size": 268814967,
+      "name": "tsukuyomi-space-0.6.26-windows-x64-setup.exe",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-windows-x64-setup.exe",
+      "size": 269015569,
       "state": "uploaded",
-      "digest": "sha256:3528a0f678a2e500599fbe9587351ddaa191ffe79c869a5593d52befe5c20fed"
+      "digest": "sha256:494cad0d67bf9c973ce5688c334b36acc665e972588606d8c2e516d3491cd8fe"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-windows-x64.zip",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-windows-x64.zip",
-      "size": 363891939,
+      "name": "tsukuyomi-space-0.6.26-windows-x64.zip",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-windows-x64.zip",
+      "size": 364176821,
       "state": "uploaded",
-      "digest": "sha256:61874dd659419eab830fee3f668a4f11036a3bfaf073f7769d4967f6830ae9af"
+      "digest": "sha256:e3dbed14b8283b7af39f89bdcdd237fb8d6539274231b579cca42ef09f8f8ea7"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-macos-universal.dmg",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-macos-universal.dmg",
-      "size": 548739690,
+      "name": "tsukuyomi-space-0.6.26-macos-universal.dmg",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-macos-universal.dmg",
+      "size": 551362652,
       "state": "uploaded",
-      "digest": "sha256:d53bdf9f11ab0b81bcbea5a4c667f05d64d9efc182d10e9bba9b942c6a34eb90"
+      "digest": "sha256:9286708b0b689ba505138ee3b6a7731090d366cfab0010aeca7fe5f4c8a3119c"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-android-arm64-v8a.apk",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-android-arm64-v8a.apk",
-      "size": 155322432,
+      "name": "tsukuyomi-space-0.6.26-android-arm64-v8a.apk",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-android-arm64-v8a.apk",
+      "size": 159396637,
       "state": "uploaded",
-      "digest": "sha256:eb7e6964d4b3dde3ecdc5e8cb1b6fc1687b909a41b3cc3c36cb8540c9436fc5d"
+      "digest": "sha256:202ba2aeccac0c156b97aafa569f2131a0764b401c1ee37182e6e97a6c359d79"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-android-x86_64.apk",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-android-x86_64.apk",
-      "size": 160438163,
+      "name": "tsukuyomi-space-0.6.26-android-x86_64.apk",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-android-x86_64.apk",
+      "size": 164508760,
       "state": "uploaded",
-      "digest": "sha256:9139b2b692b9950db5914c8b2b3ec4b1b9df037fa4ec4ca2869e60080aa1d303"
+      "digest": "sha256:c68f0cef96ae787004a17920190c50b09a88356927df892a8e10dce32cf7aedd"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-linux-x64.deb",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-linux-x64.deb",
-      "size": 261749264,
+      "name": "tsukuyomi-space-0.6.26-linux-x64.deb",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-linux-x64.deb",
+      "size": 261969018,
       "state": "uploaded",
-      "digest": "sha256:059a984bb06b3dcf0dc299384e018564099017c2a3d8d979f075098fc185b743"
+      "digest": "sha256:277de8439ee91caf2f79bf37aa4a87c7709e001b0b1df243522c24335539eff4"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-linux-x64.tar.gz",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-linux-x64.tar.gz",
-      "size": 320032626,
+      "name": "tsukuyomi-space-0.6.26-linux-x64.tar.gz",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-linux-x64.tar.gz",
+      "size": 320271638,
       "state": "uploaded",
-      "digest": "sha256:6cec8b7f64be255a0673203b1ed324d02c9b22e7aa819a25dafaeca7686bddef"
+      "digest": "sha256:981a5dc12ea5068adefbff26b78792478c31ea3ade5f49633d555b965936316d"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-ios-arm64-unsigned.ipa",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-ios-arm64-unsigned.ipa",
-      "size": 127707599,
+      "name": "tsukuyomi-space-0.6.26-ios-arm64-unsigned.ipa",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-ios-arm64-unsigned.ipa",
+      "size": 128212726,
       "state": "uploaded",
-      "digest": "sha256:db382e041a349089e71484b1735cf5ff31a5885a23eae2fec8fcd94152deed66"
+      "digest": "sha256:6058520f12227f75d249fc3c00b9e2272a8e084fc3158a816791631ffcbd72df"
     },
     {
       "name": "SHA256SUMS.txt",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/SHA256SUMS.txt",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/SHA256SUMS.txt",
       "size": 1031,
       "state": "uploaded",
-      "digest": "sha256:c1aea6fe0d1e42e804e772dac7a3190f4a9c4df46830d7b34392ea99385761a1"
+      "digest": "sha256:859c87319f6e729701da1ed8e57bd6a4e603960ba12b38d48a67cbc2bdccbee4"
     },
     {
       "name": "THIRD_PARTY_NOTICES.md",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/THIRD_PARTY_NOTICES.md",
-      "size": 5916,
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/THIRD_PARTY_NOTICES.md",
+      "size": 6955,
       "state": "uploaded",
-      "digest": "sha256:304220508653e5faa775601640d47fb75550bb8b3278fd6fe5b3755a57148747"
+      "digest": "sha256:652317c146bc41e544d84676205ec5a3dd393a3427594322da6adc2c31f4ab4d"
     },
     {
       "name": "INSTALL.md",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/INSTALL.md",
-      "size": 15183,
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/INSTALL.md",
+      "size": 16956,
       "state": "uploaded",
-      "digest": "sha256:8f7d0be19650bbb487aa5451a1501355879f5dc607e4b9fb8388c289aa45fff5"
+      "digest": "sha256:d3ae2884ba0adae28fe5df8070fe8fc49e28926240e964646c287ac680309c16"
     },
     {
-      "name": "tsukuyomi-space-0.6.21-28-ohos-arm64-unsigned.hap",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/tsukuyomi-space-0.6.21-28-ohos-arm64-unsigned.hap",
-      "size": 148781359,
+      "name": "tsukuyomi-space-0.6.26-33-ohos-arm64-unsigned.hap",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/tsukuyomi-space-0.6.26-33-ohos-arm64-unsigned.hap",
+      "size": 154169153,
       "state": "uploaded",
-      "digest": "sha256:dcbee7f152b21d672850ad89a07db8608e51be1b7fa4e980f256c12655ffdbd8"
+      "digest": "sha256:35f8c9e7e68f84b47810eef8743acd82112518ce31c39619b45f40f042601e2c"
     },
     {
       "name": "OHOS-INSTALL.md",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/OHOS-INSTALL.md",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/OHOS-INSTALL.md",
       "size": 1845,
       "state": "uploaded",
-      "digest": "sha256:e75aa8934371e9e771a73e69c0aea456959adc14f647f8c471e7fb20876e5806"
+      "digest": "sha256:bb9aa694cb8a3d0635b3c8fd67e7979bfa80803f7d601dcdbb978d577279c250"
     },
     {
       "name": "OHOS-SHA256SUMS.txt",
-      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.21-beta.1/OHOS-SHA256SUMS.txt",
+      "browser_download_url": "https://downloads.yachiyo.hk/releases/v0.6.26-beta.1/OHOS-SHA256SUMS.txt",
       "size": 379,
       "state": "uploaded",
-      "digest": "sha256:b33af38f96d28c888e0c6dd92c7bc5b49c1f9a3710eca96954c738883dbbc868"
+      "digest": "sha256:c8a8c264c774c187c6f22717414ca2c7ccc12e1bf4d7884efaac28e3f145a021"
     }
   ]
 }

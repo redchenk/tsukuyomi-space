@@ -1,5 +1,6 @@
 const APP_REPOSITORY = 'https://github.com/redchenk/tsukuyomi-space-app';
-const RELEASES_API = 'https://api.github.com/repos/redchenk/tsukuyomi-space-app/releases?per_page=20';
+const DISTRIBUTION_ORIGIN = 'https://downloads.yachiyo.hk';
+const RELEASES_API = `${DISTRIBUTION_ORIGIN}/releases.json`;
 const PACKAGE_SUFFIXES = Object.freeze({
   windows: 'windows-x64-setup.exe', windowsPortable: 'windows-x64.zip',
   macos: 'macos-universal.dmg', android: 'android-arm64-v8a.apk', androidEmulator: 'android-x86_64.apk',
@@ -34,7 +35,7 @@ function normalizeAppRelease(value) {
     const candidates = value.assets.filter(asset => asset?.name === name);
     if (candidates.length !== 1) continue;
     const asset = candidates[0];
-    const href = `${APP_REPOSITORY}/releases/download/${tag}/${name}`;
+    const href = `${DISTRIBUTION_ORIGIN}/releases/${tag}/${name}`;
     if (asset.state !== 'uploaded' || asset.browser_download_url !== href
       || !Number.isSafeInteger(asset.size) || asset.size <= 0 || asset.size > 2 * 1024 ** 3) continue;
     assets[key] = { name, href, size: asset.size,
@@ -45,7 +46,7 @@ function normalizeAppRelease(value) {
   if (!assets.ohosInstall || !assets.ohosChecksums || !assets.ohos?.sha256) delete assets.ohos;
   return { tag, version, url, assets, publishedAt: value.published_at,
     preview: value.prerelease || Boolean(match[4]), parts: match.slice(1, 4).map(Number), qualifier: match[4] || '',
-    guideUrl: `${APP_REPOSITORY}/blob/${tag}/docs/release-guide.md` };
+    guideUrl: assets.install.href };
 }
 
 function compareAppReleases(a, b) {
@@ -128,7 +129,7 @@ async function readReleaseResponse(response, controller) {
 }
 
 // This fixed public endpoint only returns metadata; no installer is buffered.
-async function fetchGitHubAppReleases({ fetchImpl = globalThis.fetch, signal } = {}) {
+async function fetchDistributedAppReleases({ fetchImpl = globalThis.fetch, signal } = {}) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   if (signal?.aborted) controller.abort();
@@ -137,7 +138,7 @@ async function fetchGitHubAppReleases({ fetchImpl = globalThis.fetch, signal } =
   try {
     const response = await fetchImpl(RELEASES_API, {
       signal: controller.signal, credentials: 'omit', redirect: 'error', cache: 'no-store',
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Tsukuyomi-App-Releases' }
+      headers: { Accept: 'application/json', 'User-Agent': 'Tsukuyomi-App-Releases' }
     });
     const catalog = selectAppReleases(await readReleaseResponse(response, controller));
     if (!catalog || controller.signal.aborted) throw new Error('No complete release');
@@ -145,6 +146,6 @@ async function fetchGitHubAppReleases({ fetchImpl = globalThis.fetch, signal } =
   } finally { controller.abort(); clearTimeout(timeout); signal?.removeEventListener('abort', cancel); }
 }
 
-module.exports = { APP_REPOSITORY, RELEASES_API, PACKAGE_SUFFIXES, normalizeAppRelease,
+module.exports = { APP_REPOSITORY, DISTRIBUTION_ORIGIN, RELEASES_API, PACKAGE_SUFFIXES, normalizeAppRelease,
   compareAppReleases, selectAppReleases, chooseAppRelease, appReleaseSnapshot,
-  detectDownloadPlatform, readReleaseResponse, fetchGitHubAppReleases };
+  detectDownloadPlatform, readReleaseResponse, fetchDistributedAppReleases };

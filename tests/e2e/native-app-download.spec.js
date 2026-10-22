@@ -7,19 +7,20 @@ function release(tag) {
   value.html_url = `https://github.com/redchenk/tsukuyomi-space-app/releases/tag/${tag}`;
   for (const asset of value.assets) {
     asset.name = asset.name.replace(/tsukuyomi-space-\d+\.\d+\.\d+-/, `tsukuyomi-space-${version}-`);
-    asset.browser_download_url = `https://github.com/redchenk/tsukuyomi-space-app/releases/download/${tag}/${asset.name}`;
+    asset.browser_download_url = `https://downloads.yachiyo.hk/releases/${tag}/${asset.name}`;
   }
   return value;
 }
-const body = releases => ({ success: true, data: { releases, source: 'github', stale: false } });
+const body = releases => ({ success: true, data: { releases, source: 'distribution', stale: false } });
 
 test('signed-in visitors can open App downloads directly from the header on desktop and small phones', async ({ page }) => {
   await page.route('**/api/app/releases', route => route.fulfill({ json: body([snapshot]) }));
-  await page.goto('/login');
-  await page.locator('#loginAccount').fill('e2e-user');
-  await page.locator('#loginPassword').fill('e2e-password');
-  await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page).toHaveURL(/\/hub$/);
+  const login = await page.request.post('/api/auth/login', {
+    headers: { Origin: 'http://127.0.0.1:4174', 'X-Requested-With': 'XMLHttpRequest' },
+    data: { username: 'e2e-user', password: 'e2e-password' }
+  });
+  expect((await login.json()).success).toBe(true);
+  await page.goto('/hub');
   const link = page.locator('.site-commandbar').getByRole('link', { name: '下载 App', exact: true });
   await expect(link).toHaveAttribute('href', '/download');
   for (const width of [320, 332, 390, 861, 1280, 1440]) {

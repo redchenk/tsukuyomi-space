@@ -13,7 +13,7 @@ function release(tag, preview = tag.includes('-')) {
   value.html_url = `https://github.com/redchenk/tsukuyomi-space-app/releases/tag/${tag}`;
   for (const asset of value.assets) {
     asset.name = asset.name.replace(/tsukuyomi-space-\d+\.\d+\.\d+-/, `tsukuyomi-space-${version}-`);
-    asset.browser_download_url = `https://github.com/redchenk/tsukuyomi-space-app/releases/download/${tag}/${asset.name}`;
+    asset.browser_download_url = `https://downloads.yachiyo.hk/releases/${tag}/${asset.name}`;
   }
   return value;
 }
@@ -26,12 +26,12 @@ test('verified release exposes the six main packages and the correctly labeled a
   assert.match(value.assets.android.href, /android-arm64-v8a\.apk$/);
   assert.match(value.assets.androidEmulator.href, /android-x86_64\.apk$/);
   assert.match(value.assets.ios.href, /ios-arm64-unsigned\.ipa$/);
-  assert.match(value.assets.ohos.href, /-28-ohos-arm64-unsigned\.hap$/);
+  assert.match(value.assets.ohos.href, /-33-ohos-arm64-unsigned\.hap$/);
   assert.match(value.assets.ohosInstall.href, /\/OHOS-INSTALL\.md$/);
   assert.match(value.assets.ohosChecksums.href, /\/OHOS-SHA256SUMS\.txt$/);
-  assert.match(value.guideUrl, /\/blob\/v[^/]+\/docs\/release-guide\.md$/);
+  assert.match(value.guideUrl, /\/releases\/v[^/]+\/INSTALL\.md$/);
   for (const asset of Object.values(value.assets)) {
-    assert.equal(new URL(asset.href).origin, 'https://github.com');
+    assert.equal(new URL(asset.href).origin, 'https://downloads.yachiyo.hk');
     assert.match(asset.sha256, /^[a-f0-9]{64}$/);
   }
 });
@@ -95,9 +95,9 @@ test('fetches public metadata without cookies or redirects, reuses cache and per
     calls++; assert.equal(url, APP_RELEASE_API);
     assert.equal(options.credentials, 'omit'); assert.equal(options.redirect, 'error');
     assert.equal(options.headers.Authorization, undefined);
-    return new Response(JSON.stringify({ success: true, data: { releases: [snapshot], source: 'github', stale: false } }), { headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true, data: { releases: [snapshot], source: 'distribution', stale: false } }), { headers: { 'content-type': 'application/json' } });
   };
-  assert.equal((await loadAppReleases({ fetchImpl, now: () => 100 })).source, 'github');
+  assert.equal((await loadAppReleases({ fetchImpl, now: () => 100 })).source, 'distribution');
   assert.equal((await loadAppReleases({ fetchImpl, now: () => 200 })).source, 'cache');
   assert.equal(calls, 1);
   await loadAppReleases({ fetchImpl, now: () => 200, force: true }); assert.equal(calls, 2);
@@ -105,7 +105,7 @@ test('fetches public metadata without cookies or redirects, reuses cache and per
   await assert.rejects(loadAppReleases({ fetchImpl, now: () => 300, signal: controller.signal }), { name: 'AbortError' });
 });
 
-test('failed, oversized or malformed GitHub responses never replace verified data', async () => {
+test('failed, oversized or malformed distribution responses never replace verified data', async () => {
   for (const response of [new Response('', { status: 403 }), new Response('invalid JSON'), new Response('[]'),
     new Response('[]', { headers: { 'content-length': '1048577' } }), new Response(' '.repeat(1048577))]) {
     const { loadAppReleases } = await freshService();
@@ -127,7 +127,7 @@ test('server outage metadata stays visibly stale and retries sooner than the nor
 
 test('successful status and trustworthy metadata are both required from the site endpoint', async () => {
   for (const data of [{ releases: [snapshot], source: 'arbitrary', stale: false },
-    { releases: [snapshot], source: 'github' }, { releases: [], source: 'github', stale: false }]) {
+    { releases: [snapshot], source: 'distribution' }, { releases: [], source: 'distribution', stale: false }]) {
     const { loadAppReleases } = await freshService();
     await assert.rejects(loadAppReleases({ fetchImpl: async () => new Response(JSON.stringify({ success: true, data })) }));
   }

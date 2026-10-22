@@ -1,0 +1,24 @@
+[Unit]
+Description=Verify and mirror the latest Tsukuyomi App release
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PYTHONPATH=/opt/tsukuyomi-app-distribution/network
+User=tsukuyomi-download
+Group=tsukuyomi-download
+ExecStart=/usr/bin/python3 /opt/tsukuyomi-app-distribution/sync.py --root /opt/1panel/www/sites/tsukuyomi-app-distribution
+TimeoutStartSec=45min
+UMask=0022
+Nice=10
+IOSchedulingClass=idle
+CPUQuota=50%
+MemoryMax=256M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/1panel/www/sites/tsukuyomi-app-distribution
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+

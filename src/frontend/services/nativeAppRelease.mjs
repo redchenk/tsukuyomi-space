@@ -1,14 +1,14 @@
 import releaseTools from '../../../shared/native-app-release.cjs';
 export const { APP_REPOSITORY, RELEASES_API, PACKAGE_SUFFIXES, normalizeAppRelease,
   compareAppReleases, selectAppReleases, chooseAppRelease, appReleaseSnapshot,
-  detectDownloadPlatform, fetchGitHubAppReleases } = releaseTools;
+  detectDownloadPlatform, fetchDistributedAppReleases } = releaseTools;
 export const APP_RELEASE_API = '/api/app/releases';
 export const APP_RELEASE_REFRESH_MS = 5 * 60 * 1000;
 let cachedResult = null;
 let cachedAt = 0;
 
 // Fetch the site's small public metadata response. Installer links still go
-// directly to the official repository, without cookies or a download proxy.
+// directly to the dedicated distribution server, without site credentials.
 export async function loadAppReleases({ signal, force = false, fetchImpl = globalThis.fetch, now = Date.now } = {}) {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   const age = now() - cachedAt;
@@ -29,7 +29,7 @@ export async function loadAppReleases({ signal, force = false, fetchImpl = globa
     const data = value?.data;
     const catalog = selectAppReleases(data?.releases);
     if (value?.success !== true || !catalog || controller.signal.aborted
-      || !['github', 'cache', 'verified'].includes(data.source) || typeof data.stale !== 'boolean') {
+      || !['distribution', 'cache', 'verified'].includes(data.source) || typeof data.stale !== 'boolean') {
       throw new Error('Release metadata unavailable');
     }
     cachedResult = { catalog, source: data.source, stale: data.stale };

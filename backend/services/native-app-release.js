@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const snapshot = require('../../shared/native-app-release.json');
-const { selectAppReleases, appReleaseSnapshot, fetchGitHubAppReleases } = require('../../shared/native-app-release.cjs');
+const { selectAppReleases, appReleaseSnapshot, fetchDistributedAppReleases } = require('../../shared/native-app-release.cjs');
 
 const CACHE_MS = 5 * 60 * 1000;
 const RETRY_MS = 60 * 1000;
@@ -56,8 +56,8 @@ function createAppReleaseService({ cachePath = '', fetchImpl = globalThis.fetch,
         lastAttempt = time;
         pending = (async () => {
             try {
-                catalog = await fetchGitHubAppReleases({ fetchImpl });
-                checkedAt = now(); source = 'github';
+                catalog = await fetchDistributedAppReleases({ fetchImpl });
+                checkedAt = now(); source = 'distribution';
                 await persist();
                 return payload();
             } catch (_) {

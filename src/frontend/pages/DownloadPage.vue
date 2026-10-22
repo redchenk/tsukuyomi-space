@@ -16,7 +16,7 @@ const loading = ref(false);
 const failed = ref(false);
 const device = ref('');
 const release = computed(() => chooseAppRelease(catalog.value, channel.value));
-const sourceLabel = computed(() => copy.value[source.value === 'github' ? 'latest' : source.value === 'cache' ? 'cached' : 'verified']);
+const sourceLabel = computed(() => copy.value[source.value === 'distribution' ? 'latest' : source.value === 'cache' ? 'cached' : 'verified']);
 const platforms = computed(() => ['windows', 'macos', 'android', 'ohos', 'linux', 'ios'].map(key => ({
   key, ...copy.value.platformsCopy[key], asset: release.value.assets[key],
   icon: ['android', 'ios', 'ohos'].includes(key) ? 'smartphone' : key === 'macos' ? 'laptop' : 'monitor',
@@ -106,7 +106,7 @@ onUnmounted(() => {
             </div>
           </article>
         </div>
-        <p class="download-direct"><TsIcon name="github" :size="17" />{{ copy.direct }}</p>
+        <p class="download-direct"><TsIcon name="download" :size="17" />{{ copy.direct }}</p>
         <nav class="download-resource-links" :aria-label="copy.guide"><a :href="release.guideUrl" target="_blank" rel="noopener noreferrer">{{ copy.guide }}</a><a :href="release.assets.checksums.href" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ copy.checksum }}</a><a :href="`${APP_REPOSITORY}/releases`" target="_blank" rel="noopener noreferrer">{{ copy.history }}</a><a :href="APP_REPOSITORY" target="_blank" rel="noopener noreferrer">{{ copy.source }}</a></nav>
       </section>
 
