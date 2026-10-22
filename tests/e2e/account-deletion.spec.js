@@ -4,6 +4,7 @@ test('public mobile policy and authenticated request, receipt and cancellation',
   await page.goto('/privacy');
   await expect(page.getByRole('heading', { name: '隐私政策', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: '申请注销账号', exact: true })).toBeVisible();
+  expect((await page.locator('.privacy-heading').boundingBox()).y).toBeGreaterThanOrEqual(90);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('link', { name: '申请注销账号', exact: true }).click();
   await expect(page.getByRole('link', { name: '登录后在线提交' })).toBeVisible();
@@ -17,6 +18,7 @@ test('public mobile policy and authenticated request, receipt and cancellation',
   await submit.click();
   await expect(page.getByText('等待站长核验', { exact: true })).toBeVisible();
   await expect(submit).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: 'test-results/account-deletion-mobile.png', fullPage: true });
   await page.reload();
   await expect(page.getByText('等待站长核验', { exact: true })).toBeVisible();
