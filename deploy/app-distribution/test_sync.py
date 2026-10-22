@@ -1,4 +1,6 @@
 import hashlib
+import io
+import tarfile
 import importlib.util
 import json
 import pathlib
@@ -150,6 +152,42 @@ class SyncTest(unittest.TestCase):
         self.assertTrue((unowned / 'important').exists())
         with self.assertRaises(ValueError):
             sync.remove_generation(self.root, self.other)
+
+    def archive(self, release, files, extra=None):
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode='w') as archive:
+            metadata = json.dumps(release).encode()
+            first = tarfile.TarInfo('release.json'); first.size = len(metadata)
+            archive.addfile(first, io.BytesIO(metadata))
+            for name in sorted(files):
+                member = tarfile.TarInfo(name); member.size = len(files[name])
+                archive.addfile(member, io.BytesIO(files[name]))
+            if extra:
+                member = tarfile.TarInfo(extra); member.size = 3
+                archive.addfile(member, io.BytesIO(b'bad'))
+        stream.seek(0)
+        return stream
+
+    def test_receive_installs_only_current_official_files_and_cleans_staging(self):
+        release, files = fixture(ohos=True)
+        result = sync.receive(self.root, self.archive(release, files), sync.candidate(release))
+        self.assertEqual(result['asset_count'], 16)
+        self.assertFalse((self.root / 'incoming').exists())
+
+    def test_receive_rejects_extra_paths_and_tampering_without_switching(self):
+        old, old_files = fixture()
+        self.install(old, old_files)
+        before = sync.active_generation(self.root)
+        release, files = fixture('v0.6.27-beta.1')
+        with self.assertRaises(ValueError):
+            sync.receive(self.root, self.archive(release, files, '../../project'), sync.candidate(release))
+        files[next(iter(files))] = b'bad'
+        with self.assertRaises(ValueError):
+            sync.receive(self.root, self.archive(release, files), sync.candidate(release))
+        with self.assertRaises(ValueError):
+            sync.receive(self.root, self.archive(old, old_files), sync.candidate(release))
+        self.assertEqual(sync.active_generation(self.root), before)
+        self.assertFalse((self.root / 'incoming').exists())
 
     def test_version_order(self):
         values = ['v0.6.27-beta.2', 'v0.6.26', 'v0.6.27-beta.10', 'v0.6.27']

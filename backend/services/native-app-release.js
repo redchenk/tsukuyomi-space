@@ -22,7 +22,8 @@ function createAppReleaseService({ cachePath = '', fetchImpl = globalThis.fetch,
                 const cached = selectAppReleases(saved.releases);
                 if (cached && Number.isSafeInteger(saved.checkedAt) && saved.checkedAt >= 0
                     && saved.checkedAt <= now() + 60000) {
-                    catalog = selectAppReleases([...saved.releases, fallback]);
+                    const merged = selectAppReleases([...saved.releases, fallback]);
+                    catalog = selectAppReleases([appReleaseSnapshot(merged.latest)]);
                     checkedAt = saved.checkedAt;
                     source = 'cache';
                 }

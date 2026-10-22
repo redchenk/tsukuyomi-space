@@ -35,6 +35,6 @@ docker exec 1Panel-openresty-ggdy nginx -s reload
 install -m 644 "$stage/tsukuyomi-downloads-certificate.service" /etc/systemd/system/
 install -m 644 "$stage/tsukuyomi-downloads-certificate.timer" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now tsukuyomi-app-distribution.timer tsukuyomi-downloads-certificate.timer
-systemctl start --no-block tsukuyomi-app-distribution.service
-systemctl is-active tsukuyomi-app-distribution.timer
+systemctl enable --now tsukuyomi-downloads-certificate.timer
+systemctl is-active tsukuyomi-downloads-certificate.timer
+# Configure the restricted push key separately; the optional pull timer stays disabled.

@@ -137,3 +137,16 @@ test('a HAP added to an existing release appears after cache refresh and survive
     const updatedFallback = createAppReleaseService({ cachePath, now: () => time, fallback: snapshot, offline: true });
     assert.ok(selectAppReleases((await updatedFallback.get()).releases).latest.assets.ohos);
 });
+
+
+test('a cached stable release never advertises an obsolete bundled preview after restart', async t => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'app-latest-only-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const cachePath = path.join(directory, 'release.json');
+    const latest = release('v0.7.0');
+    fs.writeFileSync(cachePath, JSON.stringify({ releases: [latest], checkedAt: 1000 }));
+    const service = createAppReleaseService({ cachePath, now: () => 1001,
+        fetchImpl: async () => { throw new Error('offline'); } });
+    const result = await service.get();
+    assert.deepEqual(result.releases.map(r => r.tag_name), ['v0.7.0']);
+});

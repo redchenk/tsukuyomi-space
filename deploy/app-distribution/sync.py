@@ -11,6 +11,8 @@ import pathlib
 import re
 import shutil
 import tempfile
+import tarfile
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -256,10 +258,7 @@ def install(root, release, read=fetch, reserve_bytes=5 * 1024**3):
                 remove_generation(root, pending)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--root', type=pathlib.Path, required=True)
-    args = parser.parse_args()
+def latest_release():
     data = bytearray()
     for chunk in fetch(API):
         data.extend(chunk)
@@ -269,7 +268,59 @@ def main():
     releases = [r for value in values[:20] if (r := candidate(value))]
     require(releases, 'No complete published release')
     latest = max(releases, key=lambda r: version_key(r['tag_name']))
-    print(json.dumps(install(args.root, latest)), flush=True)
+    return latest
+
+
+def receive(root, stream, release):
+    """Accept only the current official release, never arbitrary SSH commands/files."""
+    initialize(root)
+    with (root / '.receive-lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        require(shutil.disk_usage(root).free >= 5 * 1024**3 + 2 * sum(a['size'] for a in release['assets']),
+                'Insufficient staging space')
+        incoming = root / 'incoming'
+        require(not incoming.is_symlink(), 'Invalid incoming directory')
+        if incoming.exists():
+            marker = incoming / '.owner.json'
+            require(not marker.is_symlink() and json.loads(marker.read_text()) == OWNER, 'Unowned incoming directory')
+            shutil.rmtree(incoming)
+        incoming.mkdir(mode=0o700)
+        write_json(incoming / '.owner.json', OWNER)
+        try:
+            with tarfile.open(fileobj=stream, mode='r|') as archive:
+                first = archive.next()
+                require(first and first.isfile() and first.name == 'release.json' and first.size <= 1024**2,
+                        'Missing bounded release metadata')
+                offered = candidate(json.load(archive.extractfile(first)))
+                require(offered == release, 'Offered release differs from latest public GitHub release')
+                for asset in release['assets']:
+                    member = archive.next()
+                    require(member and member.isfile() and member.name == asset['name'] and member.size == asset['size'],
+                            'Unexpected installer entry')
+                    digest = hashlib.sha256()
+                    with archive.extractfile(member) as source, (incoming / member.name).open('xb') as output:
+                        for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                            digest.update(chunk)
+                            output.write(chunk)
+                    require(digest.hexdigest() == asset['digest'][7:], 'Incoming digest mismatch')
+                require(archive.next() is None, 'Unexpected additional files')
+            by_url = {asset['api_download_url']: incoming / asset['name'] for asset in release['assets']}
+            def read(url):
+                with by_url[url].open('rb') as source:
+                    yield from iter(lambda: source.read(1024 * 1024), b'')
+            return install(root, release, read)
+        finally:
+            shutil.rmtree(incoming)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=pathlib.Path, required=True)
+    parser.add_argument('--receive', action='store_true')
+    args = parser.parse_args()
+    latest = latest_release()
+    result = receive(args.root, sys.stdin.buffer, latest) if args.receive else install(args.root, latest)
+    print(json.dumps(result), flush=True)
 
 
 if __name__ == '__main__':
