@@ -589,6 +589,36 @@ function successfulHistory(messages) {
   };
 }
 
+test('diary finish sends its snapshot over POST and preserves local chat on gateway failure', async () => {
+  const snapshot = { lastId: 'last-message', digest: 'a'.repeat(64) };
+  let calls = 0;
+  const h = conversationSyncHarness(async (url, options) => {
+    assert.equal(url, '/api/room/chat/finish');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(options.body), { snapshot });
+    if (++calls === 1) return { ok: false, status: 504, text: async () => JSON.stringify({ success: false, message: 'HTTP 504' }) };
+    return successfulHistory({ deletedCount: 2, remainingCount: 0 });
+  });
+  h.sync.writeRoomConversation(savedTurn('turn-diary', '今天一起看月亮', '我会记住的'));
+  await assert.rejects(h.sync.clearRoomConversation({ snapshot }), /504/);
+  assert.equal(calls, 1);
+  assert.equal(h.sync.readRoomConversation().length, 2);
+  await h.sync.clearRoomConversation({ snapshot });
+  assert.equal(calls, 2);
+  assert.equal(h.sync.readRoomConversation().length, 0);
+});
+
+test('explicit conversation clear remains a bodyless DELETE', async () => {
+  const h = conversationSyncHarness(async (url, options) => {
+    assert.equal(url, '/api/room/chat');
+    assert.equal(options.method, 'DELETE');
+    assert.equal(options.body, undefined);
+    return successfulHistory({ deletedCount: 2, remainingCount: 0 });
+  });
+  await h.sync.clearRoomConversation();
+});
+
 test('Room history normalization and save echoes keep image references, never inline image binaries', async () => {
   const image = { id: 'c6b5f9c0-e4b6-45ef-8bfb-6c71006bbc0a', name: 'IMG_5320.jpeg', dataUrl: 'data:image/png;base64,large' };
   const history = savedTurn('turn-image-sync', '看图片', '我看到了');
@@ -893,6 +923,36 @@ test('refreshing after diary sync failure reuses the saved entry without generat
   assert.equal(reopened.saved.length, 0);
   assert.equal(reopened.clearCount(), 1);
   assert.equal(reopened.chat.sessionTurnCount(), 0);
+  reopened.chat.destroy();
+});
+
+test('refreshing after diary finish HTTP 504 retries only the persisted entry', async () => {
+  const storage = new Map();
+  const snapshot = { lastId: 'message-before-finish', digest: 'a'.repeat(64) };
+  const persisted = {
+    writeJson: (key, value) => storage.set(key, JSON.stringify(value)),
+    readJson: (key, fallback) => storage.has(key) ? JSON.parse(storage.get(key)) : fallback,
+    getSession: () => ({ user: { id: 'account-a' } }),
+    loadRoomDiaryConversation: async messages => ({ messages, snapshot })
+  };
+  const first = await setup({ ...persisted, clearRoomConversation: async () => { throw new Error('HTTP 504'); } });
+  await send(first.chat, '今天一起看了月亮');
+  const originalTurnCount = first.chat.sessionTurnCount();
+  await first.chat.confirmEndChat();
+  assert.equal(first.saved.length, 1);
+  assert.equal(first.chat.sessionTurnCount(), originalTurnCount);
+  assert.match(first.chat.endChatState.value.message, /已保存在本机/);
+  first.chat.destroy();
+  let finished = 0;
+  const reopened = await setup({ ...persisted, clearRoomConversation: async options => {
+    assert.deepEqual(JSON.parse(JSON.stringify(options.snapshot)), snapshot);
+    finished++; return { remainingCount: 0 };
+  } });
+  await reopened.chat.confirmEndChat();
+  assert.equal(reopened.requests.length, 0);
+  assert.equal(reopened.saved.length, 0);
+  assert.equal(finished, 1);
+  assert.equal(reopened.chat.endChatState.value.status, 'done');
   reopened.chat.destroy();
 });
 

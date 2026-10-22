@@ -190,7 +190,6 @@ describe('frontend room memory API client usage', () => {
         assert.match(conversation, /authFetch\(noStoreUrl\('\/api\/room\/chat\?limit=24'\)/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/turn'/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/import'/);
-        assert.match(conversation, /method:\s*'DELETE'/);
         assert.match(conversation, /localStorage\.removeItem\(historyKey\(\)\)/);
         assert.match(conversation, /localStorage\.removeItem\(pendingKey\(\)\)/);
         assert.match(conversation, /`roomChatReset:\$\{userId\}`/);

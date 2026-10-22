@@ -58,9 +58,17 @@ test('finishing a diary preserves later cloud messages and rejects changed snaps
     const snapshot = chat.listDiaryMessages('diary-one').snapshot;
     chat.saveTurn('diary-one', { turnId: 'snapshot-new', userMessage: '生成日记期间在手机上说的话', assistantMessage: '新的回复' });
     const token = headers().Authorization.slice(7);
-    const denied = await request('/api/room/chat', { method: 'DELETE', headers: { Cookie: `tsukuyomi_session=${token}`, 'Content-Type': 'application/json', Origin: 'https://evil.example' }, body: JSON.stringify({ snapshot }) });
+    const denied = await request('/api/room/chat/finish', { method: 'POST', headers: { Cookie: `tsukuyomi_session=${token}`, 'Content-Type': 'application/json', Origin: 'https://evil.example' }, body: JSON.stringify({ snapshot }) });
     assert.equal(denied.status, 403);
-    const ended = await request('/api/room/chat', { method: 'DELETE', headers: headers(), body: JSON.stringify({ snapshot }) });
+    const anonymous = await request('/api/room/chat/finish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', Origin: base }, body: JSON.stringify({ snapshot }) });
+    assert.equal(anonymous.status, 401);
+    for (const body of [{}, { snapshot: null }, { snapshot: [] }, { snapshot: {} }]) {
+        const invalid = await request('/api/room/chat/finish', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+        assert.ok([400, 409].includes(invalid.status));
+        assert.equal(chat.listMessages('diary-one').length, 4);
+    }
+    assert.equal((await request('/api/room/chat/finish', { method: 'POST', headers: headers('diary-two'), body: JSON.stringify({ snapshot }) })).status, 409);
+    const ended = await request('/api/room/chat/finish', { method: 'POST', headers: headers(), body: JSON.stringify({ snapshot }) });
     assert.equal(ended.status, 200);
     assert.equal(ended.body.data.deletedCount, 2);
     assert.equal(ended.body.data.remainingCount, 2);

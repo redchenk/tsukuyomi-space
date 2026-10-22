@@ -630,7 +630,7 @@ router.get('/chat/diary', authenticateToken, (req, res) => {
     }
 });
 
-router.delete('/chat', authenticateToken, (req, res) => {
+function finishChat(req, res) {
     try {
         const data = req.body?.snapshot
             ? roomChatRepository.clearDiarySnapshot(req.user.id, req.body.snapshot)
@@ -642,7 +642,17 @@ router.delete('/chat', authenticateToken, (req, res) => {
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '结束会话失败' });
     }
+}
+
+// Some CDN hops discard DELETE bodies. A diary must carry its snapshot all
+// the way to the server; missing proof must never become a full-chat clear.
+router.post('/chat/finish', authenticateToken, (req, res) => {
+    if (!req.body?.snapshot || typeof req.body.snapshot !== 'object' || Array.isArray(req.body.snapshot)) {
+        return res.status(400).json({ success: false, message: '结束日记会话需要有效的对话快照' });
+    }
+    return finishChat(req, res);
 });
+router.delete('/chat', authenticateToken, finishChat);
 
 router.post('/chat/import', authenticateToken, (req, res) => {
     try {

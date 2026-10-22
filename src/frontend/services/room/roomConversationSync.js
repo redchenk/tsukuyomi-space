@@ -459,8 +459,10 @@ export async function clearRoomConversation({ snapshot = null } = {}) {
     return { deletedCount: 0 };
   }
 
-  const response = await authFetch('/api/room/chat', {
-    method: 'DELETE',
+  // Preserve the snapshot body through CDN/proxy hops that discard DELETE
+  // bodies. The bodyless explicit clear remains compatible with older clients.
+  const response = await authFetch(snapshot ? '/api/room/chat/finish' : '/api/room/chat', {
+    method: snapshot ? 'POST' : 'DELETE',
     headers: authHeaders({ Accept: 'application/json', ...(snapshot ? { 'Content-Type': 'application/json' } : {}) }),
     ...(snapshot ? { body: JSON.stringify({ snapshot }) } : {})
   });
