@@ -12,7 +12,7 @@ if not re.fullmatch(r'ssh-ed25519 [A-Za-z0-9+/=]+(?: [^\r\n]+)?',key):
 home=Path(sys.argv[2]);home.mkdir(mode=0o755,exist_ok=True);(home/'.ssh').mkdir(mode=0o755,exist_ok=True)
 path=home/'.ssh/authorized_keys'
 if path.exists():raise ValueError('Existing authorized key must be reviewed before replacement')
-command='/usr/bin/timeout --kill-after=10s 45m /usr/bin/env PYTHONPATH=/opt/tsukuyomi-app-distribution/network /usr/bin/python3 /opt/tsukuyomi-app-distribution/sync.py --root /opt/1panel/www/sites/tsukuyomi-app-distribution --receive'
+command='/usr/bin/timeout --kill-after=10s 45m /usr/bin/prlimit --as=268435456 --cpu=600 --nofile=64 /usr/bin/nice -n 10 /usr/bin/env PYTHONPATH=/opt/tsukuyomi-app-distribution/network /usr/bin/python3 /opt/tsukuyomi-app-distribution/sync.py --root /opt/1panel/www/sites/tsukuyomi-app-distribution --receive'
 path.write_text('restrict,command="'+command+'" '+key+'\n');os.chmod(path,0o644)
 PY
 usermod --home "$home_dir" --shell /bin/sh tsukuyomi-download
