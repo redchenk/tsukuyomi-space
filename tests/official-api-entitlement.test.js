@@ -1,11 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { DatabaseSync } = require('node:sqlite');
+const Database = require('better-sqlite3');
 const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 
 test('official API entitlement follows verified database roles and linked credentials', () => {
-    const db = new DatabaseSync(':memory:');
+    const db = new Database(':memory:');
     db.exec(`CREATE TABLE users(id TEXT,username TEXT,password_hash TEXT,role TEXT);
         CREATE TABLE admins(username TEXT,password_hash TEXT,role TEXT);
         INSERT INTO users VALUES('legacy','owner','same-hash','admin'),

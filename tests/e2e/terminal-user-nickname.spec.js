@@ -6,6 +6,7 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         const pageErrors = [];
         page.on('pageerror', error => pageErrors.push(error.message));
         await page.goto('/terminal');
+        await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
         await page.locator('input[autocomplete="username"]').fill('admin');
         await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
         await page.getByRole('button', { name: '连接终端' }).click();
@@ -13,7 +14,18 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
 
         const email = `${account}@example.test`;
         const search = page.getByPlaceholder('搜索用户名、邮箱、角色或 ID');
-        await search.fill(email);
+        async function searchUser() {
+            // Wait for the debounced server result before editing its drafts.
+            await Promise.all([
+                page.waitForResponse(response => {
+                    const url = new URL(response.url());
+                    return url.pathname === '/api/admin/users' && url.searchParams.get('search') === email;
+                }),
+                search.fill(email)
+            ]);
+            await expect(page.getByRole('navigation', { name: '用户分页' })).toContainText('1-1 / 1 名用户');
+        }
+        await searchUser();
         const row = page.locator('tbody tr').filter({ hasText: email });
         const draft = row.getByPlaceholder('编辑昵称');
         const save = row.getByRole('button', { name: '保存昵称', exact: true });
@@ -53,8 +65,9 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         expect(methods).toEqual(['POST']);
 
         await page.reload();
+        await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
         await page.getByRole('button', { name: '用户', exact: true }).click();
-        await search.fill(email);
+        await searchUser();
         await expect(row.locator('strong')).toHaveText(nextName);
         await draft.fill('e2e-user');
         await save.click();

@@ -5,7 +5,8 @@ test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 test('interrupted Room stream restores the unsent turn after reload and retries it once', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true,
+            apiUrl: 'https://fixture.test/v1/chat/completions', model: 'fixture-model', apiKey: 'fixture-key' }));
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
     });
 
@@ -20,6 +21,8 @@ test('interrupted Room stream restores the unsent turn after reload and retries 
     });
 
     await page.goto('/room');
+    await expect(page.locator('#loadingOverlay')).toHaveCount(0);
+    await expect(page.locator('.room-entry-splash')).toHaveCount(0);
     await page.locator('#chatInput').fill('今天有点累');
     await page.locator('#sendChatBtn').click();
     await expect(page.locator('.chat-message.user.is-failed')).toContainText('今天有点累');

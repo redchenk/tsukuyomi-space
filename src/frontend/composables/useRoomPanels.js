@@ -1,3 +1,4 @@
+import { readJson, writeJson } from '../services/room/roomStorage';
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 const panelDefaults = {
@@ -13,19 +14,6 @@ export const roomPanelButtons = [
   { id: 'profilePanel', label: '\u8d44\u6599', icon: 'badge' },
   { id: 'notePanel', label: '\u4fbf\u7b7e', icon: 'note' }
 ];
-
-function readJson(key, fallback) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value == null ? fallback : value;
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
 
 export function useRoomPanels() {
   const activePanels = reactive({

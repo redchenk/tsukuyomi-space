@@ -105,7 +105,12 @@ for (const width of [1280, 390]) {
         expect(localRequests.every(url => url.searchParams.get('oneclick_token') === tokenA)).toBe(true);
 
         currentToken = tokenB;
-        await page.evaluate(hash => { location.hash = hash; }, launchHash(tokenB));
+        // Consuming a new launcher hash intentionally reloads the application.
+        await Promise.all([
+            page.waitForEvent('load'),
+            page.evaluate(hash => { location.hash = hash; }, launchHash(tokenB))
+        ]);
+        await expect(page.locator('#loadingOverlay')).toHaveCount(0);
         await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('roomTTSSettings')).apiUrl)).toBe(defaults.apiUrl + '?oneclick_token=' + tokenB);
         await expect(page).toHaveURL(origin + '/room/settings');
         card = await openTtsSection(page);

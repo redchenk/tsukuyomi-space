@@ -1,4 +1,6 @@
 <script setup>
+import { readJson, writeJson } from '../services/room/roomStorage';
+import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../services/room/gptSovitsControl.mjs';
 import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
 import { uiText } from '../i18n/runtime';
 import llmRuntime from '../../../shared/model-runtime.cjs';
@@ -20,7 +22,7 @@ import {
   queueRoomLive2DForNextRoom,
   readRoomLive2DDebugState
 } from '../services/room/live2dControl';
-import {
+import { isOllamaApi, normalizeOllamaUrl, isOllamaNativeApi,
   fetchWithLocalOllamaGuidance,
   localOllamaWindowsCommand,
   normalizeLocalOllamaBaseUrl
@@ -430,51 +432,7 @@ function readStoredUser() {
   return getSession()?.user || null;
 }
 
-function readJson(key, fallback) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value == null ? fallback : value;
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
 function detectLLMProvider(apiUrl = '') { return detectProvider(apiUrl); }
-
-function normalizeLocalLLMUrl(apiUrl = '') {
-  const value = String(apiUrl || '').trim();
-  return normalizeLocalOllamaBaseUrl(value);
-}
-
-function isOllamaApi(apiUrl = '') {
-  try {
-    const parsed = new URL(normalizeLocalLLMUrl(apiUrl));
-    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
-      && (parsed.port || '11434') === '11434';
-  } catch (_) {
-    return false;
-  }
-}
-
-function normalizeOllamaUrl(apiUrl = '') {
-  const parsed = new URL(normalizeLocalLLMUrl(apiUrl || 'http://localhost:11434/api/chat'));
-  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
-  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
-  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
-  return parsed.toString().replace(/\/$/, '');
-}
-
-function isOllamaNativeApi(apiUrl = '') {
-  try {
-    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
-  } catch (_) {
-    return false;
-  }
-}
 
 function llmNeedsApiKey(apiUrl = llm.apiUrl) {
   return !isOllamaApi(apiUrl) && !isOfficialRoomApi(apiUrl);
@@ -943,7 +901,7 @@ function clearLive2DDebugQueue() {
 }
 
 function normalizeChatUrl(apiUrl, modelName) {
-  let url = normalizeLocalLLMUrl(apiUrl || 'https://api.moonshot.cn/v1/chat/completions');
+  let url = normalizeLocalOllamaBaseUrl(apiUrl || 'https://api.moonshot.cn/v1/chat/completions');
   if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(url)) return url.replace(/\/$/, '');
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return url.replace(/\/$/, '') + '/responses';
@@ -1068,32 +1026,10 @@ function defaultTtsUrl(provider) {
   return 'https://api.xiaomimimo.com/v1/chat/completions';
 }
 
-function normalizeLocalGptSovitsUrl(url) {
-  const parsed = new URL(url || defaultTtsUrl('gpt-sovits'));
-  if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && parsed.hostname === '127.0.0.1') {
-    parsed.hostname = 'localhost';
-  }
-  return parsed;
-}
-
 function buildGptSovitsControlUrl(settings, pathname, params) {
   return buildGptSovitsControlRequest(
     normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl('gpt-sovits')), pathname, params
   );
-}
-
-function requestLocalGptSovitsControl(url, timeout = 70000) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    const timer = window.setTimeout(() => resolve(false), timeout);
-    const done = () => {
-      window.clearTimeout(timer);
-      resolve(true);
-    };
-    image.onload = done;
-    image.onerror = done;
-    image.src = url;
-  });
 }
 
 async function ensureGptSovitsWeights(settings) {

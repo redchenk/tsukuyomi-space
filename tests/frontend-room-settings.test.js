@@ -5,7 +5,7 @@ const { test } = require('node:test');
 const strip = s => s.replace(/^import [\s\S]*?from '[^']*';$/gm, '').replace(/^export /gm, '');
 const source = path => fs.readFileSync(path, 'utf8');
 const knowledgeCode = strip(source('src/frontend/constants/room/knowledgeEntries.js')) + '\n' + strip(source('src/frontend/services/room/roomKnowledge.js'));
-const pageCode = strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
+const pageCode = strip(source('src/frontend/services/room/roomStorage.js')) + '\n' + strip(source('src/frontend/services/room/localOllamaTransport.js')) + '\n' + strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
 const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room/ttsTransport.js')) + '\nttsUsesProxy;', { URL });
 let validateMcpEndpoint;
 let catalog;
@@ -245,7 +245,7 @@ test('chat context reads the saved knowledge switch on every turn, never diary a
     readDiaryArchive: () => { throw new Error('Live chat must not read diary content'); },
     loadGrowth: async () => null, growthContext: () => '', corpus: async () => { corpusCalls++; return []; }
   };
-  vm.runInNewContext(knowledgeCode + '\n' + strip(source('src/frontend/services/room/roomContext.mjs')) + '\n' + strip(source('src/frontend/composables/room/useRoomChat.js')) + `
+  vm.runInNewContext(knowledgeCode + '\n' + strip(source('src/frontend/services/room/localOllamaTransport.js')) + '\n' + strip(source('src/frontend/services/room/roomContext.mjs')) + '\n' + strip(source('src/frontend/composables/room/useRoomChat.js')) + `
     fetchSiteFeedContext = async () => '';
     fetchPersonaMemories = corpus;
     fetchRelevantMemories = async () => ({ data: [], retrieval: {} });

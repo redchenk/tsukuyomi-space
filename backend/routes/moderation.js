@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const express = require('express');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const adminRepository = require('../repositories/admin-repository');
@@ -7,6 +6,7 @@ const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const responseCache = require('../services/response-cache');
 const { readModerationSettings, reviewMessageContent } = require('../services/message-moderation');
+const { messageReviewDigest, digestMatches, messageModerationView } = require('../services/message-review');
 const { approveAndNotify } = require('../services/approved-reply-notification');
 const { parsePositiveInt } = require('../validators');
 
@@ -67,33 +67,6 @@ function clearMessageCache() {
     responseCache.delPrefix('public:message-topics');
     responseCache.delPrefix('public:stats');
     responseCache.delPrefix('public:site-feed');
-}
-
-function messageReviewDigest(message) {
-    return crypto.createHash('sha256')
-        .update(`${message?.id || ''}\0${message?.content || ''}\0${message?.updated_at || message?.created_at || ''}`)
-        .digest('base64url');
-}
-
-function digestMatches(expected, actual) {
-    const left = Buffer.from(String(expected || ''));
-    const right = Buffer.from(String(actual || ''));
-    return left.length === right.length && left.length > 0 && crypto.timingSafeEqual(left, right);
-}
-
-function messageModerationView(message, settings) {
-    const review = reviewMessageContent(message.content, settings);
-    return {
-        ...message,
-        moderation: {
-            reviewDigest: messageReviewDigest(message),
-            blocked: !review.accepted,
-            code: review.accepted ? '' : (review.code || 'UNSAFE_MESSAGE'),
-            reasons: review.reviewReasons || [],
-            matchedKeywords: review.matchedKeywords || [],
-            externalHosts: review.externalHosts || []
-        }
-    };
 }
 
 router.use(authenticateToken, requireAdmin);

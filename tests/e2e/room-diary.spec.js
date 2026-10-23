@@ -34,6 +34,8 @@ for (const width of [1280, 390]) {
       } } });
     });
     await page.goto('/room');
+    await expect(page.locator('#loadingOverlay')).toHaveCount(0);
+    await expect(page.locator('.room-entry-splash')).toHaveCount(0);
     await expect(page.locator('#chatInput')).toBeVisible();
     await page.locator('#chatInput').fill('今天我们来聊聊书吧');
     await page.locator('#sendChatBtn').click();

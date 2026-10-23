@@ -1,3 +1,4 @@
+import { readJson, writeJson } from '../services/room/roomStorage';
 import { computed, ref } from 'vue';
 import { apiFetch } from '../api/client';
 import { isReducedPerformance } from '../utils/performance';
@@ -7,19 +8,6 @@ const WORLD_CACHE_KEY = 'roomWorldState:v3';
 const WORLD_LOCATION_KEY = 'roomWorldLocation:v3';
 const WORLD_CACHE_TTL = 20 * 60 * 1000;
 const WORLD_LOCATION_TTL = 6 * 60 * 60 * 1000;
-
-function readJson(key, fallback) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value == null ? fallback : value;
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
 
 function locationCacheKey(location = {}) {
   if (location.lat != null && location.lon != null) {

@@ -33,12 +33,15 @@ for (const local of [true, false]) test('Room stable regeneration with ' + (loca
   });
   if (!local) {
     await page.goto('/login');
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await page.locator('#loginAccount').fill('turn-context-account');
     await page.locator('#loginPassword').fill('mem0-test-password');
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/hub$/);
   }
   await page.goto('/room');
+  await expect(page.locator('#loadingOverlay')).toHaveCount(0);
+  await expect(page.locator('.room-entry-splash')).toHaveCount(0);
   const headers = { Origin: new URL(page.url()).origin, 'X-Requested-With': 'XMLHttpRequest' };
   let memoryId;
   if (local) {

@@ -10019,5 +10019,9 @@
   "登记已核验完成": {
     "en": "Record verified completion",
     "ja": "確認済みの完了を記録"
+  },
+  "手机支付尚未开放，请联系管理员开通支付宝手机网站支付。": {
+    "en": "Mobile payments are not available yet. Please ask an administrator to enable Alipay mobile website payments.",
+    "ja": "モバイル決済はまだ利用できません。管理者に Alipay のモバイルサイト決済の有効化を依頼してください。"
   }
 }

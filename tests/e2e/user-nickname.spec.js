@@ -6,11 +6,13 @@ for (const [width, account] of [[1280, 'nickname-own-desktop'], [390, 'nickname-
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto('/login');
+        await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
         await page.locator('#loginAccount').fill(account);
         await page.locator('#loginPassword').fill('mem0-test-password');
         await page.getByRole('button', { name: '登录', exact: true }).click();
         await expect(page).toHaveURL(/\/hub$/);
         await page.goto('/user-center');
+        await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
         await expect(page.locator('#ucNickname')).toBeEnabled();
         await page.locator('.uc-account-information summary').click();
         const accountInfo = page.locator('.uc-account-information');

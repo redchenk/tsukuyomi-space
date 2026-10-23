@@ -258,7 +258,10 @@ describe('growth API', () => {
 
         assert.ok([200, 201].includes(result.response.status));
         assert.equal(result.body.success, true);
-        const growthResult = result.body.growth || result.body.data?.growth;
+        const growthResult = task.key === 'daily_stage_visit'
+            ? result.body.data
+            : result.body.growth || result.body.data?.growth;
+        assert.ok(growthResult, `Missing growth result for ${task.key}`);
         assert.equal(growthResult.award.eventKey, task.key);
         assert.equal(growthResult.award.xp, 20);
         assert.equal(growthResult.state.today.completed, 1);

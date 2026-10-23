@@ -5,7 +5,7 @@ import {
   normalizeLive2DIntent
 } from './live2dControl';
 import { compileBehaviorIntent } from './live2dBehaviorController';
-import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
+import { isOllamaApi, normalizeOllamaUrl, isOllamaNativeApi, fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import llmRuntime from '../../../../shared/model-runtime.cjs';
 import { readJson, writeJson } from './roomStorage';
 import { apiFetch } from '../../api/client';
@@ -82,37 +82,6 @@ function pickReply(data) {
       .trim();
   }
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || data?.response || data?.reply || '';
-}
-
-function normalizeLocalLLMUrl(apiUrl = '') {
-  const value = String(apiUrl || '').trim();
-  return normalizeLocalOllamaBaseUrl(value);
-}
-
-function isOllamaApi(apiUrl = '') {
-  try {
-    const parsed = new URL(normalizeLocalLLMUrl(apiUrl));
-    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
-      && (parsed.port || '11434') === '11434';
-  } catch (_) {
-    return false;
-  }
-}
-
-function normalizeOllamaUrl(apiUrl = '') {
-  const parsed = new URL(normalizeLocalLLMUrl(apiUrl || 'http://localhost:11434/api/chat'));
-  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
-  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
-  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
-  return parsed.toString().replace(/\/$/, '');
-}
-
-function isOllamaNativeApi(apiUrl = '') {
-  try {
-    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
-  } catch (_) {
-    return false;
-  }
 }
 
 function extractJsonObject(text) {
@@ -572,7 +541,7 @@ function parsePayload(rawText) {
 }
 
 function normalizeOpenAIUrl(apiUrl = '') {
-  const url = normalizeLocalLLMUrl(apiUrl);
+  const url = normalizeLocalOllamaBaseUrl(apiUrl);
   if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
   if (/(xiaomimimo\.com|token-plan-cn\.xiaomimimo\.com)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/chat/completions`;

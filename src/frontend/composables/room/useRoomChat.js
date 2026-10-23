@@ -1,3 +1,4 @@
+import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../../services/room/gptSovitsControl.mjs';
 import { callRoomMcp, mcpResultText as normalizeMcpResult } from '../../services/room/roomMcp.mjs';
 import llmProtocol from '../../../../shared/llm-protocol.cjs';
 import agentProtocol from '../../../../shared/agent-protocol.cjs';
@@ -15,7 +16,7 @@ import {
   inferLive2DIntentFromText
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
-import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
+import { isOllamaApi, normalizeOllamaUrl, isOllamaNativeApi, fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 import { roomChatConfigured, isOfficialRoomApi, fetchOfficialRoomDashboard, officialRoomSettings, officialRoomRequestBody } from '../../services/room/roomOfficialApi.mjs';
 import {
@@ -96,7 +97,6 @@ function streamingVisibleText(text) {
  */
 function stripActionHints(text) {
   let value = String(text || '').trim();
-
 
   return value
     // Labelled field lines the old JSON protocol produced.
@@ -185,32 +185,10 @@ function defaultTtsUrl(provider) {
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = ONECLICK_TTS_DEFAULTS.gptWeightPath;
 const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = ONECLICK_TTS_DEFAULTS.sovitsWeightPath;
 
-function normalizeLocalGptSovitsUrl(url) {
-  const parsed = new URL(url || defaultTtsUrl('gpt-sovits'));
-  if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && parsed.hostname === '127.0.0.1') {
-    parsed.hostname = 'localhost';
-  }
-  return parsed;
-}
-
 function buildGptSovitsControlUrl(settings, pathname, params) {
   return buildGptSovitsControlRequest(
     normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider)), pathname, params
   );
-}
-
-function requestLocalGptSovitsControl(url, timeout = 70000) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    const timer = window.setTimeout(() => resolve(false), timeout);
-    const done = () => {
-      window.clearTimeout(timer);
-      resolve(true);
-    };
-    image.onload = done;
-    image.onerror = done;
-    image.src = url;
-  });
 }
 
 async function ensureGptSovitsWeights(settings) {
@@ -417,37 +395,6 @@ function pickReply(data) {
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || data?.response || data?.reply || '';
 }
 
-function normalizeLocalLLMUrl(apiUrl = '') {
-  const value = String(apiUrl || '').trim();
-  return normalizeLocalOllamaBaseUrl(value);
-}
-
-function isOllamaApi(apiUrl = '') {
-  try {
-    const parsed = new URL(normalizeLocalLLMUrl(apiUrl));
-    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
-      && (parsed.port || '11434') === '11434';
-  } catch (_) {
-    return false;
-  }
-}
-
-function normalizeOllamaUrl(apiUrl = '') {
-  const parsed = new URL(normalizeLocalLLMUrl(apiUrl || 'http://localhost:11434/api/chat'));
-  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
-  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
-  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
-  return parsed.toString().replace(/\/$/, '');
-}
-
-function isOllamaNativeApi(apiUrl = '') {
-  try {
-    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
-  } catch (_) {
-    return false;
-  }
-}
-
 function isOpenAIResponsesApi(apiUrl = '') {
   return /(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
 }
@@ -478,7 +425,7 @@ function openRouterHeaders(apiUrl = '') {
 }
 
 function normalizeOpenAIUrl(apiUrl = '') {
-  const url = normalizeLocalLLMUrl(apiUrl);
+  const url = normalizeLocalOllamaBaseUrl(apiUrl);
   if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
   if (/(xiaomimimo\.com|token-plan-cn\.xiaomimimo\.com)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/chat/completions`;
@@ -1604,7 +1551,6 @@ export function useRoomChat({ live2d, world, diary = null }) {
       }
     }
   }
-
 
   /**
    * Everything the "结束聊天" interaction needs: the messages produced since

@@ -1,3 +1,4 @@
+import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from './gptSovitsControl.mjs';
 import { apiFetch } from '../../api/client';
 import { readJson } from './roomStorage';
 import { requestTtsAudioBlob, ttsUsesProxy } from './ttsTransport';
@@ -8,14 +9,6 @@ const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = ONECLICK_TTS_DEFAULTS.sovitsWeightPath;
 
 function defaultTtsUrl(provider) {
   return provider === 'gpt-sovits' ? 'http://localhost:9880/tts' : '';
-}
-
-function normalizeLocalGptSovitsUrl(url) {
-  const parsed = new URL(url || defaultTtsUrl('gpt-sovits'));
-  if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && parsed.hostname === '127.0.0.1') {
-    parsed.hostname = 'localhost';
-  }
-  return parsed;
 }
 
 function normalizeGptSovitsLang(value, fallback = 'zh') {
@@ -73,20 +66,6 @@ function buildGptSovitsControlUrl(settings, pathname, params) {
   return buildGptSovitsControlRequest(
     normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider)), pathname, params
   );
-}
-
-function requestLocalGptSovitsControl(url, timeout = 70000) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    const timer = window.setTimeout(() => resolve(false), timeout);
-    const done = () => {
-      window.clearTimeout(timer);
-      resolve(true);
-    };
-    image.onload = done;
-    image.onerror = done;
-    image.src = url;
-  });
 }
 
 async function ensureGptSovitsWeights(settings) {

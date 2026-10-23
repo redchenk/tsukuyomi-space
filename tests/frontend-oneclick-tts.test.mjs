@@ -99,9 +99,11 @@ test('official room pages accept a launch without affecting ordinary saved setti
 test('weight controls retain launch authentication in settings, chat and Live2D playback', () => {
   for (const path of ['src/frontend/pages/RoomSettingsPage.vue', 'src/frontend/composables/room/useRoomChat.js', 'src/frontend/services/room/live2dSpeech.js']) {
     const source = fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-    const code = source.slice(source.indexOf('function normalizeLocalGptSovitsUrl'), source.indexOf('function requestLocalGptSovitsControl'));
+    const shared = fs.readFileSync(new URL('../src/frontend/services/room/gptSovitsControl.mjs', import.meta.url), 'utf8')
+      .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
+    const code = shared + '\n' + source.match(/^function buildGptSovitsControlUrl\([\s\S]*?^}/m)[0];
     const build = vm.runInNewContext(code + '\nbuildGptSovitsControlUrl;', {
-      URL, Date, buildGptSovitsControlRequest, window: { location: { protocol: 'https:' } }
+      URL, Date, ONECLICK_TTS_DEFAULTS, buildGptSovitsControlRequest, window: { location: { protocol: 'https:' } }
     });
     for (const [pathname, weights_path] of [
       ['/set_gpt_weights', ONECLICK_TTS_DEFAULTS.gptWeightPath],

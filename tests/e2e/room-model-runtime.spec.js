@@ -43,6 +43,8 @@ test('layered settings persist, declarations retain manual overrides, and actual
   await expect(imageRow).toContainText('支持 · 人工覆盖');
   await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
   await expect(page).toHaveURL(/\/room$/);
+  await expect(page.locator('#chatInput')).toBeVisible();
+  await expect(page.locator('#loadingOverlay')).toHaveCount(0);
   await page.locator('#chatInput').fill('验证保存后的参数');
   await page.locator('#sendChatBtn').click();
   await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toContainText('参数配置已生效');

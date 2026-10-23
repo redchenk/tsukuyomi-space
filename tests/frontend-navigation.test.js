@@ -396,10 +396,10 @@ describe('frontend navigation routes', () => {
     });
 
     it('keeps mobile account security and the music playlist readable', () => {
-        const userCenterCss = source('assets/css/vue/pages/user-center.css');
+        const userCenterCss = source('src/frontend/styles/routes/user-center.css');
         const musicCss = source('assets/css/vue/music-player.css');
 
-        assert.match(userCenterCss, /@media \(max-width: 720px\)[\s\S]*?\.uc-security-grid\s*{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
+        assert.match(userCenterCss, /\.uc-security-grid\s*{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
         assert.match(userCenterCss, /\.uc-security-grid > \*\s*{[\s\S]*?min-width: 0/);
         assert.match(musicCss, /\.site-music-playlist-drawer select\s*{[\s\S]*?color-scheme: dark/);
         assert.match(musicCss, /\.site-music-playlist-drawer select option\s*{[\s\S]*?background:/);

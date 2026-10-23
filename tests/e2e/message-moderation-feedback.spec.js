@@ -5,11 +5,13 @@ const holiday = '“假期将尽，书案蒙尘。非吾生性疏懒，实乃开
 test('emoji prose publishes while review reasons remain visible for messages, comments, replies and edits', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/login');
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await page.locator('#loginAccount').fill('feedback-browser');
     await page.locator('#loginPassword').fill('mem0-test-password');
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/hub$/);
     await page.goto('/plaza');
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     const composer = page.locator('.plaza-composer');
     const marker = `feedback-${Date.now()}`;
     await composer.locator('textarea').fill(`${marker} ${holiday}`);
@@ -37,6 +39,7 @@ test('emoji prose publishes while review reasons remain visible for messages, co
     await expect(reply).toHaveCount(0);
 
     await page.goto('/article?id=1');
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     const comments = page.locator('.comments-section');
     const form = comments.locator('.comment-form');
     await form.locator('textarea').fill(`${marker} ${holiday}`);
@@ -52,7 +55,8 @@ test('emoji prose publishes while review reasons remain visible for messages, co
     await expect(comment.locator('.moderation-notice')).toContainText('关键词');
 
     await page.goto('/user-center');
-    await page.getByRole('button', { name: /我的留言/ }).click();
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+    await page.locator('#ucSection').selectOption('messages');
     const pendingId = await page.locator('.uc-message-item').filter({ hasText: 'review.example/safety' }).getAttribute('id');
     const pending = page.locator(`#${pendingId}`);
     await expect(pending.locator('.moderation-notice')).toContainText('按当前审核规则');

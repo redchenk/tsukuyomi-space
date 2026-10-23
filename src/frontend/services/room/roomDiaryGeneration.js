@@ -2,7 +2,7 @@ import { apiFetch } from '../../api/client';
 import llmRuntime from '../../../../shared/model-runtime.cjs';
 import llmProtocol from '../../../../shared/llm-protocol.cjs';
 import { readJson } from './roomStorage';
-import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
+import { isOllamaApi, normalizeOllamaUrl, isOllamaNativeApi, fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import { activePersonaPrompt, diaryTimestampLabel } from './roomDiaryArchive';
 import { isOfficialRoomApi, fetchOfficialRoomDashboard, officialRoomSettings, officialRoomRequestBody } from './roomOfficialApi.mjs';
 
@@ -18,32 +18,6 @@ import { isOfficialRoomApi, fetchOfficialRoomDashboard, officialRoomSettings, of
 const DIARY_MAX_CONVERSATION_TURNS = 60;
 const DIARY_MAX_CHARS_PER_MESSAGE = 1500;
 const DIARY_MIN_CONTENT_LENGTH = 20;
-
-function isOllamaApi(apiUrl = '') {
-  try {
-    const parsed = new URL(normalizeLocalOllamaBaseUrl(apiUrl));
-    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
-      && (parsed.port || '11434') === '11434';
-  } catch (_) {
-    return false;
-  }
-}
-
-function normalizeOllamaUrl(apiUrl = '') {
-  const parsed = new URL(normalizeLocalOllamaBaseUrl(apiUrl || 'http://localhost:11434/api/chat'));
-  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
-  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
-  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
-  return parsed.toString().replace(/\/$/, '');
-}
-
-function isOllamaNativeApi(apiUrl = '') {
-  try {
-    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
-  } catch (_) {
-    return false;
-  }
-}
 
 function isOpenAIResponsesApi(apiUrl = '') {
   return /(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
