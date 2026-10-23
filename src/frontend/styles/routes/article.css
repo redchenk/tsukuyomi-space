@@ -25,3 +25,5 @@
   .is-keyboard-open .article-quick-nav { display: none; }
   body:has(.site-music-drawer.is-open) .article-quick-nav { visibility: hidden; }
 }
+
+.article-page .article-task-feedback { margin: 14px 0 0; color: var(--ts-status-success); font-size: 14px; line-height: 1.7; }

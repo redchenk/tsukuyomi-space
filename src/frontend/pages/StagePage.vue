@@ -2,7 +2,6 @@
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { recordStageVisitGrowth } from '../services/userGrowth';
 import { createArticleDiscoveryTracker } from '../services/articleDiscovery.mjs';
 import { getAuthToken } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
@@ -34,11 +33,6 @@ const stageOrder = ref('featured');
 const recommendationSnapshot = ref('');
 const stageGrid = ref(null);
 let discoveryTracker;
-let visitRequest;
-function recordStageVisit() {
-  if (!stageMounted || document.visibilityState === 'hidden' || visitRequest) return;
-  visitRequest = recordStageVisitGrowth().catch(() => null).finally(() => { visitRequest = null; });
-}
 
 const recommendationDate = ref('');
 const stageSortCopy = computed(() => ({ zh: ['精选优先', '每日推荐', '最新优先', '编辑推荐'], ja: ['おすすめ順', '今日のおすすめ', '新着順', '編集部おすすめ'], en: ['Featured first', 'Daily picks', 'Latest first', 'Editor pick'] }[props.lang]));
@@ -314,13 +308,10 @@ watch(categoryRevision, () => {
 });
 onMounted(() => {
   stageMounted = true;
-  document.addEventListener('visibilitychange', recordStageVisit);
-  recordStageVisit();
   loadArticles();
 });
 onActivated(() => {
   stageMounted = true;
-  recordStageVisit();
   if (stageGrid.value) {
     discoveryTracker ||= createArticleDiscoveryTracker();
     void discoveryTracker.start(stageGrid.value, stageArticleRequest());
@@ -340,7 +331,6 @@ onDeactivated(() => {
 onBeforeUnmount(() => {
   stageMounted = false;
   discoveryTracker?.destroy();
-  document.removeEventListener('visibilitychange', recordStageVisit);
   stageRequestRevision += 1;
   window.clearTimeout(stageReloadTimer);
 });

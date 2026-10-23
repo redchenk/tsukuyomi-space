@@ -57,8 +57,8 @@ describe('growth frontend integration', () => {
         assert.match(growthService, /daily_kaguya_run/);
         assert.match(growthService, /kaguya_score/);
         assert.match(growthService, /rotatingDailyTask\(userId, today\)/);
-        assert.match(growthRoute, /recordDailyActivity\(req.user.id, 'stage_visit'/);
-        assert.match(stage, /recordStageVisitGrowth/);
+        assert.doesNotMatch(growthRoute, /recordDailyActivity/);
+        assert.doesNotMatch(stage, /recordStageVisitGrowth/);
         assert.match(messages, /recordDailyActivity\(userId, activityKey/);
         assert.match(messages, /review\.status === 'approved' && !article_id/);
         assert.match(pixel, /recordPixelGrowth\(req\.user\.id, 'pixel_publish'/);

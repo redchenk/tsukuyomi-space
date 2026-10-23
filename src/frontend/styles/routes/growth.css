@@ -310,6 +310,14 @@ html[data-theme="dark"] .growth-error {
   white-space: nowrap;
 }
 
+.growth-task-copy strong,
+.growth-task-copy .growth-task-hint {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .growth-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);

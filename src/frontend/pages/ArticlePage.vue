@@ -16,6 +16,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
+import { applyGrowthResult } from '../services/userGrowth';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { handleMarkdownClick } from '../utils/markdownActions';
 import { applySeo, articleSeo } from '../utils/seo';
@@ -57,6 +58,7 @@ const replyModeration = reactive({});
 const session = ref(getSession());
 const articleShareOpen = ref(false);
 const articleLike = reactive({ loading: false, liked: false, count: 0 });
+const articleTaskMessage = ref('');
 const bookmark = reactive({
   loading: false,
   ready: false,
@@ -211,6 +213,7 @@ function showMessage(text, type = 'error') {
 }
 
 async function loadArticle() {
+  articleTaskMessage.value = '';
   const revision = ++articleLoadRevision;
   articleRequests?.abort();
   articleRequests = new AbortController();
@@ -310,10 +313,21 @@ async function loadArticleLikeStatus(context) {
   }
 }
 
+function applyArticleGrowth(result, owner) {
+  if (!result?.state || getSession()?.user?.id !== owner) return '';
+  applyGrowthResult(result);
+  if (!result.award?.awarded) return '';
+  const xp = result.award.xp;
+  return props.lang === 'ja' ? `今日のタスクを達成：+${xp} 経験値`
+    : props.lang === 'en' ? `Today's task completed, +${xp} XP`
+      : `今日任务已完成，+${xp} 经验`;
+}
+
 async function toggleArticleLike() {
   if (articleLike.loading || !requireLogin()) return;
   const id = articleId.value;
   const context = { id, revision: articleLoadRevision };
+  const owner = getSession()?.user?.id;
   const previous = { liked: articleLike.liked, count: articleLike.count };
   articleLike.loading = true;
   articleLike.liked = !previous.liked;
@@ -327,6 +341,8 @@ async function toggleArticleLike() {
     if (!isCurrentArticle(context)) return;
     articleLike.liked = Boolean(result.data?.liked);
     articleLike.count = Number(result.data?.count || 0);
+    const completed = applyArticleGrowth(result.growth, owner);
+    if (completed) articleTaskMessage.value = completed;
     showMessage('');
   } catch (error) {
     if (isCurrentArticle(context)) {
@@ -497,23 +513,28 @@ function isCommentLiked(commentId) {
 }
 
 async function toggleBookmark() {
-  if (!requireLogin()) return;
+  if (bookmark.loading || !requireLogin()) return;
+  const context = { id: articleId.value, revision: articleLoadRevision };
+  const owner = getSession()?.user?.id;
   bookmark.loading = true;
   try {
-    const response = await authFetch(`/api/user/bookmarks/${encodeURIComponent(articleId.value)}`, {
+    const response = await authFetch(`/api/user/bookmarks/${encodeURIComponent(context.id)}`, {
       method: bookmark.bookmarked ? 'DELETE' : 'POST',
       headers: authHeaders()
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '操作失败');
+    if (!isCurrentArticle(context)) return;
     bookmark.ready = true;
     bookmark.bookmarked = Boolean(result.data?.bookmarked);
     bookmark.count = Number(result.data?.count || 0);
+    const completed = applyArticleGrowth(result.growth, owner);
+    if (completed) articleTaskMessage.value = completed;
     showMessage(result.message || '', 'success');
   } catch (error) {
-    showMessage(error.message || '操作失败');
+    if (isCurrentArticle(context)) showMessage(error.message || '操作失败');
   } finally {
-    bookmark.loading = false;
+    if (isCurrentArticle(context)) bookmark.loading = false;
   }
 }
 
@@ -589,6 +610,7 @@ watch(() => route.hash, revealCommentHash);
               <span v-if="bookmark.loading" class="ts-visually-hidden" role="status">正在更新收藏状态</span>
             </button>
           </div>
+          <p v-if="articleTaskMessage" class="article-task-feedback" role="status">{{ articleTaskMessage }}</p>
         </header>
 
         <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high" data-image-bloom>

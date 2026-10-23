@@ -66,6 +66,25 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+// Stable login names with a server-selected article task on the current day.
+// The disposable fixture exercises real rewards without a production test hook.
+const articleTaskGrowth = require('../backend/services/user-growth');
+for (const name of ['article-task-like', 'article-task-bookmark']) {
+    let assigned = false;
+    const password = bcrypt.hashSync('article-task-password', 4);
+    for (let i = 0; i < 100; i++) {
+        const id = `${name}-${i}`;
+        db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+            .run(id, id, `${id}@example.test`, password, 'user');
+        if (articleTaskGrowth.getState(id).today.tasks[2].key !== 'daily_article_engage') continue;
+        db.prepare('UPDATE users SET username=? WHERE id=?').run(name, id);
+        assigned = true;
+        break;
+    }
+    if (!assigned) throw new Error('Could not seed article task fixture');
+}
+db.prepare('INSERT INTO articles(id,title,content,author_id,status) VALUES(?,?,?,?,?)')
+    .run(987601, '成长任务验收文章', '这是一篇用于验证点赞或收藏任务的公开文章。', 'e2e-user-001', 'published');
 db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
     .run('upload-super-admin', 'upload-super-admin', 'upload-super-admin@example.test', bcrypt.hashSync('upload-super-password', 4), 'super_admin');
 require('../backend/services/partner-oauth').registerClient({

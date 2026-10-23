@@ -22,7 +22,7 @@ const DAILY_ACTIONS = Object.freeze({
 });
 
 const RANDOM_DAILY_TASKS = Object.freeze([
-    { key: 'daily_stage_visit', xp: 20, label: '访问主舞台', path: '/stage', activities: ['stage_visit'] },
+    { key: 'daily_article_engage', xp: 20, label: '给任意一篇文章点赞或收藏', path: '/stage', activities: ['article_like', 'article_bookmark'] },
     { key: 'daily_plaza_engage', xp: 20, label: '月读广场留言或点赞', path: '/plaza', activities: ['plaza_message', 'plaza_like'] },
     { key: 'daily_pixel_engage', xp: 20, label: '像素画绘画或点赞', path: '/pixel', activities: ['pixel_publish', 'pixel_like'] },
     { key: 'daily_gallery_upload', xp: 20, label: '图库上传图片', path: '/gallery/manage', activities: ['gallery_upload'] },
@@ -41,6 +41,7 @@ const EVENT_LABELS = Object.freeze({
     daily_share: '分享月读空间',
     daily_article_publish: '主舞台发布文章',
     daily_stage_visit: '访问主舞台',
+    daily_article_engage: '给任意一篇文章点赞或收藏',
     daily_plaza_engage: '月读广场留言或点赞',
     daily_pixel_engage: '像素画绘画或点赞',
     daily_gallery_upload: '图库上传图片',
@@ -197,9 +198,13 @@ function buildState(userId, now = new Date()) {
         GROUP BY event_key
     `).all(userId, today);
     const todayEvents = new Map(todayRows.map((row) => [row.event_key, Number(row.xp) || 0]));
-    // The former publication task occupies the same rotating slot. Preserve its
-    // completion and XP on upgrade, without relabelling historical events.
-    if (todayEvents.has('daily_article_publish') && !todayEvents.has('daily_stage_visit')) todayEvents.set('daily_stage_visit', todayEvents.get('daily_article_publish'));
+    // Earlier publication/visit tasks occupied this same rotating slot. Keep
+    // today's completion and XP without rewriting the historical event labels.
+    if (!todayEvents.has('daily_article_engage')) {
+        for (const key of ['daily_stage_visit', 'daily_article_publish']) {
+            if (todayEvents.has(key)) { todayEvents.set('daily_article_engage', todayEvents.get(key)); break; }
+        }
+    }
     const referralCounts = db.prepare(`
         SELECT
             SUM(CASE WHEN invitee.referral_qualified_at IS NULL THEN 1 ELSE 0 END) AS pending,
@@ -425,7 +430,9 @@ const dailyActivityTransaction = db.transaction((userId, activityKey, sourceId, 
 
     const profile = ensureProfile(userId);
     const previousLevel = levelForXp(profile.total_xp);
-    if (task.key === 'daily_stage_visit' && db.prepare("SELECT 1 FROM user_growth_events WHERE user_id = ? AND event_key = 'daily_article_publish' AND event_date = ?").get(userId, today)) return withLevelChange(userId, previousLevel, { awarded: false, xp: 0, eventKey: task.key }, now);
+    if (task.key === 'daily_article_engage' && db.prepare("SELECT 1 FROM user_growth_events WHERE user_id = ? AND event_key IN ('daily_article_publish', 'daily_stage_visit') AND event_date = ?").get(userId, today)) {
+        return withLevelChange(userId, previousLevel, { awarded: false, xp: 0, eventKey: task.key }, now);
+    }
     const award = insertEvent({
         userId,
         eventKey: task.key,

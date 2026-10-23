@@ -101,11 +101,12 @@ test('six-slot discovery mixes new work, potential work and old work with author
  assert.ok(picks.some(a=>a.slot==='explore'));assert.ok(new Set(picks.map(a=>a.author_id)).size>=6);assert.ok(new Set(picks.map(a=>a.category)).size>=3);
  const counts={};for(const p of picks)counts[p.author_id]=(counts[p.author_id]||0)+1;assert.ok(Math.max(...Object.values(counts))<=2);
 });
-test('a legacy publication completion is preserved and cannot receive the new visit reward again',()=>{
- let date=new Date('2026-10-21T04:00:00Z');for(let i=0;i<5;i++){if(growth.getState('other',date).today.tasks[2].key==='daily_stage_visit')break;date=new Date(+date+86400000);}
+test('a legacy publication completion is preserved and cannot receive the replacement engagement reward again',()=>{
+ let date=new Date('2026-10-21T04:00:00Z');for(let i=0;i<5;i++){if(growth.getState('other',date).today.tasks[2].key==='daily_article_engage')break;date=new Date(+date+86400000);}
  growth.ensureProfile('other');growth.insertEvent({userId:'other',eventKey:'daily_article_publish',eventDate:growth.hongKongDate(date),xp:20});
  const state=growth.getState('other',date);assert.equal(state.today.tasks[2].completed,true);
- const visit=growth.recordDailyActivity('other','stage_visit','',date);assert.equal(visit.award.xp,0);assert.equal(visit.state.level.totalXp,20);
+ const like=growth.recordDailyActivity('other','article_like','public-article',date);assert.equal(like.award.xp,0);assert.equal(like.state.level.totalXp,20);
+ assert.equal(growth.recordDailyActivity('other','stage_visit','',date),null);
  assert.equal(growth.recordDailyActivity('other','article_publish','new-post',date),null);
 });
 test('HTTP measurement sessions derive article IDs and positions from server lists, never from supplied counters',async()=>{
@@ -123,7 +124,7 @@ test('HTTP measurement sessions derive article IDs and positions from server lis
  await fetch(base+'/api/articles/discovery/impressions',{method:'POST',headers,body:JSON.stringify({token:'forged',ids:[article],xp:99999})});
  assert.equal(growth.getState('reader').level.totalXp,before);
  const stage=await fetch(base+'/api/growth/actions/stage-visit',{method:'POST',headers,body:JSON.stringify({xp:999999,userId:'writer'})});
- assert.equal(stage.status,200);const result=await stage.json();assert.ok([0,20].includes(result.data.award.xp));
+ assert.equal(stage.status,200);const result=await stage.json();assert.equal(result.data.award.xp,0);
  const twice=await (await fetch(base+'/api/growth/actions/stage-visit',{method:'POST',headers})).json();assert.equal(twice.data.award.xp,0);
  assert.equal((await fetch(base+'/api/growth/actions/stage-visit',{method:'POST',headers:{'Content-Type':'application/json',Origin:base,'X-Requested-With':'XMLHttpRequest'}})).status,401);
 });

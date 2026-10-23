@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const db = require('./db');
+const userGrowth = require('./services/user-growth');
 const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
 const adminRepository = require('./repositories/admin-repository');
@@ -210,8 +212,13 @@ for (const method of ['post', 'delete']) {
         try {
             const article = articleRepository.findPublishedArticleById(req.params.articleId);
             if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
-            const wasLiked = method === 'post' && socialRepository.articleLikeStatus(req.user.id, article.id).liked;
-            const data = socialRepository.setArticleLike(req.user.id, article.id, method === 'post');
+            const { wasLiked, data, growth } = db.transaction(() => {
+                const wasLiked = socialRepository.articleLikeStatus(req.user.id, article.id).liked;
+                const data = socialRepository.setArticleLike(req.user.id, article.id, method === 'post');
+                const growth = method === 'post' && !wasLiked
+                    ? userGrowth.recordDailyActivity(req.user.id, 'article_like', article.id) : null;
+                return { wasLiked, data, growth };
+            })();
             responseCache.delPrefix('public:articles:');
             if (method === 'post' && !wasLiked && article.author_id && article.author_id !== req.user.id) {
                 const title = `${req.user.nickname || req.user.username || '访客'} 点赞了你的文章`;
@@ -236,7 +243,7 @@ for (const method of ['post', 'delete']) {
                     actorName: req.user.nickname || req.user.username || '访客'
                 });
             }
-            res.json({ success: true, data });
+            res.json({ success: true, data, growth });
         } catch (error) {
             console.error('Article like failed:', error);
             res.status(500).json({ success: false, message: '点赞操作失败' });
@@ -265,7 +272,11 @@ router.post('/bookmarks/:articleId', authenticateToken, (req, res) => {
     try {
         const article = articleRepository.findPublishedArticleById(req.params.articleId);
         if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
-        const created = socialRepository.bookmarkArticle(req.user.id, article.id);
+        const { created, growth } = db.transaction(() => {
+            const created = socialRepository.bookmarkArticle(req.user.id, article.id);
+            const growth = created ? userGrowth.recordDailyActivity(req.user.id, 'article_bookmark', article.id) : null;
+            return { created, growth };
+        })();
         responseCache.delPrefix('public:articles:');
         if (created && article.author_id && article.author_id !== req.user.id) {
             notificationRepository.createNotification({
@@ -285,6 +296,7 @@ router.post('/bookmarks/:articleId', authenticateToken, (req, res) => {
                 bookmarked: true,
                 count: socialRepository.articleBookmarkCount(article.id)
             },
+            growth,
             message: '已收藏'
         });
     } catch (error) {

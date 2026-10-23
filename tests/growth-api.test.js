@@ -210,8 +210,9 @@ describe('growth API', () => {
         const task = current.body.data.today.tasks.find((item) => item.type === 'rotating');
         let result;
 
-        if (task.key === 'daily_stage_visit') {
-            result = await call('/api/growth/actions/stage-visit', { method: 'POST', headers: headers(true, actionToken) });
+        if (task.key === 'daily_article_engage') {
+            const articleId = db.prepare("INSERT INTO articles(title, content, author_id, status) VALUES ('成长任务文章', '一篇公开文章', 'growth-api-user', 'published')").run().lastInsertRowid;
+            result = await call(`/api/user/article-likes/${articleId}`, { method: 'POST', headers: headers(true, actionToken) });
         } else if (task.key === 'daily_plaza_engage') {
             result = await call('/api/messages', {
                 method: 'POST',
@@ -258,9 +259,7 @@ describe('growth API', () => {
 
         assert.ok([200, 201].includes(result.response.status));
         assert.equal(result.body.success, true);
-        const growthResult = task.key === 'daily_stage_visit'
-            ? result.body.data
-            : result.body.growth || result.body.data?.growth;
+        const growthResult = result.body.growth || result.body.data?.growth;
         assert.ok(growthResult, `Missing growth result for ${task.key}`);
         assert.equal(growthResult.award.eventKey, task.key);
         assert.equal(growthResult.award.xp, 20);
