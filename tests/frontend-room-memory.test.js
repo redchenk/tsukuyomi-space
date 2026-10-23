@@ -94,8 +94,8 @@ describe('frontend room memory API client usage', () => {
         const code = source('src/frontend/composables/room/useRoomChat.js');
 
         assert.match(code, /import \{ apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse \} from '\.\.\/\.\.\/api\/client';/);
-        assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
-        assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
+        assert.match(code, /authFetch\('\/api\/room\/memory\/search', memorySearchOptions\(params, signal\)\)/);
+        assert.match(code, /authFetch\('\/api\/room\/persona-memory\/search', memorySearchOptions\(params, signal\)\)/);
         assert.match(source('src/frontend/services/room/roomMemoryRetrieval.mjs'), /purpose: 'chat'/);
         assert.match(code, /retrieveGuestMemories\(message, limit, scope\)/);
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
@@ -120,7 +120,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /import \{ apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse \} from '\.\.\/api\/client';/);
         assert.match(code, /return getSession\(\)\?\.user \|\| null;/);
         assert.match(code, /authFetch\(noStoreUrl\('\/api\/room\/memory\/status'\)/);
-        assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
+        assert.match(code, /authFetch\('\/api\/room\/memory\/search', memorySearchOptions\(params\)\)/);
         assert.match(code, /window\.addEventListener\('tsukuyomi:room-memory-updated', onRoomMemoryUpdated\)/);
         assertNoRawRoomMemoryFetch('src/frontend/pages/RoomSettingsPage.vue');
     });
@@ -596,5 +596,31 @@ describe('bounded memory retrieval and fallback', () => {
         assert.match(label({ count: 2, fallback: true }), /已参考 2 条.*备用检索/);
         assert.match(label({ backend: 'unavailable', reason: 'timeout' }), /请求超时/);
         assert.match(label({ backend: 'unavailable', reason: 'http_401' }), /重新登录/);
+    });
+});
+
+
+describe('memory reads avoid URI length limits', () => {
+    it('carries full Chinese text, replay scopes and management filters in JSON with cancellation', async () => {
+        const { memorySearchOptions } = await import('../src/frontend/services/room/roomMemoryRequest.mjs');
+        const params = new URLSearchParams({ q: '长篇中文回忆。'.repeat(1000), purpose: 'chat',
+            memoryIds: JSON.stringify(Array.from({ length: 30 }, (_, i) => `memory-${i}`)),
+            excludeTurnIds: JSON.stringify(Array.from({ length: 40 }, (_, i) => `turn-${i}`)),
+            retrieval: 'source', view: 'manage', type: 'episodic', offset: '80', limit: '20' });
+        assert.ok(params.toString().length > 8192);
+        const controller = new AbortController();
+        const options = memorySearchOptions(params, controller.signal);
+        assert.equal(options.method, 'POST');
+        assert.equal(options.headers['Content-Type'], 'application/json');
+        assert.equal(options.cache, 'no-store');
+        assert.equal(options.signal, controller.signal);
+        assert.deepEqual(JSON.parse(options.body), Object.fromEntries(params));
+        controller.abort();
+        assert.equal(options.signal.aborted, true);
+        const settings = source('src/frontend/pages/RoomSettingsPage.vue');
+        assert.match(settings, /authFetch\('\/api\/room\/memory\/search', memorySearchOptions\(params\)\)/);
+        for (const file of ['src/frontend/pages/RoomSettingsPage.vue', 'src/frontend/composables/room/useRoomChat.js']) {
+            assert.doesNotMatch(source(file), /(?:memory|persona-memory)\?\$\{params\}/);
+        }
     });
 });

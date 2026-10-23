@@ -12,6 +12,11 @@ module.exports = defineConfig({
     },
     projects: [
         {
+            name: 'webkit-iphone11',
+            testMatch: /room-memory-414\.spec\.js/,
+            use: { ...devices['iPhone 11'] }
+        },
+        {
             name: 'chromium',
             // PW_CHANNEL lets local runs borrow a system browser (e.g. msedge)
             // when the Playwright browser download is unavailable; CI leaves it unset.

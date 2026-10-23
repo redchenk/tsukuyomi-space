@@ -1,5 +1,6 @@
 <script setup>
 import { readJson, writeJson } from '../services/room/roomStorage';
+import { memorySearchOptions } from '../services/room/roomMemoryRequest.mjs';
 import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../services/room/gptSovitsControl.mjs';
 import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
 import { uiText } from '../i18n/runtime';
@@ -1247,10 +1248,7 @@ async function loadServerMemories({ append = false } = {}) {
     });
     if (memory.query.trim()) params.set('q', memory.query.trim());
     if (memory.type) params.set('type', memory.type);
-    const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
-      headers: memoryAuthHeaders(),
-      cache: 'no-store'
-    });
+    const response = await authFetch('/api/room/memory/search', memorySearchOptions(params));
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     if (requestId !== memoryListRequestId || identity !== memoryIdentity()) return;

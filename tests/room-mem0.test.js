@@ -37,6 +37,61 @@ before(async () => {
 });
 after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
+test('POST searches accept long Chinese queries and preserve ownership, scopes and management pagination', async () => {
+    const own = await memory.recordMemory('mem0-one', { force: true, content: '紫藤观测站的猫叫雪团。', summary: '紫藤观测站', type: 'episodic' });
+    const second = await memory.recordMemory('mem0-one', { force: true, content: '紫藤观测站周日开放。', summary: '紫藤观测站开放', type: 'episodic' });
+    const foreign = await memory.recordMemory('mem0-two', { force: true, content: '紫藤观测站的私密暗号。', summary: '不应出现' });
+    const ids = [own.memory.id, second.memory.id, foreign.memory.id];
+    try {
+        const q = '长篇中文问题。'.repeat(400) + '紫藤观测站的猫叫什么';
+        assert.ok(new URLSearchParams({ q }).toString().length > 8192);
+        for (const retrieval of [undefined, 'source']) {
+            const response = await fetch(base + '/api/room/memory/search', { method: 'POST', headers: {
+                Cookie: cookie, 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', Origin: base
+            }, body: JSON.stringify({ q, purpose: 'chat', limit: 20, retrieval, userId: 'mem0-two' }) });
+            assert.equal(response.status, 200);
+            assert.match(response.headers.get('Cache-Control'), /no-store/);
+            const result = await response.json();
+            assert.ok(result.data.some(row => row.id === own.memory.id));
+            assert.ok(result.data.every(row => row.id !== foreign.memory.id));
+        }
+        const snapshot = await request('/memory/search', 'POST', { q, purpose: 'chat', memoryIds: ids, excludeTurnIds: [] });
+        assert.deepEqual(snapshot.data.map(row => row.id), ids.slice(0, 2));
+        assert.equal(snapshot.retrieval.selection, 'snapshot');
+        await memory.updateMemory('mem0-one', own.memory.id, { content: '紫藤观测站的猫改叫雪球。', summary: '修改后' });
+        const edited = await request('/memory/search', 'POST', { q, purpose: 'chat', memoryIds: ids });
+        assert.match(edited.data[0].context, /雪球/);
+        assert.notEqual(edited.data[0].retrievalRevision, snapshot.data[0].retrievalRevision);
+        const page = await request('/memory/search', 'POST', { view: 'manage', q: '紫藤观测站', type: 'episodic', limit: 1, offset: 1 });
+        assert.equal(page.data.total, 2);
+        assert.equal(page.data.items.length, 1);
+        assert.equal(page.data.hasMore, false);
+        assert.ok(ids.slice(0, 2).includes(page.data.items[0].id));
+        await memory.deleteMemory('mem0-one', own.memory.id);
+        assert.deepEqual((await request('/memory/search', 'POST', { q, purpose: 'chat', memoryIds: ids })).data.map(row => row.id), [second.memory.id]);
+        assert.deepEqual((await request('/persona-memory/search', 'POST', { q, limit: 5 })).data, []);
+    } finally {
+        await memory.deleteMemory('mem0-one', own.memory.id);
+        await memory.deleteMemory('mem0-one', second.memory.id);
+        await memory.deleteMemory('mem0-two', foreign.memory.id);
+    }
+});
+
+test('POST memory searches retain authentication and trusted-origin checks and reject malformed input', async () => {
+    const headers = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', Origin: base };
+    const search = (body, extra = {}) => fetch(base + '/api/room/memory/search', {
+        method: 'POST', headers: { ...headers, Cookie: cookie, ...extra }, body: JSON.stringify(body)
+    });
+    assert.equal((await search({ q: 'test' }, { Cookie: '' })).status, 401);
+    assert.equal((await search({ q: 'test' }, { Origin: 'https://untrusted.example' })).status, 403);
+    for (const body of [[], { q: {} }, { q: 'x'.repeat(200001) }, { limit: {} }, { offset: [] },
+        { memoryIds: Array(31).fill('id') }, { excludeTurnIds: 'not-json' }, { excludeTurnIds: Array(41).fill('turn') }]) {
+        assert.equal((await search(body)).status, 400);
+    }
+    const persona = await fetch(base + '/api/room/persona-memory/search', { method: 'POST', headers, body: JSON.stringify({ q: [] }) });
+    assert.equal(persona.status, 400, 'invalid input must not be swallowed as an empty successful search');
+});
+
 test('target/recent turn isolation and owned snapshot validation apply before source fallback', async () => {
     const ids = [];
     for (const turnId of ['scope-old', 'scope-recent', 'scope-target']) ids.push(...memory.captureChatTurn('mem0-one', {
@@ -55,6 +110,9 @@ test('target/recent turn isolation and owned snapshot validation apply before so
     const api = await request('/memory?' + params);
     assert.deepEqual(api.data.map(row => row.id), [ids[0]]);
     assert.equal(api.retrieval.selection, 'snapshot');
+    const post = await request('/memory/search', 'POST', Object.fromEntries(params));
+    assert.deepEqual(post.data.map(row => row.id), [ids[0]], 'POST retains serialized scope exclusions and owned snapshots');
+    assert.equal(post.retrieval.selection, 'snapshot');
     assert.deepEqual((await memory.retrieveChatMemories('mem0-two', '边界试验观测站', 6, { snapshotIds: ids })).memories, []);
     assert.deepEqual((await memory.retrieveChatMemories('mem0-one', '边界试验观测站', 6, { snapshotIds: [] })).memories, []);
     const original = api.data[0];

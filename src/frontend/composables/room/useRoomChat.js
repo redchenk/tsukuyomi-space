@@ -60,6 +60,7 @@ import { useUploadProgress } from '../useUploadProgress';
 
 import { retrieveGuestMemories, usesLocalRoomMemory } from '../../services/room/roomLocalMemory';
 import { createRoomMemoryRetriever } from '../../services/room/roomMemoryRetrieval.mjs';
+import { memorySearchOptions } from '../../services/room/roomMemoryRequest.mjs';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
@@ -743,9 +744,7 @@ function fetchRelevantMemories(message, signal = null, options = {}) {
     getLimit: () => readJson('roomMemorySettings', {}).retrievalLimit,
     retrieveGuest: (message, scope, limit) => retrieveGuestMemories(message, limit, scope),
     async request(params, signal) {
-      const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
-        headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store', signal
-      });
+      const response = await authFetch('/api/room/memory/search', memorySearchOptions(params, signal));
       if (!response.ok) throw Object.assign(new Error('Memory HTTP error'), { status: response.status });
       return parseResponse(response);
     }
@@ -755,11 +754,7 @@ function fetchRelevantMemories(message, signal = null, options = {}) {
 async function fetchPersonaMemories(message, signal = null) {
   if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
-  const response = await authFetch(noStoreUrl(`/api/room/persona-memory?${params}`), {
-    headers: authHeaders({ Accept: 'application/json' }),
-    cache: 'no-store',
-    signal
-  });
+  const response = await authFetch('/api/room/persona-memory/search', memorySearchOptions(params, signal));
   const result = await parseResponse(response);
   if (!response.ok || !result.success) return [];
   return Array.isArray(result.data) ? result.data : [];

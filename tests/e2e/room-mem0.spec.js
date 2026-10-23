@@ -3,7 +3,7 @@ test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 async function configure(page) {
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://fixture.test/v1/chat/completions', model: 'fixture-model', apiKey: 'fixture-key' }));
         if (!localStorage.getItem('roomMemorySettings')) localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: true }));
     });
     const requests = [];
@@ -18,19 +18,23 @@ async function configure(page) {
     return requests;
 }
 async function send(page, message) {
+    await expect(page.locator('#loadingOverlay')).toHaveCount(0);
+    const assistantCount = await page.locator('.chat-message.assistant').count();
     await page.locator('#chatInput').fill(message);
     await page.locator('#sendChatBtn').click();
-    await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])').last()).toBeVisible();
+    await expect(page.locator('.chat-message.assistant')).toHaveCount(assistantCount + 1);
+    await expect(page.locator('.chat-message.assistant').last()).not.toHaveAttribute('aria-busy', 'true');
     await expect(page.locator('#chatInput')).toBeEnabled();
     await expect(page.locator('.chat-generation-notice.error')).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('roomChatGeneration:mem0-browser') || localStorage.getItem('roomChatGeneration:guest'))).toBeNull();
 }
 async function login(page, username) {
-    await page.goto('/login');
-    await page.locator('#loginAccount').fill(username);
-    await page.locator('#loginPassword').fill('mem0-test-password');
-    await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/hub$/);
+    const origin = process.env.E2E_BASE_URL || 'http://127.0.0.1:4174';
+    const response = await page.request.post('/api/auth/login', { headers: { Origin: origin, 'X-Requested-With': 'XMLHttpRequest' },
+        data: { username, password: 'mem0-test-password' } });
+    expect(response.status()).toBe(200);
+    const user = (await response.json()).data.user;
+    await page.addInitScript(user => localStorage.setItem('tsukuyomi_user', JSON.stringify(user)), user);
 }
 async function newChat(page) {
     page.once('dialog', dialog => dialog.accept());
@@ -47,7 +51,7 @@ test('embedded Mem0 really injects a saved fact after a new chat and reload, wit
     expect(stats.data.count).toBe(1);
     await newChat(page);
     await page.reload();
-    const retrieved = page.waitForResponse(response => response.url().includes('purpose=chat'));
+    const retrieved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/room/memory/search' && response.request().postDataJSON()?.purpose === 'chat');
     await send(page, '我的猫叫什么名字');
     const result = await (await retrieved).json();
     expect(result.retrieval.backend).toBe('mem0');
@@ -63,8 +67,7 @@ test('embedded Mem0 really injects a saved fact after a new chat and reload, wit
     const otherRequests = await configure(otherPage);
     await login(otherPage, 'mem0-isolated');
     await otherPage.goto('/room');
-    await otherPage.locator('#chatInput').fill('我的猫叫什么名字');
-    await otherPage.locator('#sendChatBtn').click();
+    await send(otherPage, '我的猫叫什么名字');
     await expect(otherPage.locator('.chat-message.assistant:not([aria-busy="true"])')).toBeVisible();
     expect(otherRequests.at(-1).systemPrompt).not.toContain('雪团');
     await other.close();
@@ -90,10 +93,10 @@ test('failed retrieval uses owned source excerpts in the real model request and 
     await newChat(page);
     await page.reload();
     let sourceCalls = 0, failSource = false;
-    await page.route('**/api/room/memory?**', route => {
-        const params = new URL(route.request().url()).searchParams;
-        if (params.get('purpose') !== 'chat') return route.continue();
-        if (params.get('retrieval') === 'source') {
+    await page.route('**/api/room/memory/search', route => {
+        const params = route.request().postDataJSON();
+        if (params.purpose !== 'chat') return route.continue();
+        if (params.retrieval === 'source') {
             sourceCalls++;
             if (!failSource) return route.continue();
         }

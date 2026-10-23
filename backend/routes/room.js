@@ -13,6 +13,7 @@ const weatherCache = require('../services/weather-cache');
 const userGrowth = require('../services/user-growth');
 const roomImages = require('../services/room-chat-images');
 const modelCatalog = require('../services/room-model-catalog');
+const { memoryRetrievalScope } = require('../../shared/room-memory-retrieval.cjs');
 
 const router = express.Router();
 
@@ -912,30 +913,49 @@ async function sendMemoryStatus(req, res) {
     });
 }
 
+// Keep chat text and snapshot IDs out of URLs (proxy URI limits and access logs).
+// Legacy GET clients still use the same owned retrieval implementation.
+function memorySearchParams(req) {
+    if (req.method === 'GET') return req.query;
+    const params = req.body;
+    const invalid = () => { throw Object.assign(new Error('记忆检索参数无效'), { statusCode: 400 }); };
+    if (!params || typeof params !== 'object' || Array.isArray(params)) invalid();
+    if (params.q !== undefined && (typeof params.q !== 'string' || params.q.length > MAX_CHAT_CONTENT_LENGTH)) invalid();
+    for (const key of ['view', 'purpose', 'retrieval', 'type']) {
+        if (params[key] !== undefined && (typeof params[key] !== 'string' || params[key].length > 32)) invalid();
+    }
+    for (const key of ['limit', 'offset']) {
+        if (params[key] !== undefined && (!['string', 'number'].includes(typeof params[key]) || !Number.isFinite(Number(params[key])))) invalid();
+    }
+    memoryRetrievalScope({ excludeTurnIds: params.excludeTurnIds, snapshotIds: params.memoryIds });
+    return params;
+}
+
 async function sendMemoryList(req, res) {
     setNoStore(res);
-    if (req.query.view === 'manage') {
+    const params = memorySearchParams(req);
+    if (params.view === 'manage') {
         return res.json({
             success: true,
             data: roomMemory.listMemoriesForManagement(req.user.id, {
-                limit: req.query.limit,
-                offset: req.query.offset,
-                type: req.query.type,
-                q: req.query.q
+                limit: params.limit,
+                offset: params.offset,
+                type: params.type,
+                q: params.q
             })
         });
     }
-    const query = String(req.query.q || '').trim();
-    const limit = req.query.limit || 50;
-    if (query && req.query.purpose === 'chat') {
-        const result = await roomMemory.retrieveChatMemories(req.user.id, query, req.query.limit,
-            { sourceOnly: req.query.retrieval === 'source', excludeTurnIds: req.query.excludeTurnIds,
-                snapshotIds: req.query.memoryIds });
+    const query = String(params.q || '').trim();
+    const limit = params.limit || 50;
+    if (query && params.purpose === 'chat') {
+        const result = await roomMemory.retrieveChatMemories(req.user.id, query, params.limit,
+            { sourceOnly: params.retrieval === 'source', excludeTurnIds: params.excludeTurnIds,
+                snapshotIds: params.memoryIds });
         return res.json({ success: true, data: result.memories, retrieval: result.retrieval });
     }
     const memories = query
         ? await roomMemory.searchMemories(req.user.id, query, limit)
-        : await roomMemory.listMemories(req.user.id, { limit, type: req.query.type });
+        : await roomMemory.listMemories(req.user.id, { limit, type: params.type });
     res.json({ success: true, data: memories });
 }
 
@@ -944,6 +964,8 @@ router.get('/memory/status', authenticateToken, sendMemoryStatus);
 router.get('/memory/status/live/:nonce', authenticateToken, sendMemoryStatus);
 
 router.get('/memory', authenticateToken, sendMemoryList);
+
+router.post('/memory/search', authenticateToken, sendMemoryList);
 
 router.get('/memory/live/:nonce', authenticateToken, sendMemoryList);
 
@@ -1051,29 +1073,22 @@ router.delete('/memory', authenticateToken, async (req, res) => {
     res.json({ success: true, data: { count }, message: '记忆已清空' });
 });
 
-router.get('/persona-memory', async (req, res) => {
+async function sendPersonaMemories(req, res) {
     setNoStore(res);
+    const params = memorySearchParams(req);
     try {
-        const query = String(req.query.q || '').trim();
-        const limit = req.query.limit || 5;
+        const query = String(params.q || '').trim();
+        const limit = params.limit || 5;
         const memories = await roomMemory.searchPersonaMemories(query, limit);
         res.json({ success: true, data: memories });
     } catch (error) {
         res.json({ success: true, data: [] });
     }
-});
+}
 
-router.get('/persona-memory/live/:nonce', async (req, res) => {
-    setNoStore(res);
-    try {
-        const query = String(req.query.q || '').trim();
-        const limit = req.query.limit || 5;
-        const memories = await roomMemory.searchPersonaMemories(query, limit);
-        res.json({ success: true, data: memories });
-    } catch (error) {
-        res.json({ success: true, data: [] });
-    }
-});
+router.get('/persona-memory', sendPersonaMemories);
+router.get('/persona-memory/live/:nonce', sendPersonaMemories);
+router.post('/persona-memory/search', sendPersonaMemories);
 
 router.post('/chat', async (req, res) => {
     res.status(410).json({
