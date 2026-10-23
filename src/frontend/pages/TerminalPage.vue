@@ -1020,6 +1020,7 @@ onUnmounted(() => {
             </div>
           </div>
           <PaymentManager v-if="terminal.activePanel === 'payments' && canManageAccounts" :key="terminal.paymentsRevision" />
+          <p v-if="terminal.activePanel === 'mail' && canManageAccounts"><RouterLink to="/admin/play-testing">Google Play 测试申请 · 查看名单与导出</RouterLink> · <RouterLink to="/apply">报名页 /apply（可用于邮件按钮）</RouterLink></p>
           <MailCampaignManager v-if="terminal.activePanel === 'mail' && canManageAccounts" :request="adminApi" :revision="terminal.mailRevision" />
           <div v-if="terminal.message" class="form-message terminal-alert" :class="terminal.messageType" role="status">
             <TsIcon :name="terminal.messageType === 'error' ? 'shield' : 'userCheck'" :size="17" />

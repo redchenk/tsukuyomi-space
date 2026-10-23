@@ -10023,5 +10023,145 @@
   "手机支付尚未开放，请联系管理员开通支付宝手机网站支付。": {
     "en": "Mobile payments are not available yet. Please ask an administrator to enable Alipay mobile website payments.",
     "ja": "モバイル決済はまだ利用できません。管理者に Alipay のモバイルサイト決済の有効化を依頼してください。"
+  },
+  "Google Play 测试申请": {
+    "en": "Google Play test applications",
+    "ja": "Google Play テスト申請"
+  },
+  "只有超级管理员可以查看邮箱。此处管理报名与邀请记录，实际测试资格和连续天数以 Play Console 为准。": {
+    "en": "Only the super administrator can view emails. This page manages applications and invitations; Google Play Console determines membership and continuous participation.",
+    "ja": "メールアドレスはスーパー管理者のみ閲覧できます。ここでは申請と招待を管理します。実際の参加資格と継続日数は Play Console で確認してください。"
+  },
+  "返回数据终端": {
+    "en": "Back to administration terminal",
+    "ja": "管理端末に戻る"
+  },
+  "打开公开报名页": {
+    "en": "Open public application page",
+    "ja": "公開申請ページを開く"
+  },
+  "正在读取申请…": {
+    "en": "Loading applications…",
+    "ja": "申請を読み込み中…"
+  },
+  "请先在": {
+    "en": "First, open",
+    "ja": "まず、"
+  },
+  "登录超级管理员账号，再返回本页。": {
+    "en": "sign in as the super administrator, then return here.",
+    "ja": "スーパー管理者としてログインしてから、このページに戻ってください。"
+  },
+  "报名开关与测试链接": {
+    "en": "Registration and test link",
+    "ja": "申請受付とテストリンク"
+  },
+  "开放报名": {
+    "en": "Accept applications",
+    "ja": "申請を受け付ける"
+  },
+  "Google Play 封闭测试加入链接（未就绪时留空）": {
+    "en": "Google Play closed-test opt-in URL (leave blank until ready)",
+    "ja": "Google Play クローズドテスト参加リンク（準備ができるまで空欄）"
+  },
+  "我已在 Play Console 确认封闭测试版本发布、测试名单已配置，并验证此链接可用。": {
+    "en": "I have verified in Play Console that the closed-test release is published, the tester list is configured and this link works.",
+    "ja": "Play Console でテスト版の公開と参加者リストの設定を確認し、このリンクが利用できることを検証しました。"
+  },
+  "保存链接后，公开教程会显示“已收到邀请？打开加入页”。它不会自动把报名者加进 Google 名单。": {
+    "en": "Saving shows an opt-in link in the public guide. It does not add applicants to Google’s tester list.",
+    "ja": "保存すると公開ガイドに参加リンクが表示されます。申請者が Google の参加者リストに自動追加されることはありません。"
+  },
+  "保存设置": {
+    "en": "Save settings",
+    "ja": "設定を保存"
+  },
+  "待处理": {
+    "en": "Pending",
+    "ja": "未処理"
+  },
+  "已发邀请": {
+    "en": "Invitation sent",
+    "ja": "招待送信済み"
+  },
+  "邮箱 / 设备": {
+    "en": "Email / device",
+    "ja": "メール / 端末"
+  },
+  "查询": {
+    "en": "Search",
+    "ja": "検索"
+  },
+  "导出筛选邮箱": {
+    "en": "Export filtered emails",
+    "ja": "絞り込んだメールを出力"
+  },
+  "先导入 Google Play 封闭测试名单、确认链接可用，再通过邮件发送邀请。本站“已发邀请”仅为人工记录，不代表对方已加入测试。删除资料时，还需核对并清理已导出的 CSV、Google 名单及留存副本。": {
+    "en": "Add emails to the Google Play closed-test list and verify the link before emailing invitations. “Invitation sent” is a manual record, not proof of opt-in. When deleting data, also review exported CSV files, Google lists and retained copies.",
+    "ja": "Google Play の参加者リストに追加し、リンクを確認してから招待メールを送信してください。「招待送信済み」は手動の記録であり、参加完了を示しません。削除時は CSV、Google のリスト、保管コピーも確認してください。"
+  },
+  "暂无此条件的申请。": {
+    "en": "No applications match these filters.",
+    "ja": "条件に一致する申請はありません。"
+  },
+  "未填写设备": {
+    "en": "Device not provided",
+    "ja": "端末未入力"
+  },
+  "未填写 Android 版本": {
+    "en": "Android version not provided",
+    "ja": "Android バージョン未入力"
+  },
+  "申请时间：": {
+    "en": "Applied:",
+    "ja": "申請日時："
+  },
+  "· 同意说明版本：": {
+    "en": "· Consent version:",
+    "ja": "· 同意説明のバージョン："
+  },
+  "登记已发邀请": {
+    "en": "Mark invitation sent",
+    "ja": "招待送信済みにする"
+  },
+  "改回待处理": {
+    "en": "Mark pending",
+    "ja": "未処理に戻す"
+  },
+  "删除申请资料": {
+    "en": "Delete application data",
+    "ja": "申請情報を削除"
+  },
+  "申请分页": {
+    "en": "Application pages",
+    "ja": "申請一覧のページ"
+  },
+  "确认已向 {0} 实际发送测试邀请？这不会把对方标为已加入 Google 测试。": {
+    "en": "Confirm that you sent a test invitation to {0}? This does not mark them as opted in on Google Play.",
+    "ja": "{0} に実際に招待を送信しましたか？Google Play への参加完了を示すものではありません。"
+  },
+  "永久删除 {0} 的申请及设备信息？请先核验申请人的删除请求，或确认这是无效记录。此操作不会退出 Google Play。": {
+    "en": "Permanently delete the application and device details for {0}? Verify their deletion request or that this is an invalid record first. This does not opt them out of Google Play.",
+    "ja": "{0} の申請と端末情報を完全に削除しますか？本人の削除依頼または無効な記録であることを確認してください。Google Play からは退出されません。"
+  },
+  "导出失败": {
+    "en": "Export failed",
+    "ja": "出力に失敗しました"
+  },
+  "已导出当前筛选的邮箱（无表头、无 BOM）。导入 Play Console 会覆盖所选名单，操作前请检查是否包含已有测试者。": {
+    "en": "Exported filtered emails without a header or BOM. Importing into Play Console replaces the selected list; check that existing testers are included.",
+    "ja": "ヘッダーと BOM なしで出力しました。Play Console へのインポートは選択したリストを上書きするため、既存の参加者が含まれているか確認してください。"
+  },
+  "参与 Google Play 封闭测试 · 报名与加入教程": {
+    "en": "Join the Google Play closed test · Application and guide",
+    "ja": "Google Play クローズドテスト · 申請と参加ガイド"
+  },
+  "Google Play 测试申请 · 查看名单与导出": {
+    "en": "Google Play applications · View and export",
+    "ja": "Google Play テスト申請 · 一覧と出力"
+  },
+  "报名页 /apply（可用于邮件按钮）": {
+    "en": "Application page /apply (for email buttons)",
+    "ja": "申請ページ /apply（メールのボタン用）"
   }
 }

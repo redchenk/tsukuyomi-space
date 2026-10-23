@@ -60,6 +60,8 @@ const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
 export const routes = [
+  { path: '/apply', name: 'playTestApply', component: loadRoute(() => import('../pages/ApplyPage.vue'), () => import('../styles/routes/apply.css')), meta: { title: '月读空间 Google Play 测试申请', description: '申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。' } },
+  { path: '/admin/play-testing', name: 'playTestAdmin', component: loadRoute(() => import('../pages/PlayTestingAdminPage.vue'), () => import('../styles/routes/apply.css')), meta: { title: 'Google Play 测试申请管理', noindex: true } },
   { path: '/privacy', name: 'privacy', component: loadRoute(() => import('../pages/PrivacyPage.vue'), () => import('../styles/routes/privacy.css')), meta: { title: '月读空间隐私政策' } },
   { path: '/delete-account', name: 'deleteAccount', component: loadRoute(() => import('../pages/DeleteAccountPage.vue'), () => import('../styles/routes/privacy.css')), meta: { title: '月读空间账号注销与数据删除' } },
   { path: '/admin/account-deletions', name: 'accountDeletions', component: loadRoute(() => import('../pages/AccountDeletionsAdminPage.vue'), () => import('../styles/routes/privacy.css')), meta: { title: '注销申请工作台', noindex: true } },

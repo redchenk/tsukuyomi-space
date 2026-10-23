@@ -132,6 +132,7 @@ function createApp() {
     const friendLinkIpLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 12, keyPrefix: 'friend-link-ip' });
     app.use('/api/friend-links', (req, res, next) => req.method === 'POST' ? friendLinkIpLimiter(req, res, next) : next());
     app.use('/api/friend-links', strictJson('16kb'));
+    app.use('/api/play-testing', strictJson('4kb'));
     app.use('/api/mail', strictJson('128kb'));
     app.use('/api/music', strictJson('8kb'));
 
@@ -194,6 +195,7 @@ function createApp() {
     app.use('/api/assets', assetRoutes);
     app.use('/api/room', roomRoutes);
     app.use('/api/growth', growthRoutes);
+    app.use('/api/play-testing', require('./routes/play-testing').router);
     app.use('/api/account-deletion', require('./routes/account-deletion').router);
     app.use('/api/admin/account-deletions', require('./routes/account-deletion').adminRouter);
     app.use('/api/payments', require('./routes/payments').router);

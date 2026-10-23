@@ -1,8 +1,8 @@
 {
-  "version": "2026-10-22",
+  "version": "2026-10-23",
   "contact": "redchenk919@gmail.com",
   "app": "月读空间 · Tsukuyomi Space",
-  "updatedAt": "2026-10-22",
+  "updatedAt": "2026-10-23",
   "zh": {
     "title": "隐私政策",
     "intro": "你的数据如何使用，以及如何带走或删除。",
@@ -16,7 +16,8 @@
       {
         "title": "账号与登录",
         "paragraphs": [
-          "注册和登录会处理用户名、昵称、邮箱、密码哈希、头像、登录会话与必要的安全记录。通过 QQ 或 GitHub 登录时，我们接收授权范围内的账号标识、公开资料及邮箱，用于建立或绑定本站账号。我们不获取你的第三方账号密码。第三方授权也可在对应服务的账号设置中撤销。"
+          "注册和登录会处理用户名、昵称、邮箱、密码哈希、头像、登录会话与必要的安全记录。通过 QQ 或 GitHub 登录时，我们接收授权范围内的账号标识、公开资料及邮箱，用于建立或绑定本站账号。我们不获取你的第三方账号密码。第三方授权也可在对应服务的账号设置中撤销。",
+          "自愿申请 Google Play 封闭测试时，我们保存你填写的 Google 账号邮箱、选填设备型号与 Android 版本、同意说明版本、申请时间和邀请处理状态，用于测试招募、邀请及反馈联络。站长会将邮箱加入 Google Play Console 测试名单，由 Google 按其规则处理。申请资料不公开展示，仅超级管理员可查看与导出。你可以用报名邮箱联系我们，申请查阅、更正或删除；删除本站记录不会自动退出 Google Play 测试，导出名单与 Google 名单需要另行同步处理。"
         ]
       },
       {
@@ -88,7 +89,8 @@
       {
         "title": "Accounts and sign-in",
         "paragraphs": [
-          "We process usernames, display names, email addresses, password hashes, avatars, sessions and necessary security records for account access. QQ or GitHub sign-in provides the authorized account identifier, profile and email to create or link your account. We do not receive your third-party password. You may also revoke authorization in that provider’s account settings."
+          "We process usernames, display names, email addresses, password hashes, avatars, sessions and necessary security records for account access. QQ or GitHub sign-in provides the authorized account identifier, profile and email to create or link your account. We do not receive your third-party password. You may also revoke authorization in that provider’s account settings.",
+          "If you volunteer for Google Play closed testing, we store your Google account email, optional device model and Android version, consent version, application time and invitation status for recruitment, invitations and feedback. The administrator adds your email to the Google Play Console tester list, where Google processes it under its policies. Applications are private and only the super administrator can view or export them. Contact us from your registered email to access, correct or delete your application. Deleting our record does not opt you out of Google Play; exported copies and Google lists must be handled separately."
         ]
       },
       {

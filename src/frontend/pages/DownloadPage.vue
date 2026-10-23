@@ -80,6 +80,7 @@ onUnmounted(() => {
         </div>
       </section>
 
+      <p class="download-beta-note"><RouterLink to="/apply">{{ lang === 'zh' ? '参与 Google Play 封闭测试 · 报名与加入教程' : 'Join the Google Play closed test · Apply and read the guide' }}</RouterLink></p>
       <section class="download-release-bar" :aria-label="copy.release">
         <div><span class="download-source">{{ sourceLabel }}</span><span>{{ copy.published }} {{ publishedDate }}</span></div>
         <div v-if="catalog.stable && catalog.preview" class="download-channels" role="group" :aria-label="copy.release">

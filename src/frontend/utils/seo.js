@@ -15,6 +15,8 @@ const DEFAULT_KEYWORDS = ENGLISH_SITE
   : ['月读空间', 'Tsukuyomi Space', '超时空辉夜姬', 'Live2D', '二次元个人站'];
 
 const ENGLISH_ROUTE_SEO = Object.freeze({
+  playTestApply: ['Google Play Test Application', 'Apply to test Tsukuyomi Space on Android. Follow the opt-in, installation and feedback guide.'],
+  playTestAdmin: ['Google Play Test Applications', 'Private tester application management.'],
   access: ['Tsukuyomi Space | Live2D, Wiki and Creative Community', 'Enter Tsukuyomi Space and explore its Live2D room, creative wiki, articles, public gallery and pixel-art community.'],
   accessAlias: ['Tsukuyomi Space | Live2D, Wiki and Creative Community', 'Enter Tsukuyomi Space and explore its Live2D room, creative wiki, articles, public gallery and pixel-art community.'],
   hub: ['Central Hub', 'Browse the latest articles, gallery images, plaza messages, pixel art and updates from Yachiyo’s room.'],

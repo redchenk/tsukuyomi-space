@@ -249,6 +249,7 @@ router.post('/logout', async (req, res) => {
 
 router.use(authenticateToken);
 router.use(requireAdmin);
+router.use('/play-testing', require('./routes/play-testing').adminRouter);
 router.use('/mail-campaigns', require('./routes/mail-campaigns'));
 router.use('/payments', require('./routes/payments').adminRouter);
 router.use('/notification-preferences', require('./routes/moderation-notification-settings'));
