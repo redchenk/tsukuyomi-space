@@ -6,6 +6,7 @@ import NoticeMarkdown from '../components/NoticeMarkdown.vue';
 import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
 import PaymentManager from '../components/terminal/PaymentManager.vue';
+import MailCampaignManager from '../components/terminal/MailCampaignManager.vue';
 import { formatDateTime } from '../utils/time';
 import { uiText } from '../i18n/runtime';
 import { terminalSettingsPayload } from '../services/terminalSettings.mjs';
@@ -22,7 +23,8 @@ const panels = [
   { id: 'account', label: '账号安全', icon: 'shield', code: '07', group: '系统', desc: '当前管理员安全设置' },
   { id: 'notifications', label: '通知设置', icon: 'bell', code: '08', group: '系统', desc: '审核提醒与邮件通知偏好' },
   { id: 'settings', label: '设置', icon: 'settings', code: '09', group: '系统', desc: '站点、备案和对象存储' },
-  { id: 'payments', label: '支付与订单', icon: 'shield', code: '10', group: '系统', desc: '收款开关、商品和支付宝订单' }
+  { id: 'payments', label: '支付与订单', icon: 'shield', code: '10', group: '系统', desc: '收款开关、商品和支付宝订单' },
+  { id: 'mail', label: '发送邮件', icon: 'send', code: '11', group: '系统', desc: '自定义邮件、筛选收件人和查看群发进度' }
 ];
 
 const terminal = reactive({
@@ -37,6 +39,7 @@ const terminal = reactive({
   loadError: '',
   notificationSaving: false,
   paymentsRevision: 0,
+  mailRevision: 0,
   mailConfigured: false,
   ossCredentialsConfigured: false,
   ossCredentialsEditing: false,
@@ -160,7 +163,7 @@ const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin' && !terminal.siteSession);
 const visiblePanels = computed(() => terminal.siteSession
   ? panels.filter((panel) => ['articles', 'messages', 'notifications'].includes(panel.id))
-  : panels.filter(panel => panel.id !== 'payments' || canManageAccounts.value));
+  : panels.filter(panel => !['payments', 'mail'].includes(panel.id) || canManageAccounts.value));
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
   .map((group) => ({ group, items: visiblePanels.value.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
@@ -393,7 +396,7 @@ async function logout() {
 
 function initialPanel(fallback) {
   const panel = new URLSearchParams(window.location.search).get('panel');
-  return ['messages', 'notifications'].includes(panel) ? panel : fallback;
+  return ['messages', 'notifications', ...(canManageAccounts.value ? ['mail'] : [])].includes(panel) ? panel : fallback;
 }
 
 async function loadPanel(panel = terminal.activePanel) {
@@ -411,6 +414,7 @@ async function loadPanel(panel = terminal.activePanel) {
   };
   terminal.activePanel = panel;
   if (panel === 'payments') terminal.paymentsRevision += 1;
+  if (panel === 'mail') terminal.mailRevision += 1;
   terminal.loading = true;
   terminal.message = '';
   terminal.loadError = '';
@@ -1016,6 +1020,7 @@ onUnmounted(() => {
             </div>
           </div>
           <PaymentManager v-if="terminal.activePanel === 'payments' && canManageAccounts" :key="terminal.paymentsRevision" />
+          <MailCampaignManager v-if="terminal.activePanel === 'mail' && canManageAccounts" :request="adminApi" :revision="terminal.mailRevision" />
           <div v-if="terminal.message" class="form-message terminal-alert" :class="terminal.messageType" role="status">
             <TsIcon :name="terminal.messageType === 'error' ? 'shield' : 'userCheck'" :size="17" />
             <span>{{ terminal.message }}</span>

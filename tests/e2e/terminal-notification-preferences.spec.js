@@ -4,6 +4,7 @@ for (const account of ['admin', 'notify-staff', 'notify-site-admin']) {
     test(`${account} can persist a personal moderation email preference`, async ({ page }) => {
         if (account === 'notify-site-admin') {
             await page.goto('/login');
+            await expect(page.locator('#boot-splash')).toBeHidden();
             await page.locator('#loginAccount').fill(account);
             await page.locator('#loginPassword').fill('notify-staff-password');
             await page.locator('button[type="submit"]').click();
@@ -11,6 +12,7 @@ for (const account of ['admin', 'notify-staff', 'notify-site-admin']) {
             await page.goto('/terminal?panel=notifications');
         } else {
             await page.goto('/terminal?panel=notifications');
+            await expect(page.locator('#boot-splash')).toBeHidden();
             await page.locator('input[autocomplete="username"]').fill(account);
             await page.locator('input[autocomplete="current-password"]').fill(account === 'admin' ? 'admin-test-password' : 'notify-staff-password');
             await page.getByRole('button', { name: '连接终端' }).click();

@@ -274,6 +274,31 @@ function buildNotificationMessage({ fromName, fromEmail, toEmail, notification =
     });
 }
 
+function renderCampaignEmail({ subject, body, actionUrl = '', actionLabel = '查看详情', siteUrl = config.publicSiteUrl }) {
+    const title = String(subject || '');
+    const content = String(body || '').replace(/\r\n?/g, '\n');
+    const url = actionUrl ? notificationActionUrl(actionUrl, siteUrl, '/') : '';
+    const text = [title, '', content, ...(url ? ['', `${actionLabel}：${url}`] : []), '', '月读空间 · 此邮件由管理员发送，请勿直接回复。'].join('\n');
+    const html = renderMailFrame({
+        subject: `【月读空间】${title}`, preheader: mailPreview(content, 100), siteUrl: normalizeSiteUrl(siteUrl),
+        body: renderMailHeading({ label: '来自月读空间', title, lead: '与你分享月读空间的新消息。' })
+            + renderMailPanel(`<div class="mail-ink" style="color:#25304a; font-size:15px; line-height:1.9; overflow-wrap:anywhere; word-break:break-word;">${escapeHtml(content).replace(/\n/g, '<br>')}</div>`)
+            + (url ? renderMailAction(url, actionLabel) : '')
+    });
+    return { subject: `【月读空间】${title}`, text, html };
+}
+
+function buildCampaignMessage({ fromName, fromEmail, toEmail, campaign }) {
+    return buildMultipartMessage({ fromName, fromEmail, toEmail, content: renderCampaignEmail(campaign) });
+}
+
+async function sendCampaignEmail(toEmail, campaign) {
+    const smtp = config.smtp;
+    if (!smtp.user || !smtp.pass) throw new Error('SMTP credentials are not configured');
+    const message = buildCampaignMessage({ fromName: smtp.fromName, fromEmail: smtp.user, toEmail, campaign });
+    await sendSmtpMessage(toEmail, message);
+}
+
 function buildVerificationMessage({
     fromName,
     fromEmail,
@@ -398,6 +423,9 @@ async function sendNotificationEmail(toEmail, notification) {
 }
 
 module.exports = {
+    renderCampaignEmail,
+    buildCampaignMessage,
+    sendCampaignEmail,
     EMAIL_CODE_TTL_MS,
     EMAIL_CODE_COOLDOWN_MS,
     buildVerificationMessage,

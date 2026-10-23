@@ -21,6 +21,11 @@ process.env.PARTNER_OAUTH_ISSUER = `http://127.0.0.1:${process.env.PORT}`;
 // Load configuration only after the test environment is set. Uploads and the
 // SQLite database belong to this disposable fixture, never the developer's data.
 const config = require('../backend/config');
+// The isolated browser fixture never connects to a real SMTP provider.
+config.smtp.user = 'fixture-sender@example.test';
+config.smtp.pass = 'fixture-only';
+const fixtureMailer = require('../backend/services/mailer');
+for (const name of ['sendCampaignEmail', 'sendNotificationEmail', 'sendVerificationEmail']) fixtureMailer[name] = async () => {};
 // Only progress tests emulate the private object store. The real image route,
 // authentication, validation and database receipt still run in this fixture.
 const fixtureRequest = new (require('node:async_hooks').AsyncLocalStorage)();
@@ -66,6 +71,15 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+// Mail campaign tests exercise the persistent queue against the fixture sink.
+{
+    for (let i = 1; i <= 12; i++) {
+        const id = `campaign-e2e-${String(i).padStart(2, '0')}`;
+        db.prepare('INSERT INTO users(id,username,nickname,email,password_hash,role) VALUES(?,?,?,?,?,?)')
+            .run(id, id, `月下旅人 ${i}`, `${id}@example.test`, 'fixture', 'user');
+    }
+    require('../backend/services/mail-campaigns').start();
+}
 // Stable login names with a server-selected article task on the current day.
 // The disposable fixture exercises real rewards without a production test hook.
 const articleTaskGrowth = require('../backend/services/user-growth');
