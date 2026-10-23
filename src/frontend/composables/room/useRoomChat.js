@@ -556,6 +556,10 @@ async function translateForJapaneseTts(text) {
     '只输出日文正文，不要解释，不要 Markdown，不要括号里的动作提示，不要舞台提示。',
     '如果原文含有动作、表情、姿态、语气、旁白提示，请彻底删除，只保留角色真正要说出口的话。'
   ].join('\n');
+  if (isOfficialRoomApi(settings.apiUrl)) {
+    const result = await requestRoomReply({ settings, systemPrompt, message: source, stream: false });
+    return cleanTtsText(result.reply || '');
+  }
   llmProtocol.runtime.requireCapability({ ...settings, apiUrl }, 'text');
 
   if (settings.useProxy && !useLocalOllama) {
@@ -1905,7 +1909,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
         textLang: settings.provider === 'gpt-sovits' ? 'ja' : (settings.textLang || 'auto')
       }, {
         fetchDirect: fetch,
-        fetchProxy: apiFetch
+        fetchProxy: apiFetch,
+        prepareText: settings.provider === 'official' && settings.textLang === 'ja' ? translateForJapaneseTts : undefined
       });
       if (requestId !== ttsRequestId) return;
       if (ttsUrl) URL.revokeObjectURL(ttsUrl);

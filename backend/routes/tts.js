@@ -3,10 +3,16 @@ const { synthesizeSpeech, isLocalGptSovitsUrl } = require('../services/tts');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
+router.use('/official', require('./official-tts'));
 
 router.post('/', (req, res, next) => {
     const provider = req.body?.provider || process.env.TTS_PROVIDER || 'mimo';
     const endpoint = req.body?.apiUrl || process.env.GPT_SOVITS_API_URL || 'http://127.0.0.1:9880/tts';
+    // Local one-click packages are called directly by the user's browser.
+    // Never let the legacy proxy reach an operator's private compute tunnel.
+    if (provider === 'gpt-sovits' && isLocalGptSovitsUrl(endpoint)) {
+        return res.status(400).json({ success: false, message: '本机 GPT-SoVITS 请使用浏览器直连；官方算力请使用官方直供模式' });
+    }
     if (provider === 'gpt-sovits' && !isLocalGptSovitsUrl(endpoint)) {
         return authenticateToken(req, res, next);
     }

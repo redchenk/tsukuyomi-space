@@ -9,6 +9,7 @@ const { createApp } = require('./app');
 const app = createApp();
 
 app.listen(config.port, config.host, () => {
+    require('./services/official-tts').start();
     require('./services/fushi-events').start();
     require('./services/indexnow').start();
     require('./services/mail-campaigns').start();

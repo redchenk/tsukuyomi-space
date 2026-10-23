@@ -109,7 +109,9 @@ function createApp() {
     app.use('/api/assets', (req, res, next) => (req.path === '/uploads' || req.path.startsWith('/uploads/'))
         ? uploadLimiter(req, res, next) : assetLimiter(req, res, next));
     app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
-    app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
+    const ttsLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' });
+    app.use('/api/tts', (req, res, next) => req.path.startsWith('/official/') ? next() : ttsLimiter(req, res, next));
+    app.use('/api/tts/official', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 400, keyPrefix: 'official-tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
     app.use('/api/knowledge', createRateLimiter({ windowMs: 60 * 1000, max: 30, keyPrefix: 'site-knowledge' }));
     app.use('/api/knowledge', strictJson('4kb'));
@@ -141,6 +143,7 @@ function createApp() {
     app.use('/api/assets', strictJson('28mb'));
     app.use('/api/mcp', strictJson('6mb'));
     app.use('/api/chat', strictJson('8mb'));
+    app.use('/api/tts/official', strictJson('8kb'));
     app.use('/api/tts', strictJson('12mb'));
     // Guest memory migration has a fixed cap even on deployments that raise
     // the general JSON limit for legacy media uploads.

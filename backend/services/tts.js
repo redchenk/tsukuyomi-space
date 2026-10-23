@@ -93,8 +93,22 @@ function remoteReferencePath(value) {
 
 async function fetchPublicGptSovits(url, options = {}) {
     try {
+        const official = require('./official-tts').protectedEndpoint();
+        const blocked = official ? new URL(official) : null;
+        if (blocked && new URL(url).hostname.toLowerCase().replace(/\.$/, '') === blocked.hostname) {
+            throw Object.assign(new Error('官方算力请使用官方直供模式'), { status: 403 });
+        }
+        const lookup = async (hostname, opts) => {
+            const records = await require('node:dns').promises.lookup(hostname, opts);
+            if (blocked && (hostname.toLowerCase().replace(/\.$/, '') === blocked.hostname
+                || records.some(row => row.address === blocked.hostname))) {
+                throw Object.assign(new Error('官方算力请使用官方直供模式'), { status: 403 });
+            }
+            return records;
+        };
         return await fetchPinnedUrl(url, {
             ...options,
+            lookup,
             protocols: ['http:', 'https:'],
             timeoutMs: 60000,
             signal: AbortSignal.timeout(60000),

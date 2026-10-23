@@ -5,6 +5,7 @@ import { loadCurrentSession } from '../api/client';
 import { paymentRequest, checkoutDestination, paymentStatus } from '../services/payments';
 import { formatDateTime } from '../utils/time';
 import { moneyAtoms } from '../services/official-service.mjs';
+import OfficialTtsHistory from '../components/OfficialTtsHistory.vue';
 import OfficialServicePanel from '../components/OfficialServicePanel.vue';
 import TsIcon from '../components/TsIcon.vue';
 
@@ -111,6 +112,7 @@ onUnmounted(() => { disposed = true; window.clearTimeout(timer); });
           <div v-if="orders.totalPages > 1" class="payment-actions"><button class="ghost-btn" type="button" :disabled="orders.page <= 1" @click="history(orders.page - 1).catch(cause => error = cause.message)">上一页</button><span>{{ orders.page }} / {{ orders.totalPages }}</span><button class="ghost-btn" type="button" :disabled="orders.page >= orders.totalPages" @click="history(orders.page + 1).catch(cause => error = cause.message)">下一页</button></div>
         </section>
         <OfficialServicePanel v-if="siteUserId" :site-user-id="siteUserId" @wallet-updated="wallet = $event" />
+        <OfficialTtsHistory v-if="siteUserId" :account="siteUserId" />
       </template>
     </template>
   </main>

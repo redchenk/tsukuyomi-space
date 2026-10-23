@@ -3915,7 +3915,7 @@ describe('request and upload security', () => {
             sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth'
         });
         assert.equal(result.response.status, 400);
-        assert.match(result.body.message, /相对路径|权重路径/);
+        assert.match(result.body.message, /相对路径|权重路径|浏览器直连/);
     });
 
     it('requires login and rejects private targets for the public GPT-SoVITS bridge', async () => {

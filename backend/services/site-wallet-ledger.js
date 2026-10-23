@@ -58,6 +58,12 @@ function objectKeys(value, expected, label) {
   }
 }
 function normalizedSnapshot(raw) {
+  if (raw?.unit === 'voice') {
+    objectKeys(raw, ['id', 'currency', 'unit', 'unit_price_money_atoms'], 'voice pricing_snapshot');
+    identifier(raw.id, 'voice pricing snapshot');
+    return { id: raw.id, currency: currency(raw.currency), unit: 'voice',
+      unit_price_money_atoms: integer(raw.unit_price_money_atoms, 'voice price', { money: true, positive: true }).toString() };
+  }
   objectKeys(raw, ['id', 'currency', 'rates_per_million_money_atoms'], 'pricing_snapshot');
   objectKeys(raw.rates_per_million_money_atoms, DIMENSIONS, 'pricing rates');
   if (typeof raw.id !== 'string' || raw.id.length === 0 || raw.id.length > 128 ||
@@ -70,7 +76,12 @@ function normalizedSnapshot(raw) {
       integer(raw.rates_per_million_money_atoms[key], `rate ${key}`).toString()])),
   };
 }
-function normalizedUsage(raw) {
+function normalizedUsage(raw, snapshot) {
+  if (snapshot.unit === 'voice') {
+    objectKeys(raw, ['voices'], 'voice usage');
+    if (raw.voices !== 1 && raw.voices !== '1') fail('INVALID_VOICE_USAGE', 'Only one completed voice is billable.');
+    return { voices: '1' };
+  }
   objectKeys(raw, DIMENSIONS, 'usage');
   return Object.fromEntries(DIMENSIONS.map((key) => [key, integer(raw[key], `usage ${key}`, { allowNumber: true }).toString()]));
 }
@@ -251,7 +262,10 @@ class BillingLedger {
     const amount = integer(money_atoms, 'money_atoms', { money: true });
     const snapshot = normalizedSnapshot(pricing_snapshot);
     const snapshotJSON = JSON.stringify(snapshot);
-    const counters = normalizedUsage(usage);
+    const counters = normalizedUsage(usage, snapshot);
+    if (snapshot.unit === 'voice' && amount !== 0n && amount !== BigInt(snapshot.unit_price_money_atoms)) {
+      fail('INVALID_VOICE_PRICE', 'A voice must use its reserved unit price.');
+    }
     const usageJSON = JSON.stringify(counters);
     const settleFP = hash({ request_id, request_fingerprint, money_atoms: amount.toString(), pricing_snapshot: snapshot, usage: counters });
     return this.#transaction('settle', () => {
@@ -309,12 +323,17 @@ class BillingLedger {
   /** Evidence is verified outside this module. No write-off/TTL policy is implemented. */
   releaseWithNoConsumptionProof({ request_id, request_fingerprint, verified_no_consumption, reason, proof_ref }) {
     identifier(request_id, 'request_id'); fingerprint(request_fingerprint); identifier(proof_ref, 'proof_ref');
-    if (verified_no_consumption !== true || !['upstream_confirmed_no_consumption', 'cancelled_before_dispatch'].includes(reason)) {
+    if (verified_no_consumption !== true || !['upstream_confirmed_no_consumption', 'cancelled_before_dispatch', 'voice_not_deliverable'].includes(reason)) {
       fail('NO_CONSUMPTION_PROOF_REQUIRED', 'Only verified no-consumption evidence permits release; TTL expiry does not.');
     }
     const releaseFP = hash({ request_id, request_fingerprint, reason, proof_ref });
     return this.#transaction('release', () => {
       const request = this.#request(request_id, request_fingerprint);
+      // A voice is sold as a completed, retrievable audio file. The site bears
+      // any upstream cost if delivery fails; this policy never releases LLM holds.
+      if (reason === 'voice_not_deliverable' && JSON.parse(request.pricing_snapshot_json).unit !== 'voice') {
+        fail('NO_CONSUMPTION_PROOF_REQUIRED', 'Delivery failure applies only to fixed-price voice jobs.');
+      }
       if (request.release_fingerprint) {
         if (request.release_fingerprint !== releaseFP) fail('IDEMPOTENCY_CONFLICT', 'Release evidence changed for this request.');
         return this.#requestResult(request_id, { replayed: true });

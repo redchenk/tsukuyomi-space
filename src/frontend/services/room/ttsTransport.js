@@ -11,6 +11,7 @@ function defaultTtsUrl(provider) {
 }
 
 export function ttsUsesProxy(settings = {}) {
+  if (settings.provider === 'official') return true;
   if (settings.provider !== 'gpt-sovits') return Boolean(settings.useProxy);
   let endpoint;
   try { endpoint = new URL(String(settings.apiUrl || defaultTtsUrl('gpt-sovits')).trim()); }
@@ -179,6 +180,10 @@ async function responseToAudioBlob(response, jsonAudioType) {
 }
 
 export async function requestTtsAudioBlob(text, settings = {}, transports = {}) {
+  if (settings.provider === 'official') {
+    const { requestOfficialTts } = await import('./officialTts.mjs');
+    return requestOfficialTts(text, settings, transports.fetchProxy, transports.prepareText);
+  }
   const useProxy = ttsUsesProxy(settings);
   if (settings.provider === 'gpt-sovits' && !useProxy) {
     throw new Error('Local GPT-SoVITS must use the local playback path');
