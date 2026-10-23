@@ -175,7 +175,11 @@
     position: relative;
     z-index: 6;
     display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
     width: min(calc(100% - 2rem), 1120px);
     margin: 0 auto;
     padding: 0 1rem max(1.4rem, env(safe-area-inset-bottom));
@@ -188,6 +192,46 @@ html[data-theme="light"] .beian-link {
 
 html[data-theme="light"] .beian-link:hover {
     color: rgba(18, 28, 46, 0.96);
+}
+
+/* Match Apply's plain text links, including the active season/theme color. */
+.site-policy-links,
+.site-beian-footer .beian-links {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    column-gap: 24px;
+    row-gap: 4px;
+    max-width: 100%;
+}
+
+.site-beian-footer :is(.site-policy-links, .beian-links) a {
+    color: var(--ts-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    line-height: 1.8;
+    white-space: nowrap;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.site-policy-links a {
+    font-size: 13px;
+}
+
+.site-beian-footer :is(.site-policy-links, .beian-links) a:is(:hover, :focus-visible) {
+    color: var(--ts-accent);
+    text-decoration-thickness: 2px;
+}
+
+.site-beian-footer a:focus-visible {
+    outline: 2px solid var(--ts-accent);
+    outline-offset: 4px;
+    border-radius: 2px;
 }
 
 @media (max-width: 860px) {
