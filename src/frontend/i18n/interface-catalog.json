@@ -10163,5 +10163,105 @@
   "报名页 /apply（可用于邮件按钮）": {
     "en": "Application page /apply (for email buttons)",
     "ja": "申請ページ /apply（メールのボタン用）"
+  },
+  "只有超级管理员可以查看邮箱。发送邀请邮件后自动登记；Google 实际测试资格以 Play Console 为准。": {
+    "en": "Only super administrators can view email addresses. Invitations are recorded after sending; actual testing access is managed in Play Console.",
+    "ja": "メールアドレスは最高管理者のみ閲覧できます。招待メールの送信後に記録されます。実際の参加資格は Play Console で管理されます。"
+  },
+  "当前邀请邮件使用站长提供的 Google Play 内部测试链接。内部测试不计入封闭测试的连续 14 天。先在 Play Console 内部测试名单中添加收件邮箱，再发送邀请。旧的手工登记不会自动补发，可逐条预览后发送。": {
+    "en": "Invitations use the Google Play internal test link supplied by the site owner. Internal testing does not count toward the 14 consecutive days of closed testing. Add each recipient to the internal test list in Play Console before sending. Previously marked invitations are not sent automatically; preview and send them individually.",
+    "ja": "招待には運営者が指定した内部テストのリンクを使用します。内部テストはクローズドテストの連続14日間には算入されません。送信前に Play Console の内部テストリストへ宛先を追加してください。過去の手動記録への自動送信はありません。個別にプレビューして送信できます。"
+  },
+  "报名开关与封闭测试公开链接": {
+    "en": "Applications and public closed test link",
+    "ja": "申請受付と公開クローズドテストリンク"
+  },
+  "此设置只控制公开报名页的封闭测试入口，不会更改下方内部测试邀请邮件中的链接。": {
+    "en": "This setting only controls the closed test link on the public application page. It does not change the link in internal test invitation emails.",
+    "ja": "この設定は公開申請ページのクローズドテストリンクのみを変更します。内部テストの招待メールのリンクは変わりません。"
+  },
+  "此前仅登记了邀请状态，本站没有这封邀请的发送记录。": {
+    "en": "This invitation was marked manually. The site has no email delivery record for it.",
+    "ja": "招待状態のみ手動で記録されています。このメールの送信記録はありません。"
+  },
+  "查看已发送邀请": {
+    "en": "View sent invitation",
+    "ja": "送信済み招待を表示"
+  },
+  "重试发送邀请": {
+    "en": "Retry invitation",
+    "ja": "招待を再送信"
+  },
+  "补发邀请邮件": {
+    "en": "Send invitation email",
+    "ja": "招待メールを送信"
+  },
+  "发送邀请邮件并登记": {
+    "en": "Send and record invitation",
+    "ja": "招待を送信して記録"
+  },
+  "确认测试邀请邮件": {
+    "en": "Review test invitation",
+    "ja": "テスト招待メールの確認"
+  },
+  "收件邮箱：": {
+    "en": "Recipient:",
+    "ja": "宛先："
+  },
+  "主题：": {
+    "en": "Subject:",
+    "ja": "件名："
+  },
+  "内部测试邀请 · 不计入封闭测试的连续 14 天": {
+    "en": "Internal test invitation · Does not count toward 14 days of closed testing",
+    "ja": "内部テスト招待 · クローズドテストの連続14日間には算入されません"
+  },
+  "测试邀请邮件预览": {
+    "en": "Test invitation email preview",
+    "ja": "テスト招待メールのプレビュー"
+  },
+  "。不会重复发送。": {
+    "en": ". This invitation will not be sent again.",
+    "ja": "。重複送信は行いません。"
+  },
+  "邮件通道未配置，暂时无法发送。": {
+    "en": "Email is not configured. Sending is unavailable.",
+    "ja": "メールが未設定のため、送信できません。"
+  },
+  "我已将此邮箱加入 Google Play 内部测试名单，确认向该邮箱发送以上邀请。": {
+    "en": "I have added this email address to the Google Play internal test list and confirm sending this invitation.",
+    "ja": "このメールアドレスを Google Play の内部テストリストに追加済みで、上記の招待を送信することを確認します。"
+  },
+  "正在发送邀请…": {
+    "en": "Sending invitation…",
+    "ja": "招待を送信中…"
+  },
+  "确认发送邀请邮件": {
+    "en": "Confirm and send invitation",
+    "ja": "確認して招待メールを送信"
+  },
+  "邮件服务接收后自动登记为已发邀请，不代表用户已读或已加入测试。": {
+    "en": "Marked as invited after the email service accepts the message. This does not confirm that the recipient has read it or joined the test.",
+    "ja": "メールサービスの受理後に招待済みと記録されます。既読やテストへの参加を確認するものではありません。"
+  },
+  "正在发送": {
+    "en": "Sending",
+    "ja": "送信中"
+  },
+  "邮件服务已接收": {
+    "en": "Accepted by email service",
+    "ja": "メールサービスが受理済み"
+  },
+  "发送失败": {
+    "en": "Sending failed",
+    "ja": "送信に失敗"
+  },
+  "发送结果待核实": {
+    "en": "Delivery result needs verification",
+    "ja": "送信結果の確認が必要"
+  },
+  "这封邀请已经发送，本次未重复发送。": {
+    "en": "This invitation was already sent. No duplicate was sent.",
+    "ja": "この招待は送信済みです。重複送信は行いませんでした。"
   }
 }

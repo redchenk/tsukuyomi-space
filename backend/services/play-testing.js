@@ -1,6 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const db = require('../db');
 const policy = require('../../shared/play-testing.json');
+const invitations = require('./play-test-invitations');
 function fail(status, message) { throw Object.assign(new Error(message), { status }); }
 function text(value, max, field) {
     if (value == null) return '';
@@ -50,7 +51,7 @@ function list(query = {}) {
     const totalPages = Math.max(1, Math.ceil(total / 30));
     const page = Math.min(totalPages, Math.max(1, Math.floor(Number(query.page) || 1)));
     const items = db.prepare(`SELECT * FROM play_test_applications WHERE ${where} ORDER BY created_at DESC,id LIMIT 30 OFFSET @offset`).all({ ...args, offset: (page - 1) * 30 });
-    return { items, total, page, totalPages };
+    return { items: items.map(item => ({ ...item, delivery: invitations.state(item.id) })), total, page, totalPages };
 }
 function csv(query) {
     const { where, args } = filter(query);
@@ -61,7 +62,8 @@ function csv(query) {
 function update(id, input = {}) {
     if (!input || typeof input !== 'object') fail(422, '申请状态无效');
     if (!['pending','invited'].includes(input.status)) fail(422, '申请状态无效');
-    if (input.status === 'invited' && input.confirmSent !== true) fail(422, '请确认已实际发送邀请');
+    if (input.status === 'invited') fail(409, '请使用发送邀请邮件功能，邮件服务接收后会自动登记');
+    invitations.assertNotSending(id);
     const result = db.prepare('UPDATE play_test_applications SET status=?,updated_at=? WHERE id=?').run(input.status, new Date().toISOString(), id);
     if (!result.changes) fail(404, '申请不存在');
     return { updated: true };
@@ -69,6 +71,7 @@ function update(id, input = {}) {
 function remove(id, input = {}) {
     if (!input || typeof input !== 'object') fail(422, '请确认删除申请及邮箱资料');
     if (input.confirmation !== 'DELETE_APPLICATION') fail(422, '请确认删除申请及邮箱资料');
+    invitations.assertNotSending(id);
     db.prepare('DELETE FROM play_test_applications WHERE id=?').run(id);
     return { deleted: true };
 }

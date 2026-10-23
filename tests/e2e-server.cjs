@@ -25,7 +25,7 @@ const config = require('../backend/config');
 config.smtp.user = 'fixture-sender@example.test';
 config.smtp.pass = 'fixture-only';
 const fixtureMailer = require('../backend/services/mailer');
-for (const name of ['sendCampaignEmail', 'sendNotificationEmail', 'sendVerificationEmail']) fixtureMailer[name] = async () => {};
+for (const name of ['sendCampaignEmail', 'sendNotificationEmail', 'sendVerificationEmail', 'sendPlayTestInvitation']) fixtureMailer[name] = async () => {};
 // Only progress tests emulate the private object store. The real image route,
 // authentication, validation and database receipt still run in this fixture.
 const fixtureRequest = new (require('node:async_hooks').AsyncLocalStorage)();
@@ -71,6 +71,9 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+// A legacy manually marked invitation has no delivery receipt until explicitly sent.
+db.prepare('INSERT INTO play_test_applications(id,email,status,consent_version,created_at,updated_at) VALUES(?,?,?,?,?,?)')
+    .run('play-invitation-legacy', 'legacy-invitation@example.test', 'invited', '2026-10-23', new Date().toISOString(), new Date().toISOString());
 // Mail campaign tests exercise the persistent queue against the fixture sink.
 {
     for (let i = 1; i <= 12; i++) {

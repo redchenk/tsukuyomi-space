@@ -64,9 +64,10 @@ test('queue search and CSV have no public details, header, BOM or formula cells'
 test('only verified invitations change status; Google membership is never claimed; deletion is explicit', async () => {
     const row=db.prepare('SELECT * FROM play_test_applications WHERE email=?').get(valid.email);
     const url=`/api/admin/play-testing/${row.id}`;
-    assert.equal((await call(url+'/status',{status:'invited'},admin)).status,422);
+    assert.equal((await call(url+'/status',{status:'invited'},admin)).status,409);
     assert.equal((await call(url+'/status',{status:'joined',confirmSent:true},admin)).status,422);
-    assert.equal((await call(url+'/status',{status:'invited',confirmSent:true},admin)).status,200);
+    assert.equal((await call(url+'/status',{status:'invited',confirmSent:true},admin)).status,409);
+    db.prepare("UPDATE play_test_applications SET status='invited' WHERE id=?").run(row.id); // Preserve a legacy manual registration.
     assert.equal((await call('/api/admin/play-testing?status=invited',undefined,admin)).data.total,1);
     assert.equal((await call(url,{},admin,{method:'DELETE'})).status,422);
     assert.equal((await call(url,{confirmation:'DELETE_APPLICATION'},admin,{method:'DELETE'})).status,200);
