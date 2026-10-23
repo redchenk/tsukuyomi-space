@@ -21,7 +21,7 @@ let openId = 'A'.repeat(32), providerMode = '', providerCalls = 0, base, server;
 const sessions = {};
 before(async () => {
     const app = createApp();
-    for (const user of ['alice', 'bob', 'banned']) {
+    for (const user of ['alice', 'bob', 'banned', 'racer']) {
         db.prepare('INSERT INTO users (id,username,email,password_hash,role) VALUES (?,?,?,?,?)')
             .run(user, user, `${user}@example.test`, bcrypt.hashSync('fixture-password', 4), user === 'banned' ? 'banned' : 'user');
         sessions[user] = `${USER_SESSION_COOKIE}=${generateToken({ id: user, role: user === 'banned' ? 'banned' : 'user' })}`;
@@ -130,4 +130,15 @@ test('binding requires a current session and banned accounts cannot sign in', as
     openId = 'E'.repeat(32);
     repository.linkOAuthAccount({ id: 'banned-mobile', provider: 'qq', providerUserId: `mobile:${appId}:${openId}`, userId: 'banned', profile: {} });
     assert.equal((await complete(await start())).status, 403);
+});
+
+test('a pending account form cannot switch users when another binding wins a race', async () => {
+    openId = 'F'.repeat(32);
+    const flow = await start();
+    const ticket = (await (await complete(flow)).json()).data.ticket;
+    repository.linkOAuthAccount({ id: 'race-mobile', provider: 'qq', providerUserId: `mobile:${appId}:${openId}`, userId: 'racer', profile: {} });
+    const response = await post('bind', { ticket, username: 'alice', password: 'fixture-password' }, '', flow.cookie);
+    assert.equal(response.status, 409);
+    assert.equal(session(response), undefined);
+    assert.equal(repository.findUserByOAuthAccount('qq', `mobile:${appId}:${openId}`).id, 'racer');
 });
