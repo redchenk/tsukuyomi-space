@@ -24,6 +24,8 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
     let job;
     if (saved.jobId) job = await json(`/api/tts/official/jobs/${saved.jobId}`);
     else {
+      const status = await json('/api/tts/official/status');
+      if (!status.online) throw new Error('官方语音算力离线，未发起翻译或合成，请稍后重试。');
       const prepared = prepareText ? await prepareText(text) : text;
       if (!prepared?.trim()) throw new Error('语音文本为空，未发起合成。');
       job = await json('/api/tts/official/jobs', { method: 'POST', body: JSON.stringify({ text: prepared, requestKey: saved.key }) });

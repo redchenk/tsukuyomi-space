@@ -1890,7 +1890,8 @@ async function testTTS() {
   const testText = tts.provider === 'official' ? 'こんにちは。今夜も、月がきれいですね。' : tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
-  openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? apiUrl('/api/tts') : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}\n测试文本：${testText}`);
+  if (tts.provider === 'official') openTestDialog('tts', 'loading', '官方语音试听', '正在合成八千代语音…', '成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。');
+  else openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? apiUrl('/api/tts') : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}\n测试文本：${testText}`);
   officialTtsTesting.value = tts.provider === 'official';
   try {
     if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
@@ -1922,7 +1923,7 @@ async function testTTS() {
     if (ttsTestPlayback === audioPlayback) ttsTestPlayback = null;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     const message = describeAudioPlaybackError(error);
-    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', tts.provider === 'official' ? message : `${message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
     showToast(`TTS 测试失败：${message}`, 'error');
   } finally {
     officialTtsTesting.value = false;
