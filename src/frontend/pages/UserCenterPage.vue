@@ -820,6 +820,12 @@ watch(() => props.user, (nextUser) => {
 
 onMounted(async () => {
   const oauthParams = new URLSearchParams(window.location.search);
+  if (oauthParams.get('oauth_linked') === 'qq' || oauthParams.get('oauth_error')?.startsWith('qq_')) {
+    uc.tab = 'security';
+    if (oauthParams.has('oauth_error')) ucShowMessage('qq', oauthParams.get('oauth_error') === 'qq_already_bound'
+      ? '该 QQ 或当前账号已有其他绑定，请检查后重试' : 'QQ 绑定未完成，请重新授权');
+    else ucShowToast('QQ 已绑定');
+  }
   if (oauthParams.get('oauth_linked') === 'github' || oauthParams.get('oauth_error')?.startsWith('github_')) {
     uc.tab = 'security';
     if (oauthParams.has('oauth_error')) ucShowMessage('github', oauthParams.get('oauth_error') === 'github_already_bound' ? (props.lang === 'en' ? 'This GitHub is already linked to another account.' : '该 GitHub 或当前账号已有其他绑定，请检查后重试') : ucGitHubCopy.value.unavailable);
@@ -1264,9 +1270,9 @@ onUnmounted(() => {
                             取消
                           </button>
                         </div>
-                        <div v-if="uc.qqMsg" class="form-message" :class="uc.qqMsgType" role="status">{{ uc.qqMsg }}</div>
                       </form>
                     </div>
+                    <div v-if="uc.qqMsg" class="form-message" :class="uc.qqMsgType" role="status">{{ uc.qqMsg }}</div>
                   </div>
                 </div>
                 <div class="uc-oauth-status uc-github-status" :class="{ bound: ucGitHubAccount }">

@@ -425,12 +425,16 @@ router.post('/password/reset', async (req, res) => {
 });
 
 router.get('/oauth/qq/start', optionalAuth, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
     try {
+        const action = req.query.action === 'bind' ? 'bind' : 'login';
+        if (action === 'bind' && !req.user?.id) return redirectToOAuthError(res, 'qq_login_required');
         const state = crypto.randomBytes(24).toString('hex');
         const redirectPath = safeRedirectPath(req.query.redirect || '/hub');
         const authorizationUrl = qqOAuth.authorizationUrl({ state, display: oauthDisplayForRequest(req) });
         const browserBinding = oauthBrowser.begin(res);
-        await authState.createOAuthState({ state, provider: 'qq', redirectPath, browserBinding, userId: req.user?.id || '' });
+        await authState.createOAuthState({ state, provider: 'qq', redirectPath, browserBinding,
+            userId: req.user?.id || '', action, redirectUri: config.oauth.qq.redirectUri });
         res.redirect(authorizationUrl);
     } catch (error) {
         console.error('Start QQ OAuth failed:', error);
@@ -439,6 +443,8 @@ router.get('/oauth/qq/start', optionalAuth, async (req, res) => {
 });
 
 router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    let binding = false;
     try {
         if (req.query.error) return redirectToOAuthError(res, 'qq_denied');
 
@@ -450,7 +456,19 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
         const statePayload = await authState.consumeOAuthState(state, 'qq', oauthBrowser.readBinding(req), req.user?.id || '');
         if (!statePayload) return redirectToOAuthError(res, 'qq_invalid_state');
 
-        const profile = compactOAuthProfile(await qqOAuth.getProfileFromCode(code));
+        // Older clients omit action, but an authenticated start has always
+        // meant linking. Never sign that account into somebody else's QQ.
+        binding = statePayload.action === 'bind' || Boolean(statePayload.userId);
+        const profile = compactOAuthProfile(await qqOAuth.getProfileFromCode(code, statePayload.redirectUri));
+        if (binding) {
+            const currentUser = authRepository.findUserById(statePayload.userId);
+            if (!currentUser || currentUser.role === 'banned') return redirectToOAuthError(res, 'qq_invalid_state');
+            const linkedCurrentUser = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, currentUser.id));
+            setUserLoginSession(req, res, linkedCurrentUser || currentUser);
+            const redirect = new URL(safeRedirectPath(statePayload.redirectPath), config.publicSiteUrl);
+            redirect.searchParams.set('oauth_linked', 'qq');
+            return res.redirect(redirect.toString());
+        }
         const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
         if (linkedUser) {
             if (isUserMissingPublicEmail(linkedUser)) {
@@ -468,15 +486,6 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
             }
             setUserLoginSession(req, res, linkedUser);
             return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
-        }
-
-        if (req.user?.id) {
-            const currentUser = authRepository.findUserById(req.user.id);
-            if (currentUser) {
-                const linkedCurrentUser = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, currentUser.id));
-                setUserLoginSession(req, res, linkedCurrentUser || currentUser);
-                return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
-            }
         }
 
         const matchedEmailUser = profile.email ? authRepository.findUserByEmail(profile.email) : null;
@@ -510,6 +519,10 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
         setUserLoginSession(req, res, createdUser);
         return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
     } catch (error) {
+        if (binding && (error.status === 409 || /UNIQUE constraint failed/.test(error.message || ''))) {
+            // Keep the original session; a conflicting QQ must not switch users.
+            return res.redirect(siteUrl('/user-center?oauth_error=qq_already_bound'));
+        }
         console.error('QQ OAuth callback failed:', error);
         return redirectToOAuthError(res, 'qq_callback_failed');
     }

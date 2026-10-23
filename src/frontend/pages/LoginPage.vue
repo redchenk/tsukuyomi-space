@@ -104,6 +104,8 @@ const oauthErrorText = {
   qq_missing_code: 'QQ 回调缺少授权码，请重新登录',
   qq_invalid_state: 'QQ 登录状态已过期，请重新授权',
   qq_callback_failed: 'QQ 回调处理失败，请稍后再试',
+  qq_login_required: '请先登录当前账号，再绑定 QQ',
+  qq_already_bound: '该 QQ 或当前账号已有其他绑定，请检查后重试',
   github_not_configured: 'GitHub 登录暂未配置，请稍后再试',
   github_start_failed: 'GitHub 登录启动失败，请稍后再试',
   github_denied: 'GitHub 授权已取消',

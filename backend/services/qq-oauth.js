@@ -90,14 +90,14 @@ function assertNoProviderError(payload, step) {
     throw error;
 }
 
-async function exchangeCodeForToken(code) {
+async function exchangeCodeForToken(code, redirectUri) {
     const qq = qqConfig();
     const params = new URLSearchParams({
         grant_type: 'authorization_code',
         client_id: qq.clientId,
         client_secret: qq.clientSecret,
         code,
-        redirect_uri: qq.redirectUri,
+        redirect_uri: redirectUri || qq.redirectUri,
         fmt: 'json'
     });
     const payload = parseMaybeJson(await fetchText(`${QQ_TOKEN_URL}?${params.toString()}`));
@@ -162,8 +162,10 @@ function normalizeProfile({ openid, token, openidPayload, userInfo }) {
     };
 }
 
-async function getProfileFromCode(code) {
-    const token = await exchangeCodeForToken(code);
+async function getProfileFromCode(code, redirectUri) {
+    // The server-owned state pins the callback used to request this code,
+    // including when the deployment changes its default callback in flight.
+    const token = await exchangeCodeForToken(code, redirectUri);
     const openidPayload = await fetchOpenId(token.access_token);
     const userInfo = await fetchUserInfo({
         accessToken: token.access_token,
