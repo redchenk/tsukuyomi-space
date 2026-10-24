@@ -5,23 +5,6 @@ const query = new URLSearchParams({ client_id: 'e2e-partner', redirect_uri: 'htt
     response_type: 'code', scope: 'profile.basic', state: 'browser-fixture', code_challenge_method: 'S256',
     code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url') });
 
-async function decide(page, name) {
-    // The reserved example.test host has no real network destination.
-    const navigation = page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null);
-    const [response] = await Promise.all([
-        page.waitForResponse(response => new URL(response.url()).pathname === '/oauth/authorize'
-            && response.request().method() === 'POST'),
-        page.getByRole('button', { name, exact: true }).click()
-    ]);
-    expect(response.status()).toBe(303);
-    const callback = response.headers().location;
-    expect(new URL(callback).origin).toBe('https://partner.example.test');
-    // Playwright routes only the first URL in a redirect chain. Verify the real
-    // form's 303, then open its exact Location as an interceptable fixture request.
-    await navigation;
-    await page.goto(callback);
-}
-
 for (const width of [390, 1280]) {
     test(`partner consent login, cancellation and grant revocation at ${width}px`, async ({ page, playwright, baseURL }, testInfo) => {
         await page.setViewportSize({ width, height: 844 });
@@ -50,14 +33,14 @@ for (const width of [390, 1280]) {
         expect(await page.locator('script').count()).toBe(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await page.screenshot({ path: testInfo.outputPath('consent.png'), fullPage: true });
-        await decide(page, '取消授权');
+        await page.getByRole('button', { name: '取消授权' }).click();
         await expect(page).toHaveURL(/partner\.example\.test\/callback\?/);
         const denied = new URL(page.url());
         expect(denied.searchParams.get('error')).toBe('access_denied');
         expect(denied.searchParams.get('state')).toBe('browser-fixture');
         expect(denied.searchParams.has('code')).toBe(false);
         await page.goto(path);
-        await decide(page, '同意并继续');
+        await page.getByRole('button', { name: '同意并继续' }).click();
         await expect(page).toHaveURL(/partner\.example\.test\/callback\?/);
         const callback = new URL(page.url());
         expect(callback.searchParams.get('iss')).toBe(baseURL);

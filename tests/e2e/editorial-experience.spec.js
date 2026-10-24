@@ -1,4 +1,4 @@
-const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
+const { test, expect } = require('../e2e-fixtures.cjs');
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 const article = {
@@ -277,7 +277,7 @@ test('image cards retain readable text in the mobile light theme', async ({ page
 
 test('growth keeps recent activity without a separate article XP panel after mobile refresh', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await gotoReady(page, '/login?redirect=%2Fgrowth');
+    await page.goto('/login?redirect=%2Fgrowth');
     await page.getByLabel('用户名或邮箱', { exact: true }).fill('e2e-user');
     await page.getByLabel('密码', { exact: true }).fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();

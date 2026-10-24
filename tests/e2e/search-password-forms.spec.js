@@ -1,9 +1,9 @@
-const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
+const { test, expect } = require('../e2e-fixtures.cjs');
 
 for (const width of [1280, 390]) {
   test(`search stays separate from account credentials and password submits once at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await gotoReady(page, '/login');
+    await page.goto('/login');
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();

@@ -1,8 +1,8 @@
 const { createHash } = require('node:crypto');
-const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
+const { test, expect } = require('../e2e-fixtures.cjs');
 
 test('attachment library retries a lost chunk acknowledgement and downloads the original bytes', async ({ page }) => {
-    await gotoReady(page, '/login');
+    await page.goto('/login');
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
