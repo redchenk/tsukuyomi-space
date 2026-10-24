@@ -16,7 +16,7 @@ async function call(url, token, value, headers = {}) {
 }
 before(async () => {
     server = createApp().listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r)); base = `http://127.0.0.1:${server.address().port}`;
-    for (const id of ['alice', 'bob', 'limited', 'complete']) {
+    for (const id of ['alice', 'bob', 'limited', 'complete', 'legacy22', 'legacy23']) {
         db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES (?,?,?,?,?)').run(id,id,`${id}@example.test`,'test-hash','user');
         users[id] = generateToken({ id, role: 'user' });
     }
@@ -39,6 +39,15 @@ test('requires current confirmation, ignores client account and is idempotent un
     assert.equal((await call('/api/account-deletion/me', users.bob)).data, null);
     assert.equal('user_id' in results[0].data, false);
     assert.equal(Date.parse(results[0].data.due_at) - Date.parse(results[0].data.requested_at), 30 * 86400000);
+});
+test('released apps may submit the unchanged deletion terms and record the version actually read', async () => {
+    assert.equal((await call('/api/account-deletion', users.legacy22, { ...body, policyVersion: '2026-10-21' })).status, 400);
+    for (const [id, policyVersion] of [['legacy22', '2026-10-22'], ['legacy23', '2026-10-23']]) {
+        const result = await call('/api/account-deletion', users[id], { ...body, policyVersion });
+        assert.equal(result.status, 201);
+        assert.equal(result.data.policy_version, policyVersion);
+        assert.equal(db.prepare('SELECT policy_version FROM account_deletion_requests WHERE id=?').get(result.data.id).policy_version, policyVersion);
+    }
 });
 test('private ownership, CSRF and separate admin session boundary', async () => {
     const row = (await call('/api/account-deletion/me', users.alice)).data;
