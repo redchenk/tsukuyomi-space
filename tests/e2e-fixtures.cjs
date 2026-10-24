@@ -17,4 +17,12 @@ const test = base.extend({
     }
 });
 
-module.exports = { test, expect };
+// Form filling can return before a boot-time inert ancestor becomes interactive.
+// Keep navigation/splash tests free to inspect startup; form tests opt in here.
+async function gotoReady(page, url) {
+    const response = await page.goto(url);
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+    return response;
+}
+
+module.exports = { test, expect, gotoReady };

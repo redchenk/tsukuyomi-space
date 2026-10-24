@@ -1,4 +1,4 @@
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
@@ -19,7 +19,7 @@ async function configure(page, guestId) {
     requests.push(route.request().postDataJSON());
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: done\ndata: {"reply":"我记下了，也会参考已有记忆。"}\n\n' });
   });
-  await page.goto('/login');
+  await gotoReady(page, '/login');
   const records = [
     { id: `${guestId}-cat`, userKey: `guest:${guestId}`, type: 'preference', summary: '本地猫的名字',
       content: '我的本地猫叫麦芽。', importance: 0.4, confidence: 0.7, tags: ['猫', '本地'],
@@ -61,7 +61,7 @@ async function readLocalRows(page, userKey) {
 }
 
 async function login(page, username) {
-  await page.goto('/login');
+  await gotoReady(page, '/login');
   await page.locator('#loginAccount').fill(username);
   await page.locator('#loginPassword').fill('mem0-test-password');
   await page.locator('button[type="submit"]').click();

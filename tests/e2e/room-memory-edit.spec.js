@@ -1,4 +1,4 @@
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
@@ -11,7 +11,7 @@ async function openMemoryManager(page) {
 }
 
 async function loginAsUser(page) {
-  await page.goto('/login');
+  await gotoReady(page, '/login');
   await page.locator('#loginAccount').fill('e2e-user');
   await page.locator('#loginPassword').fill('e2e-password');
   await page.locator('button[type="submit"]').click();

@@ -1,13 +1,13 @@
 const fs = require('node:fs');
 const { createHash } = require('node:crypto');
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
 test.beforeEach(async ({ context }, info) => {
   const identity = createHash('sha256').update(info.testId).digest('hex');
   await context.setExtraHTTPHeaders({ 'X-Upload-Fixture-Delay': '1800', 'X-Real-IP': `2001:db8:${identity.slice(0,4)}:${identity.slice(4,8)}::1` });
 });
 const IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/wn4GBgYGJAQoAHgQCAQb7R3sAAAAASUVORK5CYII=', 'base64');
 async function login(page) {
-  await page.goto('/login');
+  await gotoReady(page, '/login');
   await page.locator('#loginAccount').fill('e2e-user');
   await page.locator('#loginPassword').fill('e2e-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();

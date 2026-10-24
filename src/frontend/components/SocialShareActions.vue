@@ -94,9 +94,12 @@ function legacyCopy(value) {
   textarea.setAttribute('readonly', '');
   textarea.style.position = 'fixed';
   textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
   const previousFocus = document.activeElement;
+  // A modal dialog makes the rest of the document inert, including a textarea
+  // appended to body. Keep the copy selection inside the active modal.
+  (previousFocus?.closest('dialog[open]') || document.body).appendChild(textarea);
   try {
+    textarea.focus({ preventScroll: true });
     textarea.select();
     if (!document.execCommand('copy')) throw new Error('Copy failed');
   } finally {

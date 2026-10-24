@@ -1,4 +1,4 @@
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect, gotoReady } = require('../e2e-fixtures.cjs');
 
 test('shared search finds navigation aliases, supports keyboard selection and preserves Room drafts', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -51,7 +51,7 @@ test('search displays real API results, survives an error and follows the select
 
 test('signed-in Japanese navigation fits a narrow desktop and keeps account actions', async ({ page }) => {
     await page.setViewportSize({ width: 861, height: 844 });
-    await page.goto('/login');
+    await gotoReady(page, '/login');
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -326,7 +326,7 @@ test('mobile top navigation keeps primary routes, account, notifications and sea
     // Navigation does not need a cold Cubism model load in this narrow-screen check.
     await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
     const activate = locator => browserName === 'webkit' ? locator.tap() : locator.click();
-    await page.goto('/login');
+    await gotoReady(page, '/login');
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -363,7 +363,7 @@ for (const signedIn of [false, true]) {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
         if (signedIn) {
-            await page.goto('/login');
+            await gotoReady(page, '/login');
             await page.locator('#loginAccount').fill('e2e-user');
             await page.locator('#loginPassword').fill('e2e-password');
             await page.getByRole('button', { name: '登录', exact: true }).click();
