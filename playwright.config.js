@@ -13,7 +13,7 @@ module.exports = defineConfig({
     projects: [
         {
             name: 'webkit-iphone11',
-            testMatch: /(?:room-memory-414|official-tts)\.spec\.js/,
+            testMatch: /(?:room-memory-414|official-tts|room-official-images)\.spec\.js/,
             use: { ...devices['iPhone 11'] }
         },
         {
