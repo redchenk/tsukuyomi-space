@@ -241,6 +241,9 @@ test('LLM uses the shared persona, current board, free chat and hint context', a
   await openPetChat(page);
   await expect(page.locator('.gomoku-chat-assistant[data-state="complete"]')).toHaveCount(1);
   expect(requests).toHaveLength(1);
+  expect(requests[0].apiUrl).toBe('https://fixture.test/v1/chat/completions');
+  expect(requests[0].model).toBe('fixture-model');
+  expect(requests[0].apiKey).toBe('fixture-key');
   expect(requests[0].systemPrompt).toContain(character.corePrompt());
   const board = JSON.parse(requests[0].message).board;
   expect(board.black).toEqual(['H8']);
@@ -374,3 +377,64 @@ test('official Room session works without a separately configured API key', asyn
   expect(request.thinking).toEqual({ type: 'disabled' });
   expect(JSON.parse(request.messages.at(-1).content).userText).toBe('不许放水哦');
 });
+
+test('Gomoku calls the user custom model directly without using the site wallet', async ({ page }) => {
+  const config = { apiUrl: 'https://fixture.test/v1/chat/completions', model: 'my-own-model', apiKey: 'fixture-personal-key', useProxy: false };
+  await page.addInitScript(value => localStorage.setItem('roomLLMSettings', JSON.stringify(value)), config);
+  let calls = 0, officialCalls = 0, proxyCalls = 0;
+  await page.route('**/official-api/**', route => { officialCalls++; return route.abort(); });
+  await page.route('**/api/chat/stream', route => { proxyCalls++; return route.abort(); });
+  await page.route(config.apiUrl, route => {
+    const request = route.request();
+    calls++;
+    expect(request.headers().authorization).toBe(`Bearer ${config.apiKey}`);
+    const body = request.postDataJSON();
+    expect(body.model).toBe(config.model);
+    expect(body.max_tokens).toBe(1024);
+    expect(JSON.parse(body.messages.at(-1).content).userText).toBe('不许放水哦');
+    return route.fulfill({ contentType: 'text/event-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: 'data: {"choices":[{"delta":{"content":"这是你自己配置的模型。"}}]}\n\ndata: [DONE]\n\n' });
+  });
+  await ready(page);
+  await openPetChat(page);
+  await page.getByRole('button', { name: '不许放水哦', exact: true }).click();
+  await expect(page.locator('.gomoku-chat-assistant[data-state="complete"]')).toContainText('自己配置的模型');
+  expect(calls).toBe(1);
+  expect(officialCalls).toBe(0);
+  expect(proxyCalls).toBe(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('roomLLMSettings')))).toEqual(config);
+});
+
+for (const failure of [{ status: 402, message: '站内余额不足' }, { status: 401, message: '模型登录或密钥已失效' }]) {
+  test(`Gomoku official ${failure.status} stops without retry or a custom-provider fallback`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('roomLLMSettings', JSON.stringify({
+      apiUrl: `${location.origin}/official-api/v1/chat/completions`, model: 'site-model', apiKey: 'old-imported-value', useProxy: true
+    })));
+    let calls = 0, proxyCalls = 0;
+    await page.route('**/api/chat/stream', route => { proxyCalls++; return route.abort(); });
+    await page.route('**/official-api/api/dashboard', route => route.fulfill({ json: { enabled: true, me: { account_id: 'ordinary-user' }, models: [{ id: 'site-model', enabled: true, max_output_tokens: 1024, provider: 'deepseek' }] } }));
+    await page.route('**/official-api/v1/chat/completions', route => {
+      calls++;
+      const request = route.request();
+      expect(request.headers().authorization).toBe('Bearer tsukuyomi-site-session');
+      const body = request.postDataJSON();
+      expect(body.stream_options.include_usage).toBe(true);
+      expect(body.model).toBe('site-model');
+      expect(body.max_tokens).toBe(1024);
+      expect(body.sponsored).toBeUndefined();
+      expect(body.user_id).toBeUndefined();
+      return route.fulfill({ status: failure.status, json: { error: { message: 'fixture-private-provider-detail' } } });
+    });
+    await ready(page);
+    await openPetChat(page);
+    await page.getByRole('button', { name: '不许放水哦', exact: true }).click();
+    await expect(page.locator('.gomoku-chat-error')).toContainText(failure.message);
+    await expect(page.locator('.site-pet-game-bubble')).not.toContainText('fixture-private-provider-detail');
+    await expect(page.locator('.gomoku-chat-assistant[data-state="complete"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '重新回应', exact: true })).toBeVisible();
+    expect(calls).toBe(1);
+    expect(proxyCalls).toBe(0);
+    await closePetChat(page);
+    await page.getByRole('link', { name: '返回游戏中心', exact: true }).click();
+    expect(calls).toBe(1);
+  });
+}
