@@ -1,7 +1,8 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, ref, unref, watch } from 'vue';
 import { askSiteGuide, readSiteGuideLlmStatus } from '../services/siteGuideLlm';
 import TsIcon from './TsIcon.vue';
+const SitePetGameBubble = defineAsyncComponent(() => import('./SitePetGameBubble.vue'));
 
 const props = defineProps({
   lang: { type: String, default: 'zh' },
@@ -10,6 +11,11 @@ const props = defineProps({
   spriteSrc: { type: String, default: '/assets/pets/yachiyo/spritesheet-perf-r2.webp' }
 });
 const emit = defineEmits(['go']);
+const petInteraction = inject('sitePetInteraction', null);
+const gameInteraction = computed(() => props.routeName === 'gomoku' ? unref(petInteraction?.value) : null);
+const petButton = ref(null);
+const gameBubbleVisible = ref(false);
+const gameBubbleExpanded = ref(false);
 
 const SPRITE_COLUMNS = 8;
 const SPRITE_ROWS = 9;
@@ -63,10 +69,10 @@ const GUIDES = Object.freeze([
     en: ['Your first chat', 'Choose a service, test and save the connection, then send your first message. Voice and memory can wait.']
   },
   {
-    key: 'game', icon: 'play', path: '/game', routes: ['game'],
-    zh: ['辉夜快跑', '跟着音乐跑一局，进入后查看键盘或触屏操作，不需要聊天模型。'],
-    ja: ['かぐやラン', '音楽に合わせて遊びましょう。チャットモデルは不要です。'],
-    en: ['Kaguya Run', 'Play along with the music. No chat model is needed.']
+    key: 'game', icon: 'play', path: '/game', routes: ['game', 'gomoku', 'kaguyaRun'],
+    zh: ['游戏中心', '和八千代下五子棋、玩辉夜快跑。连接 Room 模型后，还能点击右下角八千代边下边聊。'],
+    ja: ['ゲームセンター', '五目並べやかぐやランで遊べます。Room のモデルを接続すると、右下のヤチヨと対局中に話せます。'],
+    en: ['Game Center', 'Play Gomoku or Kaguya Run. Connect your Room model and click Yachiyo at the bottom right to chat while playing.']
   },
   {
     key: 'live2d', icon: 'sparkles', path: '/live2d', routes: ['live2d'],
@@ -207,6 +213,39 @@ function playClickAction() {
   loopsRemaining = currentSequence.loops;
 }
 
+function activatePet() {
+  if (!gameInteraction.value) return openGuide();
+  gameInteraction.value.refresh();
+  playClickAction();
+  gameBubbleExpanded.value = !gameBubbleExpanded.value;
+  gameBubbleVisible.value = gameBubbleExpanded.value;
+}
+
+async function closeGameBubble() {
+  gameBubbleVisible.value = false;
+  gameBubbleExpanded.value = false;
+  await nextTick();
+  petButton.value?.focus({ preventScroll: true });
+}
+
+watch(() => props.routeName, () => { closeGuide(); });
+watch(() => gameInteraction.value?.kind, kind => {
+  gameBubbleExpanded.value = false;
+  gameBubbleVisible.value = Boolean(kind);
+}, { immediate: true });
+watch(() => gameInteraction.value?.state.messages.at(-1)?.id, id => {
+  if (id) gameBubbleVisible.value = true;
+});
+watch(() => gameInteraction.value?.state.status, status => {
+  if (motionReduced || props.reduced || !status) return;
+  if (status === 'pending') {
+    currentSequence = SEQUENCES.waiting;
+    frame.value = currentSequence.frames[0];
+    sequenceIndex = 1;
+    loopsRemaining = currentSequence.loops;
+  } else if (status === 'idle') playClickAction();
+});
+
 async function openGuide() {
   llmStatus.value = readSiteGuideLlmStatus();
   error.value = '';
@@ -311,7 +350,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="site-pet-wrap" :class="routeName ? `site-pet-route-${routeName}` : ''">
-    <button class="site-pet" type="button" :aria-label="copy.petLabel" :style="petStyle" @click="openGuide"></button>
+    <SitePetGameBubble v-if="gameInteraction" v-show="gameBubbleVisible" :interaction="gameInteraction" :expanded="gameBubbleExpanded"
+      @expand="gameBubbleExpanded = true" @close="closeGameBubble" @go="navigate" />
+    <button ref="petButton" class="site-pet" type="button" :aria-label="gameInteraction ? gameInteraction.copy.petOpen : copy.petLabel"
+      :aria-expanded="gameInteraction ? gameBubbleExpanded : dialogOpen" :aria-controls="gameInteraction && gameBubbleVisible ? 'site-pet-game-bubble' : undefined"
+      :style="petStyle" @click="activatePet"></button>
   </div>
 
   <Teleport to="body">

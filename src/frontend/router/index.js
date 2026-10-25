@@ -55,6 +55,8 @@ const ArticlePage = loadRoute(() => import('../pages/ArticlePage.vue'), () => im
 const TerminalPage = loadRoute(() => import('../pages/TerminalPage.vue'), () => import('../styles/routes/terminal.css'));
 const AdminPage = loadRoute(() => import('../pages/AdminPage.vue'), () => import('../styles/routes/admin.css'));
 const ArenaPage = loadRoute(() => import('../pages/ArenaPage.vue'), () => import('../styles/routes/arena.css'));
+const GameCenterPage = loadRoute(() => import('../pages/GameCenterPage.vue'), () => import('../styles/routes/game-center.css'));
+const GomokuPage = loadRoute(() => import('../pages/GomokuPage.vue'), () => import('../styles/routes/game-center.css'));
 const GamePage = loadRoute(() => import('../pages/GamePage.vue'), () => import('../styles/routes/game.css'));
 const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('../styles/routes/wiki.css'));
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
@@ -347,6 +349,18 @@ export const routes = [
   {
     path: '/game',
     name: 'game',
+    component: GameCenterPage,
+    meta: { title: '游戏中心', description: '和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。', keywords: ['游戏中心', '五子棋', '八千代', '辉夜快跑'] }
+  },
+  {
+    path: '/game/gomoku',
+    name: 'gomoku',
+    component: GomokuPage,
+    meta: { title: '月下五子棋 · 和八千代一起', description: '和八千代对弈五子棋，支持先后手、难度选择、悔棋、提示和本地续局。', keywords: ['五子棋', '八千代', '在线五子棋'] }
+  },
+  {
+    path: '/game/kaguya-run',
+    name: 'kaguyaRun',
     component: GamePage,
     meta: {
       title: '辉夜快跑在线音游',

@@ -1,4 +1,9 @@
 {
+  "游戏中心": {"en": "Game Center", "ja": "ゲームセンター"},
+  "和八千代下一局五子棋，或挑战辉夜快跑。": {"en": "Play Gomoku with Yachiyo or try Kaguya Run.", "ja": "ヤチヨと五目並べ、またはかぐやランで遊ぼう。"},
+  "和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。": {"en": "Play Moonlit Gomoku with Yachiyo, or follow the rhythm and challenge your score in Kaguya Run.", "ja": "ヤチヨと月下の五目並べを楽しんだり、かぐやランでリズムとスコアに挑戦しよう。"},
+  "月下五子棋 · 和八千代一起": {"en": "Moonlit Gomoku with Yachiyo", "ja": "月下の五目並べ・ヤチヨと一緒に"},
+  "和八千代对弈五子棋，支持先后手、难度选择、悔棋、提示和本地续局。": {"en": "Play Gomoku with Yachiyo. Choose your color and difficulty, undo turns, get hints and resume locally.", "ja": "ヤチヨと五目並べ。先後手・難しさの選択、一手戻す、ヒント、対局の再開に対応。"},
   "先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。": {"en":"Finish chat setup, then send a message below. Once a reply arrives, keep chatting; voice can be enabled later.","ja":"チャットを設定し、下の欄から話しかけてみましょう。返信が届いたら会話を続けられます。音声は後から設定できます。"},
   "第一次使用 / 发现功能": {"en":"Getting started / Discover features","ja":"使い方・機能を見つける"},
   "当前好感度": {"en":"Current affection","ja":"現在の好感度"},

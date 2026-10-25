@@ -24,7 +24,7 @@ before(async () => {
 });
 after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(temp, { recursive: true, force: true }); });
 test('all visitors get the same readable public document, one canonical and the interactive app', async () => {
-    for (const route of ['/', '/hub', '/stage', '/plaza', '/room', '/reality', '/download', '/wiki', '/wiki/characters/yachiyo', '/pixel', '/gallery', '/game', '/friend-links', `/articles/${articleId}/seo-test`]) {
+    for (const route of ['/', '/hub', '/stage', '/plaza', '/room', '/reality', '/download', '/wiki', '/wiki/characters/yachiyo', '/pixel', '/gallery', '/game', '/game/gomoku', '/game/kaguya-run', '/friend-links', `/articles/${articleId}/seo-test`]) {
         let baseline;
         for (const ua of ['Mozilla/5.0', 'bingbot', 'OAI-SearchBot', 'ChatGPT-User']) {
             const response = await fetch(base + route, { headers: { 'User-Agent': ua } });

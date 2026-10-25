@@ -65,7 +65,7 @@ const navItems = computed(() => [
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
-  { path: '/game', key: 'game', label: props.t.game, icon: 'gamepad', active: props.routeName === 'game', spa: true },
+  { path: '/game', key: 'game', label: props.t.game, icon: 'gamepad', active: ['game', 'gomoku', 'kaguyaRun'].includes(props.routeName), spa: true },
   ...(props.isAuthed ? [{ path: '/growth', key: 'growth', label: growthLabel.value, icon: 'sparkles', active: props.routeName === 'growth', spa: true }] : []),
   { path: '/friend-links', key: 'friendLinks', label: copy.value.friendLinks, icon: 'external', active: ['friendLinks', 'friendLinkApply'].includes(props.routeName), spa: true },
   { path: '/download', key: 'download', label: copy.value.download, icon: 'download', active: props.routeName === 'download', spa: true },
@@ -284,7 +284,7 @@ onUnmounted(() => {
 <template>
   <div class="app-shell unified-navigation" :class="{ 'room-shell': isRoom, 'site-background-shell': hasGlobalBackground, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
-    <div v-if="showChrome && !isRoom && routeName !== 'game'" class="moon" aria-hidden="true"></div>
+    <div v-if="showChrome && !isRoom && !['game', 'gomoku', 'kaguyaRun'].includes(routeName)" class="moon" aria-hidden="true"></div>
 
     <header v-if="showChrome" class="topbar site-commandbar" data-material="header">
       <a href="/hub" class="site-brand" data-material="header" :class="{ 'site-brand-english': lang === 'en' }" :aria-label="`${t.brand} ${currentPageLabel}`" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @click="navigate($event, { path: '/hub' })">
@@ -336,7 +336,7 @@ onUnmounted(() => {
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="$emit('go', $event)" />
 
-    <SiteMusicDrawer v-if="showChrome && music && routeName !== 'game'" :music="music" :lang="lang" />
+    <SiteMusicDrawer v-if="showChrome && music && routeName !== 'kaguyaRun'" :music="music" :lang="lang" />
     <slot></slot>
     <footer v-if="showSiteBeian" class="site-beian-footer">
       <nav class="site-policy-links" aria-label="Privacy">

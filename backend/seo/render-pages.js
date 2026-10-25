@@ -142,7 +142,7 @@ function renderHubHtml(articles = []) {
         { href: '/room', title: '月见八千代 Live2D 房间', description: '高清 Live2D、AI 对话、语音与长期记忆。' },
         { href: '/gallery', title: '公开图库', description: '用户公开上传的插画与站点影像。' },
         { href: '/pixel', title: '在线像素画工坊', description: '在线创作、分享与浏览像素作品。' },
-        { href: '/game', title: '辉夜快跑', description: '辉夜姬主题节奏跑酷游戏。' },
+        { href: '/game', title: '游戏中心', description: '和八千代玩五子棋，或挑战辉夜快跑。' },
         { href: '/friend-links', title: '友链导航', description: '月读空间审核收录的友好站点。' }
     ];
     const latestArticles = articles.slice(0, 12).map(article => ({
@@ -181,14 +181,21 @@ function renderPixelHtml(artworks = []) {
     });
 }
 
-function renderGameHtml() {
+function renderGameHtml(gamePath = '/game') {
+    const pages = {
+        '/game': { title: '游戏中心', description: '和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。' },
+        '/game/gomoku': { title: '月下五子棋 · 和八千代一起', description: '15 × 15 自由五子棋，先连成五子获胜。和八千代对弈，支持先后手、难度、悔棋、提示和浏览器本地续局，无需配置聊天模型。' },
+        '/game/kaguya-run': { title: '辉夜快跑在线音游', description: '在月读空间游玩辉夜快跑，体验为桌面键盘与移动端触控优化的辉夜姬主题节奏跑酷游戏。' }
+    };
+    const page = pages[gamePath] || pages['/game'];
     return renderSeoCollectionPage({
-        path: '/game',
-        title: '辉夜快跑在线音游',
-        heading: '辉夜快跑',
-        description: '在月读空间游玩辉夜快跑，体验为桌面键盘与移动端触控优化的辉夜姬主题节奏跑酷游戏。',
-        keywords: ['辉夜快跑', '辉夜姬音游', '在线节奏游戏', '月读空间游戏', 'Kaguya Run'],
-        actions: [{ href: '/game?spa=1', label: '开始游戏' }]
+        path: gamePath, title: page.title, heading: page.title, description: page.description,
+        keywords: ['游戏中心', '五子棋', '八千代', '辉夜快跑', 'Gomoku', 'Kaguya Run'],
+        items: gamePath === '/game' ? [
+            { href: '/game/gomoku', title: '月下五子棋', description: pages['/game/gomoku'].description },
+            { href: '/game/kaguya-run', title: '辉夜快跑', description: pages['/game/kaguya-run'].description }
+        ] : [],
+        actions: [{ href: `${gamePath}?spa=1`, label: gamePath === '/game' ? '进入游戏中心' : '开始游戏' }]
     });
 }
 

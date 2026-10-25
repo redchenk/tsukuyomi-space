@@ -26,7 +26,7 @@ const RANDOM_DAILY_TASKS = Object.freeze([
     { key: 'daily_plaza_engage', xp: 20, label: '月读广场留言或点赞', path: '/plaza', activities: ['plaza_message', 'plaza_like'] },
     { key: 'daily_pixel_engage', xp: 20, label: '像素画绘画或点赞', path: '/pixel', activities: ['pixel_publish', 'pixel_like'] },
     { key: 'daily_gallery_upload', xp: 20, label: '图库上传图片', path: '/gallery/manage', activities: ['gallery_upload'] },
-    { key: 'daily_kaguya_run', xp: 20, label: '辉夜快跑获得 100 分', path: '/game', activities: ['kaguya_score'] }
+    { key: 'daily_kaguya_run', xp: 20, label: '辉夜快跑获得 100 分', path: '/game/kaguya-run', activities: ['kaguya_score'] }
 ]);
 
 const DAILY_ACTIVITY_KEYS = new Set(RANDOM_DAILY_TASKS.flatMap((task) => task.activities));
