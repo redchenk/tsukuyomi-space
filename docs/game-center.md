@@ -31,3 +31,5 @@ PW_CHANNEL=chrome npx playwright test tests/e2e/game-center.spec.js --workers=2
 浏览器测试覆盖桌面 Chrome、Android 尺寸 Chrome、iPhone 尺寸 WebKit，包括中心入口、实际落子、键盘操作、取消延迟回合、先后手、胜负、存储损坏、续局、三种语言、深色模式及棋盘居中/正方形/落点不重叠。浏览器测试还验证唯一 pet、非模态气泡、展开/收起、保留草稿、切页恢复向导、气泡屏幕边界与棋盘中心不偏移。模型夹具覆盖真实 Room 请求格式、人物卡、棋局上下文、自由输入、取消和异常；纯服务测试验证分段流式渲染、超时、上下文上限和账号隔离。这些不代替真实供应商效果与额度验收。
 
 辉夜快跑的浏览器回归使用隔离的准备就绪消息夹具，未运行原游戏媒体。原运行时的完整引擎验收仍使用 `tests/e2e/kaguya-ride.spec.js` 和其所需的本地资源。
+
+海外部署需同步 `deploy/overseas-openresty.conf` 的游戏子路由白名单、`overseas-translation-service.py` 和旁置 `seo-pages-en.json`；只更新前端会导致子路由直接访问返回 404。更新配置前备份并执行 Nginx 配置校验。
