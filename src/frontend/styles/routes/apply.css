@@ -60,6 +60,11 @@
 .play-invitation-note { margin-top:24px!important; }
 .play-invitation-dialog { width:min(760px,calc(100% - 32px)); max-height:88dvh; box-sizing:border-box; padding:24px; border:1px solid var(--ts-border); border-radius:20px; background:var(--ts-surface-strong); color:var(--ts-text); overflow:auto; }
 .play-invitation-dialog::backdrop { background:rgba(20,18,28,.6); }
+.play-invitation-settings { display:grid; gap:10px; margin:24px 0; }
+.play-invitation-settings label { font-weight:650; }
+.play-invitation-settings input { width:100%; min-width:0; box-sizing:border-box; padding:12px; border:1px solid var(--ts-border); border-radius:10px; background:var(--ts-surface-strong); color:var(--ts-text); font:inherit; font-size:13px; }
+.play-invitation-settings .apply-button { justify-self:start; }
+.play-admin-list .apply-hint { overflow-wrap:anywhere; }
 .play-invitation-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; }.play-invitation-heading h2 { font-size:21px; }
 .play-invitation-dialog>p { margin:14px 0; font-size:13px; overflow-wrap:anywhere; }
 .play-invitation-dialog iframe { display:block; width:100%; height:420px; border:1px solid var(--ts-border); border-radius:12px; background:#fff; margin:18px 0; }

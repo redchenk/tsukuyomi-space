@@ -5,7 +5,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(),'play-invitations-'));
 Object.assign(process.env,{ NODE_ENV:'test', DATA_DIR:dataDir, DB_PATH:path.join(dataDir,'test.db'), JWT_SECRET:'play-invitation-test-secret-at-least-32-characters', ADMIN_USERNAME:'admin', ADMIN_PASSWORD:'admin-test-password', SMTP_USER:'sender@example.test', SMTP_PASS:'fixture-only', REDIS_URL:'' });
 const mailer = require('../backend/services/mailer');
 const deliveries=[]; let transport=async email=>deliveries.push(email);
-mailer.sendPlayTestInvitation=async email=>transport(email);
+mailer.sendPlayTestInvitation=async (email,url)=>transport(email,url);
 const {createApp}=require('../backend/app'),db=require('../backend/db'),config=require('../backend/config');
 const {generateToken}=require('../backend/middleware/auth');
 const content=require('../backend/services/play-test-invitation-content');
@@ -89,4 +89,45 @@ test('MIME retains branded artwork, actual Google CTA and one private recipient'
  assert.ok(parsed.text.includes(content.actionUrl));assert.ok(parsed.html.includes('href="'+content.actionUrl+'"'));assert.equal(parsed.attachments.length,2);assert.doesNotMatch(mime,/^Bcc:/m);
  assert.match(parsed.text,/不计入.*连续 14 天/);assert.ok(Buffer.byteLength(mime)<100*1024);
  const general=mailer.renderCampaignEmail({subject:'general',body:'body',actionUrl:content.actionUrl});assert.ok(!general.html.includes('href="'+content.actionUrl+'"'),'general campaign URL protection remains');
+});
+const invitationSettings=require('../backend/services/play-test-invitation-settings');
+const closedUrl='https://play.google.com/apps/testing/space.tsukuyomi.tsukuyomi_space_app';
+const saveLink=url=>api('invitation-settings','',{actionUrl:url,previousActionUrl:invitationSettings.get().actionUrl});
+test('only super admins can save validated invitation URLs; persistence and concurrent-edit protection do not change public settings',async()=>{
+ for(const token of [null,user,staff]) {
+  assert.equal((await api('invitation-settings','',undefined,token)).status,token?403:401);
+  assert.equal((await api('invitation-settings','',{actionUrl:closedUrl,previousActionUrl:content.actionUrl},token)).status,token?403:401);
+ }
+ const publicBefore=require('../backend/services/play-testing').settings();
+ for(const url of ['',null,'javascript:alert(1)','https://evil.test','https://play.google.com.evil.test/apps/testing/x','https://u:p@play.google.com/apps/internaltest/123','http://play.google.com/apps/internaltest/123','https://play.google.com/store/apps/details?id=bad','https://play.google.com/apps/testing/other.app',closedUrl+'?redirect=https://evil.test',closedUrl+'#x']) {
+  assert.equal((await saveLink(url)).status,422);assert.equal(invitationSettings.get().actionUrl,content.actionUrl);
+ }
+ assert.equal((await api('invitation-settings','',{actionUrl:closedUrl,previousActionUrl:'old'})).status,409);
+ const saved=await saveLink(' '+closedUrl+'/?hl=zh-CN ');assert.equal(saved.status,200);assert.equal(saved.data.actionUrl,closedUrl);assert.equal(saved.data.track,'closed');
+ const persisted=new (require('better-sqlite3'))(config.dbPath,{readonly:true});assert.equal(persisted.prepare('SELECT invitation_url FROM play_test_settings').get().invitation_url,closedUrl);persisted.close();
+ assert.deepEqual(require('../backend/services/play-testing').settings(),publicBefore);
+ await saveLink(content.actionUrl);
+});
+test('changed link invalidates the old preview and switches subject, body, MIME CTA and durable send identity together',async()=>{
+ const old=(await api('once','invitation-preview')).data;
+ await saveLink(closedUrl);assert.equal((await api('once','invite',payload(old))).status,409);
+ const next=(await api('once','invitation-preview')).data;assert.notEqual(next.version,old.version);assert.equal(next.delivery,null);assert.equal(next.track,'closed');assert.match(next.subject,/封闭测试/);assert.match(next.body,/连续保留测试资格至少 14 天/);assert.doesNotMatch(next.body,/本次邀请为 Google Play 内部测试/);
+ let captured;transport=async(email,url)=>{captured=url;deliveries.push(email)};
+ const result=await api('once','invite',payload(next));assert.equal(result.data.delivery.status,'sent');assert.equal(result.data.delivery.action_url,closedUrl);assert.equal(captured,closedUrl);
+ const mail=await PostalMime.parse(mailer.buildPlayTestInvitationMessage({fromEmail:'sender@example.test',toEmail:'once@example.test',invitationUrl:captured}));assert.equal(mail.subject,next.subject);assert.ok(mail.text.includes(closedUrl));assert.ok(mail.html.includes('href="'+closedUrl+'"'));assert.doesNotMatch(mail.text,/本次邀请为 Google Play 内部测试/);
+ assert.equal((await api('once','invite',payload(next))).data.alreadySent,true);
+ await saveLink(content.actionUrl);const original=(await api('once','invitation-preview')).data;assert.equal((await api('once','invite',payload(original))).data.alreadySent,true);
+ assert.equal(db.prepare('SELECT count(*) n FROM play_test_invitations WHERE application_id=?').get('once').n,2);
+ transport=async email=>deliveries.push(email);
+});
+test('changing the default during SMTP preserves the reviewed link and prevents deleting or concurrently sending the applicant',async()=>{
+ const id=applicant('change-during-send'),p=(await api(id,'invitation-preview')).data;
+ let release,started,captured;const ready=new Promise(r=>started=r);
+ transport=async(email,url)=>{captured=url;started();await new Promise(r=>release=r)};
+ const first=api(id,'invite',payload(p));await ready;
+ await saveLink(closedUrl);
+ assert.throws(()=>require('../backend/services/play-testing').remove(id,{confirmation:'DELETE_APPLICATION'}),/正在发送/);
+ const next=(await api(id,'invitation-preview')).data;assert.equal((await api(id,'invite',payload(next))).status,409);
+ release();const result=await first;assert.equal(captured,content.actionUrl);assert.equal(result.data.delivery.action_url,content.actionUrl);assert.equal(result.data.delivery.status,'sent');
+ await saveLink(content.actionUrl);transport=async email=>deliveries.push(email);
 });

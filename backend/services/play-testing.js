@@ -51,7 +51,7 @@ function list(query = {}) {
     const totalPages = Math.max(1, Math.ceil(total / 30));
     const page = Math.min(totalPages, Math.max(1, Math.floor(Number(query.page) || 1)));
     const items = db.prepare(`SELECT * FROM play_test_applications WHERE ${where} ORDER BY created_at DESC,id LIMIT 30 OFFSET @offset`).all({ ...args, offset: (page - 1) * 30 });
-    return { items: items.map(item => ({ ...item, delivery: invitations.state(item.id) })), total, page, totalPages };
+    return { items: items.map(item => ({ ...item, delivery: invitations.state(item.id), previousDelivery: invitations.previousDelivery(item.id) })), total, page, totalPages };
 }
 function csv(query) {
     const { where, args } = filter(query);

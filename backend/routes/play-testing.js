@@ -3,6 +3,7 @@ const { requireSuperAdmin } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const service = require('../services/play-testing');
 const invitations = require('../services/play-test-invitations');
+const invitationSettings = require('../services/play-test-invitation-settings');
 const router = express.Router(), adminRouter = express.Router();
 const noStore = (_req,res,next) => { res.set('Cache-Control','private, no-store'); next(); };
 const handle = (fn, status = 200) => async (req,res) => {
@@ -17,6 +18,8 @@ adminRouter.use(requireSuperAdmin, noStore);
 adminRouter.get('/',handle(req => service.list(req.query)));
 adminRouter.get('/settings',handle(() => service.settings()));
 adminRouter.post('/settings',handle(req => service.saveSettings(req.body)));
+adminRouter.get('/invitation-settings',handle(() => invitationSettings.get()));
+adminRouter.post('/invitation-settings',handle(req => invitationSettings.save(req.body)));
 adminRouter.get('/export', (req,res) => {
     try { res.type('text/csv').attachment('google-play-testers.csv').send(service.csv(req.query)); }
     catch (error) { res.status(error.status || 500).json({ success: false, message: error.status ? error.message : '导出失败，请稍后重试' }); }
