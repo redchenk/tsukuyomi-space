@@ -64,7 +64,7 @@ CJK_BLOCK_RE = re.compile(r"[\u3400-\u9fff\u3040-\u30ff]+")
 URL_RE = re.compile(r"(?:https?://|mailto:|/api/|/assets/|/uploads/|/models(?:-v\d+)?/|/lib/)[^\s<>)\]]+")
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
 PRIVATE_PATH_RE = re.compile(
-    r"^/(?:terminal|admin|editor|room/settings|room-settings|user-center|notifications|login|register|gallery/manage)(?:/|$)"
+    r"^/(?:terminal|admin|editor|drift|room/settings|room-settings|user-center|notifications|login|register|gallery/manage)(?:/|$)"
 )
 PUBLIC_SEO_PATHS = frozenset({
     "/", "/hub", "/stage", "/plaza", "/wiki", "/gallery", "/pixel", "/game", "/game/gomoku", "/game/kaguya-run",
@@ -550,7 +550,7 @@ class EnglishTranslator:
             value = value.replace(token.replace("TSUKTOKEN", "TSUK TOKEN "), original)
         return value
 
-    def translate_text(self, value: str) -> str:
+    def translate_text(self, value: str, *, private: bool = False) -> str:
         text = str(value or "")
         if not CJK_RE.search(text):
             return text.replace(UPSTREAM, OVERSEAS)
@@ -561,7 +561,7 @@ class EnglishTranslator:
             return f"{leading}{MANUAL_TRANSLATIONS[stripped]}{trailing}"
 
         language = self.source_language(text)
-        cached = self.store.get_translation(language, text)
+        cached = None if private else self.store.get_translation(language, text)
         if cached is not None and not CJK_RE.search(cached):
             return cached.replace(UPSTREAM, OVERSEAS)
 
@@ -597,7 +597,8 @@ class EnglishTranslator:
             translated = "Translated content"
         translated = translated.replace(UPSTREAM, OVERSEAS)
         result = f"{leading}{translated}{trailing}"
-        self.store.put_translation(language, text, result)
+        if not private:
+            self.store.put_translation(language, text, result)
         return result
 
     def translate_markdown(self, text: str) -> str:
@@ -1182,7 +1183,7 @@ class Handler(BaseHTTPRequestHandler):
                     "Disallow: /user-center\nDisallow: /notifications\n"
                     "Disallow: /login\nDisallow: /register\nDisallow: /gallery/manage\n"
                     "Disallow: /attachments\nDisallow: /fushi/\nDisallow: /room/shared/\n"
-                    "Disallow: /friend-links/apply\nDisallow: /api/\nDisallow: /en-api/\n"
+                    "Disallow: /drift\nDisallow: /friend-links/apply\nDisallow: /api/\nDisallow: /en-api/\n"
                     "Allow: /api/pixel-art/*/image.png\nAllow: /api/assets/proxy/\n"
                     f"Sitemap: {OVERSEAS}/sitemap.xml\n"
                     f"Sitemap: {OVERSEAS}/sitemap-images.xml\n"
@@ -1197,7 +1198,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urllib.parse.urlsplit(self.path)
-        if parsed.path != "/translate":
+        if parsed.path not in {"/translate", "/translate/private"}:
             return self.send_payload(404, "application/json", b'{"error":"Not found"}')
         client = self.headers.get("X-Real-IP") or self.client_address[0]
         if not rate_allowed(client, "translate", TRANSLATE_REQUESTS_PER_MINUTE):
@@ -1217,7 +1218,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Batch is too large")
             acquire_translation_slot()
             try:
-                translated = [translator().translate_text(text) for text in normalized]
+                translated = [translator().translate_text(text, private=parsed.path == "/translate/private" or payload.get("private") is True) for text in normalized]
             finally:
                 TRANSLATION_SLOTS.release()
             body = json.dumps({"translations": translated}, ensure_ascii=False).encode("utf-8")

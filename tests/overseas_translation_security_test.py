@@ -79,9 +79,22 @@ class OverseasTranslationSecurityTests(unittest.TestCase):
             normalize("/en-api/articles/12/messages"),
             "/en-api/articles/12/messages",
         )
-        for value in ("/en-api/auth/me", "/en-api/admin/settings", "/en-api/room/memory"):
+        for value in ("/en-api/auth/me", "/en-api/admin/settings", "/en-api/room/memory", "/en-api/drift", "/en-api/drift/1", "/en-api/live/test/drift"):
             with self.assertRaises(ValueError, msg=value):
                 normalize(value)
+
+    def test_private_translation_never_reads_or_writes_shared_cache(self):
+        engine = object.__new__(self.service.EnglishTranslator)
+        engine.store = mock.Mock()
+        engine.model_lock = __import__("threading").Lock()
+        with mock.patch.object(self.service.argostranslate.translate, "translate", return_value="A private thought", create=True):
+            translated = engine.translate_text("这是一句私人心事", private=True)
+        self.assertEqual(translated, "A private thought")
+        engine.store.get_translation.assert_not_called()
+        engine.store.put_translation.assert_not_called()
+        self.assertTrue(self.service.PRIVATE_PATH_RE.match("/drift"))
+        with self.assertRaises(ValueError):
+            self.service.normalize_public_seo_path("/drift?bottle=1")
 
     def test_article_list_cache_ignores_live_nonces_but_preserves_query_filters(self):
         cache_key = self.service.translated_article_list_cache_key

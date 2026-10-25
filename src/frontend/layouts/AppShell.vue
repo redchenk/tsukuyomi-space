@@ -62,6 +62,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
+  { path: '/drift', key: 'drift', label: props.lang === 'en' ? 'Drift bottles' : '漂流瓶', icon: 'plaza', active: props.routeName === 'drift', spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
@@ -154,7 +155,7 @@ const accountItems = computed(() => props.isAuthed ? [
 ]);
 const searchItems = computed(() => [...navItems.value.filter(item => item.key !== 'growth'), ...accountItems.value]);
 const exploreGroups = computed(() => [
-  { title: copy.value.discover, keys: ['wiki', 'gallery', 'game'] },
+  { title: copy.value.discover, keys: ['wiki', 'drift', 'gallery', 'game'] },
   { title: copy.value.create, keys: ['stage', 'pixel'] },
   { title: copy.value.spaces, keys: ['download', 'agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => navItems.value.find(item => item.key === key)).filter(Boolean) }))

@@ -39,12 +39,12 @@ let desktopQuery;
 
 const home = computed(() => props.items.find(item => item.key === 'hub'));
 const groups = computed(() => [
-  { key: 'discover', label: props.copy.menuLabels.discover, keys: ['wiki', 'plaza', 'gallery', 'game'] },
+  { key: 'discover', label: props.copy.menuLabels.discover, keys: ['wiki', 'plaza', 'drift', 'gallery', 'game'] },
   { key: 'create', label: props.copy.menuLabels.create, keys: ['stage', 'pixel'] },
   { key: 'spaces', label: props.copy.menuLabels.spaces, keys: ['download', 'agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => props.items.find(item => item.key === key)).filter(Boolean) })));
 const artwork = computed(() => ({
-  stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt,
+  drift: plazaArt, stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt,
   ...(activeSeason.value !== 'spring' ? { stage: siteArt.articleCover, plaza: siteArt.galleryCover, gallery: siteArt.hero, pixel: siteArt.pixelCover } : {})
 }));
 const preview = computed(() => groups.value[0].items.find(item => item.key === previewKey.value) || groups.value[0].items[0]);

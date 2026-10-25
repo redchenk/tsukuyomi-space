@@ -355,7 +355,7 @@ onUnmounted(() => {
         <div>
           <h1>内容管理</h1>
         </div>
-        <div class="admin-header-actions"><RouterLink v-if="state.admin?.role === 'super_admin'" class="ghost-btn compact" to="/admin/account-deletions">注销申请</RouterLink>
+        <div class="admin-header-actions"><RouterLink class="ghost-btn compact" to="/admin/drift">漂流瓶审核</RouterLink><RouterLink v-if="state.admin?.role === 'super_admin'" class="ghost-btn compact" to="/admin/account-deletions">注销申请</RouterLink>
           <span class="admin-role"><TsIcon name="shield" :size="15" />{{ state.admin?.role }}</span>
           <button class="ghost-btn compact" type="button" :disabled="state.loading" @click="refreshWorkspace">
             <TsIcon name="refresh" :size="16" />刷新
