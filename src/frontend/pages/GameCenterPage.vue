@@ -17,8 +17,8 @@ const copy = computed(() => gameCopy(props.lang));
         <h1>{{ copy.intro }}</h1><p>{{ copy.invitation }}</p>
       </header>
       <section class="game-library" :aria-label="copy.center">
-        <article class="game-feature panel">
-          <div class="game-feature-art" aria-hidden="true">
+        <article class="game-card game-feature panel">
+          <div class="game-card-art game-feature-art" aria-hidden="true">
             <img :src="portrait" alt="" width="1024" height="1024">
             <div class="game-mini-board"><i v-for="(stone, i) in [1, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 2, 1, 0, 0, 0, 0, 1]" :key="i" :class="{ black: stone === 1, white: stone === 2 }"></i></div>
             <span>{{ copy.together }}</span>
@@ -28,10 +28,11 @@ const copy = computed(() => gameCopy(props.lang));
             <small>{{ copy.available }} · {{ copy.casual }} / {{ copy.challenge }}</small>
           </div>
         </article>
-        <article class="game-runner-card panel">
-          <img :src="runnerArt" alt="" width="1024" height="768">
+        <article class="game-card game-runner-card panel">
+          <div class="game-card-art game-runner-art" aria-hidden="true"><img :src="runnerArt" alt="" width="1024" height="768"></div>
           <div class="game-card-copy"><p class="game-eyebrow">02 / {{ copy.runnerTag }}</p><h2>{{ copy.runner }}</h2><p>{{ copy.runnerDesc }}</p>
-            <a class="ghost-btn game-entry" href="/game/kaguya-run" @click.prevent="emit('go', '/game/kaguya-run')">{{ copy.run }} <TsIcon name="arrowRight" :size="18" /></a>
+            <a class="primary-btn game-entry" href="/game/kaguya-run" @click.prevent="emit('go', '/game/kaguya-run')">{{ copy.run }} <TsIcon name="arrowRight" :size="18" /></a>
+            <small>{{ copy.available }} · {{ copy.runnerTag }}</small>
           </div>
         </article>
       </section>
