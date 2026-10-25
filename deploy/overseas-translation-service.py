@@ -234,6 +234,15 @@ SEO_ROUTE_COPY = {
         "Partner Sites | Tsukuyomi Space",
         "Discover approved independent sites, blogs and creative partners connected with Tsukuyomi Space.",
     ),
+    '/privacy': (
+        'Privacy policy | Tsukuyomi Space',
+        'How Tsukuyomi Space handles account data, content, AI, payments and deletion requests.',
+    ),
+    '/delete-account': (
+        'Account deletion | Tsukuyomi Space',
+        'Request account and associated data deletion online or by email, even after uninstalling the app.',
+    ),
+
 }
 
 
