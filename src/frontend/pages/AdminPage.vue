@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { useRoute, useRouter } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
 import { formatDateTime } from '../utils/time';
 
@@ -9,12 +10,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
+const route = useRoute();
+const router = useRouter();
 
 const tabs = [
   { id: 'articles', label: '文章', icon: 'fileText' },
   { id: 'messages', label: '留言', icon: 'message' },
   { id: 'gallery', label: '图库', icon: 'image' },
-  { id: 'attachments', label: '附件', icon: 'paperclip' }
+  { id: 'attachments', label: '附件', icon: 'paperclip' },
+  { id: 'drift', label: '漂流瓶', icon: 'message' }
 ];
 const messageFilters = [
   { id: 'all', label: '全部' },
@@ -27,7 +31,9 @@ const state = reactive({
   loading: false,
   access: 'checking',
   admin: null,
-  active: 'articles',
+  active: tabs.some(tab => tab.id === route.query.tab) ? route.query.tab : 'articles',
+  drift: [],
+  driftCount: null,
   search: '',
   messageFilter: 'all',
   message: '',
@@ -48,7 +54,8 @@ const state = reactive({
     articles: { page: 1, limit: 10, total: 0, totalPages: 1 },
     messages: { page: 1, limit: 10, total: 0, totalPages: 1 },
     gallery: { page: 1, limit: 12, total: 0, totalPages: 1 },
-    attachments: { page: 1, limit: 12, total: 0, totalPages: 1 }
+    attachments: { page: 1, limit: 12, total: 0, totalPages: 1 },
+    drift: { page: 1, limit: 10, total: 0, totalPages: 1 }
   }
 });
 
@@ -61,7 +68,8 @@ const tabCounts = computed(() => ({
   articles: state.summary.articles,
   messages: state.summary.messages.all,
   gallery: state.summary.gallery,
-  attachments: state.summary.attachments
+  attachments: state.summary.attachments,
+  drift: state.driftCount
 }));
 const currentPagination = computed(() => state.pagination[state.active]);
 const pageNumbers = computed(() => {
@@ -109,6 +117,7 @@ function applyPagination(tab, pagination = {}) {
 }
 
 function activeEndpoint(tab, page) {
+  if (tab === 'drift') return '/api/moderation/drift';
   const pagination = state.pagination[tab];
   const query = new URLSearchParams({
     page: String(page),
@@ -132,6 +141,18 @@ function assignPage(tab, payload) {
   if (tab === 'messages') state.messages = Array.isArray(payload?.items) ? payload.items : [];
   if (tab === 'gallery') state.gallery = normalizedAssets(payload);
   if (tab === 'attachments') state.attachments = normalizedAssets(payload);
+  if (tab === 'drift') {
+    const rows = ['bottles', 'replies'].flatMap(kind => (payload?.[kind] || []).map(row => ({ ...row, kind })));
+    state.driftCount = rows.length;
+    const query = state.search.trim().toLowerCase();
+    const filtered = rows.filter(row => `${row.content} ${row.user_id} ${row.id}`.toLowerCase().includes(query));
+    const pagination = state.pagination.drift;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pagination.limit));
+    pagination.page = Math.min(pagination.page, totalPages);
+    state.drift = filtered.slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit);
+    applyPagination(tab, { page: pagination.page, limit: pagination.limit, total: filtered.length, totalPages });
+    return;
+  }
   applyPagination(tab, payload?.pagination);
 }
 
@@ -160,7 +181,7 @@ async function loadActivePage() {
     if (requestId !== listRequestId || tab !== state.active) return;
 
     const totalPages = Math.max(1, Number(payload?.pagination?.totalPages || 1));
-    if (requestedPage > totalPages) {
+    if (tab !== 'drift' && requestedPage > totalPages) {
       requestedPage = totalPages;
       state.pagination[tab].page = requestedPage;
       payload = await adminApi(noStoreUrl(activeEndpoint(tab, requestedPage)));
@@ -196,14 +217,15 @@ async function verifyAccess() {
 }
 
 function selectTab(tab) {
-  if (tab === state.active) return;
+  if (!tabs.some(item => item.id === tab) || tab === state.active) return;
+  if (route.query.tab !== tab) router.replace({ query: { ...route.query, tab } });
   window.clearTimeout(searchTimer);
   state.active = tab;
   state.search = '';
   state.message = '';
   state.error = '';
   state.pagination[tab].page = 1;
-  loadActivePage();
+  if (state.access === 'allowed') loadActivePage();
 }
 
 function scheduleSearch() {
@@ -305,6 +327,21 @@ function deleteMessage(item) {
   });
 }
 
+function driftReview(row) {
+  try { return JSON.parse(row.review || '{}'); } catch { return {}; }
+}
+
+function moderateDrift(row, status) {
+  const hosts = driftReview(row).externalHosts || [];
+  if (status === 'approved' && hosts.length && !confirm(`内容包含外部链接：${hosts.join('、')}。确认通过？`)) return;
+  return runAction(`drift-${row.kind}-${row.id}`, async () => {
+    await adminApi(`/api/moderation/drift/${row.kind}/${row.id}`, {
+      method: 'POST', body: JSON.stringify({ status })
+    });
+    await reloadAfterAction(status === 'approved' ? '漂流瓶内容已通过' : '漂流瓶内容已拒绝');
+  });
+}
+
 function assetName(asset) {
   return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
 }
@@ -329,6 +366,9 @@ function formatDate(value) {
   return formatDateTime(value, 'zh-CN');
 }
 
+watch(() => route.query.tab, tab => {
+  selectTab(tabs.some(item => item.id === tab) ? tab : 'articles');
+});
 onMounted(verifyAccess);
 onUnmounted(() => {
   window.clearTimeout(searchTimer);
@@ -345,7 +385,7 @@ onUnmounted(() => {
     <section v-else-if="state.access !== 'allowed'" class="admin-access-state" role="alert">
       <TsIcon :name="state.access === 'login' ? 'lock' : 'shield'" :size="28" />
       <h1>{{ state.access === 'login' ? '请先登录' : '无管理权限' }}</h1>
-      <button class="primary-btn" type="button" @click="$emit('go', state.access === 'login' ? '/login?redirect=/admin' : '/hub')">
+      <button class="primary-btn" type="button" @click="$emit('go', state.access === 'login' ? `/login?redirect=${encodeURIComponent(route.fullPath)}` : '/hub')">
         {{ state.access === 'login' ? '登录' : '返回大厅' }}
       </button>
     </section>
@@ -374,7 +414,7 @@ onUnmounted(() => {
         >
           <TsIcon :name="tab.icon" :size="17" />
           <span>{{ tab.label }}</span>
-          <b>{{ tabCounts[tab.id] }}</b>
+          <b v-if="tabCounts[tab.id] !== null">{{ tabCounts[tab.id] }}</b>
         </button>
       </nav>
 
@@ -397,7 +437,7 @@ onUnmounted(() => {
           <template v-else-if="state.active === 'gallery'">
             <button class="primary-btn compact" type="button" @click="$emit('go', '/gallery/manage?scope=all')"><TsIcon name="image" :size="16" />图库管理</button>
           </template>
-          <template v-else>
+          <template v-else-if="state.active === 'attachments'">
             <button class="primary-btn compact" type="button" @click="$emit('go', '/attachments?scope=all')"><TsIcon name="paperclip" :size="16" />附件库</button>
           </template>
         </div>
@@ -446,6 +486,26 @@ onUnmounted(() => {
           </div>
         </article>
         <div v-if="!state.messages.length" class="admin-empty">{{ state.messageFilter === 'all' ? '暂无留言' : '当前状态暂无留言' }}</div>
+      </section>
+
+      <section v-else-if="state.active === 'drift'" class="admin-list" aria-label="漂流瓶审核">
+        <p class="admin-queue-note">审核待处理的瓶子和回信。命中关键词不代表内容违规。</p>
+        <article v-for="row in state.drift" :key="`${row.kind}-${row.id}`" class="admin-row admin-message-row">
+          <div class="admin-row-main">
+            <strong>{{ row.kind === 'bottles' ? '漂流瓶' : '回信' }} #{{ row.id }}</strong>
+            <p translate="no">{{ row.content }}</p>
+            <span>{{ row.user_id }} · {{ formatDate(row.created_at) }}<template v-if="row.bottle_id"> · 所属瓶子 #{{ row.bottle_id }}</template></span>
+            <div v-if="driftReview(row).matchedKeywords?.length" class="admin-risk">关键词：{{ driftReview(row).matchedKeywords.join('、') }}</div>
+            <div v-if="driftReview(row).externalHosts?.length" class="admin-risk">外链：{{ driftReview(row).externalHosts.join('、') }}</div>
+            <div v-if="driftReview(row).reason === 'user_report'" class="admin-risk">用户举报，原对话已关闭</div>
+          </div>
+          <div class="admin-row-state"><span class="admin-badge warn">待审核</span></div>
+          <div class="admin-row-actions">
+            <button class="primary-btn compact" type="button" :disabled="Boolean(state.busyKey)" @click="moderateDrift(row, 'approved')"><TsIcon name="userCheck" :size="16" />通过</button>
+            <button class="danger-btn compact" type="button" :disabled="Boolean(state.busyKey)" @click="moderateDrift(row, 'rejected')">拒绝</button>
+          </div>
+        </article>
+        <div v-if="!state.drift.length" class="admin-empty">{{ state.search ? '没有匹配的待审内容' : '暂无待审核的漂流瓶或回信' }}</div>
       </section>
 
       <section v-else-if="state.active === 'gallery'" class="admin-media-grid" aria-label="图库管理">

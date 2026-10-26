@@ -1,0 +1,38 @@
+[
+  {
+    "name": "CN and EN browser password login; host-scoped secure HttpOnly cookies",
+    "status": "passed"
+  },
+  {
+    "name": "zh: CN throw -> EN pick -> real private Argos translation -> original EN reply visible in CN",
+    "status": "passed"
+  },
+  {
+    "name": "zh: no pending content in private translation; refreshed letters and reopening clear translation",
+    "status": "passed"
+  },
+  {
+    "name": "zh: both-domain private reads reject strangers/guests; public translated routes reject drift",
+    "status": "passed"
+  },
+  {
+    "name": "Stopped translation process: localized failure; original and real cross-domain replies remain usable; no public fallback",
+    "status": "passed"
+  },
+  {
+    "name": "ja: CN throw -> EN pick -> real private Argos translation -> original EN reply visible in CN",
+    "status": "passed"
+  },
+  {
+    "name": "ja: no pending content in private translation; refreshed letters and reopening clear translation",
+    "status": "passed"
+  },
+  {
+    "name": "ja: both-domain private reads reject strangers/guests; public translated routes reject drift",
+    "status": "passed"
+  },
+  {
+    "name": "CN and EN logout clear their own cookies and deny private reads",
+    "status": "passed"
+  }
+]

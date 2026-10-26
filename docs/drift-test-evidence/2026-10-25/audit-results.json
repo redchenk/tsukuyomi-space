@@ -1,0 +1,70 @@
+{
+  "duplicateBottles": [
+    {
+      "id": 75,
+      "closed": 0
+    },
+    {
+      "id": 76,
+      "closed": 0
+    }
+  ],
+  "invalidReplyRows": 0,
+  "maxReply": [
+    {
+      "id": 122,
+      "n": 2000,
+      "status": "approved"
+    }
+  ],
+  "publicReads": [
+    {
+      "path": "/api/site-feed",
+      "status": 200,
+      "privateMarkerPresent": false
+    },
+    {
+      "path": "/api/site-feed/rss",
+      "status": 200,
+      "privateMarkerPresent": false
+    },
+    {
+      "path": "/rss.xml",
+      "status": 200,
+      "privateMarkerPresent": false
+    },
+    {
+      "path": "/api/messages?view=plaza&q=MT1025-2040",
+      "status": 200,
+      "privateMarkerPresent": false
+    },
+    {
+      "path": "/api/user/public/drift-a",
+      "status": 200,
+      "privateMarkerPresent": false
+    },
+    {
+      "path": "/api/user/public/drift-b",
+      "status": 200,
+      "privateMarkerPresent": false
+    }
+  ],
+  "recoveredWrite": {
+    "status": 201
+  },
+  "recoveredPick": {
+    "status": 200
+  },
+  "closedReads": [
+    {
+      "user": "manual-api-owner-2040",
+      "status": 200
+    },
+    {
+      "user": "manual-api-reader-2040",
+      "status": 200
+    }
+  ],
+  "closedReturn": 404,
+  "restoredBlock": true
+}

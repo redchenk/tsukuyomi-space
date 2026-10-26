@@ -1,0 +1,40 @@
+# Standalone staging stack. Do not combine with docker-compose.yml.
+name: tsukuyomi-drift-test
+services:
+  web:
+    build:
+      context: .
+      target: runtime
+    image: tsukuyomi-space:drift-test
+    env_file: ${DRIFT_TEST_ENV_FILE:-.env.drift-test.local}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATA_DIR: /data
+      DB_PATH: /data/drift-test.db
+      ENABLE_FRONTEND_DIST: "true"
+      TSUKUYOMI_STAGING: drift
+      # Isolate optional external services and mail from the production site.
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      REDIS_URL: ""
+      LLM_API_KEY: ""
+      QQ_CLIENT_ID: ""
+      QQ_CLIENT_SECRET: ""
+      GITHUB_CLIENT_ID: ""
+      GITHUB_CLIENT_SECRET: ""
+    ports:
+      - "127.0.0.1:3290:3000"
+    volumes:
+      - drift-test-data:/data
+      - drift-test-uploads:/app/assets/uploads
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+volumes:
+  drift-test-data:
+  drift-test-uploads:

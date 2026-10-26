@@ -62,6 +62,8 @@ const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
 export const routes = [
+  { path: '/drift', name: 'drift', component: loadRoute(() => import('../pages/DriftPage.vue'), () => import('../styles/routes/drift.css')), meta: { title: '月下漂流瓶', noindex: true } },
+  { path: '/admin/drift', redirect: { path: '/admin', query: { tab: 'drift' } } },
   { path: '/apply', name: 'playTestApply', component: loadRoute(() => import('../pages/ApplyPage.vue'), () => import('../styles/routes/apply.css')), meta: { title: '月读空间 Google Play 测试申请', description: '申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。' } },
   { path: '/admin/play-testing', name: 'playTestAdmin', component: loadRoute(() => import('../pages/PlayTestingAdminPage.vue'), () => import('../styles/routes/apply.css')), meta: { title: 'Google Play 测试申请管理', noindex: true } },
   { path: '/privacy', name: 'privacy', component: loadRoute(() => import('../pages/PrivacyPage.vue'), () => import('../styles/routes/privacy.css')), meta: { title: '月读空间隐私政策' } },

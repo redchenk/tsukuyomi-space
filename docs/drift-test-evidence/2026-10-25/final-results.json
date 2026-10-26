@@ -1,0 +1,37 @@
+{
+  "notificationsBefore": 5,
+  "block": 1,
+  "replyAfterBlock": [
+    403,
+    403
+  ],
+  "newBottles": [
+    {
+      "status": 201,
+      "id": 73
+    },
+    {
+      "status": 201,
+      "id": 74
+    }
+  ],
+  "pickAfterBlock": [
+    {
+      "status": 200,
+      "id": null
+    },
+    {
+      "status": 200,
+      "id": null
+    }
+  ],
+  "m07Stored": 1,
+  "x09Stored": 1,
+  "notificationsAfter": 5,
+  "approved": "approved",
+  "noNotification": true,
+  "reportRejected": {
+    "status": "rejected",
+    "closed": 1
+  }
+}
