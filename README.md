@@ -107,6 +107,7 @@ Fushi 社区助手的 MCP 2.0 工具与审核后 webhook 事件接口沿用现�
 | 文档 | 内容 |
 | --- | --- |
 | [部署与运维](docs/DEPLOY.md) | Docker、PM2、反向代理、资源挂载、备份与恢复 |
+| [月下漂流瓶](docs/drift-bottles.md) | 投瓶、捡瓶、私密回信、人工审核与跨服翻译 |
 | [权限模型](docs/PERMISSIONS.md) | 用户、管理员与超级管理员的权限边界 |
 | [Room 长期记忆](docs/room-memory.md) | 记忆存储、检索与用户隔离 |
 | [Room 渲染性能](docs/room-rendering-performance.md) | Live2D 渲染与性能策略 |

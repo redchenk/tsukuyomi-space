@@ -17,6 +17,7 @@ test('official voice disables offline, enables online, binds account and replays
         return route.fulfill({json:{success:true,data:{id:'req_voice_'+ 'a'.repeat(64),state:'ready',chargedAtoms:'50000000'}}});
     });
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#app')).not.toHaveAttribute('inert','');
     await page.locator('#loginAccount').fill('e2e-user');await page.locator('#loginPassword').fill('e2e-password');await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/hub$/);

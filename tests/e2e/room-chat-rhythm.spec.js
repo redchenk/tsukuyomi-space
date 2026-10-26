@@ -1,3 +1,4 @@
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
@@ -5,7 +6,7 @@ test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 test('Room renders live words, presents short messages and persists one complete turn', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
         const originalFetch = window.fetch;
         window.fetch = async function (input, init) {
@@ -24,7 +25,7 @@ test('Room renders live words, presents short messages and persists one complete
             }), { headers: { 'Content-Type': 'text/event-stream' } });
         };
     });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.locator('#chatInput').fill('你也会紧张吗？');
     await page.locator('#sendChatBtn').click();
     await page.waitForFunction(() => typeof window.__roomDelta === 'function');
@@ -68,7 +69,7 @@ test('Room renders live words, presents short messages and persists one complete
 
 test('a requested long reply remains complete across bubbles and regeneration', async ({ page }) => {
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
     });
     const replies = [
@@ -80,7 +81,7 @@ test('a requested long reply remains complete across bubbles and regeneration', 
         const reply = replies[count++];
         return route.fulfill({ status: 200, contentType: 'text/event-stream', body: `event: done\ndata: ${JSON.stringify({ reply })}\n\n` });
     });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.locator('#chatInput').fill('请详细解释，保留完整步骤');
     await page.locator('#sendChatBtn').click();
     const assistant = page.locator('.chat-message.assistant:not([aria-busy="true"])');

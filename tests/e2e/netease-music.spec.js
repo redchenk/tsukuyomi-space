@@ -182,12 +182,19 @@ async function playbackFixture(page, { local = false, delaySecond = false } = {}
 }
 async function finishAudio(page) {
     await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => Number.isFinite(audio.duration) && audio.duration > 0 && !audio.paused && audio.readyState >= 2))).toBe(true);
-    await page.evaluate(() => {
-        const audio = window.__testAudios.find(item => item.src.includes('/assets/music/') || item.src.includes('.music.126.net/'));
+    // Metadata can arrive before WebKit has a seekable range. An early seek
+    // otherwise returns to the start, testing buffering rather than ended.
+    await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => !audio.paused && audio.seekable.length
+        && audio.seekable.end(audio.seekable.length - 1) >= audio.duration - .08))).toBe(true);
+    await page.evaluate(async () => {
+        const audio = window.__testAudios.find(item => !item.paused && (item.src.includes('/assets/music/') || item.src.includes('.music.126.net/')));
         if (!audio || !Number.isFinite(audio.duration) || audio.paused) throw new Error('Audio is not playing');
         // Seek near the end; the browser, rather than a synthetic DOM event,
         // raises ended and its accompanying pause/timeupdate events.
-        audio.currentTime = Math.max(0, audio.duration - .08);
+        await new Promise(resolve => {
+            audio.addEventListener('seeked', resolve, { once: true });
+            audio.currentTime = Math.max(0, audio.duration - .08);
+        });
     });
 }
 test('fixed site songs really continue playing after the browser ended event', async ({ page }) => {
@@ -283,16 +290,28 @@ test('drawer morphs both directions, cancels rapid reversals and respects reduce
     await page.route('**/assets/music/**', route => route.fulfill({ contentType: 'audio/wav', body: wav() }));
     await page.goto('/hub');
     const drawer = page.locator('.site-music-drawer');
+    await drawer.evaluate(el => {
+        const animate = el.animate.bind(el);
+        el.holdTestMorph = true;
+        el.animate = (...args) => {
+            const animation = animate(...args);
+            if (el.holdTestMorph) { animation.pause(); animation.currentTime = 10; }
+            return animation;
+        };
+    });
     await page.getByRole('button', { name: 'Expand music drawer' }).click();
     await expect(drawer).toHaveClass(/is-morphing/);
+    await drawer.evaluate(el => el.getAnimations()[0].finish());
     await expect(drawer).not.toHaveClass(/is-morphing/);
     await expect(page.getByRole('combobox', { name: '播放顺序' })).toBeVisible();
     const from = await drawer.boundingBox();
     await page.getByRole('button', { name: 'Collapse music drawer' }).click();
     await expect(drawer).toHaveClass(/is-morphing/);
+    await drawer.evaluate(el => el.getAnimations()[0].finish());
     await expect(drawer).not.toHaveClass(/is-morphing/);
     const to = await drawer.boundingBox(); expect(to.height).toBeLessThan(from.height); expect(to.width).toBeLessThan(from.width);
     await expect(page.getByRole('combobox', { name: '播放顺序' })).not.toBeVisible();
+    await drawer.evaluate(el => { el.holdTestMorph = false; });
     await drawer.locator('.site-music-handle').evaluate(el => { el.click(); setTimeout(() => el.click(), 80); setTimeout(() => el.click(), 120); });
     await expect(drawer).toHaveClass(/is-open/);
     await expect(drawer).not.toHaveClass(/is-morphing/);

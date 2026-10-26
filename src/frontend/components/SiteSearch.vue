@@ -119,7 +119,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <dialog id="site-search" ref="dialog" class="site-search-dialog" aria-labelledby="site-search-title" @cancel.prevent="emit('close')" @click="onBackdrop" @keydown="moveResult">
+  <dialog id="site-search" ref="dialog" class="site-search-dialog" aria-labelledby="site-search-title" @cancel.prevent="emit('close')" @click="onBackdrop" @keydown="moveResult" @keydown.esc.prevent.stop="emit('close')">
     <div class="site-nav-drawer-head"><div><small>TSUKUYOMI SEARCH</small><h2 id="site-search-title">{{ copy.searchTitle }}</h2></div><button type="button" class="site-tool-button" :aria-label="copy.close" @click="emit('close')"><TsIcon name="x" :size="20" /></button></div>
     <form class="site-search-field" role="search" autocomplete="off" @submit.prevent="submitSearch"><TsIcon name="search" :size="21" /><input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="site-search-query-query" ref="input" v-model="query" type="search" maxlength="120" :aria-label="copy.search" :placeholder="copy.searchHint" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="site-search-options" aria-expanded="true" :aria-activedescendant="activeId" @keydown="chooseResult"><button class="site-tool-button" type="submit" :aria-label="copy.search"><TsIcon name="arrowRight" :size="20" /></button></form>
     <div id="site-search-options" class="site-search-results" role="listbox" :aria-label="copy.searchTitle">

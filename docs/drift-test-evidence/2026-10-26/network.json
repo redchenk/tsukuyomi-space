@@ -1,0 +1,196 @@
+[
+  {
+    "path": "/assets/drift-DzhNK7pT.css",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/assets/drift-DzhNK7pT.css",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今晚的海风很温柔，我想和你分享窗外的月亮。 DUAL-zh-1792998054956"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/api/drift/80/replies",
+    "method": "POST"
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今晚的海风很温柔，我想和你分享窗外的月亮。 DUAL-zh-1792998054956",
+        "Thank you. The moon connects both shores. DUAL-zh-1792998054956"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今晚的海风很温柔，我想和你分享窗外的月亮。 DUAL-zh-1792998054956",
+        "Thank you. The moon connects both shores. DUAL-zh-1792998054956",
+        "远方的朋友，祝你今晚做个好梦。 DUAL-zh-1792998054956"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/assets/drift-DzhNK7pT.css",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今晚的海风很温柔，我想和你分享窗外的月亮。 DUAL-zh-1792998054956",
+        "Thank you. The moon connects both shores. DUAL-zh-1792998054956",
+        "远方的朋友，祝你今晚做个好梦。 DUAL-zh-1792998054956"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/80/replies",
+    "method": "POST"
+  },
+  {
+    "path": "/api/drift/80",
+    "method": "GET"
+  },
+  {
+    "path": "/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/assets/drift-DzhNK7pT.css",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/81",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今夜の海は静かです。遠くの友達にも月明かりが届きますように。 DUAL-ja-1792998086157"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/api/drift/81/replies",
+    "method": "POST"
+  },
+  {
+    "path": "/api/drift/81",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今夜の海は静かです。遠くの友達にも月明かりが届きますように。 DUAL-ja-1792998086157",
+        "Thank you. The moon connects both shores. DUAL-ja-1792998086157"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/api/drift/81",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/81",
+    "method": "GET"
+  },
+  {
+    "path": "/en-translate-private",
+    "method": "POST",
+    "body": {
+      "texts": [
+        "今夜の海は静かです。遠くの友達にも月明かりが届きますように。 DUAL-ja-1792998086157",
+        "Thank you. The moon connects both shores. DUAL-ja-1792998086157",
+        "远方的朋友，祝你今晚做个好梦。 DUAL-ja-1792998086157"
+      ],
+      "private": true
+    }
+  },
+  {
+    "path": "/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/assets/drift-DzhNK7pT.css",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift",
+    "method": "GET"
+  },
+  {
+    "path": "/api/drift/81",
+    "method": "GET"
+  }
+]

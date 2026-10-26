@@ -46,7 +46,7 @@ export function useMobileKeyboard() {
     });
   };
   onMounted(() => {
-    mobileQuery = window.matchMedia('(max-width: 860px)');
+    mobileQuery = window.matchMedia('(max-width: 860px), (hover: none) and (pointer: coarse)');
     window.visualViewport?.addEventListener('resize', update);
     window.visualViewport?.addEventListener('scroll', update);
     window.addEventListener('resize', update);

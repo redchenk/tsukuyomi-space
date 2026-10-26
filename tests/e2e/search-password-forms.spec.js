@@ -4,6 +4,7 @@ for (const width of [1280, 390]) {
   test(`search stays separate from account credentials and password submits once at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -67,12 +68,16 @@ for (const width of [1280, 390]) {
       input.form.elements.namedItem('username').value === 'e2e-user'
     )).toBe(true);
     await page.locator('#ucQqUnlinkPassword').press('Enter');
-    await expect(page.locator('.uc-oauth-unlink-form')).toContainText('测试保留绑定');
+    await expect(page.locator('.uc-oauth-status').filter({ hasText: 'QQ 登录' }).getByRole('status')).toHaveText('测试保留绑定');
     expect(unlinkRequests).toEqual([{ currentPassword: 'e2e-password' }]);
 
     // A search submitted from the global dialog must continue navigating normally,
     // without using the still-mounted password form or sending another update.
-    await page.locator('.site-search-trigger').first().click();
+    if (width > 860) await page.locator('.site-search-trigger').click();
+    else {
+      await page.locator('.site-mobile-navigation-trigger').click();
+      await page.locator('#site-navigation .site-menu-search').click();
+    }
     const globalSearch = page.locator('#site-search input[type="search"]');
     await globalSearch.fill('autofill regression');
     await globalSearch.press('Enter');

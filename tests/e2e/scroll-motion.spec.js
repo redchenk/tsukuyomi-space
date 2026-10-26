@@ -154,6 +154,16 @@ test('modal scroll locks and nested scrollers release cleanly', async ({ page, b
 
 test('public and tool routes attach the shared scrolling layer with no page errors', async ({ page }) => {
   test.setTimeout(90000);
+  // This route/scroll matrix does not exercise model downloads. Real renderer
+  // readiness and navigation cancellation are covered by room-entry.spec.js.
+  await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
+  await page.route('**/*live2d-room-neuro-live*.js', route => route.fulfill({ contentType: 'application/javascript', body: `
+    window.initTsukuyomiLive2DRoom = () => {
+      window.TSUKUYOMI_LIVE2D_READY = true;
+      window.dispatchEvent(new CustomEvent('tsukuyomi:live2d-ready'));
+    };
+    window.destroyTsukuyomiLive2DRoom = () => {};
+  ` }));
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page, '/hub');
   const routes = ['/stage', '/article?id=3', '/wiki', '/wiki/characters/yachiyo', '/gallery', '/plaza', '/friend-links', '/friend-links/apply', '/download', '/reality', '/room/settings', '/room', '/live2d', '/pixel', '/game', '/login', '/register', '/fushi/connect', '/fushi/astrbot/callback', '/terminal'];
@@ -171,33 +181,50 @@ test('public and tool routes attach the shared scrolling layer with no page erro
 });
 
 test('wheel reversal responds on the next frame and waking from idle still eases', async ({ page }) => {
+  // Advance JS animation frames explicitly: a loaded CI host may spend the
+  // whole easing duration between two real requestAnimationFrame callbacks.
+  await page.clock.install();
   await ready(page);
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 10_000));
   await wheel(page, 1400);
+  await page.clock.runFor(64);
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(60);
-  const reversal = await page.evaluate(async () => {
-    const before = scrollY;
-    document.querySelector('.article-content').dispatchEvent(new WheelEvent('wheel', {deltaY: -100, bubbles: true, cancelable: true}));
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    return {before, after: scrollY};
-  });
-  expect(reversal.after).toBeLessThan(reversal.before);
-  await expect(page.locator('html')).not.toHaveClass(/lenis-scrolling/);
-  const wake = await page.evaluate(async () => {
-    // Deliberately pause long enough to catch a stale RAF clock jumping to target.
-    await new Promise(resolve => setTimeout(resolve, 700));
-    const before = scrollY;
-    document.querySelector('.article-content').dispatchEvent(new WheelEvent('wheel', {deltaY: 700, bubbles: true, cancelable: true}));
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    return {before, after: scrollY};
-  });
-  expect(wake.after).toBeGreaterThan(wake.before);
-  expect(wake.after - wake.before).toBeLessThan(500);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(wake.before + 700, 0);
+  const beforeReversal = await page.evaluate(() => scrollY);
+  await wheel(page, -100);
+  await page.clock.runFor(32);
+  expect(await page.evaluate(() => scrollY)).toBeLessThan(beforeReversal);
+  await page.clock.runFor(1500);
+  // Verify that easing has stopped and the position stays still. Lenis's
+  // native-scroll flag can outlive a zero-velocity browser scroll event.
+  await expect(page.locator('html')).not.toHaveClass(/lenis-smooth/);
+  const idlePosition = await page.evaluate(() => scrollY);
+  // Catch a stale RAF clock without depending on wall-clock frame scheduling.
+  await page.clock.runFor(700);
+  const beforeWake = await page.evaluate(() => scrollY);
+  expect(beforeWake).toBeCloseTo(idlePosition, 0);
+  await wheel(page, 700);
+  await page.clock.runFor(32);
+  const afterWake = await page.evaluate(() => scrollY);
+  expect(afterWake).toBeGreaterThan(beforeWake);
+  expect(afterWake - beforeWake).toBeLessThan(500);
+  await page.clock.runFor(1500);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(beforeWake + 700, 0);
 });
 
 test('brief edge reversals finish a reveal instead of flashing it repeatedly', async ({ page }) => {
   await ready(page);
   const target = page.locator('.article-content > p').nth(5);
+  // Hold the reveal in progress so protocol/trace latency cannot finish it
+  // before we examine its identity across rapid edge reversals.
+  await target.evaluate(el => {
+    const animate = el.animate.bind(el);
+    el.animate = (...args) => {
+      const animation = animate(...args);
+      animation.pause();
+      animation.currentTime = 10;
+      return animation;
+    };
+  });
   const top = await target.evaluate(el => el.getBoundingClientRect().top + scrollY);
   await page.evaluate(top => scrollTo({top: top - innerHeight + 100, behavior: 'instant'}), top);
   await expect(target).toHaveAttribute('data-scroll-motion', 'from-below');
@@ -210,6 +237,7 @@ test('brief edge reversals finish a reveal instead of flashing it repeatedly', a
     return animation && el.getAnimations()[0] === animation;
   }, top);
   expect(sameAnimation).toBe(true);
+  await target.evaluate(el => el.getAnimations()[0].finish());
   await expect(target).toHaveCSS('opacity', '1');
 });
 

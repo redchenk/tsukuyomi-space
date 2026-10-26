@@ -5,6 +5,7 @@ async function pending(page, hasEmailMatch = false) {
     data: { provider: 'github', nickname: 'Octocat', email: hasEmailMatch ? 'existing@example.test' : '',
       requiresEmailBinding: true, hasEmailMatch, suggestedUsername: 'octocat' } } }));
   await page.goto('/login?oauth=github&ticket=fixture-ticket&mode=email');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.oauth-profile')).toContainText('Octocat');
 }
 
@@ -62,6 +63,7 @@ for (const width of [1280, 390]) {
   test(`user center manually binds and password-confirms GitHub unlink at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -90,6 +92,7 @@ for (const width of [1280, 390]) {
 test('expired GitHub authorization shows a recoverable error', async ({ page }) => {
   await page.route('**/api/auth/oauth/github/pending?*', route => route.fulfill({ status: 404, json: { success: false, message: 'GitHub 登录状态已过期，请重新授权' } }));
   await page.goto('/login?oauth=github&ticket=expired');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.oauth-panel .form-message')).toContainText('GitHub 登录状态已过期');
   await expect(page.locator('.oauth-panel form')).toHaveCount(0);
   await expect(page.locator('.oauth-panel')).not.toContainText('QQ');

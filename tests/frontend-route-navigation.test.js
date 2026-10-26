@@ -53,6 +53,8 @@ test('anchors and Wiki section queries preserve instances while different articl
       routeViewKey({ name: 'plaza', path: '/plaza', fullPath: '/plaza' }));
     assert.equal(routeViewKey({ name: 'stage', path: '/stage', fullPath: '/stage?sort=latest&page=2&q=moon' }),
       routeViewKey({ name: 'stage', path: '/stage', fullPath: '/stage' }));
+    assert.equal(routeViewKey({ name: 'drift', path: '/drift', fullPath: '/drift?tab=sea&bottle=12' }),
+      routeViewKey({ name: 'drift', path: '/drift', fullPath: '/drift?tab=bottles' }));
     assert.notEqual(routeViewKey({ fullPath: '/editor?id=1' }), routeViewKey({ fullPath: '/editor?id=2' }));
     assert.equal(routeViewKey({ name:'fushi-astrbot-callback',path:'/fushi/astrbot/callback',
       fullPath:'/fushi/astrbot/callback?code=one-use&state=private' }),
@@ -79,6 +81,36 @@ test('route heading focus is announced without leaving a persistent tabindex or 
     assert.equal(attributes.has('tabindex'), false);
     assert.equal(classes.has('route-focus-heading'), false);
     assert.equal(focusRouteHeading({ querySelector: () => null }), false);
+    const input = {};
+    focusOptions = null;
+    assert.equal(focusRouteHeading({ ownerDocument: { activeElement: input },
+        contains: node => node === input, querySelector: () => heading }), false);
+    assert.equal(focusOptions, null, 'finishing navigation must preserve a control already focused in the new view');
+    assert.equal(attributes.has('tabindex'), false);
+});
+
+test('route heading retries a deferred inert removal without stealing newer focus', () => {
+    const { focusRouteHeading } = loadModule('src/frontend/utils/routeNavigation.js', navigationExports);
+    const frames = [], body = {}, input = {};
+    const doc = { activeElement: body, body, defaultView: { requestAnimationFrame: callback => frames.push(callback) } };
+    let attempts = 0;
+    const heading = {
+        getAttribute: () => null, setAttribute() {}, removeAttribute() {},
+        classList: { add() {}, remove() {} }, addEventListener() {},
+        focus() { if (++attempts > 1) doc.activeElement = heading; }
+    };
+    const element = { ownerDocument: doc, isConnected: true, contains: node => node === heading,
+        querySelector: () => heading };
+    focusRouteHeading(element);
+    assert.equal(doc.activeElement, body);
+    frames.shift()();
+    assert.equal(doc.activeElement, heading);
+    doc.activeElement = body; attempts = 0;
+    focusRouteHeading(element);
+    doc.activeElement = input;
+    frames.shift()();
+    assert.equal(doc.activeElement, input);
+    assert.equal(attempts, 1);
 });
 
 function scrollHarness() {

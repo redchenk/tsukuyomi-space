@@ -3,6 +3,12 @@ const { before, after, test } = require('node:test');
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuyomi-play-'));
 Object.assign(process.env, { NODE_ENV: 'test', DATA_DIR: dataDir, DB_PATH: path.join(dataDir, 'test.db'), JWT_SECRET: 'test-play-application-secret-over-32-characters', ADMIN_USERNAME: 'play-admin', ADMIN_EMAIL: 'admin@example.test', ADMIN_PASSWORD: 'test-password-12345', REDIS_URL: '' });
+// Route checks must work on a clean CI checkout before the frontend build.
+const config = require('../backend/config');
+config.projectRoot = dataDir;
+config.enableFrontendDist = true;
+fs.mkdirSync(path.join(dataDir, 'dist/frontend'), { recursive: true });
+fs.writeFileSync(path.join(dataDir, 'dist/frontend/index.html'), '<!doctype html><html><head><title>Play fixture</title></head><body><div id="app">Play route fixture</div></body></html>');
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
 const { generateToken } = require('../backend/middleware/auth');
@@ -89,6 +95,11 @@ test('bounded signup rate remains enforced for anonymous clients', async () => {
     assert.equal(last.status,429); assert.ok(last.headers.has('retry-after'));
 });
 test('email links open both SPA routes directly and keep unknown paths as 404', async () => {
-    for(const url of ['/apply','/admin/play-testing']) assert.equal((await call(url)).status,200);
+    for(const url of ['/apply','/admin/play-testing']) {
+        const response = await call(url);
+        assert.equal(response.status,200);
+        assert.match(response.raw,/Play route fixture/);
+        assert.match(response.headers.get('cache-control'),/no-store/);
+    }
     assert.equal((await call('/apply-does-not-exist')).status,404);
 });

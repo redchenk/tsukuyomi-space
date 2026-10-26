@@ -1,4 +1,5 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { configureRoomFixture } = require('../e2e-room-helpers.cjs');
 
 async function pauseReveal(page) {
   await page.addInitScript(() => {
@@ -38,6 +39,7 @@ async function enterRoom(page) {
 }
 
 test('SPA entry covers route loading, then reveals the same live room and releases focus', async ({ page }, info) => {
+  await configureRoomFixture(page);
   await controlledRenderer(page);
   await pauseReveal(page);
   let releaseChunk;
@@ -98,6 +100,7 @@ test('background readiness also holds the splash after the renderer is ready', a
 });
 
 test('reduced motion fades; resizing and BFCache finish without leaving interaction locked', async ({ page }) => {
+  await configureRoomFixture(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await controlledRenderer(page);
   await pauseReveal(page);
@@ -122,10 +125,14 @@ test('failed renderer offers recovery or an explicit room fallback', async ({ pa
   await completeRenderer(page, true);
   const splash = page.locator('.room-entry-splash');
   await expect(splash).toHaveAttribute('data-phase', 'error');
+  await expect(page.locator('.room-setup-dialog')).toHaveCount(0);
   await expect(splash.getByRole('button', { name: '重新加载' })).toBeVisible();
   await splash.getByRole('button', { name: '先进入房间' }).click();
   await expect(splash).toHaveCount(0);
-  await expect(page.locator('#chatInput')).toBeEditable();
+  await expect(page.locator('.room-setup-dialog')).toBeVisible();
+  await page.getByRole('button', { name: '稍后设置', exact: true }).click();
+  await page.locator('#chatInput').fill('入场失败后仍然可以输入');
+  await expect(page.locator('#sendChatBtn')).toBeEnabled();
 });
 
 test('a stalled load remains retryable and returning to Hub clears the cover', async ({ page }) => {
@@ -162,6 +169,7 @@ test('a failed room chunk allows retry into a fresh document', async ({ page }) 
 });
 
 test('real renderer, seasonal background and live canvas reveal once', async ({ page }, info) => {
+  await configureRoomFixture(page);
   test.setTimeout(60000);
   await pauseReveal(page);
   await page.goto('/room', { waitUntil: 'domcontentloaded' });

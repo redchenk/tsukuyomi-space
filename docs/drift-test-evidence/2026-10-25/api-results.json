@@ -1,0 +1,415 @@
+{
+  "prefix": "MT1025-2040-API",
+  "output": [
+    {
+      "name": "S01 guest /api/drift",
+      "pass": true,
+      "detail": 401
+    },
+    {
+      "name": "S01 guest /api/drift/4",
+      "pass": true,
+      "detail": 401
+    },
+    {
+      "name": "S01 guest /api/moderation/drift",
+      "pass": true,
+      "detail": 401
+    },
+    {
+      "name": "S02 ordinary queue denied",
+      "pass": true
+    },
+    {
+      "name": "S03 actual nonparticipant denied",
+      "pass": true
+    },
+    {
+      "name": "S04 denied replies",
+      "pass": true,
+      "detail": 403
+    },
+    {
+      "name": "S04 denied close",
+      "pass": true,
+      "detail": 404
+    },
+    {
+      "name": "S04 denied block",
+      "pass": true,
+      "detail": 404
+    },
+    {
+      "name": "S04 denied report",
+      "pass": true,
+      "detail": 404
+    },
+    {
+      "name": "S04 denied return",
+      "pass": true,
+      "detail": 404
+    },
+    {
+      "name": "S04 unchanged target",
+      "pass": true
+    },
+    {
+      "name": "S08 admin not participant",
+      "pass": true
+    },
+    {
+      "name": "S05 private cache",
+      "pass": true,
+      "detail": "private, no-store, no-cache, must-revalidate, proxy-revalidate"
+    },
+    {
+      "name": "S05 audit omitted",
+      "pass": true
+    },
+    {
+      "name": "R01 pending recipient hidden",
+      "pass": true
+    },
+    {
+      "name": "R01 pending author visible",
+      "pass": true
+    },
+    {
+      "name": "A05 ordinary cannot approve",
+      "pass": true
+    },
+    {
+      "name": "A05 invalid state rejected",
+      "pass": true
+    },
+    {
+      "name": "U04 review once",
+      "pass": true,
+      "detail": {
+        "first": 200,
+        "second": 409
+      }
+    },
+    {
+      "name": "L07 generic notification",
+      "pass": true
+    },
+    {
+      "name": "X02 close claimed",
+      "pass": true
+    },
+    {
+      "name": "X02 reply after close",
+      "pass": true
+    },
+    {
+      "name": "R06 approve keeps closed",
+      "pass": true
+    },
+    {
+      "name": "X04 report quarantine",
+      "pass": true
+    },
+    {
+      "name": "X06 rejected report hidden",
+      "pass": true
+    },
+    {
+      "name": "F10 return",
+      "pass": true
+    },
+    {
+      "name": "F10 old recipient hidden",
+      "pass": true
+    },
+    {
+      "name": "F12 pending prevents return",
+      "pass": true
+    },
+    {
+      "name": "F12 rejected prevents return",
+      "pass": true
+    },
+    {
+      "name": "X08 block both ways",
+      "pass": true
+    },
+    {
+      "name": "X09 no blocked delivery notification",
+      "pass": true
+    },
+    {
+      "name": "B01/B03/B04 invalid ",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "B01/B03/B04 invalid  ",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "B01/B03/B04 invalid <b>plain</b>",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "B01/B03/B04 invalid javascript:void",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "B01/B03/B04 invalid 字字字字字字字字字字字字字字字",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "B03 2000 accepted",
+      "pass": true,
+      "detail": 201
+    },
+    {
+      "name": "D03 single recipient",
+      "pass": true,
+      "detail": [
+        {
+          "status": 200,
+          "id": 15
+        },
+        {
+          "status": 200,
+          "id": null
+        }
+      ]
+    },
+    {
+      "name": "D04 thirteenth write limited",
+      "pass": true,
+      "detail": [
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 201,
+          "retry": null
+        },
+        {
+          "status": 429,
+          "retry": "600"
+        }
+      ]
+    },
+    {
+      "name": "D05 pickup limited",
+      "pass": true,
+      "detail": [
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 200,
+          "retry": null
+        },
+        {
+          "status": 429,
+          "retry": "600"
+        }
+      ]
+    },
+    {
+      "name": "D02 latest100",
+      "pass": true
+    },
+    {
+      "name": "D01 pages disjoint",
+      "pass": true,
+      "detail": {
+        "first": 30,
+        "second": 2
+      }
+    },
+    {
+      "name": "B04 manual invalid rows absent",
+      "pass": true
+    },
+    {
+      "name": "B06 online retry stored once",
+      "pass": true
+    },
+    {
+      "name": "S07 no public messages",
+      "pass": true
+    }
+  ],
+  "uiFixtures": {
+    "historyBottle": 59,
+    "moderationFixtures": [
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71
+    ]
+  }
+}

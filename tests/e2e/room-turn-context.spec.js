@@ -33,6 +33,7 @@ for (const local of [true, false]) test('Room stable regeneration with ' + (loca
   });
   if (!local) {
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await page.locator('#loginAccount').fill('turn-context-account');
     await page.locator('#loginPassword').fill('mem0-test-password');

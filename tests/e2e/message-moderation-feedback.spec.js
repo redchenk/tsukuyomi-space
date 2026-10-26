@@ -5,6 +5,7 @@ const holiday = '“假期将尽，书案蒙尘。非吾生性疏懒，实乃开
 test('emoji prose publishes while review reasons remain visible for messages, comments, replies and edits', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await page.locator('#loginAccount').fill('feedback-browser');
     await page.locator('#loginPassword').fill('mem0-test-password');

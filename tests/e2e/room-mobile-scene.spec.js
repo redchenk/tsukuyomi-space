@@ -1,4 +1,6 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
+test.beforeEach(async ({ page }) => configureRoomFixture(page));
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -13,7 +15,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 390, height: 667 }
                 createdAt: Date.now() - (16 - index) * 60000
             }))));
         });
-        await page.goto('/room');
+        await page.goto('/room'); await waitForRoom(page);
         await expect(page.locator('.room-page')).toHaveAttribute('aria-busy', 'false');
         const transcript = page.locator('#chatMessages');
         await expect(transcript.locator('.chat-message')).toHaveCount(16);
@@ -80,7 +82,7 @@ for (const timezoneId of ['Asia/Shanghai', 'America/Los_Angeles']) {
                     { id: 'live-epoch', role: 'assistant', content: '即时消息时间', createdAt: Date.UTC(2026, 8, 25, 16, 7) }
                 ]));
             });
-            await page.goto('/room');
+            await page.goto('/room'); await waitForRoom(page);
             const times = page.locator('.chat-message-time');
             const expected = ['17:42', '00:05', '00:06', '00:07'];
             await expect(times).toHaveText(expected);
@@ -96,7 +98,7 @@ for (const timezoneId of ['Asia/Shanghai', 'America/Los_Angeles']) {
 test('mobile history stays in place during a reply and returns to the latest bubble', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
         localStorage.setItem('roomChatHistory:guest', JSON.stringify(Array.from({ length: 12 }, (_, index) => ({
             id: `history-${index}`, role: index % 2 ? 'assistant' : 'user',
@@ -109,7 +111,7 @@ test('mobile history stays in place during a reply and returns to the latest bub
         await ready;
         await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: done\ndata: {"reply":"我在这里，慢慢看。"}\n\n' });
     });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await expect(page.locator('#loadingOverlay')).toHaveCount(0);
     const transcript = page.locator('#chatMessages');
     await expect(transcript.locator('.assistant')).toHaveCount(6);

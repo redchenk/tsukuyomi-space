@@ -1,0 +1,20 @@
+{
+  "translation_rows": 0,
+  "document_rows": 0,
+  "private_fixture_count": 8,
+  "cache_leaks": [],
+  "log_leaks": [],
+  "scope": "Isolated Argos process and SQLite cache in fra1, Nginx access/error logs and translation process log; synthetic acceptance data only.",
+  "physical_phone_followup": {
+    "bottle_id": 83,
+    "after_private_translation": true,
+    "translation_rows": 0,
+    "document_rows": 0,
+    "cache_marker_leaks": 0,
+    "log_marker_leaks": 0,
+    "markers": [
+      "PHONE-测试",
+      "DESKTOP-REPLY-1026"
+    ]
+  }
+}

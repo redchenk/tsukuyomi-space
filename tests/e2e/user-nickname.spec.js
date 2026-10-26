@@ -6,6 +6,7 @@ for (const [width, account] of [[1280, 'nickname-own-desktop'], [390, 'nickname-
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto('/login');
+        await expect(page.locator('#boot-splash')).toHaveCount(0);
         await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
         await page.locator('#loginAccount').fill(account);
         await page.locator('#loginPassword').fill('mem0-test-password');

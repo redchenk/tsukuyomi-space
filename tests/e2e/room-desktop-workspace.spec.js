@@ -1,10 +1,12 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
+test.beforeEach(async ({ page }) => configureRoomFixture(page));
 
 test('desktop tabs preserve a pending reply and drafts through utility panels and phone resize', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 810 });
     await page.addInitScript(() => {
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
         // Old floating panel positions must not displace the new workspace.
         localStorage.setItem('roomPanelPositions', JSON.stringify({ chatPanel: { left: '9000px', top: '9000px', right: 'auto' }, profilePanel: { left: '-9000px', top: '-9000px', right: 'auto' } }));
     });
@@ -14,7 +16,7 @@ test('desktop tabs preserve a pending reply and drafts through utility panels an
         await replyReady;
         await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: done\ndata: {"reply":"先歇一会儿吧。\\n\\n八千代在这里～"}\n\n' });
     });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.locator('#chatInput').fill('今天有点累');
     await page.locator('#sendChatBtn').click();
     await expect(page.locator('#stopChatBtn')).toBeVisible();
@@ -54,7 +56,7 @@ test('desktop tabs preserve a pending reply and drafts through utility panels an
 for (const width of [1024, 1920]) {
     test(`desktop workspace stays within ${width}px and isolates utility scroll`, async ({ page }) => {
         await page.setViewportSize({ width, height: 810 });
-        await page.goto('/room');
+        await page.goto('/room'); await waitForRoom(page);
         await page.getByRole('tab', { name: '资料', exact: true }).click();
         const workspace = await page.locator('.room-conversation-surface').boundingBox();
         const profile = await page.locator('#profilePanel').boundingBox();

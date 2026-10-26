@@ -52,7 +52,7 @@ export function installRouteLinks({ router, navigate, prefetch, root = document 
 export function routeViewKey(route) {
   // These pages own their filters. Query/anchor changes retain unsaved forms.
   // The OAuth callback clears its query while retaining the one-use code in memory.
-  if (['wiki', 'plaza', 'stage', 'fushi-astrbot-callback'].includes(route.name)) return route.path;
+  if (['wiki', 'plaza', 'stage', 'drift', 'fushi-astrbot-callback'].includes(route.name)) return route.path;
   return route.fullPath.split('#')[0];
 }
 
@@ -63,17 +63,38 @@ export function cancelPendingRouteScroll() {
 }
 
 export function focusRouteHeading(element) {
+  // The enter animation can finish after the user starts typing. Keep
+  // their chosen control focused instead of interrupting that input.
+  const doc = element?.ownerDocument;
+  const active = doc?.activeElement;
+  if (active && element.contains(active)) return false;
   const heading = element?.querySelector?.('h1');
   if (!heading) return false;
   const previousTabIndex = heading.getAttribute('tabindex');
   heading.classList.add('route-focus-heading');
   heading.setAttribute('tabindex', '-1');
-  heading.focus({ preventScroll: true });
-  heading.addEventListener('blur', () => {
+  let cancelled = false;
+  const cleanup = () => {
+    cancelled = true;
     heading.classList.remove('route-focus-heading');
     if (previousTabIndex === null) heading.removeAttribute('tabindex');
     else heading.setAttribute('tabindex', previousTabIndex);
-  }, { once: true });
+  };
+  heading.addEventListener('blur', cleanup, { once: true });
+  const focus = remaining => {
+    heading.focus({ preventScroll: true });
+    if (!doc || doc.activeElement === heading) return;
+    // WebKit may defer removal of an ancestor's inert state until paint.
+    // Retry across that boundary, without taking focus from a user's control.
+    if (remaining && doc.defaultView?.requestAnimationFrame) {
+      doc.defaultView.requestAnimationFrame(() => {
+        if (cancelled) return;
+        if (!element.isConnected || (doc.activeElement !== active && doc.activeElement !== doc.body)) return cleanup();
+        focus(remaining - 1);
+      });
+    } else cleanup();
+  };
+  focus(2);
   return true;
 }
 

@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const { createHash } = require('node:crypto');
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 test.beforeEach(async ({ context }, info) => {
   const identity = createHash('sha256').update(info.testId).digest('hex');
   await context.setExtraHTTPHeaders({ 'X-Upload-Fixture-Delay': '1800', 'X-Real-IP': `2001:db8:${identity.slice(0,4)}:${identity.slice(4,8)}::1` });
@@ -8,6 +9,7 @@ test.beforeEach(async ({ context }, info) => {
 const IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/wn4GBgYGJAQoAHgQCAQb7R3sAAAAASUVORK5CYII=', 'base64');
 async function login(page) {
   await page.goto('/login');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await page.locator('#loginAccount').fill('e2e-user');
   await page.locator('#loginPassword').fill('e2e-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -70,6 +72,8 @@ test('measured slow upload, pause/resume and server confirmation remain readable
   await page.request.delete(`/api/assets/${asset.id}`,{headers:{Origin:new URL(page.url()).origin,'X-Requested-With':'XMLHttpRequest'}});
 });
 test('editor modal keeps controls readable and inserts the uploaded attachment', async ({ page }, info) => {
+  // Four viewport screenshots followed by a real multi-stage upload.
+  test.setTimeout(60000);
   await login(page); await page.goto('/editor');
   await page.getByRole('button',{name:'上传 / 选择附件',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'附件库'});
@@ -103,6 +107,7 @@ test('gallery and avatar show server processing before success',async({page},inf
 
 test('cover preparation stays distinct from article upload and publication waits for confirmation',async({page},info)=>{
   await login(page);await page.goto('/editor');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await page.locator('.editor-cover-upload input[type=file]').setInputFiles({name:'文章封面.png',mimeType:'image/png',buffer:IMAGE});
   const cover=page.locator('.upload-progress-card').filter({hasText:'文章封面.png'});
   await expect(cover).toHaveAttribute('data-stage','complete');
@@ -118,8 +123,10 @@ test('cover preparation stays distinct from article upload and publication waits
 });
 
 test('Room images wait for private upload confirmation before starting the reply', async ({page},info) => {
+  // Private image upload, a rendered reply and the generated share-card upload.
+  test.setTimeout(60000);
   await page.addInitScript(() => {
-    localStorage.setItem('roomLLMSettings', JSON.stringify({useProxy:true}));
+    localStorage.setItem('roomLLMSettings', JSON.stringify({useProxy:true,apiUrl:'https://api.deepseek.com/chat/completions',apiKey:'fixture-room-key',model:'deepseek-chat'}));
     localStorage.setItem('roomMemorySettings', JSON.stringify({enabled:false}));
   });
   let replyStarted=false;
@@ -127,18 +134,25 @@ test('Room images wait for private upload confirmation before starting the reply
     replyStarted=true;
     return route.fulfill({status:200,contentType:'text/event-stream',body:'event: delta\ndata: {"text":"图片收到了。"}\n\nevent: done\ndata: {"reply":"图片收到了。"}\n\n'});
   });
-  await login(page); await page.setViewportSize({width:390,height:844}); await page.goto('/room');
+  await login(page); await page.setViewportSize({width:390,height:844}); await page.goto('/room'); await waitForRoom(page);
   await page.locator('#chatImageInput').setInputFiles({name:'聊天图片-very-long-file-name-that-should-wrap-without-squeezing-the-remove-or-send-buttons.png',mimeType:'image/png',buffer:IMAGE});
   const card=page.locator('.room-image-upload');
   await expect(card).toContainText('发送时上传');
   expect(await card.locator('progress').count()).toBe(0);
   await fits(page,'.room-image-upload, .upload-progress-file, #chatImagePreview');
-  await page.locator('#chatInput').fill('看看这张图片'); await page.locator('#sendChatBtn').click();
-  await expect(card).toHaveAttribute('data-stage','processing');
-  await expect(card).toContainText('等待服务器确认');
-  expect(replyStarted).toBe(false);
-  await fits(page,'.room-image-upload, .upload-progress-file');
-  await page.screenshot({path:info.outputPath('room-image-processing-390.png'),fullPage:true});
+  const gate = createHash('sha256').update(info.testId).digest('hex');
+  await page.request.post(`/__e2e/upload-hold?key=${gate}`);
+  await page.setExtraHTTPHeaders({ 'X-Upload-Fixture-Gate': gate });
+  try {
+    await page.locator('#chatInput').fill('看看这张图片'); await page.locator('#sendChatBtn').click();
+    await expect(card).toHaveAttribute('data-stage','processing');
+    await expect(card).toContainText('等待服务器确认');
+    expect(replyStarted).toBe(false);
+    await fits(page,'.room-image-upload, .upload-progress-file');
+    await page.screenshot({path:info.outputPath('room-image-processing-390.png'),fullPage:true});
+  } finally {
+    await page.request.post(`/__e2e/upload-release?key=${gate}`);
+  }
   await expect(card).toHaveAttribute('data-stage','complete');
   await expect(card).toContainText('图片已上传');
   await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])').last()).toContainText('图片收到了。');

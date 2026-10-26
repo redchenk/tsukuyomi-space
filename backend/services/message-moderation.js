@@ -4,36 +4,11 @@ const { inspectMessageLinks } = require('./message-link-security');
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGE_BYTES = 8000;
 
-const DEFAULT_REVIEW_KEYWORDS = [
-    '政治',
-    '暴力',
-    '恐怖',
-    '诈骗',
-    '赌博',
-    '色情',
-    '毒品',
-    '枪',
-    '违法',
-    '代开发票',
-    '银行卡',
-    '身份证'
-];
-
-function normalizeKeywordList(value) {
-    return String(value || '')
-        .split(/[\n,，、;；|]+/)
-        .map(item => item.trim().toLowerCase())
-        .filter(Boolean);
-}
+const { DEFAULT_REVIEW_KEYWORDS, normalizeKeywordList, moderationKeywords, inspectText } = require('./text-moderation');
 
 function readModerationSettings() {
     const rows = adminRepository.listSettings();
     return Object.fromEntries(rows.map(row => [row.key, row.value]));
-}
-
-function moderationKeywords(settings = readModerationSettings()) {
-    const configured = normalizeKeywordList(settings.messageReviewKeywords);
-    return configured.length ? configured : DEFAULT_REVIEW_KEYWORDS;
 }
 
 function decodeCodePoint(value, radix) {
@@ -92,8 +67,7 @@ function reviewMessageContent(content, settings = readModerationSettings()) {
         return { accepted: false, code: 'DANGEROUS_LINK', status: 'rejected', matchedKeywords: [] };
     }
 
-    const text = normalizedContent.toLowerCase();
-    const matchedKeywords = moderationKeywords(settings).filter(keyword => text.includes(keyword));
+    const { matchedKeywords } = inspectText(normalizedContent, settings);
     const externalHosts = [...new Set(linkInspection.externalLinks.map(link => link.hostname))];
     const reviewReasons = [];
     if (matchedKeywords.length) reviewReasons.push('keyword');
