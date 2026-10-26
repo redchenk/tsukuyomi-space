@@ -1,6 +1,10 @@
 // Explicit interface translations keep private bottle content untouched.
 export const driftCopy = {
   "zh": {
+    "savedRefreshFailed": "已保存，但暂时无法刷新内容。请稍后刷新列表或收取回信，无需重新发送。",
+    "networkError": "网络连接异常，请检查网络后重试。原文和草稿已保留。",
+    "submissionUnknown": "暂时无法确认是否已保存。内容可能已经保存，请先查看我的瓶子或收取回信；保留原文重试不会重复发送。",
+    "submissionConflict": "提交标识与先前内容不一致，请先查看我的瓶子，再检查并编辑草稿。",
     "title": "月下漂流瓶",
     "intro": "把一句心事交给潮汐，遇见另一端的你。",
     "throw": "扔一个",
@@ -74,6 +78,10 @@ export const driftCopy = {
     "lettersHint": "一次相遇，几封来信。"
   },
   "en": {
+    "savedRefreshFailed": "Saved, but the latest content could not be loaded. Refresh your bottles or letters later; there is no need to send again.",
+    "networkError": "Network connection failed. Check your connection and try again. Your text and draft are preserved.",
+    "submissionUnknown": "We could not confirm whether this was saved. It may already be saved. Check My bottles or your letters first; retrying the unchanged text will not send it twice.",
+    "submissionConflict": "This submission ID was already used for different content. Check My bottles, then review and edit your draft.",
     "title": "Moonlit bottles",
     "intro": "Leave a thought to the tide. Meet someone on the other shore.",
     "throw": "Throw one",
@@ -147,6 +155,10 @@ export const driftCopy = {
     "lettersHint": "One encounter, a few letters."
   },
   "ja": {
+    "savedRefreshFailed": "保存済みですが、最新の内容を取得できません。後で瓶や手紙を更新してください。再送信は不要です。",
+    "networkError": "ネットワークに接続できません。接続を確認して再試行してください。原文と下書きは保持されています。",
+    "submissionUnknown": "保存結果を確認できません。保存済みの可能性があります。まず自分の瓶や手紙を確認してください。同じ原文で再試行しても重複送信されません。",
+    "submissionConflict": "この送信IDは別の内容に使われています。自分の瓶を確認し、下書きを見直して編集してください。",
     "title": "月夜の漂流瓶",
     "intro": "想いを潮に託して、向こう岸の誰かへ。",
     "throw": "瓶を流す",

@@ -1,4 +1,6 @@
 const express = require('express');
+const { createHash } = require('node:crypto');
+const { findSubmission, saveSubmission } = require('../repositories/drift-submission-repository');
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
@@ -22,6 +24,30 @@ function notify(b, actorId) {
     const target = actorId === b.user_id ? b.recipient_id : b.user_id;
     if (target) createNotification({ userId: target, actorId, type: 'reply', title: '漂流瓶有了新回信', link: `/drift?bottle=${b.id}` });
 }
+function submissionContext(kind) {
+    return (req,res,next) => {
+        const requestId = req.body?.requestId;
+        // Existing API clients remain compatible; the current UI always sends a UUID.
+        if (requestId === undefined) return next();
+        if (typeof requestId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(requestId)) {
+            return fail(res,400,'提交标识无效，请重新打开页面后重试');
+        }
+        const fingerprint = createHash('sha256').update(JSON.stringify({ kind,
+            bottleId: kind === 'reply' ? id(req.params.id) : null,
+            content: req.body?.content, language: language(req.body?.language) })).digest('hex');
+        req.driftSubmission = { requestId, fingerprint };
+        try {
+            // Acknowledging a saved submission must not consume another write quota.
+            const previous = findSubmission(req.user.id,requestId,fingerprint);
+            if (previous) return res.status(201).json({ success:true, data:previous });
+            next();
+        } catch (error) { next(error); }
+    };
+}
+function saveRequest(req, create) {
+    const { requestId, fingerprint } = req.driftSubmission || {};
+    return saveSubmission(req.user.id,requestId,fingerprint,create);
+}
 router.use(authenticateToken);
 router.get('/', (req,res) => {
     const before = id(req.query.before) || Number.MAX_SAFE_INTEGER;
@@ -30,12 +56,15 @@ router.get('/', (req,res) => {
         FROM drift_bottles b JOIN users u ON u.id=b.user_id
         WHERE b.id < ? AND (b.user_id=? OR (b.recipient_id=? AND b.status='approved')) ORDER BY b.id DESC LIMIT 30`).all(before,req.user.id,req.user.id));
 });
-router.post('/', writeLimiter, (req,res) => {
+router.post('/', submissionContext('bottle'), writeLimiter, (req,res) => {
     const review = reviewMessageContent(req.body?.content);
     if (!review.accepted) return fail(res,422,'内容无效，请使用不超过 2000 字的纯文本');
-    const result = db.prepare('INSERT INTO drift_bottles(user_id,content,language,status,review) VALUES(?,?,?,?,?)')
-        .run(req.user.id,review.content,language(req.body?.language),review.status,JSON.stringify(review));
-    res.status(201).json({ success:true, data: { id: Number(result.lastInsertRowid), status: review.status } });
+    const result = saveRequest(req, () => {
+        const inserted = db.prepare('INSERT INTO drift_bottles(user_id,content,language,status,review) VALUES(?,?,?,?,?)')
+            .run(req.user.id,review.content,language(req.body?.language),review.status,JSON.stringify(review));
+        return { id:Number(inserted.lastInsertRowid), status:review.status };
+    });
+    res.status(201).json({ success:true, data:result });
 });
 router.post('/pick', pickLimiter, (req,res) => {
     const picked = db.transaction(() => {
@@ -60,7 +89,7 @@ router.get('/:id', (req,res) => {
         FROM drift_replies r WHERE bottle_id=? AND (r.status='approved' OR r.user_id=?) ORDER BY r.id DESC LIMIT 100`).all(b.id,req.user.id).reverse();
     ok(res,{ bottle:b, peer, blocked: peerId ? blocked(req.user.id,peerId) : false, replies });
 });
-router.post('/:id/replies', writeLimiter, (req,res) => {
+router.post('/:id/replies', submissionContext('reply'), writeLimiter, (req,res) => {
     const bottleId = id(req.params.id);
     const canReply = () => {
         const b = access(bottleId,req.user.id);
@@ -69,16 +98,15 @@ router.post('/:id/replies', writeLimiter, (req,res) => {
     if (!canReply()) return fail(res,403,'此漂流瓶暂不能回信');
     const review = reviewMessageContent(req.body?.content);
     if (!review.accepted) return fail(res,422,'内容无效，请使用不超过 2000 字的纯文本');
-    const saved = db.transaction(() => {
+    const saved = saveRequest(req, () => {
         const b = canReply();
-        if (!b) return false;
+        if (!b) throw Object.assign(new Error('此漂流瓶暂不能回信'), { status:403 });
         db.prepare('INSERT INTO drift_replies(bottle_id,user_id,content,language,status,review) VALUES(?,?,?,?,?,?)')
             .run(b.id,req.user.id,review.content,language(req.body?.language),review.status,JSON.stringify(review));
         if (review.status==='approved') notify(b,req.user.id);
-        return true;
-    })();
-    if (!saved) return fail(res,403,'此漂流瓶暂不能回信');
-    res.status(201).json({ success:true, data:{ status:review.status } });
+        return { status:review.status };
+    });
+    res.status(201).json({ success:true, data:saved });
 });
 // Only an untouched bottle can return to the public pool. Private correspondence
 // must never be inherited by a later recipient, including pending/rejected replies.
@@ -137,5 +165,9 @@ adminRouter.post('/:kind/:id', (req,res) => {
     })();
     if (!changed) return fail(res,409,'内容已被审核');
     ok(res,null);
+});
+router.use((error,req,res,next) => {
+    if (error.code !== 'DRIFT_SUBMISSION_CONFLICT') return next(error);
+    res.status(409).json({ success:false, code:error.code, message:error.message });
 });
 module.exports = { router, adminRouter };

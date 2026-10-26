@@ -20,16 +20,19 @@ async function post(context, baseURL, path, data) {
 test('content management reviews bottles and replies in one tab on desktop and mobile', async ({ page, browser, baseURL }, info) => {
     const sender = await browser.newContext({ baseURL });
     const recipient = await browser.newContext({ baseURL });
+    const cleanupIds = [];
     try {
         await login(sender, baseURL, 'reply-owner', 'mem0-test-password');
         await login(recipient, baseURL, 'reply-reader', 'mem0-test-password');
         const bottle = await post(sender, baseURL, '/api/drift', { content: '审核标签测试：海边的一封信' });
+        cleanupIds.push(bottle.id);
         const picked = await post(recipient, baseURL, '/api/drift/pick', {});
         expect(picked.id).toBe(bottle.id);
         const replyContent = '标签回信：提醒大家谨防诈骗';
         await post(recipient, baseURL, `/api/drift/${bottle.id}/replies`, { content: replyContent });
         const bottleContent = '标签瓶子：如何预防暴力';
         const pending = await post(sender, baseURL, '/api/drift', { content: bottleContent });
+        cleanupIds.push(pending.id);
         expect(pending.status).toBe('pending');
         const user = await login(page.context(), baseURL, 'notify-site-admin', 'notify-staff-password');
         await page.addInitScript(user => localStorage.setItem('tsukuyomi_user', JSON.stringify(user)), user);
@@ -76,6 +79,9 @@ test('content management reviews bottles and replies in one tab on desktop and m
         const thread = await (await sender.request.get(`/api/drift/${bottle.id}`)).json();
         expect(thread.data.replies.some(row => row.content === replyContent)).toBe(false);
     } finally {
+        for (const id of cleanupIds) await sender.request.post(`/api/drift/${id}/close`, {
+            headers: { Origin: new URL(baseURL).origin, 'X-Requested-With': 'XMLHttpRequest' }, data: {}
+        });
         await sender.close();
         await recipient.close();
     }

@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { useRoute, useRouter } from 'vue-router';
 import { authFetch, parseResponse, getSession, loadCurrentSession } from '../api/client';
 import { driftCopy } from '../data/driftCopy';
+import { createDriftSubmissions } from '../services/driftSubmission';
 import { formatDateMinute } from '../utils/time';
 import DriftBottle from '../components/DriftBottle.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -15,6 +16,7 @@ const bottles = ref([]);
 const current = ref(null);
 const draft = ref('');
 const replyDrafts = reactive({});
+const submissions = createDriftSubmissions();
 const busy = ref(false);
 const loading = ref(true);
 const refreshing = ref(false);
@@ -48,16 +50,22 @@ function bottleStatus(b) {
   return b.closed ? copy.value.ended : b.recipient_id ? copy.value.picked : copy.value.drifting;
 }
 async function request(path, method = 'GET', body) {
-  const response = await authFetch(path, { method, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
-  const result = await parseResponse(response);
-  if (!response.ok || !result.success) throw new Error(result.message || copy.value.unavailable);
+  let response, result;
+  try {
+    response = await authFetch(path, { method, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+    result = await parseResponse(response);
+  } catch {
+    throw new Error(body?.requestId ? copy.value.submissionUnknown : copy.value.networkError);
+  }
+  if (body?.requestId && (response.status >= 500 || (response.ok && !result.success))) throw new Error(copy.value.submissionUnknown);
+  if (!response.ok || !result.success) throw new Error(result.code === 'DRIFT_SUBMISSION_CONFLICT' ? copy.value.submissionConflict : result.message || copy.value.unavailable);
   return result.data;
 }
 async function run(action) {
   if (busy.value) return;
   busy.value = true;
   notice.value = '';
-  try { await action(); } catch (error) { notice.value = error.message; } finally { busy.value = false; }
+  try { await action(); } catch (error) { notice.value = ['TypeError', 'AbortError'].includes(error.name) ? copy.value.networkError : error.message; } finally { busy.value = false; }
 }
 async function load(older = false) {
   const before = older && bottles.value.at(-1)?.id;
@@ -117,13 +125,16 @@ async function pick() {
 }
 async function send() {
   const submitted = draft.value;
-  const result = await request('/api/drift', 'POST', { content: submitted, language: props.lang });
+  const scope = `${session.value.user.id}:bottle`;
+  const payload = await submissions.prepare(scope, submitted, props.lang);
+  const result = await request('/api/drift', 'POST', payload);
+  submissions.complete(scope, payload.requestId);
   if (draft.value === submitted) draft.value = '';
   closeDialog();
   notice.value = `${copy.value.saved} · ${copy.value[result.status]}`;
   filter.value = 'sent';
-  await load();
   await selectTab('bottles');
+  try { await load(); } catch { notice.value = copy.value.savedRefreshFailed; }
 }
 async function latestLetters() {
   await nextTick();
@@ -133,9 +144,17 @@ async function latestLetters() {
 async function sendReply() {
   const bottleId = current.value.bottle.id;
   const submitted = reply.value;
-  const result = await request(`/api/drift/${bottleId}/replies`, 'POST', { content: submitted, language: props.lang });
+  const scope = `${session.value.user.id}:reply:${bottleId}`;
+  const payload = await submissions.prepare(scope, submitted, props.lang);
+  const result = await request(`/api/drift/${bottleId}/replies`, 'POST', payload);
+  submissions.complete(scope, payload.requestId);
   if (replyDrafts[bottleId] === submitted) replyDrafts[bottleId] = '';
-  await loadThread(bottleId);
+  try { await loadThread(bottleId); }
+  catch {
+    await showDialog('read');
+    notice.value = copy.value.savedRefreshFailed;
+    return;
+  }
   await showDialog('read');
   notice.value = `${copy.value.saved} · ${copy.value[result.status]}`;
   await latestLetters();
