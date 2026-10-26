@@ -253,11 +253,14 @@ for (const width of [390, 1280]) {
             document.documentElement.dataset.performance = 'reduced';
             window.scrollTo({ top: 200, behavior: 'instant' });
         });
-        // Card entrance animations are independent of the page animation.
-        // Finish them before comparing dialog-open geometry.
-        await page.locator('.stage-card').evaluateAll(cards => Promise.all(
-            cards.flatMap(card => card.getAnimations()).map(animation => animation.finished.catch(() => {}))
-        ));
+        // Scrolling starts card reveals through IntersectionObserver after
+        // layout. Give it a rendering cycle before collecting animations;
+        // otherwise WebKit can start a reveal after the baseline is captured.
+        await page.locator('.stage-card').evaluateAll(async cards => {
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            await Promise.all(cards.flatMap(card => card.getAnimations())
+                .map(animation => animation.finished.catch(() => {})));
+        });
         const scrollY = await page.evaluate(() => window.scrollY);
         const geometry = () => page.evaluate(() => ({
             scrollY: window.scrollY,
