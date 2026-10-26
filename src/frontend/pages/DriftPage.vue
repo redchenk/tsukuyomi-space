@@ -187,7 +187,11 @@ async function follow() {
   await request(`/api/user/follow/${encodeURIComponent(current.value.peer.id)}`, 'POST');
   notice.value = copy.value.followed;
 }
+function translationSource() {
+  return current.value && JSON.stringify([current.value.bottle.id, current.value.bottle.content, current.value.replies.map(r => [r.id, r.content, r.status])]);
+}
 async function translate() {
+  const source = translationSource();
   const texts = [current.value.bottle.content, ...current.value.replies.map(r => r.content)];
   const output = [];
   for (let start = 0; start < texts.length; start += 8) {
@@ -198,7 +202,7 @@ async function translate() {
     if (!Array.isArray(result.translations) || result.translations.length !== batch.length) throw new Error(copy.value.unavailable);
     output.push(...result.translations);
   }
-  translated.value = output.join('\n\n');
+  if (!disposed && props.lang === 'en' && translationSource() === source) translated.value = output.join('\n\n');
 }
 onMounted(async () => {
   await run(async () => {

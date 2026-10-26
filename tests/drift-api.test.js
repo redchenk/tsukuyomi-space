@@ -73,6 +73,28 @@ test('pending replies are only visible to their author until admin approves', as
     assert.equal((await call(url,'admin','POST',{status:'approved'})).status,409);
     assert.equal((await call(`/api/drift/${bottleId}`,'sender')).body.data.replies.length,2);
 });
+test('external-only replies notify once after approval; competing review decisions preserve the result', async()=>{
+    const link = `/drift?bottle=${bottleId}`;
+    const count = () => db.prepare('SELECT count(*) n FROM notifications WHERE user_id=? AND link=?').get('sender',link).n;
+    const before = count();
+    const sent = await call(`/api/drift/${bottleId}/replies`,recipient,'POST',{content:'https://example.org/private-note'});
+    assert.equal(sent.body.data.status,'pending');
+    assert.equal(count(),before);
+    const row = db.prepare('SELECT * FROM drift_replies WHERE bottle_id=? ORDER BY id DESC LIMIT 1').get(bottleId);
+    assert.ok(JSON.parse(row.review).externalHosts.includes('example.org'));
+    assert.equal((await call(`/api/drift/${bottleId}`,'sender')).body.data.replies.some(r=>r.id===row.id),false);
+    const url = `/api/moderation/drift/replies/${row.id}`;
+    const decisions = await Promise.all(['approved','rejected'].map(status=>call(url,'admin','POST',{status})));
+    assert.deepEqual(decisions.map(r=>r.status).sort(),[200,409]);
+    const finalStatus = db.prepare('SELECT status FROM drift_replies WHERE id=?').get(row.id).status;
+    assert.equal(count(),before + (finalStatus==='approved' ? 1 : 0));
+    assert.equal((await call(url,'admin','POST',{status:'approved'})).status,409);
+    assert.equal(count(),before + (finalStatus==='approved' ? 1 : 0));
+    for (const note of db.prepare('SELECT title,content FROM notifications WHERE link=?').all(link)) {
+        assert.equal(note.content,'');
+        assert.equal(note.title.includes('example.org'),false);
+    }
+});
 test('external links remain in review, never offered to pickup', async()=>{
     const sent=await call('/api/drift','sender','POST',{content:'看看 https://example.org'});
     assert.equal(sent.body.data.status,'pending');
