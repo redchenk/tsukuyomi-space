@@ -20,6 +20,7 @@ import { useRoomBackdrop } from '../composables/room/useRoomBackdrop';
 const props = defineProps({
   user: { type: Object, default: null },
   shareId: { type: String, default: '' },
+  entryActive: { type: Boolean, default: false },
   lang: { type: String, default: 'zh' }
 });
 
@@ -294,7 +295,7 @@ watch(() => props.shareId, loadSharedConversation);
       />
     </Teleport>
     <RoomSetupDialog
-      :open="room.chat.configurationRequired.value"
+      :open="!entryActive && room.chat.configurationRequired.value"
       @close="room.chat.configurationRequired.value = false"
       @configure="room.chat.configurationRequired.value = false; emit('go', '/room/settings?setup=1')"
       @explore="openHelp"

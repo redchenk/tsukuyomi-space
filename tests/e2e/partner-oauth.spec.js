@@ -1,7 +1,10 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 const crypto = require('node:crypto');
+// The callback origin uses an ephemeral certificate in the disposable fixture.
+test.use({ ignoreHTTPSErrors: true });
 const verifier = 'v'.repeat(43);
-const query = new URLSearchParams({ client_id: 'e2e-partner', redirect_uri: 'https://partner.example.test/callback',
+const callbackUri = `https://127.0.0.1:${Number(new URL(process.env.E2E_BASE_URL || 'http://127.0.0.1:4174').port) + 1}/callback`;
+const query = new URLSearchParams({ client_id: 'e2e-partner', redirect_uri: callbackUri,
     response_type: 'code', scope: 'profile.basic', state: 'browser-fixture', code_challenge_method: 'S256',
     code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url') });
 
@@ -9,7 +12,6 @@ for (const width of [390, 1280]) {
     test(`partner consent login, cancellation and grant revocation at ${width}px`, async ({ page, playwright, baseURL }, testInfo) => {
         await page.setViewportSize({ width, height: 844 });
         await page.addInitScript(() => localStorage.setItem('lang', 'zh'));
-        await page.route('https://partner.example.test/callback?*', route => route.fulfill({ contentType: 'text/html', body: '<p>合作方回调测试页</p>' }));
         const path = '/oauth/authorize?' + query;
         const initial = await page.goto(path);
         expect(initial.headers()['referrer-policy']).toBe('no-referrer');
@@ -34,14 +36,14 @@ for (const width of [390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await page.screenshot({ path: testInfo.outputPath('consent.png'), fullPage: true });
         await page.getByRole('button', { name: '取消授权' }).click();
-        await expect(page).toHaveURL(/partner\.example\.test\/callback\?/);
+        await expect(page).toHaveURL(url => url.origin + url.pathname === callbackUri);
         const denied = new URL(page.url());
         expect(denied.searchParams.get('error')).toBe('access_denied');
         expect(denied.searchParams.get('state')).toBe('browser-fixture');
         expect(denied.searchParams.has('code')).toBe(false);
         await page.goto(path);
         await page.getByRole('button', { name: '同意并继续' }).click();
-        await expect(page).toHaveURL(/partner\.example\.test\/callback\?/);
+        await expect(page).toHaveURL(url => url.origin + url.pathname === callbackUri);
         const callback = new URL(page.url());
         expect(callback.searchParams.get('iss')).toBe(baseURL);
         // A separate context represents the partner backend without browser cookies.
@@ -50,7 +52,7 @@ for (const width of [390, 1280]) {
             const tokenResponse = await backend.post(`${baseURL}/api/partner/oauth/token`, {
                 headers: { Authorization: 'Basic ' + Buffer.from('e2e-partner:' + 'e'.repeat(43)).toString('base64') },
                 form: { grant_type: 'authorization_code', code: callback.searchParams.get('code'),
-                    redirect_uri: 'https://partner.example.test/callback', code_verifier: verifier }
+                    redirect_uri: callbackUri, code_verifier: verifier }
             });
             expect(tokenResponse.status()).toBe(200);
             const token = (await tokenResponse.json()).access_token;

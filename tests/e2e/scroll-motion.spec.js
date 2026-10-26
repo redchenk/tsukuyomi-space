@@ -154,6 +154,16 @@ test('modal scroll locks and nested scrollers release cleanly', async ({ page, b
 
 test('public and tool routes attach the shared scrolling layer with no page errors', async ({ page }) => {
   test.setTimeout(90000);
+  // This route/scroll matrix does not exercise model downloads. Real renderer
+  // readiness and navigation cancellation are covered by room-entry.spec.js.
+  await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
+  await page.route('**/*live2d-room-neuro-live*.js', route => route.fulfill({ contentType: 'application/javascript', body: `
+    window.initTsukuyomiLive2DRoom = () => {
+      window.TSUKUYOMI_LIVE2D_READY = true;
+      window.dispatchEvent(new CustomEvent('tsukuyomi:live2d-ready'));
+    };
+    window.destroyTsukuyomiLive2DRoom = () => {};
+  ` }));
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page, '/hub');
   const routes = ['/stage', '/article?id=3', '/wiki', '/wiki/characters/yachiyo', '/gallery', '/plaza', '/friend-links', '/friend-links/apply', '/download', '/reality', '/room/settings', '/room', '/live2d', '/pixel', '/game', '/login', '/register', '/fushi/connect', '/fushi/astrbot/callback', '/terminal'];

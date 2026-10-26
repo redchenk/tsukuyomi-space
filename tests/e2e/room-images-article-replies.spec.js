@@ -1,14 +1,15 @@
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const path = require('node:path');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 test('a guest image stays visible after a reply and refresh without base64 in chat history', async ({ page }) => {
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
     });
     await page.route('**/api/chat/stream', route => route.fulfill({ status: 200, contentType: 'text/event-stream',
         body: 'event: delta\ndata: {"text":"图片收到了。"}\n\nevent: done\ndata: {"reply":"图片收到了。"}\n\n' }));
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.locator('input[type="file"][accept*="image"]').setInputFiles(path.resolve('assets/icons/icon-192.png'));
     await expect(page.locator('#chatImagePreview img')).toBeVisible();
     await page.locator('#chatInput').fill('看看这张图片');

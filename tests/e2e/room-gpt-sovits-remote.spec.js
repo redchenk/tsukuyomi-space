@@ -27,6 +27,7 @@ test('remote GPT-SoVITS settings use the same-origin bridge for preview and pers
         return route.fulfill({ status: 200, contentType: 'audio/wav', body: silentWave() });
     });
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');

@@ -1,3 +1,4 @@
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function expectReadable(page, selector) {
@@ -26,7 +27,7 @@ test('another device generates a complete cloud diary and retains messages sent 
   const user = (await login.json()).data.user;
   await page.addInitScript(user => localStorage.setItem('tsukuyomi_user', JSON.stringify(user)), user);
   await page.addInitScript(() => {
-    localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+    localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
     localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
   });
   await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
@@ -38,7 +39,7 @@ test('another device generates a complete cloud diary and retains messages sent 
     await waitForDiary;
     await route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '从早上的早餐和旅行计划，到晚上的月亮和晚安，今天的每一次交谈我都记在了心里。' })+'\n\n' });
   });
-  await page.goto('/room');
+  await page.goto('/room'); await waitForRoom(page);
   await expect(page.locator('#chatMessages')).toContainText('手机晚上的月亮和晚安');
   // This browser has never sent a turn: its local diary recorder is empty.
   expect(await page.evaluate(id => localStorage.getItem(`roomDiaryArchive:${id}:recording`), user.id)).toBeNull();

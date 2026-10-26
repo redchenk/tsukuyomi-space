@@ -12,6 +12,7 @@ async function openMemoryManager(page) {
 
 async function loginAsUser(page) {
   await page.goto('/login');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await page.locator('#loginAccount').fill('e2e-user');
   await page.locator('#loginPassword').fill('e2e-password');
   await page.locator('button[type="submit"]').click();

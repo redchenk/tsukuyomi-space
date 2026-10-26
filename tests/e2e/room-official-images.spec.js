@@ -32,7 +32,7 @@ test('official image chat uploads, forwards and renders its reply on the current
   await page.locator('#chatInput').fill('看看这张图片');
   await page.locator('#sendChatBtn').click();
   await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])').last()).toContainText('看见图片了');
-  expect(requests).toHaveLength(1);
+  await expect.poll(() => requests.length).toBe(1);
   const parts = requests[0].messages.at(-1).content;
   expect(parts.find(p => p.type === 'image_url').image_url.url).toMatch(/^data:image\/(webp|png);base64,/);
   expect(requests[0].max_tokens).toBeLessThanOrEqual(1024);

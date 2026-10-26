@@ -201,7 +201,15 @@ function closeNavigationOnBackdrop(event) {
 }
 
 function cycleNavigationFocus(event) {
-  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter((node) => node.getClientRects().length);
+  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter((node) => {
+    if (!node.getClientRects().length) return false;
+    // Closed details can retain layout rectangles for their hidden controls.
+    // Only their summary belongs in the keyboard loop.
+    for (let parent = node.parentElement; parent && parent !== navigationRef.value; parent = parent.parentElement) {
+      if (parent.matches('details:not([open])') && !parent.querySelector(':scope > summary')?.contains(node)) return false;
+    }
+    return true;
+  });
   const target = event.shiftKey ? controls.at(-1) : controls[0];
   if (document.activeElement === (event.shiftKey ? controls[0] : controls.at(-1))) {
     event.preventDefault();

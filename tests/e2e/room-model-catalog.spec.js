@@ -14,6 +14,7 @@ for (const viewport of [{ name: 'desktop', width: 1440, height: 960 }, { name: '
       return route.fulfill({ status: denied ? 403 : 200, contentType: 'application/json', body: JSON.stringify(denied ? { error: { message: 'not-visible-provider-body' } } : list) });
     });
     await page.goto('/room/settings');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#settings-llm-model')).toHaveValue(settings.model);
     await expect(page.locator('#llmSyncedModels option')).toHaveCount(2);
     await expect(page.locator('#llmSyncedModels option').first()).toHaveAttribute('value', 'deepseek-ai/DeepSeek-New');
@@ -37,10 +38,13 @@ for (const viewport of [{ name: 'desktop', width: 1440, height: 960 }, { name: '
     let requests = 0;
     await page.route('https://api.siliconflow.cn/v1/models?*', route => { requests++; return route.fulfill({ contentType: 'application/json', body: JSON.stringify(list) }); });
     await page.goto('/room/settings');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#llmSyncedModels option')).toHaveCount(2);
     const key = page.locator('#settings-llm-key');
     await key.fill('new-fixture-account-key');
-    await expect(page.locator('#llmSyncedModels option')).toHaveCount(1); // preset fallback, no other account's list
+    // Changing account removes the other account's remote catalog immediately.
+    await expect(page.locator('#llmSyncedModels option[value="deepseek-ai/DeepSeek-New"]')).toHaveCount(0);
+    await expect(page.locator('#llmSyncedModels option[value="Qwen/Qwen-New"]')).toHaveCount(0);
     expect(requests).toBe(1);
     await page.locator('#settings-llm-model').click();
     await expect.poll(() => requests).toBe(2);

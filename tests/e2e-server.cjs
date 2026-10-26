@@ -115,8 +115,10 @@ db.prepare('INSERT INTO articles(id,title,content,author_id,status) VALUES(?,?,?
     .run(987601, '成长任务验收文章', '这是一篇用于验证点赞或收藏任务的公开文章。', 'e2e-user-001', 'published');
 db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
     .run('upload-super-admin', 'upload-super-admin', 'upload-super-admin@example.test', bcrypt.hashSync('upload-super-password', 4), 'super_admin');
+const partnerPort = Number(process.env.PORT) + 1;
+const partnerCallback = `https://127.0.0.1:${partnerPort}/callback`;
 require('../backend/services/partner-oauth').registerClient({
-    id: 'e2e-partner', name: '第八千代测试应用', redirectUris: ['https://partner.example.test/callback'], secret: 'e'.repeat(43)
+    id: 'e2e-partner', name: '第八千代测试应用', redirectUris: [partnerCallback], secret: 'e'.repeat(43)
 });
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
     const id = `diary-cross-device-${project}`;
@@ -148,6 +150,16 @@ if (process.env.UI_PREVIEW_FIXTURES === 'true') {
         insertMessage.run('月下旅人', content, 'e2e-user-001', 'approved');
     }
 }
+// A separate origin exercises the real 303 redirect, without external DNS or
+// Playwright route interception (which only sees the first URL in a redirect).
+const partnerKey = path.join(dataDir, 'partner-key.pem');
+const partnerCert = path.join(dataDir, 'partner-cert.pem');
+require('node:child_process').execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+    '-subj', '/CN=127.0.0.1', '-keyout', partnerKey, '-out', partnerCert], { stdio: 'ignore' });
+const partnerServer = require('node:https').createServer({ key: fs.readFileSync(partnerKey), cert: fs.readFileSync(partnerCert) }, (req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<p>合作方回调测试页</p>');
+}).listen(partnerPort, process.env.HOST);
 const server = require('node:http').createServer((req, res) => {
     // A test-only response delay lets native XHR send its body before the API
     // acknowledgement. Other suites and all production servers stay unaffected.
@@ -163,6 +175,7 @@ const server = require('node:http').createServer((req, res) => {
 });
 
 function shutdown() {
+    partnerServer.close();
     server.close(() => {
         db.close();
         fs.rmSync(dataDir, { recursive: true, force: true });

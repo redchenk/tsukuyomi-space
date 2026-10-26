@@ -2,6 +2,7 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function loginAsUser(page) {
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -130,6 +131,7 @@ test('user can start a clean Room conversation without deleting long-term memory
     expect(saved.status()).toBe(201);
 
     await page.goto('/room');
+    await page.getByRole('button', { name: '稍后设置', exact: true }).click();
     await expect(page.getByText(oldQuestion, { exact: true })).toBeVisible();
     await page.evaluate((pendingTurnId) => {
         localStorage.setItem('roomChatPending:e2e-user-001', JSON.stringify([{
@@ -237,6 +239,7 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
     });
 
     await page.goto('/room');
+    await page.getByRole('button', { name: '稍后设置', exact: true }).click();
     await page.locator('.chat-message.assistant').getByRole('button', { name: '播放语音', exact: true }).first().click();
     await expect.poll(() => providerRequests.length).toBe(1);
 
@@ -316,6 +319,7 @@ test('user can read an article and post a comment', async ({ page }) => {
 test('user can publish a plaza message', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/plaza');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
 
     const message = `E2E plaza message ${Date.now()}`;
     await page.locator('.plaza-textarea').fill(message);
@@ -353,6 +357,7 @@ test('plaza shows the latest reply first and lets readers expand the rest', asyn
     }
 
     await page.goto('/plaza');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('.plaza-search').fill(marker);
     const card = page.locator(`#msg-${messageId}`);
     await expect(card).toBeVisible();
@@ -424,10 +429,11 @@ test('user can edit and delete their own message from user center', async ({ pag
 });
 
 test('mobile account security and music playlist remain readable', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('tsukuyomi_theme', 'dark'));
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsUser(page);
     await page.goto('/user-center');
-    await page.getByRole('button', { name: '账户安全', exact: true }).click();
+    await page.getByRole('button', { name: '管理账号安全', exact: true }).click();
 
     const securityGrid = page.locator('.uc-security-grid');
     await expect(securityGrid).toBeVisible();
@@ -504,6 +510,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     const artworkId = created.data.id;
 
     await page.goto('/pixel');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     const drawingCanvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
     await expect(drawingCanvas).toHaveAttribute('width', '1152');
     await expect(drawingCanvas).toHaveAttribute('height', '648');
@@ -527,6 +534,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
         const buttonRects = buttons.map((button) => button.getBoundingClientRect());
         return {
             actionHeight: actionRect.height,
+            padding: parseFloat(getComputedStyle(actions).paddingTop) + parseFloat(getComputedStyle(actions).paddingBottom),
             buttonHeights: buttonRects.map((rect) => rect.height),
             buttonWidthTotal: buttonRects.reduce((total, rect) => total + rect.width, 0),
             actionWidth: actionRect.width,
@@ -539,7 +547,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     const desktopActions = await galleryActionLayout();
     expect(desktopActions.justifyContent).toBe('flex-end');
     expect(desktopActions.aspectRatios.every((ratio) => ratio === 'auto')).toBe(true);
-    expect(desktopActions.actionHeight).toBeLessThanOrEqual(52);
+    expect(desktopActions.actionHeight).toBeLessThanOrEqual(Math.max(...desktopActions.buttonHeights) + desktopActions.padding + 1);
     expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.95);
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -572,7 +580,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(lightbox).toHaveCount(0);
 });
 
-test('pixel canvas switches between mobile scrolling and uninterrupted drawing', async ({ browser }) => {
+test('pixel canvas switches between canvas panning and uninterrupted drawing', async ({ browser }) => {
     const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -582,6 +590,7 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
 
     try {
         await page.goto('/pixel');
+        await expect(page.locator('#boot-splash')).toHaveCount(0);
         const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
         const toolButtons = page.locator('.pw-tools .pw-tool');
         const brushButton = toolButtons.first();
@@ -593,7 +602,9 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
         const initialScrollY = await page.evaluate(() => window.scrollY);
         const canvasBox = await canvas.boundingBox();
         expect(canvasBox).not.toBeNull();
-        expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toContain('pan-y');
+        expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
+        const canvasViewport = page.locator('.arena-canvas-viewport');
+        const maxPan = await canvasViewport.evaluate(el => el.scrollHeight - el.clientHeight);
 
         const session = await context.newCDPSession(page);
         const x = canvasBox.x + Math.min(canvasBox.width / 2, 120);
@@ -610,7 +621,9 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
         }
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
-        await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(initialScrollY);
+        await expect.poll(() => canvasViewport.evaluate(el => el.scrollTop)).toBeCloseTo(Math.min(165, maxPan), 0);
+        expect(await page.evaluate(() => window.scrollY)).toBe(initialScrollY);
+        await expect(page.getByRole('button', { name: '撤销', exact: true })).toBeDisabled();
 
         await brushButton.click();
         await expect(brushButton).toHaveClass(/active/);
@@ -661,6 +674,7 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
 test('desktop pixel controls scroll independently from the page', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.goto('/pixel');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
 
     const controls = page.locator('.arena-controls');
@@ -762,6 +776,7 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     expect(createResponse.status()).toBe(201);
 
     await page.goto('/terminal');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('input[autocomplete="username"]').fill('admin');
     await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
     await page.getByRole('button', { name: '连接终端' }).click();
@@ -777,6 +792,7 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
 
     await page.getByRole('button', { name: '用户', exact: true }).click();
     await expect(page.getByRole('heading', { name: '用户', exact: true })).toBeVisible();
+    await page.getByRole('searchbox', { name: '搜索用户名、邮箱、角色或 ID' }).fill('e2e-user');
     await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
     await expect(page.locator('select option[value="banned"]').first()).toHaveText('banned');
 });
@@ -784,6 +800,7 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
 
 test('pixel workspace restores strokes after reload and exports the same PNG', async ({ page }) => {
     await page.goto('/pixel');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
     const bounds = await canvas.boundingBox();
     expect(bounds).not.toBeNull();

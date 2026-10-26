@@ -96,6 +96,7 @@ test('Wiki table of contents tracks rapid scrolling without skipping sections', 
 
 test('Character and term secondary pages support direct production access', async ({ page }) => {
   const kaguyaResponse = await page.goto('/wiki/characters/kaguya');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   expect(kaguyaResponse?.status()).toBe(200);
   const realityImage = page.getByAltText('辉夜现实形象透明立绘');
   await expect(realityImage).toBeVisible();

@@ -1,27 +1,31 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
+test.beforeEach(async ({ page }) => configureRoomFixture(page));
 
 test('shared search finds navigation aliases, supports keyboard selection and preserves Room drafts', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.locator('#chatInput').fill('尚未发送的消息');
     // WebKit does not focus buttons on pointer clicks; start from keyboard
     // focus so this check exercises the search dialog's focus restoration.
     await page.locator('.site-search-trigger').focus();
     await page.locator('.site-search-trigger').press('Enter');
     const search = page.getByRole('dialog', { name: '想找些什么？' });
-    const input = search.getByRole('searchbox');
+    const input = search.getByRole('combobox');
     await expect(input).toBeFocused();
     await input.fill('八千代');
     await input.press('ArrowDown');
-    await expect(search.getByRole('link', { name: '私人居所 /room' })).toBeFocused();
+    await expect(input).toBeFocused();
+    await expect(search.getByRole('option', { name: '私人居所 /room' })).toHaveAttribute('aria-selected', 'true');
+    await expect(input).toHaveAttribute('aria-activedescendant', await search.getByRole('option', { name: '私人居所 /room' }).getAttribute('id'));
     await page.keyboard.press('Escape');
     await expect(search).not.toBeVisible();
     await expect(page.locator('.site-search-trigger')).toBeFocused();
     await expect(page.locator('#chatInput')).toHaveValue('尚未发送的消息');
     await page.keyboard.press('Control+k');
     await expect(search).toBeVisible();
-    await search.getByRole('searchbox').fill('图库');
-    await search.getByRole('searchbox').press('Enter');
+    await search.getByRole('combobox').fill('图库');
+    await search.getByRole('combobox').press('Enter');
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(search).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
@@ -40,18 +44,19 @@ test('search displays real API results, survives an error and follows the select
     await page.goto('/hub');
     await page.locator('.site-search-trigger').click();
     const search = page.getByRole('dialog', { name: '想找些什么？' });
-    await search.getByRole('searchbox').fill('故障');
+    await search.getByRole('combobox').fill('故障');
     await expect(search.getByText('文章暂时加载失败，页面入口仍可使用。')).toBeVisible();
-    await search.getByRole('searchbox').fill('月下');
-    await expect(search.getByRole('link', { name: '月下的创作手记' })).toBeVisible();
+    await search.getByRole('combobox').fill('月下');
+    await expect(search.getByRole('option', { name: '月下的创作手记' })).toBeVisible();
     expect(queries).toContain('月下');
-    await search.getByRole('link', { name: '月下的创作手记' }).click();
+    await search.getByRole('option', { name: '月下的创作手记' }).click();
     await expect(page).toHaveURL(/\/articles\/77\/moonlight$/);
 });
 
 test('signed-in Japanese navigation fits a narrow desktop and keeps account actions', async ({ page }) => {
     await page.setViewportSize({ width: 861, height: 844 });
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -96,7 +101,7 @@ test('desktop menus morph in one surface without moving the page and hand off to
     await page.keyboard.press('Control+k');
     await expect(menu).not.toBeVisible();
     const search = page.getByRole('dialog', { name: '想找些什么？' });
-    await expect(search.getByRole('searchbox')).toBeFocused();
+    await expect(search.getByRole('combobox')).toBeFocused();
     expect(await geometry()).toEqual(before);
     await page.keyboard.press('Escape');
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
@@ -112,6 +117,7 @@ test('desktop menus morph in one surface without moving the page and hand off to
 test('desktop hover, keyboard, rapid switches and resize do not leave stale menus or focus', async ({ page, browserName }) => {
     await page.setViewportSize({ width: 1024, height: 720 });
     await page.goto('/stage');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     const discover = page.locator('#site-nav-discover');
     const create = page.locator('#site-nav-create');
     const spaces = page.locator('#site-nav-spaces');
@@ -133,7 +139,9 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
     // Option+Tab includes links in WebKit's keyboard focus order.
     await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
     await expect(menu.getByRole('link', { name: /^月读广场/ })).toBeFocused();
-    await expect(page.locator('.site-route-preview.is-active strong')).toHaveText('月读广场');
+    await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+    await expect(menu.getByRole('link', { name: /^星海来信/ })).toBeFocused();
+    await expect(page.locator('.site-route-preview.is-active strong')).toHaveText('星海来信');
     await page.keyboard.press('Escape');
     await expect(discover).toBeFocused();
     await discover.press('Enter');
@@ -162,7 +170,7 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
 for (const width of [360, 390, 860, 1024, 1440]) {
     test(`navigation and Room controls fit ${width}px without a duplicate global rail`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 });
-        await page.goto('/room');
+        await page.goto('/room'); await waitForRoom(page);
         await expect(page.locator('.site-commandbar')).toBeVisible();
         await expect(page.locator('.site-rail')).toHaveCount(0);
         const header = await page.locator('.site-commandbar').boundingBox();
@@ -232,6 +240,7 @@ for (const width of [390, 1280]) {
             });
         });
         await page.goto('/stage');
+        await expect(page.locator('#boot-splash')).toHaveCount(0);
         await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
         await page.locator('main').evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => {}))));
         await page.evaluate(() => document.fonts.ready);
@@ -296,7 +305,7 @@ for (const width of [390, 1280]) {
         await page.keyboard.press('Control+k');
         const search = page.getByRole('dialog', { name: '想找些什么？' });
         await expect(menu).not.toBeVisible();
-        await expect(search.getByRole('searchbox')).toBeFocused();
+        await expect(search.getByRole('combobox')).toBeFocused();
         await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
         expect(await geometry()).toEqual(before);
         await page.keyboard.press('Escape');
@@ -327,6 +336,7 @@ test('mobile top navigation keeps primary routes, account, notifications and sea
     await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
     const activate = locator => browserName === 'webkit' ? locator.tap() : locator.click();
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -346,6 +356,7 @@ test('mobile top navigation keeps primary routes, account, notifications and sea
         expect((await menu.boundingBox()).y).toBeGreaterThanOrEqual(header.y + header.height);
         await activate(menu.locator(`.site-mobile-shortcuts a[href="${path}"]`));
         await expect(page).toHaveURL(new RegExp(`${path}$`));
+        if (path === '/room') await waitForRoom(page);
         await expect(menu).not.toBeVisible();
     }
     await activate(page.locator('.site-account-trigger'));
@@ -355,7 +366,7 @@ test('mobile top navigation keeps primary routes, account, notifications and sea
     await expect(page).toHaveURL(/\/notifications$/);
     await activate(page.locator('.site-mobile-navigation-trigger'));
     await activate(page.locator('#site-navigation .site-menu-search'));
-    await expect(page.getByRole('dialog', { name: '想找些什么？' }).getByRole('searchbox')).toBeFocused();
+    await expect(page.getByRole('dialog', { name: '想找些什么？' }).getByRole('combobox')).toBeFocused();
 });
 
 for (const signedIn of [false, true]) {
@@ -364,6 +375,7 @@ for (const signedIn of [false, true]) {
         await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
         if (signedIn) {
             await page.goto('/login');
+            await expect(page.locator('#boot-splash')).toHaveCount(0);
             await page.locator('#loginAccount').fill('e2e-user');
             await page.locator('#loginPassword').fill('e2e-password');
             await page.getByRole('button', { name: '登录', exact: true }).click();
