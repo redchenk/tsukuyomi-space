@@ -158,9 +158,13 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
     await page.locator('.site-mobile-navigation-trigger').click();
     await expect(page.locator('#site-navigation').getByRole('link', { name: /^图库/ })).toBeVisible();
     await page.keyboard.press('Escape');
+    // Escape animates the native dialog closed; keyboard input is still inert
+    // until it releases the page, including when the viewport crosses desktop.
+    await expect(page.locator('#site-navigation')).not.toBeVisible();
     await page.setViewportSize({ width: 1024, height: 720 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await discover.press('ArrowDown');
+    await expect(menu.getByRole('link', { name: /^百科/ })).toBeFocused();
     expect(await menu.evaluate(el => el.getAnimations().length)).toBe(0);
     await menu.getByRole('link', { name: /^图库/ }).press('Enter');
     await expect(page).toHaveURL(/\/gallery$/);
