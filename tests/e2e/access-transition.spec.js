@@ -63,8 +63,12 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
     for (const reload of [false, true]) {
       if (reload) await page.reload({ waitUntil: 'domcontentloaded' });
       else await page.goto('/', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('#boot-splash')).toBeVisible();
-      if (!reload) await page.screenshot({ path: `output/access-transition/${test.info().project.name}-boot-${reducedMotion}.png` });
+      // The protocol may return after this deliberately short splash is gone.
+      // Its in-page observer records the actual opaque, topmost painted frames.
+      await expect.poll(() => page.evaluate(() => window.brandFrames.length)).toBeGreaterThan(0);
+      if (!reload && await page.locator('#boot-splash').isVisible()) {
+        await page.screenshot({ path: `output/access-transition/${test.info().project.name}-boot-${reducedMotion}.png` });
+      }
       await expect(page.locator('#boot-splash')).toHaveCount(0);
       const duration = await page.evaluate(() => window.brandOpaqueUntil - window.brandFrames[0]);
       expect(duration).toBeGreaterThanOrEqual(800);

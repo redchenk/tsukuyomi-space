@@ -4,7 +4,16 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 async function expectReadable(page, selector) {
   // Theme colors transition independently; assess the settled palette.
   await expect.poll(() => page.locator(selector).evaluate(element => {
-    const rgba = value => value.match(/[\d.]+/g).map(Number);
+    // WebKit can serialize color-mix as color(srgb ...), whose channels are
+    // 0..1 rather than rgb()'s 0..255. Let the browser normalize either form.
+    const context = document.createElement('canvas').getContext('2d');
+    const rgba = value => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = value;
+      context.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
+      return [r, g, b, a / 255];
+    };
     const luminance = rgb => rgb.slice(0, 3).map(n => n / 255).map(n => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)
       .reduce((sum, n, i) => sum + n * [0.2126, 0.7152, 0.0722][i], 0);
     const fg = rgba(getComputedStyle(element).color);
@@ -27,6 +36,8 @@ test('another device generates a complete cloud diary and retains messages sent 
   const user = (await login.json()).data.user;
   await page.addInitScript(user => localStorage.setItem('tsukuyomi_user', JSON.stringify(user)), user);
   await page.addInitScript(() => {
+    // CI and lower-end phones use the reduced material palette (color-mix).
+    Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 2 });
     localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
     localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
   });
