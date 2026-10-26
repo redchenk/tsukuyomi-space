@@ -635,7 +635,7 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
     const dashboard = await fetchOfficialRoomDashboard({ signal });
     settings = officialRoomSettings(settings, dashboard);
     officialModel = dashboard.models.find(model => model.id === settings.model);
-    if (image && settings.visionMode !== 'mcp') throw new Error('当前站内直供仅支持文字，图片请在设置中选择 MCP 识图，或切换支持图片的模型。');
+    if (image && settings.visionMode !== 'mcp' && officialModel.capabilities?.vision !== true) throw new Error('当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。');
   }
   const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
   const useLocalOllama = isOllamaApi(apiUrl);

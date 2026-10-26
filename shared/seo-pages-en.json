@@ -31,10 +31,9 @@
     "title": "Moonlit Pixel Workshop | Online Pixel Art and Community",
     "description": "Create pixel art with multiple canvas sizes, brushes, fill tools and palettes. Import images, save drafts, export PNG files and share your artwork with the community."
   },
-  "/game": {
-    "title": "Kaguya Run Rhythm Game | Tsukuyomi Space",
-    "description": "Play Kaguya Run, a themed rhythm runner with desktop keyboard and mobile touch controls. Switch to fullscreen, challenge your score and explore the character wiki."
-  },
+  "/game": {"title": "Game Center | Play with Yachiyo", "description": "Play Moonlit Gomoku with Yachiyo, or follow the rhythm and challenge your score in Kaguya Run."},
+  "/game/gomoku": {"title": "Moonlit Gomoku with Yachiyo | Tsukuyomi Space", "description": "Play freestyle Gomoku with Yachiyo. Choose your color and difficulty, undo a turn, get hints and resume in your browser."},
+  "/game/kaguya-run": {"title": "Kaguya Run Rhythm Game | Tsukuyomi Space", "description": "Play Kaguya Run with desktop keyboard and mobile touch controls. Challenge your best score."},
   "/reality": {
     "title": "Project, Privacy and Credits | Tsukuyomi Space",
     "description": "Learn about Tsukuyomi Space, its source code and open-source credits. Read resource and privacy notes, copyright boundaries and the limits of AI-generated replies."

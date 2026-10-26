@@ -1,5 +1,5 @@
 <script setup>
-import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, shallowRef, watch } from 'vue';
 import { installSmoothScroll } from './utils/smoothScroll';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
@@ -73,7 +73,7 @@ const isRoomRoute = computed(() => route.name === 'room' || route.name === 'room
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
 const hasGlobalBackground = computed(() => !isAccessRoute.value && !isRoomRoute.value);
 const showSitePet = computed(() => Boolean(route.name)
-  && !['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'roomSettings', 'game'].includes(route.name));
+  && !['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'roomSettings', 'kaguyaRun'].includes(route.name));
 const performanceProfile = ref(getPerformanceProfile());
 const petReady = ref(false);
 const petReduced = computed(() => performanceProfile.value === 'reduced');
@@ -249,7 +249,7 @@ function scheduleRouteProgress(to, from) {
   if (typeof window === 'undefined' || !from?.name || to.fullPath === from.fullPath) return;
   const routeOwnsLoading = ['access', 'accessAlias', 'room', 'roomShared', 'live2d'].includes(String(from.name))
     || ['room', 'roomShared', 'live2d'].includes(String(to.name));
-  routeMotionImmediate = routeHistory.beforeNavigation(to) || ['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'live2d', 'pixel', 'game']
+  routeMotionImmediate = routeHistory.beforeNavigation(to) || ['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'live2d', 'pixel', 'game', 'gomoku', 'kaguyaRun']
     .some(name => name === to.name || name === from.name);
   if (routeOwnsLoading) return;
   window.clearTimeout(routeProgressTimer);
@@ -379,6 +379,9 @@ function handlePerformanceProfile(event) {
 }
 
 provide('siteMusic', music);
+// Pages can lend their current interaction to the one global pet. The page
+// retains ownership of requests and clears the session when it leaves.
+provide('sitePetInteraction', shallowRef(null));
 // External music is scoped to the website identity as well as this browser.
 // Discard previous-account UI and queued audio immediately on account changes.
 watch(() => user.value?.id || '', () => music.resetAccount());
@@ -516,7 +519,7 @@ onUnmounted(() => {
     aria-busy="true"
   ><span aria-hidden="true"></span></div>
 
-  <SitePet v-if="showSitePet && petReady && !entryActive && !roomEntryActive" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
+  <SitePet v-if="showSitePet && (petReady || route.name === 'gomoku') && !entryActive && !roomEntryActive" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">

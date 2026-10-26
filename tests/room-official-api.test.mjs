@@ -52,13 +52,13 @@ test('model discovery uses only authenticated no-store GET and filters disabled 
   await assert.rejects(official.fetchOfficialRoomDashboard({ request: async () => ({ ok: false, status: 401, json: async () => ({}) }) }), /请先登录/);
 });
 
-function transport(request) {
+function transport(request, modelDashboard = dashboard) {
   const code = fs.readFileSync('src/frontend/composables/room/useRoomChat.js', 'utf8').replace(/^import [\s\S]*?from '[^']*';$/gm, '').replace(/^export /gm, '');
   const context = { URL, AbortController, ReadableStream, isEnglishSite: () => false, llmProtocol: protocol, ...localTransport, ...official, ...oneclickTts,
     roomChatConfigured: value => official.roomChatConfigured(value, origin),
     isOfficialRoomApi: value => official.isOfficialRoomApi(value, origin),
     officialRoomSettings: (value, data) => official.officialRoomSettings(value, data, origin),
-    fetchOfficialRoomDashboard: async () => dashboard,
+    fetchOfficialRoomDashboard: async () => modelDashboard,
     agentProtocol: { wireOptions: () => ({ tools: [], turns: [] }) },
     fetchWithLocalOllamaGuidance: request, readRoomChatStream };
   vm.runInNewContext(code + '\nglobalThis.request = requestRoomReply;', context);
@@ -69,6 +69,36 @@ test('missing configuration produces no provider request, delta or fake reply', 
   let delta = '';
   await assert.rejects(request({ settings: {}, message: 'hi', onDelta: text => { delta += text; } }), { code: 'ROOM_MODEL_NOT_CONFIGURED' });
   assert.equal(delta, '');
+});
+
+test('official image capability follows server metadata and preserves a manual opt-out', () => {
+  const vision = { ...dashboard, models: [{ ...dashboard.models[0], capabilities: { vision: true } }] };
+  const actual = official.officialRoomSettings(settings, vision, origin);
+  assert.equal(runtime.resolveCapabilities(actual).image.value, true);
+  assert.equal(runtime.resolveCapabilities(actual).image.source, 'provider');
+  const scope = runtime.scopes(actual).model;
+  actual.runtimeConfig.models[scope].capabilities.image = false;
+  assert.equal(runtime.resolveCapabilities(official.officialRoomSettings(actual, vision, origin)).image.value, false);
+  assert.equal(runtime.resolveCapabilities(official.officialRoomSettings(settings, dashboard, origin)).image.value, false);
+});
+
+test('Room sends image content to a capable official model and keeps site authentication', async () => {
+  const vision = { ...dashboard, models: [{ ...dashboard.models[0], capabilities: { vision: true } }] };
+  const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jE1sAAAAASUVORK5CYII=';
+  let calls = 0;
+  const request = transport(async (url, options) => {
+    calls++;
+    assert.equal(url, settings.apiUrl);
+    assert.equal(options.credentials ?? 'same-origin', 'same-origin');
+    assert.equal(options.headers.Authorization, `Bearer ${official.OFFICIAL_SESSION_MARKER}`);
+    const body = JSON.parse(options.body);
+    assert.deepEqual(body.messages.at(-1).content, [{ type: 'text', text: '看到了什么？' }, { type: 'image_url', image_url: { url: dataUrl } }]);
+    assert.equal(body.thinking.type, 'disabled');
+    return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '测试图片回复' } }] }) };
+  }, vision);
+  assert.equal((await request({ settings, message: '看到了什么？', image: { dataUrl }, stream: false, systemPrompt: '' })).reply, '测试图片回复');
+  assert.equal(calls, 1);
+  await assert.rejects(transport(() => { throw new Error('must not send'); })({ settings, message: '看图', image: { dataUrl } }), /当前站内模型不支持图片/);
 });
 test('real Room transport handles an imported legacy site config and surfaces insufficient funds without retry', async () => {
   let count = 0;

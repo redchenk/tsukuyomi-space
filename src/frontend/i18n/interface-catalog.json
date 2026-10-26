@@ -1,4 +1,9 @@
 {
+  "游戏中心": {"en": "Game Center", "ja": "ゲームセンター"},
+  "和八千代下一局五子棋，或挑战辉夜快跑。": {"en": "Play Gomoku with Yachiyo or try Kaguya Run.", "ja": "ヤチヨと五目並べ、またはかぐやランで遊ぼう。"},
+  "和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。": {"en": "Play Moonlit Gomoku with Yachiyo, or follow the rhythm and challenge your score in Kaguya Run.", "ja": "ヤチヨと月下の五目並べを楽しんだり、かぐやランでリズムとスコアに挑戦しよう。"},
+  "月下五子棋 · 和八千代一起": {"en": "Moonlit Gomoku with Yachiyo", "ja": "月下の五目並べ・ヤチヨと一緒に"},
+  "和八千代对弈五子棋，支持先后手、难度选择、悔棋、提示和本地续局。": {"en": "Play Gomoku with Yachiyo. Choose your color and difficulty, undo turns, get hints and resume locally.", "ja": "ヤチヨと五目並べ。先後手・難しさの選択、一手戻す、ヒント、対局の再開に対応。"},
   "先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。": {"en":"Finish chat setup, then send a message below. Once a reply arrives, keep chatting; voice can be enabled later.","ja":"チャットを設定し、下の欄から話しかけてみましょう。返信が届いたら会話を続けられます。音声は後から設定できます。"},
   "第一次使用 / 发现功能": {"en":"Getting started / Discover features","ja":"使い方・機能を見つける"},
   "当前好感度": {"en":"Current affection","ja":"現在の好感度"},
@@ -10263,5 +10268,61 @@
   "这封邀请已经发送，本次未重复发送。": {
     "en": "This invitation was already sent. No duplicate was sent.",
     "ja": "この招待は送信済みです。重複送信は行いませんでした。"
+  },
+  "邀请邮件链接": {
+    "en": "Invitation email link",
+    "ja": "招待メールのリンク"
+  },
+  "支持 Google Play 内部测试链接或本应用的封闭测试加入链接。保存后用于后续邀请，邮件文案会同步切换；保存本身不会发送邮件。": {
+    "en": "Use a Google Play internal test link or this app’s closed test opt-in link. Saving updates future invitations and their wording; it does not send email.",
+    "ja": "Google Play の内部テストリンク、またはこのアプリのクローズドテスト参加リンクを設定できます。保存すると今後の招待と文面が更新されます。保存だけでは送信されません。"
+  },
+  "保存邀请链接": {
+    "en": "Save invitation link",
+    "ja": "招待リンクを保存"
+  },
+  "发送前请将收件邮箱加入该链接对应的 Google Play 测试名单，并确认版本已发布、链接可用。内部测试不计入封闭测试的连续 14 天。": {
+    "en": "Before sending, add the recipient to the Google Play tester list for this link and verify the release and link are available. Internal testing does not count toward 14 consecutive days of closed testing.",
+    "ja": "送信前に、リンクに対応する Google Play テスターリストへ宛先を追加し、リリースとリンクが利用可能か確認してください。内部テストはクローズドテストの連続14日間には算入されません。"
+  },
+  "此设置只控制公开报名页的封闭测试入口，邀请邮件链接请在上方单独设置。": {
+    "en": "This setting controls the closed test link on the public application page. Set the invitation email link separately above.",
+    "ja": "この設定は公開申請ページのクローズドテストリンク用です。招待メールのリンクは上で個別に設定してください。"
+  },
+  "此前邀请使用其他链接：": {
+    "en": "Previous invitation used another link:",
+    "ja": "以前の招待は別のリンクを使用："
+  },
+  "发送当前链接邀请": {
+    "en": "Send current invitation link",
+    "ja": "現在のリンクで招待を送信"
+  },
+  "邀请链接": {
+    "en": "Invitation link",
+    "ja": "招待リンク"
+  },
+  "保存后会更新当前预览，并用于后续邀请邮件。已发送的邮件保持原链接。": {
+    "en": "Saving updates this preview and future invitation emails. Previously sent emails retain their original link.",
+    "ja": "保存すると現在のプレビューと今後の招待メールが更新されます。送信済みメールのリンクは変わりません。"
+  },
+  "保存链接并更新预览": {
+    "en": "Save link and update preview",
+    "ja": "リンクを保存してプレビューを更新"
+  },
+  "链接尚未保存，请先保存并检查更新后的邮件预览。": {
+    "en": "The link is not saved. Save it and review the updated email before sending.",
+    "ja": "リンクは未保存です。保存して更新後のメールを確認してから送信してください。"
+  },
+  "封闭测试邀请 · 曾加入内部测试的用户需先退出内部测试": {
+    "en": "Closed test invitation · Leave internal testing before joining",
+    "ja": "クローズドテスト招待 · 内部テスト参加中の場合は先に退出してください"
+  },
+  "我已将此邮箱加入该链接对应的 Google Play 测试名单，确认向该邮箱发送以上邀请。": {
+    "en": "I have added this email address to the Google Play tester list for this link and confirm sending the invitation above.",
+    "ja": "この宛先をリンクに対応する Google Play テスターリストに追加済みで、上記の招待を送信することを確認します。"
+  },
+  "邀请邮件链接已保存，后续邀请将使用此链接。": {
+    "en": "Invitation link saved. Future invitations will use this link.",
+    "ja": "招待リンクを保存しました。今後の招待にはこのリンクを使用します。"
   }
 }

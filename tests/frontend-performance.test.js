@@ -249,7 +249,8 @@ describe('constrained-device performance policy', () => {
         assert.match(app, /:reduced="petReduced"/);
         assert.match(pet, /assets\/pets\/yachiyo\/idle\.webp/);
         assert.match(pet, /if \(motionReduced \|\| props\.reduced\) return/);
-        assert.match(pet, /@click="openGuide"/);
+        assert.match(pet, /@click="activatePet"/);
+        assert.match(pet, /if \(!gameInteraction\.value\) return openGuide\(\)/);
         assert.match(pet, /role="dialog"/);
     });
 

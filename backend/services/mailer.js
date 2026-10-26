@@ -299,27 +299,27 @@ async function sendCampaignEmail(toEmail, campaign) {
     await sendSmtpMessage(toEmail, message);
 }
 
-function renderPlayTestInvitation() {
-    const content = require('./play-test-invitation-content');
+function renderPlayTestInvitation(invitationUrl) {
+    const content = require('./play-test-invitation-content').build(invitationUrl);
     const { subject, body, actionUrl, actionLabel } = content;
     return {
         subject: `【月读空间】${subject}`,
         text: `${body}\n\n${actionLabel}：${actionUrl}\n\n此邮件由月读空间发送，请使用正文中的联系邮箱反馈。`,
-        html: renderMailFrame({ subject, preheader: '使用报名邮箱加入 Google Play 内部测试，安装月读空间。', siteUrl: normalizeSiteUrl(config.publicSiteUrl),
-            body: renderMailHeading({ label: 'GOOGLE PLAY · 内部测试', title: subject, lead: '感谢你报名，邀请你一起体验和改进月读空间。' })
+        html: renderMailFrame({ subject, preheader: `使用报名邮箱${actionLabel}，安装月读空间。`, siteUrl: normalizeSiteUrl(config.publicSiteUrl),
+            body: renderMailHeading({ label: content.track === 'internal' ? 'GOOGLE PLAY · 内部测试' : 'GOOGLE PLAY · 封闭测试', title: subject, lead: '感谢你报名，邀请你一起体验和改进月读空间。' })
                 + renderMailPanel(`<div class="mail-ink" style="color:#25304a;font-size:15px;line-height:1.9;overflow-wrap:anywhere;word-break:break-word;">${escapeHtml(body).replace(/\n/g, '<br>')}</div>`)
                 + renderMailAction(actionUrl, actionLabel) })
     };
 }
 
-function buildPlayTestInvitationMessage({ fromName, fromEmail, toEmail }) {
-    return buildMultipartMessage({ fromName, fromEmail, toEmail, content: renderPlayTestInvitation() });
+function buildPlayTestInvitationMessage({ fromName, fromEmail, toEmail, invitationUrl }) {
+    return buildMultipartMessage({ fromName, fromEmail, toEmail, content: renderPlayTestInvitation(invitationUrl) });
 }
 
-async function sendPlayTestInvitation(toEmail) {
+async function sendPlayTestInvitation(toEmail, invitationUrl) {
     const smtp = config.smtp;
     if (!smtp.user || !smtp.pass) throw new Error('SMTP credentials are not configured');
-    const message = buildPlayTestInvitationMessage({ fromName: smtp.fromName, fromEmail: smtp.user, toEmail });
+    const message = buildPlayTestInvitationMessage({ fromName: smtp.fromName, fromEmail: smtp.user, toEmail, invitationUrl });
     await sendSmtpMessage(toEmail, message);
 }
 

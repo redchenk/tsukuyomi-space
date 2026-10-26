@@ -48,7 +48,7 @@ const leaderboardTotalPages = ref(1);
 const sessionUser = computed(() => props.user || getSession()?.user || null);
 const currentUserId = computed(() => String(sessionUser.value?.id || ''));
 const copy = computed(() => ({
-  title: props.t.game || (props.lang === 'ja' ? 'かぐやラン' : props.lang === 'en' ? 'Kaguya Run' : '辉夜快跑'),
+  title: props.t.gameKaguya || (props.lang === 'ja' ? 'かぐやラン' : props.lang === 'en' ? 'Kaguya Run' : '辉夜快跑'),
   loading: props.t.gameLoading || (props.lang === 'ja' ? 'ゲームを読み込み中' : props.lang === 'en' ? 'Loading game' : '正在加载游戏'),
   unavailable: props.t.gameUnavailable || (props.lang === 'ja' ? 'ゲームを読み込めませんでした' : props.lang === 'en' ? 'Unable to load the game' : '游戏加载失败'),
   retry: props.t.retry || (props.lang === 'ja' ? '再試行' : props.lang === 'en' ? 'Retry' : '重试'),
@@ -245,6 +245,7 @@ watch(currentUserId, (nextUserId, previousUserId) => {
     <section class="game-shell" :aria-label="copy.title">
       <header class="game-toolbar">
         <div class="game-heading">
+          <a class="game-icon-button" href="/game" :aria-label="props.t.game" @click.prevent="emit('go', '/game')"><TsIcon name="arrowLeft" :size="18" /></a>
           <TsIcon name="gamepad" :size="22" />
           <h1>{{ copy.title }}</h1>
         </div>

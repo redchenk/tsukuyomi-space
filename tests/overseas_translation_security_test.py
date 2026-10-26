@@ -61,6 +61,14 @@ class OverseasTranslationSecurityTests(unittest.TestCase):
             with self.assertRaises(ValueError, msg=value):
                 normalize(value)
 
+    def test_game_routes_are_public_without_opening_arbitrary_subpaths(self):
+        for path in ("/game", "/game/gomoku", "/game/kaguya-run"):
+            self.assertEqual(self.service.normalize_public_seo_path(path + "?utm_source=test"), path)
+            self.assertIn(path, self.service.SEO_ROUTE_COPY)
+        for path in ("/game/private", "/game/gomoku/admin", "/game-runtime/anything"):
+            with self.assertRaises(ValueError):
+                self.service.normalize_public_seo_path(path)
+
     def test_translated_api_only_accepts_public_read_routes(self):
         normalize = self.service.normalize_translated_api_path
         self.assertEqual(

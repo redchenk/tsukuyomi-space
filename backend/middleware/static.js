@@ -51,7 +51,9 @@ const SEO_ROUTES = [
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
     { path: '/download', priority: '0.7', changefreq: 'weekly' },
     { path: '/pixel', priority: '0.7', changefreq: 'weekly' },
-    { path: '/game', priority: '0.7', changefreq: 'monthly' }
+    { path: '/game', priority: '0.7', changefreq: 'monthly' },
+    { path: '/game/gomoku', priority: '0.7', changefreq: 'monthly' },
+    { path: '/game/kaguya-run', priority: '0.6', changefreq: 'monthly' }
 ];
 
 const TOPIC_ROUTES = [
@@ -406,7 +408,9 @@ function serveStaticFiles(app) {
         }
         return sendPublic(req, res, renderPixelHtml(seoRepository.pixelSummaries(24)));
     });
-    app.get('/game', (req, res) => sendPublic(req, res, renderGameHtml()));
+    for (const gamePath of ['/game', '/game/gomoku', '/game/kaguya-run']) {
+        app.get(gamePath, (req, res) => sendPublic(req, res, renderGameHtml(gamePath)));
+    }
     app.get('/wiki', (req, res) => sendPublic(req, res, renderWikiHtml(WIKI_ENTRIES)));
     for (const [segment, kind] of [['characters', 'character'], ['terms', 'term']]) {
         app.get(`/wiki/${segment}/:slug`, (req, res) => {
@@ -490,7 +494,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/apply', '/admin/play-testing', '/privacy', '/delete-account', '/admin/account-deletions', '/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/live2d', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/download', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/payments', '/payments/', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game']);
+        const vueRoutes = new Set(['/apply', '/admin/play-testing', '/privacy', '/delete-account', '/admin/account-deletions', '/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/live2d', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/download', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/payments', '/payments/', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game', '/game/gomoku', '/game/kaguya-run']);
         const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
         if (vueRoutes.has(req.path) || ['/fushi/connect', '/fushi/astrbot/callback'].includes(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {

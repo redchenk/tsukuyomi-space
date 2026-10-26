@@ -67,7 +67,7 @@ PRIVATE_PATH_RE = re.compile(
     r"^/(?:terminal|admin|editor|room/settings|room-settings|user-center|notifications|login|register|gallery/manage)(?:/|$)"
 )
 PUBLIC_SEO_PATHS = frozenset({
-    "/", "/hub", "/stage", "/plaza", "/wiki", "/gallery", "/pixel", "/game",
+    "/", "/hub", "/stage", "/plaza", "/wiki", "/gallery", "/pixel", "/game", "/game/gomoku", "/game/kaguya-run",
     "/reality", "/room", "/download", "/friend-links",
     "/topics/chou-kaguya-hime", "/topics/yachiyo-live2d",
     "/topics/ai-character-room", "/topics/kaguya-yachiyo",
@@ -215,6 +215,14 @@ SEO_ROUTE_COPY = {
         "Create pixel art with multiple canvas sizes, brushes, fill tools and palettes. Import images, save drafts, export PNG files and share your artwork with the community.",
     ),
     "/game": (
+        "Game Center | Play with Yachiyo",
+        "Play Moonlit Gomoku with Yachiyo or challenge your score in Kaguya Run.",
+    ),
+    "/game/gomoku": (
+        "Moonlit Gomoku | Play with Yachiyo",
+        "Play Gomoku with Yachiyo, with difficulty settings, hints, undo and local saves.",
+    ),
+    "/game/kaguya-run": (
         "Kaguya Run Rhythm Game | Tsukuyomi Space",
         "Play Kaguya Run, a rhythm runner with desktop keyboard, mobile touch and fullscreen controls.",
     ),
@@ -226,6 +234,15 @@ SEO_ROUTE_COPY = {
         "Partner Sites | Tsukuyomi Space",
         "Discover approved independent sites, blogs and creative partners connected with Tsukuyomi Space.",
     ),
+    '/privacy': (
+        'Privacy policy | Tsukuyomi Space',
+        'How Tsukuyomi Space handles account data, content, AI, payments and deletion requests.',
+    ),
+    '/delete-account': (
+        'Account deletion | Tsukuyomi Space',
+        'Request account and associated data deletion online or by email, even after uninstalling the app.',
+    ),
+
 }
 
 
@@ -1254,6 +1271,8 @@ def prewarm() -> None:
         "/gallery",
         "/pixel",
         "/game",
+        "/game/gomoku",
+        "/game/kaguya-run",
         "/reality",
         "/room",
         "/download",

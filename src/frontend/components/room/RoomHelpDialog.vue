@@ -5,7 +5,7 @@ const props = defineProps({ open: Boolean, configured: Boolean, completed: Boole
 const emit = defineEmits(['close', 'go', 'chat', 'diary']);
 const modal = useModalDialog(() => props.open);
 const features = [
-  { path: '/game', title: '辉夜快跑', icon: 'play', description: '跟着音乐跑一局，进入后查看键盘或触屏操作。' },
+  { path: '/game', title: '游戏中心', icon: 'play', description: '和八千代下一局五子棋，或挑战辉夜快跑。' },
   { path: '/live2d', title: 'Live2D 舞台', icon: 'sparkles', description: '先试表情和动作，无需聊天模型；AI 演出与语音另行配置。' },
   { path: '/plaza', title: '月读广场', icon: 'message', description: '看看同好在聊什么，登录后留言、回复或参与话题。' },
   { path: '/wiki', title: '作品百科', icon: 'book', description: '查找角色、故事与音乐，继续回味作品。' },

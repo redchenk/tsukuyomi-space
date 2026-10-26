@@ -422,7 +422,9 @@ describe('frontend navigation routes', () => {
         const gameCss = source('src/frontend/styles/routes/game.css');
         const staticMiddleware = source('backend/middleware/static.js');
 
-        assert.match(router, /path: '\/game',\s*name: 'game',\s*component: GamePage/);
+        assert.match(router, /path: '\/game',\s*name: 'game',\s*component: GameCenterPage/);
+        assert.match(router, /path: '\/game\/gomoku',\s*name: 'gomoku',\s*component: GomokuPage/);
+        assert.match(router, /path: '\/game\/kaguya-run',\s*name: 'kaguyaRun',\s*component: GamePage/);
         assert.match(shell, /path: '\/game'.+icon: 'gamepad'.+spa: true/);
         assert.match(game, /sandbox="allow-scripts allow-pointer-lock allow-downloads"/);
         assert.doesNotMatch(game, /allow-same-origin/);

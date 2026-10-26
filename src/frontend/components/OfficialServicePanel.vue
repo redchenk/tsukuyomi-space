@@ -66,7 +66,8 @@ defineExpose({ reload: load });
     <template v-if="dashboard">
       <p class="payment-muted">在 Room 设置选择“站内直供”，即可使用网站余额聊天。</p>
       <article v-for="model in dashboard.models" :key="model.id" class="payment-model-card">
-        <div class="payment-section-heading"><div><h3>{{ model.id }}</h3><p class="payment-muted">{{ model.provider }} · 最多输出 {{ model.max_output_tokens }} Token</p></div><span class="payment-badge" :class="{ 'is-muted': !model.enabled }">{{ model.enabled ? '服务已启用' : '暂未开放' }}</span></div>
+        <div class="payment-section-heading"><div><h3>{{ model.id }}</h3><p class="payment-muted">{{ model.provider }} · {{ model.capabilities?.vision ? '文字与图片' : '文字' }} · 最多输出 {{ model.max_output_tokens }} Token</p></div><span class="payment-badge" :class="{ 'is-muted': !model.enabled }">{{ model.enabled ? '服务已启用' : '暂未开放' }}</span></div>
+        <p v-if="model.capabilities?.vision" class="payment-muted">Room 可直接发送图片，图片与文字按实际 Token 用量统一计费。</p>
         <dl v-if="model.price" class="payment-price-grid">
           <div><dt>输入 · 未命中缓存</dt><dd>¥{{ moneyAtoms(model.price.rates_per_million_money_atoms.input_uncached) }}</dd></div>
           <div><dt>输入 · 命中缓存</dt><dd>¥{{ moneyAtoms(model.price.rates_per_million_money_atoms.input_cached) }}</dd></div>

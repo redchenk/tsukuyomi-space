@@ -52,7 +52,7 @@ export function officialRoomSettings(settings, dashboard, origin = originOf()) {
   const layer = config.models[scope] || { parameters: {}, mappings: {}, capabilities: {} };
   const requested = runtime.resolveParameters({ ...next, runtimeConfig: config }).maxOutputTokens.value;
   config.models[scope] = { ...layer, parameters: { ...layer.parameters, maxOutputTokens: Math.min(requested ?? model.max_output_tokens, model.max_output_tokens) }, mappings: { ...layer.mappings, maxOutputTokens: 'max_tokens' } };
-  config.declarations[scope] = { text: true, image: false, tools: true, streaming: true };
+  config.declarations[scope] = { text: true, image: model.capabilities?.vision === true, tools: true, streaming: true };
   next.runtimeConfig = config;
   return next;
 }

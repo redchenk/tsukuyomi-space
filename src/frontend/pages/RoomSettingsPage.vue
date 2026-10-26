@@ -495,7 +495,7 @@ async function syncModelCatalog(force = true) {
       const dashboard = await fetchOfficialRoomDashboard({ signal: controller.signal });
       if (revision !== modelCatalogRevision) return;
       officialSupply.dashboard = dashboard;
-      modelCatalog.models = dashboard.models.map(item => ({ ...item, nativeId: item.id, label: item.id, source: 'site', capabilities: { text: true, image: false, tools: true, streaming: true } }));
+      modelCatalog.models = dashboard.models.map(item => ({ ...item, nativeId: item.id, label: item.id, source: 'site', capabilities: { text: true, image: item.capabilities?.vision === true, tools: true, streaming: true } }));
       if (!llm.model && dashboard.models[0]) llm.model = dashboard.models[0].id;
       modelCatalog.message = dashboard.enabled && dashboard.models.length ? '使用当前登录账号，无需填写 API 密钥。' : '站内直供暂未开放，请稍后再试或选择其他连接方式。';
     } catch (error) {
@@ -2618,7 +2618,7 @@ onBeforeUnmount(() => {
               <p v-if="officialSelectedModel?.price">
                 每百万 Token：输入 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.input_uncached) }}，缓存输入 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.input_cached) }}，输出 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.output) }}。按实际用量结算，测试连接也会产生用量。
               </p>
-              <p v-if="officialSelectedModel">单次输出上限 {{ officialSelectedModel.max_output_tokens }} Token；当前直供支持文字聊天和工具调用，图片请配合 MCP 识图。</p>
+              <p v-if="officialSelectedModel">单次输出上限 {{ officialSelectedModel.max_output_tokens }} Token；{{ officialSelectedModel.capabilities?.vision ? '支持文字、图片与工具调用。图片会自动压缩，按实际 Token 用量计费。' : '支持文字聊天和工具调用；图片请配合 MCP 识图。' }}</p>
               <div class="settings-official-links">
                 <a class="ghost-btn compact" href="/payments" @click.prevent="emit('go', '/payments')">支付中心</a>
                 <a v-if="!officialSupply.dashboard && !modelCatalog.loading" class="ghost-btn compact" href="/login?redirect=%2Froom%2Fsettings">登录账号</a>
