@@ -1,9 +1,20 @@
-# 月下漂流瓶（首版）
+# 星海来信（漂流瓶 · 首版）
 
-入口：探索菜单 → 漂流瓶，或 `/drift`。管理员从内容管理的“漂流瓶”标签进入
+入口：发现菜单 → 星海来信，或 `/drift`。管理员从内容管理的“星海来信”标签进入
 `/admin?tab=drift`，复用内容管理员的站点登录和权限；旧 `/admin/drift` 会跳转。
 
+页面简介：**把一句心事交给潮汐，遇见另一端的某个人。**
+海边介绍和搜索别名保留“漂流瓶”，投捡瓶与纸条交互保持不变。
+
 完整操作步骤、预期结果与勾选记录见[漂流瓶完整手动验收流程](drift-bottles-manual-test.md)。
+
+## 界面预览
+
+以下截图来自隔离本机环境，使用合成账号和示例文字；完整展示见[截图说明](screenshots/drift/README.md)。
+
+![星海来信海边](screenshots/drift/shore-desktop.png)
+
+![整合后的内容审核标签](screenshots/drift/moderation-desktop.png)
 
 ## 当前交接状态
 
@@ -116,7 +127,7 @@ unset DRIFT_TEST_PASSWORD
 
 账号 A 为 `drift-a`，账号 B 为 `drift-b`；都使用刚输入的测试密码。
 审核员用 `.env.drift-test.local` 配置的账号在 `/login` 登录，再进入
-内容管理页 `/admin`，点击“漂流瓶”标签（可直达 `/admin?tab=drift`），无需进入超级管理员 Terminal。旧链接 `/admin/drift` 会跳转到此标签。
+内容管理页 `/admin`，点击“星海来信”标签（可直达 `/admin?tab=drift`），无需进入超级管理员 Terminal。旧链接 `/admin/drift` 会跳转到此标签。
 
 ### 手工测试清单
 

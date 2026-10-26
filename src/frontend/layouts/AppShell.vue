@@ -62,7 +62,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
-  { path: '/drift', key: 'drift', label: props.lang === 'en' ? 'Drift bottles' : '漂流瓶', icon: 'plaza', active: props.routeName === 'drift', spa: true },
+  { path: '/drift', key: 'drift', label: props.lang === 'en' ? 'Starlit Letters' : props.lang === 'ja' ? '星の海からの手紙' : '星海来信', icon: 'plaza', active: props.routeName === 'drift', spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },

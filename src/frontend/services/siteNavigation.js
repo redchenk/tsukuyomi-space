@@ -7,7 +7,7 @@ const copy = {
     loading: '正在查找文章…', empty: '没有找到匹配内容，换个关键词试试。', failed: '文章暂时加载失败，页面入口仍可使用。',
     allArticles: '查看全部文章结果', retry: '重试', searchHelp: '搜索公开文章或快速前往页面',
     shortLabels: { hub: '中枢', room: '房间', plaza: '广场', stage: '舞台' },
-    descriptions: { drift: '投一份心事，捡一场相遇', download: '手机与电脑原生应用', stage: '文章、故事与创作手记', plaza: '留言、回复与社区日常', growth: '签到、任务与成长记录', rss: '用 RSS 阅读器接收公开动态', wiki: '角色、音乐与月读世界', gallery: '收集与分享喜欢的创作', pixel: '把灵感画进小小像素', game: '和八千代一起，轻松玩一局', agentOs: '打开你的智能工作空间', reality: '关于本站与开源项目', friendLinks: '去看看同频的小站' }
+    descriptions: { drift: '把一句心事交给潮汐，遇见另一端的某个人。', download: '手机与电脑原生应用', stage: '文章、故事与创作手记', plaza: '留言、回复与社区日常', growth: '签到、任务与成长记录', rss: '用 RSS 阅读器接收公开动态', wiki: '角色、音乐与月读世界', gallery: '收集与分享喜欢的创作', pixel: '把灵感画进小小像素', game: '和八千代一起，轻松玩一局', agentOs: '打开你的智能工作空间', reality: '关于本站与开源项目', friendLinks: '去看看同频的小站' }
   },
   en: {
     search: 'Search Tsukuyomi', searchHint: 'Search pages and articles…', account: 'Account menu', enterRoom: 'Enter room',
@@ -32,7 +32,7 @@ const copy = {
 };
 
 const aliases = {
-  drift: '漂流瓶 私信 回信 bottle drift tide', rss: 'rss 订阅 订閱 フィード feed subscribe subscription', hub: '中枢 大厅 首页 home hub', room: '房间 私人居所 八千代 yachiyo chat room',
+  drift: '星海来信 漂流瓶 私信 回信 starlit letters bottle drift tide', rss: 'rss 订阅 订閱 フィード feed subscribe subscription', hub: '中枢 大厅 首页 home hub', room: '房间 私人居所 八千代 yachiyo chat room',
   stage: '文章 主舞台 创作 article stage', plaza: '广场 留言 评论 community plaza',
   wiki: '百科 角色 音乐 wiki', gallery: '图库 图片 插画 gallery', pixel: '像素 工坊 pixel arena',
   game: '游戏中心 五子棋 八千代 辉夜快跑 game center gomoku yachiyo kaguya run 五目並べ ゲーム', friendLinks: '友链 友情链接 friends', reality: '现实 关于 感谢 about',
