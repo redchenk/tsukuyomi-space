@@ -2,7 +2,7 @@ import { isReducedPerformance, PERFORMANCE_PROFILE_EVENT } from './performance';
 
 const BLOCKS = '[data-scroll-reveal], .panel, [data-material="content"], [data-material="card"], .scene-card, .stage-card, .gallery-card, .plaza-msg-card, .friend-link-card, .notification-card, .attachments-card, .uc-card, .uc-article-item, .uc-pixel-card, .profile-article, .artwork-card, .room-settings-card, .terminal-card, .growth-overview, .growth-task-card, .download-app-card, .reality-section, .wiki-entry-section, .article-content > *, .wiki-entry-article > p';
 const TARGETS = `${BLOCKS}, h1, h2, h3`;
-const EXCLUDED = '[data-scroll-reveal="off"], [role="dialog"], [contenteditable], textarea, pre, .room-chat-messages, .room-chat-composer, .arena-canvas-viewport, .game-stage, .live2d-stage, .ts-skeleton';
+const EXCLUDED = '[data-scroll-reveal="off"], dialog, [role="dialog"], [contenteditable], textarea, pre, .room-chat-messages, .room-chat-composer, .arena-canvas-viewport, .game-stage, .live2d-stage, .ts-skeleton';
 
 // Content is visible by default. Only a viewport re-entry gets an animation;
 // failed JS, initial rendering, find-in-page and cached returns stay readable.

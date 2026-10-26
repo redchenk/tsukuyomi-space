@@ -64,6 +64,18 @@ test('light and dark shores, letters and drafts follow the selected theme', asyn
             await page.getByRole('tab', { name: '我的瓶子', exact: true }).click();
             await page.locator('.drift-list-item').filter({ hasText: content }).click();
             await expect(page.locator('.drift-original-paper')).toHaveText(content);
+            // Reopening a native dialog must not animate its title through
+            // the eyebrow, including while the surrounding page reveals.
+            const titleGaps = await page.locator('.drift-dialog-header').evaluate(async header => {
+                const gaps = [];
+                for (let frame = 0; frame < 4; frame++) {
+                    await new Promise(requestAnimationFrame);
+                    gaps.push(header.querySelector('h2').getBoundingClientRect().top
+                        - header.querySelector('.drift-eyebrow').getBoundingClientRect().bottom);
+                }
+                return gaps;
+            });
+            expect(Math.min(...titleGaps)).toBeGreaterThanOrEqual(4.5);
             await page.screenshot({ path: info.outputPath(`letter-${mode}.png`) });
             await expect(page.locator('.drift-reply')).toContainText('愿你今晚睡个好觉。');
             expect(await contrast(page.locator('.drift-original-paper .drift-content'), '.drift-paper')).toBeGreaterThanOrEqual(4.5);
