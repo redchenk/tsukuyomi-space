@@ -35,7 +35,7 @@ for(const lang of ['en','ja'])test(`all public destinations render localized con
  test.setTimeout(60000);
  await language(page,lang);const errors=[];page.on('pageerror',error=>errors.push(error.message));
  const remoteTranslation=[];page.on('request',r=>{if(r.url().includes('/en-translate'))remoteTranslation.push(r.url());});
- const destinations=[['/','access-enter',lang==='en'?'Enter Tsukuyomi Space':'月読空間へ'],['/hub','.hub'],['/stage','.stage-page'],['/wiki','.wiki-page'],['/gallery','.gallery-page'],['/room/settings','.room-settings-page'],['/login','.auth-page'],['/register','.auth-page'],['/plaza','.plaza-page'],['/friend-links','.friend-links-page'],['/reality','.reality-page'],['/pixel','.pixel-workspace'],['/game','.game-page']];
+ const destinations=[['/','access-enter',lang==='en'?'Enter Tsukuyomi Space':'月読空間へ'],['/hub','.hub'],['/stage','.stage-page'],['/wiki','.wiki-page'],['/gallery','.gallery-page'],['/room/settings','.room-settings-page'],['/login','.auth-page'],['/register','.auth-page'],['/plaza','.plaza-page'],['/friend-links','.friend-links-page'],['/reality','.reality-page'],['/pixel','.pixel-workspace'],['/game','.game-center-page']];
  for(const [url,selector,label]of destinations){
   if(url==='/')await page.goto(url);
   else await page.evaluate(path=>document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(path),url);
@@ -85,7 +85,7 @@ for(const lang of ['en','ja']) test(`terminal panels keep localized controls (${
  await page.locator('input[autocomplete="username"]').fill('admin');
  await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
  await page.locator('.terminal-login-card button[type="submit"]').click();
- const tabs=page.locator('.terminal-nav-btn');await expect(tabs).toHaveCount(9);
+ const tabs=page.locator('.terminal-nav-btn');await expect(tabs).toHaveCount(11);
  for(let i=0;i<await tabs.count();i++) { await tabs.nth(i).click();await expect(page.locator('.terminal-panel')).toBeVisible(); }
  expect(await page.locator('.terminal-nav-group-label').allTextContents()).toEqual(lang==='en'?['Inspection','Content','System']:['点検','内容','システム']);
 });

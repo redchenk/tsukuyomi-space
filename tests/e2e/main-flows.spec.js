@@ -727,7 +727,7 @@ test('game leaderboard pages a large ranking in a bounded vertical scroll region
     }));
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/game');
+    await page.goto('/game/kaguya-run');
 
     const list = page.locator('.game-rank-list');
     await expect(list.locator('li')).toHaveCount(50);
