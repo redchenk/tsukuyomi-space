@@ -1,9 +1,22 @@
-# 月下漂流瓶（首版）
+# 星海来信（漂流瓶 · 首版）
 
-入口：探索菜单 → 漂流瓶，或 `/drift`。管理员从内容管理的“漂流瓶”标签进入
+入口：发现菜单 → 星海来信，或 `/drift`。管理员从内容管理的“星海来信”标签进入
 `/admin?tab=drift`，复用内容管理员的站点登录和权限；旧 `/admin/drift` 会跳转。
 
+页面简介：**把一句心事交给潮汐，遇见另一端的某个人。**
+海边介绍和搜索别名保留“漂流瓶”，投捡瓶与纸条交互保持不变。
+
 完整操作步骤、预期结果与勾选记录见[漂流瓶完整手动验收流程](drift-bottles-manual-test.md)。
+
+## 界面预览
+
+以下为集成前 PR #29 的历史截图，使用合成账号和示例文字；当前集成版沿用网站季节主题，完整展示见[截图说明](screenshots/drift/README.md)。
+
+![星海来信海边](screenshots/drift/shore-desktop.png)
+
+![星海来信夜间海边](screenshots/drift/shore-dark-desktop.png)
+
+![整合后的内容审核标签](screenshots/drift/moderation-desktop.png)
 
 ## 当前交接状态
 
@@ -12,7 +25,7 @@
 超过保留期应重新部署并创建测试账号，密码通过环境变量提供。
 
 界面沿用网站的季节主题、全局背景、字体和按钮样式，海景仅保留在漂流瓶场景卡片内。
-浅色和深色模式均使用站点颜色变量；信纸、写信弹窗和手机布局已核对。
+海景卡片采用 PR #29 更新的日间／夜间插画。浅色和深色模式均使用站点颜色变量；信纸、写信弹窗和手机布局已核对。
 集成回归覆盖私密权限、重复提交、审核竞争与通知、翻译请求过期，以及桌面和手机交互。
 双账号人工验收已有历史记录；真实双域收发、独立 Argos 中/日→英翻译已完成提前补测，
 发现的横屏键盘和异常日志问题已修复，详见[双域与键盘补测报告](drift-bottles-cross-domain-results-2026-10-26.md)。
@@ -74,6 +87,11 @@
 
 ## 验证
 
+主题适配补测：桌面 Chromium、移动 Chromium、移动 WebKit 的主题与键盘场景 9/9 通过，
+检查真实素材切换、纸条原文/回信保持、草稿保留、正文/时间/按钮/输入占位的 4.5:1 对比度下限。
+导航与路由 Node 回归 65/65、中文/海外构建通过。主题场景见 `tests/e2e/drift-themes.spec.js`。
+
+
 - `node --test tests/drift-api.test.js tests/message-moderation.test.js`
 - `python3 -B tests/overseas_translation_security_test.py`
 - `npm run build:web` / `npm run build:web:overseas`
@@ -115,7 +133,7 @@ unset DRIFT_TEST_PASSWORD
 
 账号 A 为 `drift-a`，账号 B 为 `drift-b`；都使用刚输入的测试密码。
 审核员用 `.env.drift-test.local` 配置的账号在 `/login` 登录，再进入
-内容管理页 `/admin`，点击“漂流瓶”标签（可直达 `/admin?tab=drift`），无需进入超级管理员 Terminal。旧链接 `/admin/drift` 会跳转到此标签。
+内容管理页 `/admin`，点击“星海来信”标签（可直达 `/admin?tab=drift`），无需进入超级管理员 Terminal。旧链接 `/admin/drift` 会跳转到此标签。
 
 ### 手工测试清单
 

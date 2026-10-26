@@ -18,7 +18,7 @@ const tabs = [
   { id: 'messages', label: '留言', icon: 'message' },
   { id: 'gallery', label: '图库', icon: 'image' },
   { id: 'attachments', label: '附件', icon: 'paperclip' },
-  { id: 'drift', label: '漂流瓶', icon: 'message' }
+  { id: 'drift', label: '星海来信', icon: 'message' }
 ];
 const messageFilters = [
   { id: 'all', label: '全部' },

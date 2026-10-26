@@ -16,7 +16,7 @@
 
 ## 后续修复与复测
 
-下面的 87 项统计和截图保留首次验收时的历史结果。B07 重复投瓶及英文网络错误
+下面的 87 项统计保留首次验收时的历史结果。原始测试截图已移除，文字结果与接口记录保留。B07 重复投瓶及英文网络错误
 已在本 PR 后续修复，不将原历史数据改写成新一轮全量验收。
 
 - 投瓶与回信使用持久化提交回执，原样重试不重复写入、不重复通知；跨正文、语言、操作及瓶子的标识复用返回 409。
@@ -24,7 +24,7 @@
 - 网络错误有中/日/英文反馈；分别说明“结果未知，可能已保存”和“已保存但刷新失败，无需重发”。
 - 旧库升级通过新增迁移 `056_create_drift_submissions`，保留原瓶子与回信。
 - 自动复测：33 项 Node 回归、10 项翻译安全回归和 8 项 Chromium E2E 通过。浏览器真实中断已保存的响应后，投瓶（含刷新页面）与回信重试均只保存一次，回信通知只产生一次；读取失败及保存成功后刷新失败的本地化提示也通过。E2E 包含原有桌面/移动视口用户流程及管理页回归，使用本机缓存的 Chromium headless shell 1248。
-- `npm run check`、中文与海外版前端构建通过。新增浏览器用例见 `tests/e2e/drift-retry.spec.js`；[提交结果未知的本地化截图](drift-test-evidence/2026-10-25/retry-result-unknown.png)。
+- `npm run check`、中文与海外版前端构建通过。新增浏览器用例见 `tests/e2e/drift-retry.spec.js`。
 - 原先英文双域、独立翻译、真机软键盘和其他部分覆盖项目仍保持原结论，未由此次自动测试替代。
 - 2026-10-26 后续：真实双域、独立 Argos 翻译及键盘布局补测另见[新报告](drift-bottles-cross-domain-results-2026-10-26.md)，保留下表首次验收历史状态；操作者后续已完成实体 iPhone Safari 的投瓶、长回信、键盘横竖屏与草稿验收，电脑端也核对了往返收发。
 
@@ -36,13 +36,9 @@
 
 预期：同一次提交的重试能够识别原结果，或明确提示先核对结果。实际：没有幂等标识，二次发送创建第二条。本轮只复现投瓶；同类回信重试风险未单独重现。建议为提交增加稳定的请求标识及服务端去重，并覆盖丢响应后的重试测试。
 
-![丢响应后重试产生两个瓶子](drift-test-evidence/2026-10-25/duplicate.jpg)
-
 ### 2. 网络错误原样显示英文（B06/B07）
 
 中文界面断网或中断响应时显示 `Failed to fetch`，缺少本地化和“可能已经保存，请先查看列表”的提示。草稿保留正确。建议区分未发出与提交结果未知，并给出核对入口。
-
-[错误截图](drift-test-evidence/2026-10-25/lost-response.jpg)
 
 ## 逐项结果
 
@@ -200,7 +196,7 @@
 - [接口基础断言](drift-test-evidence/2026-10-25/api-results.json)：45/45。
 - [实际 A/B 屏蔽与通知计数](drift-test-evidence/2026-10-25/final-results.json)：双向 403、匹配空、通知 5→5；双击各存一条。
 - [公开输出及窗口恢复](drift-test-evidence/2026-10-25/audit-results.json)：六个公开入口无私人标记、2000 字回信成功、重复瓶 ID、窗口后恢复。
-- UI 截图：[五标签空队列](drift-test-evidence/2026-10-25/admin-final.jpg)、[手机回信](drift-test-evidence/2026-10-25/mobile.jpg)、[手机投瓶](drift-test-evidence/2026-10-25/mobile-throw.jpg)、[普通用户无管理权限](drift-test-evidence/2026-10-25/permission.jpg)、[长历史](drift-test-evidence/2026-10-25/history.jpg)、[结束后审核通过](drift-test-evidence/2026-10-25/closed-approved.jpg)、[屏蔽后审核通过](drift-test-evidence/2026-10-25/block-approved.jpg)、[日文原文](drift-test-evidence/2026-10-25/ja.jpg)。
+- 成品界面展示另见[星海来信截图说明](screenshots/drift/README.md)；示例截图不作为首次验收证据。
 - #74 / 回信 #124 的 UI＋数据库后验：`closed=1`、`status=approved`、A 通知总数审核前后均为 4。
 - 本轮新增的 B→A 屏蔽关系已移除，#4 仍可正常通信；结束/举报样本保持其验收状态。关注关系与测试内容保留，供人工回看，没有批量删除旧数据。
 - 网络 Offline、Fetch 响应拦截、临时视口均已清除，界面恢复中文浅色；没有保存测试账号密码。

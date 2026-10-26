@@ -1,4 +1,5 @@
 {
+  "星海来信": {"en": "Starlit Letters", "ja": "星の海からの手紙"},
   "文字与图片": {"en": "Text and images", "ja": "テキストと画像"},
   "文字": {"en": "Text", "ja": "テキスト"},
   "Room 可直接发送图片，图片与文字按实际 Token 用量统一计费。": {"en": "Send images directly in Room. Images and text are billed by actual token usage.", "ja": "Room から画像を直接送信できます。画像とテキストは実際のトークン使用量に応じて課金されます。"},

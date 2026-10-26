@@ -145,7 +145,7 @@ body:has(.drift-bottle-dialog[open]) :is(.site-pet-wrap,.site-music-drawer) { vi
 .drift-ocean { background: linear-gradient(180deg,#e8eafa14,transparent 50%),url('../../assets/drift/mirror-coast.webp') center / cover no-repeat; }
 .drift-ocean-sky, .drift-ocean-beach, .drift-moonlight, .drift-wave { display: none; }
 .drift-ocean-water { inset: 0; border: 0; background: none; z-index: -1; }
-.drift-floating-bottle { bottom: 23%; left: 47%; width: 32px; height: 57px; }
+.drift-floating-bottle { bottom: 12%; left: 85%; width: 26px; height: 46px; }
 .drift-ocean-copy { width: fit-content; max-width: calc(100% - 40px); margin: 20px; padding: 24px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); background: var(--drift-surface); color: var(--ts-text); text-shadow: none; box-shadow: var(--ts-editorial-shadow); }
 .drift-ocean-copy .drift-eyebrow { color: var(--ts-accent); }
 .drift-ocean-copy > p:last-child { color: var(--ts-muted); }
@@ -158,3 +158,7 @@ body:has(.drift-bottle-dialog[open]) :is(.site-pet-wrap,.site-music-drawer) { vi
 @media (max-width: 860px) {
   .drift-ocean-copy { max-width: calc(100% - 28px); margin: 14px; padding: 18px; }
 }
+
+/* Only the shore artwork changes; the page keeps the shared site theme. */
+html[data-theme="dark"] .drift-ocean { background: url('../../assets/drift/mirror-coast-night.webp') center / cover no-repeat; }
+@media (max-width: 860px) { .drift-floating-bottle { display: none; } }

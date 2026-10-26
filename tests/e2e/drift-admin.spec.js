@@ -41,7 +41,7 @@ test('content management reviews bottles and replies in one tab on desktop and m
         await expect(page.locator('#boot-splash')).toHaveCount(0);
         await expect(page).toHaveURL(/\/admin\?tab=drift$/);
         await expect(page.getByRole('heading', { name: '内容管理', exact: true })).toBeVisible();
-        const tab = page.locator('.admin-tabs button', { hasText: '漂流瓶' });
+        const tab = page.locator('.admin-tabs button', { hasText: '星海来信' });
         await expect(tab).toHaveAttribute('aria-current', 'page');
         await expect(page.locator('.admin-tabs button')).toHaveCount(5);
         await expect(page.locator('.drift-page')).toHaveCount(0);
