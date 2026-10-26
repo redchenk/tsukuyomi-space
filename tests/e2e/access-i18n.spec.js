@@ -32,13 +32,16 @@ test('access BFCache pageshow clears a transient exit state without a gesture',a
  await page.locator('.access-enter').click();await expect(page).toHaveURL(/\/hub$/);
 });
 for(const lang of ['en','ja'])test(`all public destinations render localized controls (${lang})`,async({page})=>{
- test.setTimeout(60000);
+ // Thirteen complete page loads plus every settings category.
+ test.setTimeout(90000);
  await language(page,lang);const errors=[];page.on('pageerror',error=>errors.push(error.message));
  const remoteTranslation=[];page.on('request',r=>{if(r.url().includes('/en-translate'))remoteTranslation.push(r.url());});
  const destinations=[['/','access-enter',lang==='en'?'Enter Tsukuyomi Space':'月読空間へ'],['/hub','.hub'],['/stage','.stage-page'],['/wiki','.wiki-page'],['/gallery','.gallery-page'],['/room/settings','.room-settings-page'],['/login','.auth-page'],['/register','.auth-page'],['/plaza','.plaza-page'],['/friend-links','.friend-links-page'],['/reality','.reality-page'],['/pixel','.pixel-workspace'],['/game','.game-center-page']];
  for(const [url,selector,label]of destinations){
-  if(url==='/')await page.goto(url);
-  else await page.evaluate(path=>document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(path),url);
+  // Inspect each localized destination after a complete document load; route
+  // transition/cancellation behavior is covered by the navigation suites.
+  await page.goto(url);
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   if(selector==='access-enter')await expect(page.locator('.access-enter')).toContainText(label);else await expect(page.locator(selector)).toBeVisible();
   if(url==='/wiki')await expect(page.locator('.wiki-filter-bar').first()).toContainText(lang==='en'?'Main characters':'主人公');
  }

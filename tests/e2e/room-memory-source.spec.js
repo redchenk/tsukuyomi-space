@@ -137,7 +137,8 @@ async function newChat(page) {
 
 for (const width of [1280, 390]) {
   test(`memory source local choice, scores and explicit merge work at ${width}px`, async ({ page }, testInfo) => {
-    test.setTimeout(60000);
+    // Local editing, two Room entries, merge verification and three screenshots.
+    test.setTimeout(90000);
     await page.setViewportSize({ width, height: 844 });
     const accountId = width === 1280 ? 'memory-source-local-desktop' : 'memory-source-local-mobile';
     const guestId = `source-guest-${width}`;

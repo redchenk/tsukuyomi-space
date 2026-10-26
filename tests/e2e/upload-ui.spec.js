@@ -72,6 +72,8 @@ test('measured slow upload, pause/resume and server confirmation remain readable
   await page.request.delete(`/api/assets/${asset.id}`,{headers:{Origin:new URL(page.url()).origin,'X-Requested-With':'XMLHttpRequest'}});
 });
 test('editor modal keeps controls readable and inserts the uploaded attachment', async ({ page }, info) => {
+  // Four viewport screenshots followed by a real multi-stage upload.
+  test.setTimeout(60000);
   await login(page); await page.goto('/editor');
   await page.getByRole('button',{name:'上传 / 选择附件',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'附件库'});
@@ -138,12 +140,19 @@ test('Room images wait for private upload confirmation before starting the reply
   await expect(card).toContainText('发送时上传');
   expect(await card.locator('progress').count()).toBe(0);
   await fits(page,'.room-image-upload, .upload-progress-file, #chatImagePreview');
-  await page.locator('#chatInput').fill('看看这张图片'); await page.locator('#sendChatBtn').click();
-  await expect(card).toHaveAttribute('data-stage','processing');
-  await expect(card).toContainText('等待服务器确认');
-  expect(replyStarted).toBe(false);
-  await fits(page,'.room-image-upload, .upload-progress-file');
-  await page.screenshot({path:info.outputPath('room-image-processing-390.png'),fullPage:true});
+  const gate = createHash('sha256').update(info.testId).digest('hex');
+  await page.request.post(`/__e2e/upload-hold?key=${gate}`);
+  await page.setExtraHTTPHeaders({ 'X-Upload-Fixture-Gate': gate });
+  try {
+    await page.locator('#chatInput').fill('看看这张图片'); await page.locator('#sendChatBtn').click();
+    await expect(card).toHaveAttribute('data-stage','processing');
+    await expect(card).toContainText('等待服务器确认');
+    expect(replyStarted).toBe(false);
+    await fits(page,'.room-image-upload, .upload-progress-file');
+    await page.screenshot({path:info.outputPath('room-image-processing-390.png'),fullPage:true});
+  } finally {
+    await page.request.post(`/__e2e/upload-release?key=${gate}`);
+  }
   await expect(card).toHaveAttribute('data-stage','complete');
   await expect(card).toContainText('图片已上传');
   await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])').last()).toContainText('图片收到了。');

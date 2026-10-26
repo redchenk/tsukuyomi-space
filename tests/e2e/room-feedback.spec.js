@@ -2,7 +2,8 @@ const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function expectReadable(page, selector) {
-  const contrast = await page.locator(selector).evaluate(element => {
+  // Theme colors transition independently; assess the settled palette.
+  await expect.poll(() => page.locator(selector).evaluate(element => {
     const rgba = value => value.match(/[\d.]+/g).map(Number);
     const luminance = rgb => rgb.slice(0, 3).map(n => n / 255).map(n => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)
       .reduce((sum, n, i) => sum + n * [0.2126, 0.7152, 0.0722][i], 0);
@@ -16,8 +17,7 @@ async function expectReadable(page, selector) {
       const a = luminance(fg), b = luminance(surface);
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     }));
-  });
-  expect(contrast).toBeGreaterThan(4);
+  })).toBeGreaterThan(4);
 }
 
 test('another device generates a complete cloud diary and retains messages sent during generation', async ({ page, browser, baseURL }, testInfo) => {

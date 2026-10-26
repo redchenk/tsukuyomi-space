@@ -40,6 +40,8 @@ async function expectRedLike(button) {
 
 for (const width of [1440, 390]) {
     test(`successful gallery likes stay red in cards, previews and all seasonal themes at ${width}px`, async ({ page }, testInfo) => {
+        // Eight full reloads and two like controls per palette on CI WebKit.
+        test.setTimeout(90_000);
         await page.setViewportSize({ width, height: 960 });
         const title = `月下影像-${testInfo.project.name}-${width}`;
         const asset = await createImage(page, title);

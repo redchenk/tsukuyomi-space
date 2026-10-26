@@ -160,13 +160,34 @@ const partnerServer = require('node:https').createServer({ key: fs.readFileSync(
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end('<p>合作方回调测试页</p>');
 }).listen(partnerPort, process.env.HOST);
+const uploadConfirmations = new Map();
 const server = require('node:http').createServer((req, res) => {
+    // Native XHR progress requires an actual request, not Playwright routing.
+    // Let upload tests hold the server acknowledgement until assertions finish.
+    const fixtureUrl = new URL(req.url, 'http://127.0.0.1');
+    if (req.method === 'POST' && ['/__e2e/upload-hold', '/__e2e/upload-release'].includes(fixtureUrl.pathname)) {
+        const key = fixtureUrl.searchParams.get('key');
+        if (fixtureUrl.pathname.endsWith('hold')) {
+            let release;
+            const pending = new Promise(resolve => { release = resolve; });
+            uploadConfirmations.set(key, { pending, release });
+        } else {
+            uploadConfirmations.get(key)?.release();
+            uploadConfirmations.delete(key);
+        }
+        res.writeHead(204); res.end(); return;
+    }
     // A test-only response delay lets native XHR send its body before the API
     // acknowledgement. Other suites and all production servers stay unaffected.
     if (req.headers['x-upload-fixture-delay'] === '1800' && ['POST', 'PUT'].includes(req.method)
         && ['/api/assets', '/api/user/avatar', '/api/articles', '/api/room/chat/images'].includes(req.url.split('?')[0])) {
         const end = res.end.bind(res);
-        res.end = (...args) => { setTimeout(() => end(...args), 1800); return res; };
+        const gate = uploadConfirmations.get(req.headers['x-upload-fixture-gate']);
+        res.end = (...args) => {
+            if (gate) gate.pending.then(() => end(...args));
+            else setTimeout(() => end(...args), 1800);
+            return res;
+        };
     }
     fixtureRequest.run(req.headers['x-upload-fixture-delay'] === '1800' && req.url.split('?')[0] === '/api/room/chat/images', () => app(req, res));
 }).listen(Number(process.env.PORT), process.env.HOST, () => {
