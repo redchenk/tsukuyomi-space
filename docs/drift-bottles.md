@@ -14,6 +14,8 @@
 
 ![星海来信海边](screenshots/drift/shore-desktop.png)
 
+![星海来信夜间海边](screenshots/drift/shore-dark-desktop.png)
+
 ![整合后的内容审核标签](screenshots/drift/moderation-desktop.png)
 
 ## 当前交接状态
@@ -24,6 +26,8 @@ Vercel Sandbox 当前只保留一天快照，不能依赖它长期保存测试�
 超过保留期应重新部署并创建测试账号，密码仍通过环境变量提供。
 
 界面保留海景卡片和信纸交互；页面浅色背景遮罩为 50%。
+海边主文案为“写下心事，也听听远方的声音”。浅色使用桃粉云层与淡紫天空，深色使用独立的深蓝流星夜空；
+两版均减少海面锐利高光，仅在远处保留少量灯笼暖光。瓶子列表、操作栏、读信和写信表单均随站点主题切换。
 已通过后端与路由回归 23 项、翻译安全测试 10 项；中/海外前端均曾完成构建，
 纸条交互已通过桌面和手机端浏览器自动测试。最终遮罩调整完成中文构建。
 双账号人工验收已有历史记录；真实双域收发、独立 Argos 中/日→英翻译已完成提前补测，
@@ -85,6 +89,11 @@ Vercel Sandbox 当前只保留一天快照，不能依赖它长期保存测试�
 本次沿用现有中/日→英翻译方向，没有新增英→中或中→日翻译服务。
 
 ## 验证
+
+主题适配补测：桌面 Chromium、移动 Chromium、移动 WebKit 的主题与键盘场景 9/9 通过，
+检查真实素材切换、纸条原文/回信保持、草稿保留、正文/时间/按钮/输入占位的 4.5:1 对比度下限。
+导航与路由 Node 回归 65/65、中文/海外构建通过。主题场景见 `tests/e2e/drift-themes.spec.js`。
+
 
 - `node --test tests/drift-api.test.js tests/message-moderation.test.js`
 - `python3 -B tests/overseas_translation_security_test.py`

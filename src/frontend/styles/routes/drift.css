@@ -1,10 +1,10 @@
-.page.drift-page { --drift-surface: var(--ts-editorial-surface,var(--ts-surface-strong)); --drift-soft: var(--ts-editorial-low,var(--ts-bg-soft)); --drift-paper: #fffaf0; --drift-paper-ink: #51483e; box-sizing: border-box; width: 100%; max-width: 1160px; margin: auto; padding: 110px 30px 36px; color: var(--ts-text); }
+.page.drift-page { --drift-surface: var(--ts-editorial-surface,var(--ts-surface-strong)); --drift-soft: var(--ts-editorial-low,var(--ts-bg-soft)); --drift-paper: #fffaf0; --drift-paper-sheet: #fffdf5; --drift-paper-ink: #51483e; --drift-paper-muted: #796750; --drift-paper-border: #b7a38355; --drift-paper-rule: #b7a38330; --drift-paper-reply: #ffffff80; --drift-paper-button: #fbf5e9; --drift-paper-hover: #eee4d2; --drift-paper-notice: #f3e9d8; --drift-paper-status: #86602d; --drift-paper-shadow: #cabca21a; --drift-action-ink: #fff; box-sizing: border-box; width: 100%; max-width: 1160px; margin: auto; padding: 110px 30px 36px; color: var(--ts-text); }
 .drift-page *, .drift-page *::before, .drift-page *::after { box-sizing: border-box; }
 .drift-page :is(h1,h2,h3,p) { margin: 0; }
 .drift-page button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--ts-border); border-radius: 12px; background: var(--drift-surface); color: inherit; font: inherit; font-size: .86rem; cursor: pointer; }
 .drift-page button:hover:not(:disabled) { background: var(--drift-soft); }
 .drift-page button:disabled { opacity: .5; cursor: default; }
-.drift-page .drift-primary { border-color: transparent; background: var(--ts-accent); color: white; font-weight: 600; }
+.drift-page .drift-primary { border-color: transparent; background: var(--ts-accent); color: var(--drift-action-ink); font-weight: 600; }
 .drift-page .drift-primary:hover:not(:disabled) { background: color-mix(in srgb,var(--ts-accent),black 12%); }
 .drift-page :is(button,a,summary,textarea):focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
 .drift-header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
@@ -60,54 +60,54 @@
 .drift-rules { margin: 18px 4px 0; color: var(--ts-muted); font-size: .75rem; line-height: 1.8; }
 .drift-rules summary { cursor: pointer; width: fit-content; }
 .drift-rules p { max-width: 720px; margin-top: 10px; }
-.drift-bottle-dialog { width: min(570px,calc(100vw - 36px)); max-height: min(820px,calc(var(--ts-visual-height,100dvh) - 32px)); padding: 0; border: 1px solid #b9a99266; border-radius: 22px; background: var(--drift-paper); color: var(--drift-paper-ink); box-shadow: 0 25px 100px #18263c40; overflow: hidden; }
+.drift-bottle-dialog { --ts-text: var(--drift-paper-ink); --ts-text-strong: var(--drift-paper-ink); --ts-muted: var(--drift-paper-muted); width: min(570px,calc(100vw - 36px)); max-height: min(820px,calc(var(--ts-visual-height,100dvh) - 32px)); padding: 0; border: 1px solid var(--drift-paper-border); border-radius: 22px; background: var(--drift-paper); color: var(--drift-paper-ink); box-shadow: 0 25px 100px #18263c40; overflow: hidden; }
 .drift-bottle-dialog[open] { display: flex; flex-direction: column; }
 .drift-bottle-dialog::backdrop { background: #1c2c3e8c; backdrop-filter: blur(5px); }
-.drift-dialog-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 22px 26px 17px; border-bottom: 1px solid #9c8b711f; }
+.drift-dialog-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 22px 26px 17px; border-bottom: 1px solid var(--drift-paper-border); }
 .drift-dialog-header h2 { font-family: var(--ts-font-serif); font-weight: 500; font-size: 1.22rem; }
-.drift-dialog-header .drift-eyebrow { color: #9b8b76; font-size: .52rem; }
-.drift-bottle-dialog button:not(.drift-primary) { color: #685b49; background: #fbf5e9; border-color: #b9a99259; }
-.drift-bottle-dialog button:not(.drift-primary):hover:not(:disabled) { background: #eee4d2; }
+.drift-dialog-header .drift-eyebrow { color: var(--drift-paper-muted); font-size: .52rem; }
+.drift-bottle-dialog button:not(.drift-primary) { color: var(--drift-paper-ink); background: var(--drift-paper-button); border-color: var(--drift-paper-border); }
+.drift-bottle-dialog button:not(.drift-primary):hover:not(:disabled) { background: var(--drift-paper-hover); }
 .drift-bottle-dialog .drift-icon-button { border: 0; background: transparent; }
-.drift-dialog-notice { padding: 10px 25px; border-bottom: 1px solid #9c8b7126; background: #f3e9d8; color: #7f6845; font-size: .78rem; line-height: 1.6; }
+.drift-dialog-notice { padding: 10px 25px; border-bottom: 1px solid var(--drift-paper-border); background: var(--drift-paper-notice); color: var(--drift-paper-ink); font-size: .78rem; line-height: 1.6; }
 .drift-found { display: flex; flex-direction: column; align-items: center; gap: 25px; padding: 30px 30px 40px; text-align: center; }
-.drift-found p { font-size: .9rem; line-height: 1.8; color: #8e7d68; }
+.drift-found p { font-size: .9rem; line-height: 1.8; color: var(--drift-paper-muted); }
 .drift-found-glow { display: grid; place-items: center; width: 220px; height: 230px; border-radius: 50%; background: radial-gradient(ellipse,#fffdf6,#e6e0ce99 48%,transparent 70%); }
 .drift-found-glow > svg { width: 92px; height: 165px; transform: rotate(28deg); color: #789a99; filter: drop-shadow(0 10px 8px #89764e20); }
 .drift-letter-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 22px 26px 15px; }
 .drift-letter-byline { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .drift-letter-byline > svg { width: 24px; height: 44px; color: #88a39e; transform: rotate(-12deg); }
 .drift-letter-byline > div { display: grid; gap: 5px; flex: 1; min-width: 0; }
-.drift-letter-byline span { font-size: .8rem; overflow-wrap: anywhere; }.drift-letter-byline time { font-size: .65rem; color: #a18f77; }
-.drift-paper { min-height: 170px; padding: 22px 22px 25px; background: repeating-linear-gradient(transparent 0,transparent 35px,#b7a38321 35px,#b7a38321 36px),#fffdf5; border: 1px solid #b7a38336; border-radius: 3px 3px 13px 3px; box-shadow: 2px 4px 0 #cabca21a; }
+.drift-letter-byline span { font-size: .8rem; overflow-wrap: anywhere; }.drift-letter-byline time { font-size: .65rem; color: var(--drift-paper-muted); }
+.drift-paper { min-height: 170px; padding: 22px 22px 25px; background: repeating-linear-gradient(transparent 0,transparent 35px,var(--drift-paper-rule) 35px,var(--drift-paper-rule) 36px),var(--drift-paper-sheet); border: 1px solid var(--drift-paper-border); border-radius: 3px 3px 13px 3px; box-shadow: 2px 4px 0 var(--drift-paper-shadow); }
 .drift-content { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--ts-font-serif); font-size: .98rem; line-height: 2.25; }
-.drift-thread-note { margin: 16px auto 0 !important; max-width: 340px; font-size: .78rem; line-height: 1.8; color: #95846d; text-align: center; }
+.drift-thread-note { margin: 16px auto 0 !important; max-width: 340px; font-size: .78rem; line-height: 1.8; color: var(--drift-paper-muted); text-align: center; }
 .drift-correspondence { margin-top: 28px; }
-.drift-correspondence > header { padding-bottom: 12px; border-bottom: 1px solid #b7a38336; }
-.drift-correspondence h3 { display: flex; align-items: baseline; gap: 10px; color: #8f7c62; font-size: .82rem; font-weight: 500; }
-.drift-correspondence h3 small { font-size: .7rem; opacity: .65; }
-.drift-reply { margin-top: 14px; padding: 17px 18px; border: 1px solid #c7bda83d; border-radius: 3px; background: #ffffff69; }
-.drift-reply header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; color: #95846d; font-size: .73rem; }
+.drift-correspondence > header { padding-bottom: 12px; border-bottom: 1px solid var(--drift-paper-border); }
+.drift-correspondence h3 { display: flex; align-items: baseline; gap: 10px; color: var(--drift-paper-muted); font-size: .82rem; font-weight: 500; }
+.drift-correspondence h3 small { font-size: .7rem; }
+.drift-reply { margin-top: 14px; padding: 17px 18px; border: 1px solid var(--drift-paper-border); border-radius: 3px; background: var(--drift-paper-reply); }
+.drift-reply header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; color: var(--drift-paper-muted); font-size: .73rem; }
 .drift-reply time { font-size: .62rem; }
 .drift-reply .drift-content { font-size: .9rem; line-height: 1.9; }
-.drift-letter-status { display: inline-block; margin-top: 12px; font-size: .7rem; color: #9b7340; }
-.drift-reader-footer { flex-shrink: 0; border-top: 1px solid #b7a38326; padding: 16px 26px 8px; }
+.drift-letter-status { display: inline-block; margin-top: 12px; font-size: .7rem; color: var(--drift-paper-status); }
+.drift-reader-footer { flex-shrink: 0; border-top: 1px solid var(--drift-paper-rule); padding: 16px 26px 8px; }
 .drift-letter-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-shrink: 0; padding: 0 0 8px; }
 .drift-letter-actions > button { min-width: 112px; }
-.drift-privacy { display: block; flex-shrink: 0; text-align: center; font-size: .6rem; color: #a18f77; padding: 5px 15px 14px; }
-.drift-letter-options, .drift-translation { margin-top: 20px; color: #9b8b76; font-size: .7rem; line-height: 1.8; }
+.drift-privacy { display: block; flex-shrink: 0; text-align: center; font-size: .6rem; color: var(--drift-paper-muted); padding: 5px 15px 14px; }
+.drift-letter-options, .drift-translation { margin-top: 20px; color: var(--drift-paper-muted); font-size: .7rem; line-height: 1.8; }
 .drift-letter-options summary, .drift-translation summary { width: fit-content; cursor: pointer; }
 .drift-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
 .drift-actions button, .drift-actions a { font-size: .75rem; }
 .drift-actions a { align-self: center; color: inherit; }
 .drift-translation > :not(summary) { margin-top: 10px; }
-.drift-page .drift-new-letter { display: flex; margin: 18px auto 0; font-size: .74rem; color: #8b7556; }
+.drift-page .drift-new-letter { display: flex; margin: 18px auto 0; font-size: .74rem; color: var(--drift-paper-muted); }
 .drift-letter-form { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px 18px; gap: 18px; overflow-y: auto; }
-.drift-writing-paper { display: flex; flex-direction: column; padding: 20px; border: 1px solid #b7a38336; background: #fffdf5; }
-.drift-writing-paper label { font-family: var(--ts-font-serif); font-size: .87rem; color: #a18f77; margin-bottom: 16px; }
-.drift-writing-paper textarea { display: block; width: 100%; min-height: 170px; max-height: 42dvh; padding: 0; border: 0; border-radius: 0; outline: none; color: var(--drift-paper-ink); font-family: var(--ts-font-serif); font-size: 1rem; line-height: 2.1; resize: vertical; background: repeating-linear-gradient(transparent 0,transparent 32.6px,#b7a38326 32.6px,#b7a38326 33.6px); }
-.drift-writing-paper textarea::placeholder { color: #b2a38b; }.drift-writing-paper small { align-self: flex-end; margin-top: 10px; font-size: .65rem; color: #a18f77; }
-.drift-reply-context { flex-shrink: 0; margin: 0; padding: 0 0 0 12px; border-left: 2px solid #b7a38366; color: #a18f77; font-family: var(--ts-font-serif); font-size: .78rem; line-height: 1.8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.drift-writing-paper { display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--drift-paper-border); background: var(--drift-paper-sheet); }
+.drift-writing-paper label { font-family: var(--ts-font-serif); font-size: .87rem; color: var(--drift-paper-muted); margin-bottom: 16px; }
+.drift-writing-paper textarea { display: block; width: 100%; min-height: 170px; max-height: 42dvh; padding: 0; border: 0; border-radius: 0; outline: none; color: var(--drift-paper-ink); font-family: var(--ts-font-serif); font-size: 1rem; line-height: 2.1; resize: vertical; background: repeating-linear-gradient(transparent 0,transparent 32.6px,var(--drift-paper-rule) 32.6px,var(--drift-paper-rule) 33.6px); }
+.drift-writing-paper textarea::placeholder { color: var(--drift-paper-muted); }.drift-writing-paper small { align-self: flex-end; margin-top: 10px; font-size: .65rem; color: var(--drift-paper-muted); }
+.drift-reply-context { flex-shrink: 0; margin: 0; padding: 0 0 0 12px; border-left: 2px solid var(--drift-paper-border); color: var(--drift-paper-muted); font-family: var(--ts-font-serif); font-size: .78rem; line-height: 1.8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .drift-notice { padding: 12px 16px; margin-bottom: 14px !important; border: 1px solid var(--ts-border); border-radius: 12px; background: var(--drift-surface); font-size: .8rem; line-height: 1.7; }
 .drift-loading { padding: 35px; text-align: center; color: var(--ts-muted); }.drift-login { display: flex; justify-content: space-between; color: var(--ts-accent); text-decoration: none; }
 body:has(.drift-bottle-dialog[open]) { overflow: hidden; }
@@ -142,17 +142,32 @@ body:has(.drift-bottle-dialog[open]) :is(.site-pet-wrap,.site-music-drawer) { vi
 .is-keyboard-open .drift-bottle-dialog.is-writing .drift-reply-context { display: none; }
 
 /* Original fan background: a shore facing the film's rose/lavender mirror sea. */
-.page.drift-page { --ts-accent: #697f9b; --ts-text: #48546b; --ts-text-strong: #354359; --ts-muted: #7c8798; --ts-border: #75899d2e; --drift-surface: #fffefaed; --drift-soft: #f0f0f5; }
+.page.drift-page { --ts-accent: #526885; --ts-text: #48546b; --ts-text-strong: #354359; --ts-muted: #59677d; --ts-border: #75899d2e; --drift-surface: #fffefaed; --drift-soft: #f0f0f5; }
 .app-shell:has(.drift-page) { --ts-site-background: linear-gradient(rgb(244 243 249 / 50%),rgb(242 242 249 / 50%)),url('../../assets/drift/mirror-coast.webp') center / cover no-repeat; }
 .drift-ocean { background: linear-gradient(180deg,#e8eafa14,transparent 50%),url('../../assets/drift/mirror-coast.webp') center / cover no-repeat; }
 .drift-ocean-sky, .drift-ocean-beach, .drift-moonlight, .drift-wave { display: none; }
 .drift-ocean-water { inset: 0; border: 0; background: none; z-index: -1; }
-.drift-floating-bottle { bottom: 23%; left: 47%; width: 32px; height: 57px; }
-.drift-ocean-copy { color: #3c4964; text-shadow: 0 1px 14px #fff4e6a6; }
-.drift-ocean-copy .drift-eyebrow { color: #65718b; }
+.drift-floating-bottle { bottom: 12%; left: 85%; width: 26px; height: 46px; }
+.drift-ocean-copy { width: fit-content; max-width: 100%; border-radius: 0 0 28px 0; background: #fff8eeeb; color: #3c4964; text-shadow: none; }
+.drift-ocean-copy .drift-eyebrow { color: #58647c; }
 .drift-ocean-copy > p:last-child { color: #58647c; }
 .drift-shore-dock { background: #fff8eece; border-color: #fff9f2bd; }
-html[data-theme="dark"] .page.drift-page { --ts-text: #e0e3ee; --ts-text-strong: #f0edf6; --ts-muted: #a5b0c2; --ts-border: #b4bfdf29; --drift-surface: #222b3bed; --drift-soft: #293145; }
-html[data-theme="dark"] .app-shell:has(.drift-page) { --ts-site-background: linear-gradient(#192438ed,#202c42f0),url('../../assets/drift/mirror-coast.webp') center / cover no-repeat; }
+html[data-theme="dark"] .page.drift-page { --ts-accent: #b5cbe6; --drift-action-ink: #182334; --drift-paper: #1d2839; --drift-paper-sheet: #243247; --drift-paper-ink: #eee8dc; --drift-paper-muted: #c1c5cf; --drift-paper-border: #b8c7dc44; --drift-paper-rule: #b8c7dc1c; --drift-paper-reply: #263448; --drift-paper-button: #2b3a50; --drift-paper-hover: #35485f; --drift-paper-notice: #354054; --drift-paper-status: #e4c597; --drift-paper-shadow: #080f192e; --ts-text: #e0e3ee; --ts-text-strong: #f0edf6; --ts-muted: #a5b0c2; --ts-border: #b4bfdf29; --drift-surface: #222b3bed; --drift-soft: #293145; }
+html[data-theme="dark"] .app-shell:has(.drift-page) { --ts-site-background: linear-gradient(#101a2c80,#101a2c99),url('../../assets/drift/mirror-coast-night.webp') center / cover no-repeat; }
 
 body:has(.drift-page) :is(.site-pet-wrap,.site-music-drawer) { visibility: hidden; pointer-events: none; }
+
+/* Night artwork and controls share the same theme as the collection and letters. */
+html[data-theme="dark"] .drift-ocean { background: url('../../assets/drift/mirror-coast-night.webp') center / cover no-repeat; border-color: #b4bfdf44; }
+html[data-theme="dark"] .drift-ocean-copy { background: #152238eb; color: #e8edf7; }
+html[data-theme="dark"] .drift-ocean-copy :is(h2,p) { color: inherit; }
+html[data-theme="dark"] .drift-ocean-copy .drift-eyebrow { color: #b9c8df; }
+html[data-theme="dark"] .drift-shore-dock { background: #1d2b40ed; border-color: #b4bfdf44; }
+html[data-theme="dark"] .drift-page .drift-dock-action { color: #e0e7f3; }
+html[data-theme="dark"] .drift-page .drift-dock-action:hover:not(:disabled) { background: #34445b; }
+html[data-theme="dark"] .drift-dock-icon { color: #b5cce1; }
+html[data-theme="dark"] .drift-dock-pick .drift-dock-icon { color: #e2c68d; background: radial-gradient(ellipse,#d5b66b26,transparent 70%); }
+html[data-theme="dark"] .drift-found-glow { background: radial-gradient(ellipse,#50698080,#30465f55 48%,transparent 70%); }
+
+/* The low horizon leaves the phone shore to the action dock. */
+@media (max-width: 860px) { .drift-floating-bottle { display: none; } }
