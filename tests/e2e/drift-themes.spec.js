@@ -35,11 +35,11 @@ test('light and dark shores, letters and drafts follow the selected theme', asyn
     let id;
     const content = `今天海边很安静，想听听远方的声音。 ${info.project.name}-${Date.now()}`;
     try {
-        await login(sender.request, 'reply-owner');
+        await login(sender.request, `drift-themes-owner-${info.project.name}`);
         const sent = await sender.request.post('/api/drift', { headers, data: { content } });
         expect(sent.status()).toBe(201);
         id = (await sent.json()).data.id;
-        await login(page.request, 'reply-reader');
+        await login(page.request, `drift-themes-reader-${info.project.name}`);
         const picked = await page.request.post('/api/drift/pick', { headers, data: {} });
         expect((await picked.json()).data.id).toBe(id);
         expect((await page.request.post(`/api/drift/${id}/replies`, { headers, data: { content: '这边也起风了。愿你今晚睡个好觉。' } })).status()).toBe(201);

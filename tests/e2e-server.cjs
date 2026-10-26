@@ -71,13 +71,15 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
-// Keyboard projects need independent identities: the drift quota is per user,
+// Browser scenarios need independent identities: the drift quota is per user,
 // and a full Chromium + mobile WebKit run must not consume a shared account.
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
-    for (const role of ['owner', 'reader']) {
-        const username = `drift-keyboard-${role}-${project}`;
-        db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
-            .run(username, username, `${username}@example.test`, bcrypt.hashSync('mem0-test-password', 4), 'user');
+    for (const scenario of ['keyboard', 'themes']) {
+        for (const role of ['owner', 'reader']) {
+            const username = `drift-${scenario}-${role}-${project}`;
+            db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+                .run(username, username, `${username}@example.test`, bcrypt.hashSync('mem0-test-password', 4), 'user');
+        }
     }
 }
 // A legacy manually marked invitation has no delivery receipt until explicitly sent.
