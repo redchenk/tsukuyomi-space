@@ -1,4 +1,4 @@
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect } = require('../e2e-drift-fixtures.cjs');
 
 const unknown = '暂时无法确认是否已保存。内容可能已经保存，请先查看我的瓶子或收取回信；保留原文重试不会重复发送。';
 async function login(request, baseURL, username) {

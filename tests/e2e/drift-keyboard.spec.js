@@ -1,4 +1,4 @@
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect } = require('../e2e-drift-fixtures.cjs');
 
 test.use({ isMobile: true, hasTouch: true });
 

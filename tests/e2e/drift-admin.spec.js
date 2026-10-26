@@ -1,4 +1,4 @@
-const { test, expect } = require('../e2e-fixtures.cjs');
+const { test, expect } = require('../e2e-drift-fixtures.cjs');
 
 async function login(context, baseURL, username, password) {
     const response = await context.request.post('/api/auth/login', {

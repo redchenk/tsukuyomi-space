@@ -16,6 +16,7 @@ const props = defineProps({
 });
 
 const status = ref('');
+const shareRoot = ref(null);
 let statusTimer;
 let cancelQQLaunch;
 let qqAttempt = 0;
@@ -94,9 +95,12 @@ function legacyCopy(value) {
   textarea.setAttribute('readonly', '');
   textarea.style.position = 'fixed';
   textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
+  // A native modal makes document.body outside the dialog inert. Keep the
+  // fallback selection inside this component so it can receive focus.
+  (shareRoot.value || document.body).appendChild(textarea);
   const previousFocus = document.activeElement;
   try {
+    textarea.focus({ preventScroll: true });
     textarea.select();
     if (!document.execCommand('copy')) throw new Error('Copy failed');
   } finally {
@@ -182,7 +186,7 @@ function copyShareText() {
 </script>
 
 <template>
-  <div class="social-share-actions">
+  <div ref="shareRoot" class="social-share-actions">
     <button v-if="canNativeShare" class="social-share-button primary" type="button" @click="nativeShare()">
       <TsIcon name="send" :size="17" />
       <span>{{ labels.system }}</span>
