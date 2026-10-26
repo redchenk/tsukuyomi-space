@@ -1,3 +1,4 @@
+const { assertPublicText } = require('./text-moderation');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -428,6 +429,7 @@ async function replaceInlineDataImages(content, { articleId = null, ownerId = nu
 }
 
 async function normalizeArticleMediaPayload(article, { articleId = null, ownerId = null, allowAnyAsset = false } = {}) {
+    assertPublicText({ title: article.title, excerpt: article.excerpt, content: article.content, tags: article.tags, category: article.category, readTime: article.readTime });
     const result = { ...article };
     const assetIds = [];
 
@@ -476,6 +478,7 @@ function replaceInlineDataImagesLocal(content, { articleId = null, ownerId = nul
 }
 
 function normalizeArticleMediaPayloadLocal(article, { articleId = null, ownerId = null } = {}) {
+    assertPublicText({ title: article.title, excerpt: article.excerpt, content: article.content, tags: article.tags, category: article.category, readTime: article.readTime });
     const result = { ...article };
     if (isDataImage(result.coverImage)) {
         const cover = saveDataImageLocal(result.coverImage, { articleId, ownerId, role: 'cover' });

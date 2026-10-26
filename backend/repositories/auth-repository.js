@@ -38,6 +38,7 @@ function isUsernameTaken(username) {
 }
 
 function createUser({ id, username, nickname = username, email, passwordHash, role = 'user', avatar = '' }) {
+    require('../services/text-moderation').assertPublicText({ username, nickname });
     return db.prepare(`
         INSERT INTO users (id, username, nickname, email, password_hash, role, avatar)
         VALUES (?, ?, ?, ?, ?, ?, ?)

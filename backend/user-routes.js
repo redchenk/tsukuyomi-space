@@ -1,3 +1,4 @@
+const { assertPublicText } = require('./services/text-moderation');
 // 鐢ㄦ埛涓績璺敱
 const express = require('express');
 const router = express.Router();
@@ -377,11 +378,12 @@ router.put('/profile', authenticateToken, (req, res) => {
         }
         const nickname = req.body?.nickname === undefined ? user.nickname : validateNickname(req.body.nickname);
         const bio = req.body?.bio === undefined ? user.bio || '' : String(req.body.bio || '').trim().slice(0, 500);
+        assertPublicText({ nickname, bio });
         userRepository.updateProfile(req.user.id, { nickname, bio });
         responseCache.delPrefix('public:');
         res.json({ success: true, data: { id: user.id, username: user.username, nickname, bio }, message: '个人资料已保存' });
     } catch (error) {
-        if (error.status === 400) return res.status(400).json({ success: false, message: error.message });
+        if (error.status === 400 || error.status === 422) return res.status(error.status).json({ success: false, message: error.message });
         console.error('鏇存柊鐢ㄦ埛璧勬枡澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }

@@ -1,3 +1,4 @@
+const { assertPublicText } = require('../services/text-moderation');
 const express = require('express');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
@@ -245,6 +246,7 @@ router.post('/', authenticateToken, (req, res) => {
     try {
         const payload = normalizeArtworkPayload(req.body);
         if (payload.error) return res.status(400).json({ success: false, message: payload.error });
+        assertPublicText({ title: payload.title, description: payload.description });
         const artwork = pixelArtRepository.createArtwork({
             authorId: req.user.id,
             ...payload
@@ -254,6 +256,7 @@ router.post('/', authenticateToken, (req, res) => {
         const growth = recordPixelGrowth(req.user.id, 'pixel_publish', artwork.id);
         res.status(201).json({ success: true, data: artwork, growth, message: '像素画已分享' });
     } catch (error) {
+        if (error.status === 422) return res.status(422).json({ success: false, code: error.code, message: error.message });
         console.error('Create pixel art failed:', error);
         res.status(500).json({ success: false, message: '像素画发布失败' });
     }
@@ -269,11 +272,13 @@ router.put('/:id', authenticateToken, (req, res) => {
 
         const payload = normalizeArtworkPayload(req.body);
         if (payload.error) return res.status(400).json({ success: false, message: payload.error });
+        assertPublicText({ title: payload.title, description: payload.description });
         const updated = pixelArtRepository.updateArtwork(artwork.id, payload, req.user.id);
         responseCache.delPrefix('public:pixel-art');
         responseCache.delPrefix('public:site-feed');
         res.json({ success: true, data: updated, message: '像素画已更新' });
     } catch (error) {
+        if (error.status === 422) return res.status(422).json({ success: false, code: error.code, message: error.message });
         console.error('Update pixel art failed:', error);
         res.status(500).json({ success: false, message: '像素画更新失败' });
     }

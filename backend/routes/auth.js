@@ -359,6 +359,7 @@ router.post('/register', async (req, res) => {
             }
         });
     } catch (error) {
+        if (error.status === 422) return res.status(422).json({ success: false, code: error.code, message: error.message });
         console.error('Register failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
@@ -577,6 +578,7 @@ router.post('/oauth/qq/create', async (req, res) => {
         if (/UNIQUE constraint failed/.test(error.message || '')) {
             return res.status(409).json({ success: false, message: '该 QQ 已绑定其他账号，或用户名已被使用' });
         }
+        if (error.status === 422) return res.status(422).json({ success: false, code: error.code, message: error.message });
         console.error('Create QQ OAuth account failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
@@ -647,6 +649,7 @@ router.post('/oauth/qq/email', async (req, res) => {
         if (/UNIQUE constraint failed/.test(error.message || '')) {
             return res.status(409).json({ success: false, message: '该邮箱或 QQ 已绑定其他账号' });
         }
+        if (error.status === 422) return res.status(422).json({ success: false, code: error.code, message: error.message });
         console.error('Complete QQ OAuth email binding failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }

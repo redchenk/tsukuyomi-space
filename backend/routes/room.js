@@ -1,3 +1,4 @@
+const { assertPublicText } = require('../services/text-moderation');
 const crypto = require('crypto');
 const express = require('express');
 const https = require('https');
@@ -858,13 +859,15 @@ router.post('/shares', authenticateToken, (req, res) => {
         }
 
         const title = cleanShareText(req.body?.title, 80) || '与八千代的一次对话';
+        const scene = normalizeShareScene(req.body?.scene);
+        assertPublicText({ title, userMessage: turn.userMessage, assistantMessage: turn.assistantMessage, city: scene.city, address: scene.address, musicTitle: scene.musicTitle });
         const share = roomShareRepository.createOrReplaceShare({
             userId: req.user.id,
             turnId,
             title,
             userMessage: turn.userMessage,
             assistantMessage: turn.assistantMessage,
-            scene: normalizeShareScene(req.body?.scene),
+            scene,
             ogImageAssetId
         });
         const growth = userGrowth.recordShare(req.user.id, 'room-card');

@@ -1439,7 +1439,7 @@ onUnmounted(() => {
                 <strong>留言审核</strong>
                 <span>关键词命中后进入人工审核，未命中自动通过</span>
               </div>
-              <label>留言审核关键词<textarea v-model="terminal.settings.messageReviewKeywords" rows="5" placeholder="每行一个或用逗号分隔。命中关键词的留言会进入待审，未命中则自动通过。留空时使用系统默认备案安全词库。"></textarea></label>
+              <label>附加文字审核关键词<textarea v-model="terminal.settings.messageReviewKeywords" rows="5" placeholder="每行一个或用逗号分隔。附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。"></textarea></label>
               <p class="terminal-setting-note">用于阅读广场、文章评论和回复。普通友好留言会自动公开；涉及安全、违法、广告等关键词的内容进入人工审核。</p>
             </div>
             <div class="terminal-settings-block terminal-settings-grid">
