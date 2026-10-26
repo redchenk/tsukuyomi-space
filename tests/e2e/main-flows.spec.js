@@ -358,7 +358,17 @@ test('plaza shows the latest reply first and lets readers expand the rest', asyn
 
     await page.goto('/plaza');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
-    await page.locator('.plaza-search').fill(marker);
+    // The newly created card also appears in the unfiltered feed. Wait for
+    // the debounced search to finish before testing its reply controls.
+    await Promise.all([
+        page.waitForResponse(response => {
+            const url = new URL(response.url());
+            return url.pathname.endsWith('/messages') && url.searchParams.get('q') === marker;
+        }),
+        page.locator('.plaza-search').fill(marker)
+    ]);
+    await expect(page.locator('.plaza-count')).toHaveText('1');
+    await expect(page.locator('.plaza-wall')).toHaveAttribute('aria-busy', 'false');
     const card = page.locator(`#msg-${messageId}`);
     await expect(card).toBeVisible();
     const replies = card.locator('.plaza-reply-card');
