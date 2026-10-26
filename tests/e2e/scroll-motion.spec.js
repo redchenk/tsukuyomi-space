@@ -194,10 +194,14 @@ test('wheel reversal responds on the next frame and waking from idle still eases
   await page.clock.runFor(32);
   expect(await page.evaluate(() => scrollY)).toBeLessThan(beforeReversal);
   await page.clock.runFor(1500);
-  await expect(page.locator('html')).not.toHaveClass(/lenis-scrolling/);
+  // Verify that easing has stopped and the position stays still. Lenis's
+  // native-scroll flag can outlive a zero-velocity browser scroll event.
+  await expect(page.locator('html')).not.toHaveClass(/lenis-smooth/);
+  const idlePosition = await page.evaluate(() => scrollY);
   // Catch a stale RAF clock without depending on wall-clock frame scheduling.
   await page.clock.runFor(700);
   const beforeWake = await page.evaluate(() => scrollY);
+  expect(beforeWake).toBeCloseTo(idlePosition, 0);
   await wheel(page, 700);
   await page.clock.runFor(32);
   const afterWake = await page.evaluate(() => scrollY);
