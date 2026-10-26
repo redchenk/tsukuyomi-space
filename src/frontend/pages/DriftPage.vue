@@ -20,7 +20,6 @@ const loading = ref(true);
 const refreshing = ref(false);
 const notice = ref('');
 const translated = ref('');
-const queue = ref(null);
 const filter = ref('all');
 const hasMore = ref(false);
 const phase = ref('idle');
@@ -33,7 +32,6 @@ let pollTimer;
 let disposed = false;
 let revision = 0;
 
-const admin = computed(() => route.name === 'driftAdmin');
 const copy = computed(() => driftCopy[props.lang] || driftCopy.zh);
 const activeTab = computed(() => route.query.tab === 'bottles' || route.query.tab === 'chat' || (!route.query.tab && route.query.bottle) ? 'bottles' : 'sea');
 const tabs = computed(() => [{ key: 'sea', label: copy.value.sea, icon: 'moonStar' }, { key: 'bottles', label: copy.value.mine, icon: 'mail' }]);
@@ -62,7 +60,6 @@ async function run(action) {
   try { await action(); } catch (error) { notice.value = error.message; } finally { busy.value = false; }
 }
 async function load(older = false) {
-  if (admin.value) { queue.value = await request('/api/moderation/drift'); return; }
   const before = older && bottles.value.at(-1)?.id;
   const rows = await request(`/api/drift${before ? `?before=${before}` : ''}`);
   bottles.value = older ? [...bottles.value, ...rows] : rows;
@@ -184,20 +181,16 @@ async function translate() {
   }
   translated.value = output.join('\n\n');
 }
-async function moderate(kind, row, status) {
-  await request(`/api/moderation/drift/${kind}/${row.id}`, 'POST', { status });
-  await load();
-}
 onMounted(async () => {
   await run(async () => {
     session.value = await loadCurrentSession();
-    if (!session.value && !admin.value) return;
+    if (!session.value) return;
     await load();
     loading.value = false;
-    if (route.query.bottle && !admin.value) await open(route.query.bottle, { updateRoute: false });
+    if (route.query.bottle) await open(route.query.bottle, { updateRoute: false });
   });
   loading.value = false;
-  if (session.value && !admin.value && !disposed) {
+  if (session.value && !disposed) {
     pollTimer = window.setInterval(refreshThread, 8000);
     window.addEventListener('focus', refreshThread);
     document.addEventListener('visibilitychange', refreshThread);
@@ -219,12 +212,7 @@ watch(() => route.query.bottle, value => {
 
 <template>
   <main class="page drift-page">
-    <header class="drift-header"><span class="drift-brand-mark" aria-hidden="true"><TsIcon name="moonStar" :size="25" /></span><div><p class="drift-eyebrow">TSUKUYOMI · TIDE</p><h1>{{ admin ? copy.admin : copy.title }}</h1></div><p class="drift-header-intro">{{ copy.intro }}</p></header>
-    <template v-if="admin">
-      <p v-if="notice" class="drift-notice" role="status">{{ notice }}</p><button :disabled="busy" @click="run(() => load())">{{ copy.refresh }}</button>
-      <template v-if="queue"><section v-for="kind in ['bottles', 'replies']" :key="kind" class="drift-panel"><article v-for="row in queue[kind]" :key="row.id"><p>#{{ row.id }} · {{ row.user_id }}</p><p class="drift-content">{{ row.content }}</p><small>{{ row.review }}</small><div class="drift-actions"><button :disabled="busy" @click="run(() => moderate(kind, row, 'approved'))">{{ copy.approve }}</button><button :disabled="busy" @click="run(() => moderate(kind, row, 'rejected'))">{{ copy.reject }}</button></div></article></section></template>
-    </template>
-    <template v-else>
+    <header class="drift-header"><span class="drift-brand-mark" aria-hidden="true"><TsIcon name="moonStar" :size="25" /></span><div><p class="drift-eyebrow">TSUKUYOMI · TIDE</p><h1>{{ copy.title }}</h1></div><p class="drift-header-intro">{{ copy.intro }}</p></header>
       <nav ref="tabBar" class="drift-tabs" role="tablist" :aria-label="copy.navigation"><button v-for="(tab, index) in tabs" :id="`drift-tab-${tab.key}`" :key="tab.key" role="tab" :aria-selected="activeTab === tab.key" :aria-controls="`drift-panel-${tab.key}`" :tabindex="activeTab === tab.key ? 0 : -1" :disabled="busy" @click="selectTab(tab.key)" @keydown="tabKeydown($event, index)"><TsIcon :name="tab.icon" :size="18" />{{ tab.label }}</button></nav>
       <p v-if="notice && phase === 'idle'" class="drift-notice" role="status">{{ notice }}</p>
       <p v-if="loading" class="drift-loading" role="status">{{ copy.loading }}</p>
@@ -243,7 +231,6 @@ watch(() => route.query.bottle, value => {
         </section>
         <details class="drift-rules"><summary>{{ copy.rules }}</summary><p>{{ copy.rule }}</p></details>
       </template>
-    </template>
 
     <dialog ref="bottleDialog" class="drift-bottle-dialog" :class="{ 'is-writing': writing, 'is-sealed': phase === 'sealed' }" aria-labelledby="drift-letter-title" @close="dialogClosed">
       <header class="drift-dialog-header"><div><p class="drift-eyebrow">A MESSAGE IN A BOTTLE</p><h2 id="drift-letter-title">{{ dialogTitle }}</h2></div><button class="drift-icon-button" :aria-label="copy.closeWindow" @click="closeDialog"><TsIcon name="x" :size="21" /></button></header>
