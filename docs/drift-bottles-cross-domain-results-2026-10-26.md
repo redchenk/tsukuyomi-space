@@ -43,7 +43,8 @@
 - 68 项前端/导航/视口/提交标识 Node 回归通过：`node --test tests/frontend-navigation.test.js tests/frontend-route-navigation.test.js tests/frontend-access-transition.test.js tests/frontend-drift-submission.test.js`。
 - 16 个浏览器场景通过（14 项 Chromium/移动 WebKit 组合回归，另有 2 项 Chromium mobile 键盘回归）：漂流瓶收发、审核、响应中断重试，以及漂流瓶/房间键盘回归。新用例为 `tests/e2e/drift-keyboard.spec.js`，覆盖竖屏、932px 横屏、视口平移、收键盘及草稿保留；已纳入 Chromium mobile / WebKit mobile 项目。
 - 翻译安全回归 11/11 通过（含新增模型异常日志回归）；`npm run check`、中文/海外构建与差异检查通过。
-- **实体 iPhone：投瓶阶段手动通过，回信阶段进行中。** iPhone 镜像连接不稳定，改由操作者在手机 Safari 执行。操作者已确认下方前三步均无问题，覆盖长文、键盘展开时横竖屏、操作按钮、关闭重开保留草稿与投瓶；电脑领取后，继续补长回信阶段。上述 WebKit/可视区域模拟不计入真机结果。
+- **实体 iPhone Safari：投瓶与回信阶段均手动通过。** 镜像连接不稳定，改由操作者在实体手机现场执行，未记录机型和 iOS 版本。操作者先确认前三步全部正常，再确认收到电脑回信、长回信输入、键盘展开时横竖屏、取消重开保留草稿及发送全部正常。上述 WebKit/可视区域模拟不计入真机结果。
+- 真机联调使用瓶子 **#83**：电脑 Brave 英文站账号 A 领取手机的 `PHONE-测试` 纸条，并通过 UI 寄出 `DESKTOP-REPLY-1026` 回信。操作者用手机确认收到并寄出长回信后，电脑 UI 实际显示 **2 封回信**（双方各一封）、新信提示及原文；新信到达时旧译文自动清除。也已在真实 Argos 上翻译这张手机纸条，原文保留；本轮未向 Git 提交操作者的正文截图。
 
 ![受控横屏视口下的修复结果，非实体手机截图](drift-test-evidence/2026-10-26/landscape-keyboard-live-after.png)
 
