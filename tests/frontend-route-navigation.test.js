@@ -81,6 +81,12 @@ test('route heading focus is announced without leaving a persistent tabindex or 
     assert.equal(attributes.has('tabindex'), false);
     assert.equal(classes.has('route-focus-heading'), false);
     assert.equal(focusRouteHeading({ querySelector: () => null }), false);
+    const input = {};
+    focusOptions = null;
+    assert.equal(focusRouteHeading({ ownerDocument: { activeElement: input },
+        contains: node => node === input, querySelector: () => heading }), false);
+    assert.equal(focusOptions, null, 'finishing navigation must preserve a control already focused in the new view');
+    assert.equal(attributes.has('tabindex'), false);
 });
 
 function scrollHarness() {

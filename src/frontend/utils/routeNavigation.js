@@ -63,6 +63,10 @@ export function cancelPendingRouteScroll() {
 }
 
 export function focusRouteHeading(element) {
+  // The enter animation can finish after the user starts typing. Keep
+  // their chosen control focused instead of interrupting that input.
+  const active = element?.ownerDocument?.activeElement;
+  if (active && element.contains(active)) return false;
   const heading = element?.querySelector?.('h1');
   if (!heading) return false;
   const previousTabIndex = heading.getAttribute('tabindex');

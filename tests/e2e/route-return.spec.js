@@ -125,6 +125,9 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await navigate(page, '/plaza');
     const draft = page.locator('.plaza-compose-panel textarea');
     await draft.fill('未发布的草稿');
+    await settle(page);
+    await expect(draft).toBeFocused();
+    await expect(page.locator('.plaza-composer-top .plaza-char-count')).toHaveText('6 / 300');
     await navigate(page, '/gallery');
     await expect(page.locator('.gallery-page')).toHaveAttribute('aria-busy', 'false');
     await page.goBack();
