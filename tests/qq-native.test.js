@@ -143,7 +143,7 @@ test('a pending account form cannot switch users when another binding wins a rac
     assert.equal(repository.findUserByOAuthAccount('qq', `mobile:${appId}:${openId}`).id, 'racer');
 });
 
-test('unconfigured native QQ stays disabled without contacting Tencent', async () => {
+test('explicitly disabled native QQ does not contact Tencent', async () => {
     const config = require('../backend/config');
     const previous = config.oauth.qq.nativeAppId;
     const calls = providerCalls;

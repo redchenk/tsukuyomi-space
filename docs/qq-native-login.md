@@ -20,9 +20,9 @@ HttpOnly 绑定 Cookie，通过 SDK 获取临时 access token，再调用同源
 换账号、丢失 Cookie、重复回调均拒绝；腾讯凭据不写入资料或日志。
 
 公开配置只返回 `qqNativeAppId`。AppKey 不需要下发到客户端；该流程通过
-腾讯验证 SDK 返回的 token。`QQ_NATIVE_APP_ID` 未设置或为空时关闭原生入口。
-完成平台审核和真机授权验收后，显式设置已登记的移动 AppID 才启用。
-其他部署必须配置自己的移动应用，不能复用网站 AppID。
+腾讯验证 SDK 返回的 token。`QQ_NATIVE_APP_ID` 未设置时使用上述正式
+移动 AppID，显式设置为空可以关闭原生入口。其他部署必须显式配置自己的
+已登记移动应用，不能复用网站 AppID。
 
 QQ OpenID 按应用分配。数据库中网站身份继续使用原 ID，移动身份使用
 `mobile:<AppID>:<OpenID>`，同一个站内账号允许各应用分别绑定一条身份。
