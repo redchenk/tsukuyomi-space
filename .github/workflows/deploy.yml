@@ -63,8 +63,17 @@ jobs:
           if [ -f /etc/apt/apt-mirrors.txt ]; then
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
-          npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+          npx playwright install --with-deps chromium
+      - name: Run desktop and mobile Chromium tests
+        run: npm run test:e2e -- --project=chromium --project=chromium-mobile --trace=retain-on-failure
+      - name: Save Chromium failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-test-failures
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Build overseas frontend
         run: |
@@ -78,8 +87,34 @@ jobs:
           path: deployment-artifacts
           if-no-files-found: error
 
+  check-webkit:
+    # Native WebKit provides the closest-to-Safari rendering and media behavior.
+    # Keep both existing WebKit projects mandatory alongside Chromium coverage.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - name: Install native WebKit
+        timeout-minutes: 10
+        run: npx playwright install webkit
+      - name: Run iPhone and responsive WebKit tests
+        run: npm run test:e2e -- --project=webkit-iphone11 --project=webkit-mobile --workers=2 --trace=retain-on-failure
+      - name: Save WebKit failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-test-failures
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 3
+
   deploy:
-    needs: [check, deployment-targets]
+    needs: [check, check-webkit, deployment-targets]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
