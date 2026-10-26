@@ -1,4 +1,8 @@
 {
+  "附加文字审核关键词": {"en":"Additional text review keywords","ja":"追加のテキスト審査キーワード"},
+  "附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。": {"en":"Custom rules always extend the baseline rules. Flagged messages await review; other flagged public text must be revised before publishing.","ja":"追加ルールは常に基本ルールに加算されます。該当するメッセージは審査待ちとなり、その他の公開テキストは修正後に投稿してください。"},
+  "每行一个或用逗号分隔。附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。": {"en":"One per line or comma-separated. Custom rules always extend the baseline rules. Flagged messages await review; other flagged public text must be revised before publishing.","ja":"1行に1件、またはカンマで区切ってください。追加ルールは常に基本ルールに加算されます。該当するメッセージは審査待ちとなり、その他の公開テキストは修正後に投稿してください。"},
+  "文字内容包含需审核的内容，请修改后再发布。原有内容保持不变。": {"en":"This text requires moderation. Please revise it before publishing. Your previously saved content has not changed.","ja":"審査が必要なテキストが含まれています。修正してから投稿してください。保存済みの内容は変更されていません。"},
   "游戏中心": {"en": "Game Center", "ja": "ゲームセンター"},
   "和八千代下一局五子棋，或挑战辉夜快跑。": {"en": "Play Gomoku with Yachiyo or try Kaguya Run.", "ja": "ヤチヨと五目並べ、またはかぐやランで遊ぼう。"},
   "和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。": {"en": "Play Moonlit Gomoku with Yachiyo, or follow the rhythm and challenge your score in Kaguya Run.", "ja": "ヤチヨと月下の五目並べを楽しんだり、かぐやランでリズムとスコアに挑戦しよう。"},
