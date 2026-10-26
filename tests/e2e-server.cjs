@@ -71,6 +71,15 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+// Keyboard projects need independent identities: the drift quota is per user,
+// and a full Chromium + mobile WebKit run must not consume a shared account.
+for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    for (const role of ['owner', 'reader']) {
+        const username = `drift-keyboard-${role}-${project}`;
+        db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+            .run(username, username, `${username}@example.test`, bcrypt.hashSync('mem0-test-password', 4), 'user');
+    }
+}
 // A legacy manually marked invitation has no delivery receipt until explicitly sent.
 db.prepare('INSERT INTO play_test_applications(id,email,status,consent_version,created_at,updated_at) VALUES(?,?,?,?,?,?)')
     .run('play-invitation-legacy', 'legacy-invitation@example.test', 'invited', '2026-10-23', new Date().toISOString(), new Date().toISOString());

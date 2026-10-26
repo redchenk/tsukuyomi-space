@@ -124,12 +124,22 @@ body:has(.drift-bottle-dialog[open]) :is(.site-pet-wrap,.site-music-drawer) { vi
   .drift-dialog-header { padding: 18px 18px 14px; }.drift-dialog-header h2 { font-size: 1.12rem; }.drift-letter-scroll { padding: 18px 18px 14px; }.drift-paper { min-height: 160px; padding: 18px; }.drift-content { font-size: .95rem; }
   .drift-reader-footer { padding: 14px 18px 6px; }.drift-letter-actions { gap: 10px; }.drift-letter-actions button { flex: 1; min-width: 0; font-size: .83rem; }
   .drift-letter-form { padding: 18px; gap: 14px; }.drift-writing-paper { padding: 16px; }.drift-writing-paper textarea { min-height: 150px; font-size: 16px; }.drift-found { padding: 24px 20px 32px; gap: 20px; }.drift-found-glow { width: 190px; height: 210px; }
-  .is-keyboard-open .drift-bottle-dialog.is-writing { height: calc(var(--ts-visual-height,100dvh) - 20px); margin-top: max(10px,var(--ts-visual-offset-top,0px)); margin-bottom: 10px; }
-  .is-keyboard-open .drift-bottle-dialog.is-writing .drift-letter-form { flex: 1; gap: 10px; }
-  .is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper { min-height: 0; flex: 1; padding: 12px; }
-  .is-keyboard-open .drift-bottle-dialog.is-writing textarea { flex: 1; min-height: 60px; resize: none; }
-  .is-keyboard-open .drift-bottle-dialog.is-writing .drift-reply-context { display: none; }
+
 }
+
+/* Touch phones can be wider than the desktop breakpoint in landscape. */
+.is-keyboard-open .drift-bottle-dialog.is-writing { height: calc(var(--ts-visual-height,100dvh) - 16px); max-height: calc(var(--ts-visual-height,100dvh) - 16px); margin-top: calc(var(--ts-visual-offset-top,0px) + 8px); margin-bottom: 8px; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-dialog-header { padding: 6px 14px; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-dialog-header h2 { font-size: 1rem; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-eyebrow,
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper small,
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-privacy { display: none; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-letter-form { flex: 1; gap: 8px; padding: 8px 14px; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper { min-height: 0; flex: 1; padding: 6px 10px; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.is-keyboard-open .drift-bottle-dialog.is-writing textarea { flex: 1; min-height: 24px; max-height: none; font-size: 16px; resize: none; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-letter-actions { gap: 10px; padding-bottom: 0; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-reply-context { display: none; }
 
 /* Original fan background: a shore facing the film's rose/lavender mirror sea. */
 .page.drift-page { --ts-accent: #697f9b; --ts-text: #48546b; --ts-text-strong: #354359; --ts-muted: #7c8798; --ts-border: #75899d2e; --drift-surface: #fffefaed; --drift-soft: #f0f0f5; }

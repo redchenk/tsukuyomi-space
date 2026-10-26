@@ -1228,7 +1228,8 @@ class Handler(BaseHTTPRequestHandler):
         except TranslationServiceBusy:
             self.send_payload(503, "application/json", b'{"error":"Translation service busy"}')
         except Exception as error:
-            print(f"POST /translate failed: {error!r}", flush=True)
+            # Model exceptions can include the input; keep private text out of logs.
+            print(f"POST {parsed.path} failed: {type(error).__name__}", flush=True)
             self.send_payload(502, "application/json", b'{"error":"Translation service unavailable"}')
 
 
