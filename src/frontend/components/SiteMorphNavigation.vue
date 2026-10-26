@@ -131,7 +131,15 @@ async function focusPanel(key, last = false) {
   await Promise.allSettled((floating.value?.getAnimations() || []).map(animation => animation.finished));
   if (run !== updateRun || current.value !== key || !visible.value) return;
   const links = panels.get(key)?.querySelectorAll('a[href]');
-  (last ? links?.[links.length - 1] : links?.[0])?.focus({ preventScroll: true });
+  const target = last ? links?.[links.length - 1] : links?.[0];
+  target?.focus({ preventScroll: true });
+  // With reduced motion Safari can report no animations before the newly
+  // visible panel accepts focus. Retry on its next painted frame, unless a
+  // newer navigation action has already taken ownership.
+  if (target && document.activeElement !== target) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (run === updateRun && current.value === key && visible.value) target.focus({ preventScroll: true });
+  }
 }
 function triggerKey(event, key) {
   if (event.key === 'Tab' && !event.shiftKey && visible.value && current.value === key && pinned) {
