@@ -94,6 +94,7 @@ function createApp() {
         '/api/auth/email-code',
         '/api/auth/password/reset',
         '/api/auth/oauth/qq/start',
+        '/api/auth/oauth/qq/native',
         '/api/auth/oauth/qq/create',
         '/api/auth/oauth/qq/email',
         '/api/auth/oauth/qq/bind',

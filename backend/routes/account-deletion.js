@@ -4,6 +4,11 @@ const db = require('../db');
 const { authenticateToken, authenticateAdminToken, requireSuperAdmin } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const policy = require('../../shared/privacy-policy.json');
+// The 23/24 October updates only add Play recruitment and QQ SDK disclosures.
+// Their deletion terms match the policy bundled in released native apps.
+// Reassess this explicit compatibility list when the policy changes again.
+const deletionPolicyVersions = new Set(policy.version === '2026-10-24'
+    ? ['2026-10-22', '2026-10-23', policy.version] : [policy.version]);
 
 const router = express.Router();
 const adminRouter = express.Router();
@@ -18,7 +23,7 @@ router.get('/me', (req, res) => {
     res.json({ success: true, data: publicRow(row) });
 });
 router.post('/', writes, (req, res) => {
-    if (req.body?.confirmation !== 'DELETE_ACCOUNT' || req.body?.policyVersion !== policy.version) {
+    if (req.body?.confirmation !== 'DELETE_ACCOUNT' || !deletionPolicyVersions.has(req.body?.policyVersion)) {
         return res.status(400).json({ success: false, message: '请阅读当前注销说明并确认申请。' });
     }
     const result = db.transaction(() => {
@@ -27,7 +32,7 @@ router.post('/', writes, (req, res) => {
         const now = new Date();
         const id = randomUUID();
         db.prepare(`INSERT INTO account_deletion_requests(id,user_id,status,requested_at,due_at,updated_at,policy_version)
-            VALUES(?,?,'pending',?,?,?,?)`).run(id, req.user.id, now.toISOString(), new Date(now.getTime() + 30 * 86400000).toISOString(), now.toISOString(), policy.version);
+            VALUES(?,?,'pending',?,?,?,?)`).run(id, req.user.id, now.toISOString(), new Date(now.getTime() + 30 * 86400000).toISOString(), now.toISOString(), req.body.policyVersion);
         // Private inbox notice, with no copied email, identity document or request content.
         db.prepare(`INSERT INTO notifications(user_id,type,title,content,link)
             SELECT id,'account_deletion','收到账号注销申请',?, '/admin/account-deletions'

@@ -106,8 +106,12 @@ function createOAuthAccount({
 }
 
 function writeOAuthAccount(account) {
+    // QQ assigns different OpenIDs to the website and each mobile AppID.
+    // Keep one binding per app while retaining the existing website identity.
+    const scope = id => account.provider === 'qq' ? (String(id).match(/^mobile:(\d+):[A-F0-9]{32}$/)?.[1] || 'web') : '';
     const other = listOAuthAccountsByUser(account.userId).find(row =>
-        row.provider === account.provider && row.provider_user_id !== account.providerUserId);
+        row.provider === account.provider && scope(row.provider_user_id) === scope(account.providerUserId)
+        && row.provider_user_id !== account.providerUserId);
     if (other) {
         const error = new Error('当前账号已绑定其他同类第三方账号，请先解绑');
         error.status = 409;

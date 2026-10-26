@@ -40,6 +40,7 @@ router.get('/settings', (req, res) => {
             mpsBeianIcon: settings.mpsBeianIcon || '',
             publicAssetBaseUrl,
             qqOAuthStartUrl: new URL('/api/auth/oauth/qq/start', config.oauth.qq.redirectUri).toString(),
+            qqNativeAppId: config.oauth.qq.nativeAppId,
             githubOAuthStartUrl: new URL('/api/auth/oauth/github/start', config.oauth.github.redirectUri).toString(),
             githubOAuthStartUrls: require('../services/github-oauth').redirectUris().map(uri => {
                 const url = new URL('/api/auth/oauth/github/start', uri);
