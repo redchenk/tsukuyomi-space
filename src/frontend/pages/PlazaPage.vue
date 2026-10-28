@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -380,19 +381,23 @@ function plazaReplyTarget(reply) {
   return { ...target, id: target.id || (target.name ? reply.reply_to_id : null) };
 }
 
+let topicsRequestRevision = 0;
 async function loadTrendingTopics() {
+  const revision = ++topicsRequestRevision;
   plaza.topicsLoading = true;
   plaza.topicsError = '';
   try {
     const response = await apiFetch('/api/messages/topics?limit=8');
     const result = await parseResponse(response);
+    if (revision !== topicsRequestRevision) return;
     if (!result.success) throw new Error(result.message || props.t.plazaLoadFailed);
     plaza.topics = Array.isArray(result.data) ? result.data : [];
   } catch (error) {
+    if (revision !== topicsRequestRevision) return;
     plaza.topics = [];
     plaza.topicsError = error.message || props.t.plazaLoadFailed;
   } finally {
-    plaza.topicsLoading = false;
+    if (revision === topicsRequestRevision) plaza.topicsLoading = false;
   }
 }
 
@@ -705,6 +710,7 @@ onUnmounted(() => {
   pausePlaza();
   ++plazaRequestRevision;
 });
+useContentTranslationRefresh(() => refreshPlaza());
 </script>
 
 <template>

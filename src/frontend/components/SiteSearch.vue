@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import TsIcon from './TsIcon.vue';
 import { loadStageArticles } from '../services/stageArticles';
@@ -49,6 +50,7 @@ async function searchArticles(force = false) {
   }
 }
 
+useContentTranslationRefresh(() => searchArticles());
 watch(normalizedQuery, () => {
   activeKey.value = '';
   ++requestRun;

@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { computed, onMounted, reactive } from 'vue';
 import { apiFetch, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
@@ -136,25 +137,30 @@ function checkedLabel(link) {
   return `${copy.value.checked} ${formatDateTime(link.last_checked_at, locale)}`;
 }
 
+let linksRequestRevision = 0;
 async function loadLinks() {
+  const revision = ++linksRequestRevision;
   state.loading = true;
   state.error = '';
   try {
     const response = await apiFetch(noStoreUrl('/api/friend-links'), { cache: 'no-store' });
     const result = await parseResponse(response);
+    if (revision !== linksRequestRevision) return;
     if (!response.ok || !result.success) throw new Error(result.message || copy.value.loadFailed);
     state.links = Array.isArray(result.data) ? result.data : [];
     state.avatarErrors.clear();
     state.screenshotErrors.clear();
   } catch (error) {
+    if (revision !== linksRequestRevision) return;
     state.links = [];
     state.error = error.message || copy.value.loadFailed;
   } finally {
-    state.loading = false;
+    if (revision === linksRequestRevision) state.loading = false;
   }
 }
 
 onMounted(loadLinks);
+useContentTranslationRefresh(loadLinks);
 </script>
 
 <template>

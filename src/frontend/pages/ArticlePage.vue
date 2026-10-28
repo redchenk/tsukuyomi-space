@@ -13,6 +13,8 @@ import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import ReplyRecipient from '../components/ReplyRecipient.vue';
 import { messageThreads, replyCopy } from '../services/messageThreads.mjs';
 import TsIcon from '../components/TsIcon.vue';
+import ContentTranslationControl from '../components/ContentTranslationControl.vue';
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
@@ -549,6 +551,7 @@ function jumpToArticleTarget(id) {
 }
 
 onMounted(loadArticle);
+useContentTranslationRefresh(loadArticle);
 onBeforeUnmount(() => {
   articleLoadRevision += 1;
   articleRequests?.abort();
@@ -566,6 +569,7 @@ watch(() => route.hash, revealCommentHash);
         <span>{{ readerCopy.back }}</span>
       </a>
 
+      <ContentTranslationControl compact />
       <LoadingSkeleton v-if="loading" variant="article" :count="1" :label="t.loading" />
       <div v-else-if="message && !article" class="article-status error" role="alert">{{ message }}</div>
 

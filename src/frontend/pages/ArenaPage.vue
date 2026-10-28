@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
@@ -1319,7 +1320,9 @@ function closeArtworkPreview(event = null) {
   if (previewFromGallery) { previewFromGallery = false; galleryOpen.value = true; galleryDialogRef.value?.showModal(); }
 }
 
+let artworkListRevision = 0;
 async function loadArtworks(page = gallery.page) {
+  const revision = ++artworkListRevision;
   gallery.loading = true;
   gallery.error = '';
   session.value = getSession();
@@ -1337,18 +1340,21 @@ async function loadArtworks(page = gallery.page) {
       });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
+    if (revision !== artworkListRevision) return;
     gallery.items = Array.isArray(result.data) ? result.data : [];
     await hydrateUserLevels(gallery.items.map((artwork) => artwork.author_id)).catch(() => {});
+    if (revision !== artworkListRevision) return;
     gallery.page = nextPage;
     gallery.total = Number(result.pagination?.total || gallery.items.length);
     gallery.totalPages = Math.max(1, Math.ceil(gallery.total / PIXEL_GALLERY_PAGE_SIZE));
     focusSharedArtwork();
   } catch (error) {
+    if (revision !== artworkListRevision) return;
     gallery.items = [];
     gallery.error = error.message || copy.value.publishFailed;
     showToast(error.message || copy.value.publishFailed, 'error');
   } finally {
-    gallery.loading = false;
+    if (revision === artworkListRevision) gallery.loading = false;
   }
 }
 
@@ -1582,6 +1588,7 @@ onBeforeUnmount(() => {
   if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
   clearTimeout(toastTimer);
 });
+useContentTranslationRefresh(() => loadArtworks(gallery.page));
 </script>
 
 <template>

@@ -4,6 +4,8 @@
 
 ## 翻译维护
 
+海外站菜单的偏好区域提供 “Translate community content” 开关；文章页也有 “Show original / Translate to English” 快捷入口。两处共用浏览器偏好 `tsukuyomi_content_translation`（默认 `on`，关闭为 `off`），访客无需登录。关闭后公开内容读取直接使用 `/api`，界面仍固定英文；重新开启恢复 `/en-api`。切换只刷新公开内容，不重载页面。文章列表、广场、公告和大厅缓存按内容语言隔离，已缓存的页面在再次显示时刷新。此偏好不改变搜索关键词、不翻译私人内容，也不影响服务端 SEO、RSS 或 sitemap 的英文输出。仅需重新构建并发布海外前端，无需后端迁移或新凭证。
+
 - 导航、登录等核心文案继续使用 `src/frontend/i18n/messages.js` 与 `messages.en.js`。
 - 其他界面文案的英文、日文保存在 `src/frontend/i18n/interface-catalog.json`。中文原文是键；键首尾空白被去除，连续空白被合并。
 - 动态提示使用 `{0}`、`{1}` 等参数，例如 `uiText('已更新 {0} 个聊天模型', [count])`。参数按原样替换，不作为翻译键，也不拼成 HTML。

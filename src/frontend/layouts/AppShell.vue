@@ -7,6 +7,7 @@ import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
 import SiteMorphNavigation from '../components/SiteMorphNavigation.vue';
 import SeasonThemePicker from '../components/SeasonThemePicker.vue';
+import ContentTranslationControl from '../components/ContentTranslationControl.vue';
 import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
 import { alternateLanguage } from '../i18n';
 import { navigationCopy } from '../services/siteNavigation';
@@ -328,6 +329,7 @@ onUnmounted(() => {
         <button v-if="isAuthed" class="site-menu-link" type="button" @click="navOpen = false; $emit('logout')"><TsIcon name="arrowLeft" :size="20" /><span class="site-menu-label">{{ t.logout }}</span></button>
       </div>
       <div class="site-menu-preferences">
+        <ContentTranslationControl />
         <button class="site-preference-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" /><span>{{ theme === 'dark' ? t.lightTheme : t.darkTheme }}</span></button>
         <button v-if="lang !== 'en'" class="site-preference-button" type="button" :aria-label="lang === 'zh' ? '日本語' : '中文'" @click="$emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" /><span>{{ lang === 'zh' ? '日本語' : '中文' }}</span></button>
         <button v-if="menuMode === 'explore'" class="site-preference-button site-menu-account" type="button" @click="menuMode = 'account'"><TsIcon name="user" :size="18" /><span>{{ accountLabel }}</span></button>

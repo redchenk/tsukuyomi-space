@@ -1,4 +1,6 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
+import { contentTranslationMode } from '../services/contentTranslation';
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicSettings, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
@@ -25,7 +27,7 @@ const hubCopy = computed(() => ({
 }[props.lang] || {}));
 const isEnglish = computed(() => props.lang === 'en');
 
-const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v4';
+const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v5';
 const HUB_PREVIEW_TTL_MS = 30000;
 const HUB_PREVIEW_TIMEOUT_MS = 8000;
 const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
@@ -34,12 +36,14 @@ const decodedPixelPreviews = new WeakMap();
 let hubPreviewCache = readHubPreviewCache();
 let previewFrame = 0;
 let hubPreviewPending = false;
+let hubPreviewRequestId = 0;
+let hubPreviewController;
 let hubWasDeactivated = false;
 
 function readHubPreviewCache() {
   if (typeof sessionStorage === 'undefined') return null;
   try {
-    const parsed = JSON.parse(sessionStorage.getItem(HUB_PREVIEW_CACHE_KEY) || 'null');
+    const parsed = JSON.parse(sessionStorage.getItem(`${HUB_PREVIEW_CACHE_KEY}:${contentTranslationMode()}`) || 'null');
     if (!parsed || typeof parsed !== 'object') return null;
     return {
       latestArticle: parsed.latestArticle || null,
@@ -65,7 +69,7 @@ function writeHubPreviewCache(payload) {
   };
   if (typeof sessionStorage === 'undefined') return;
   try {
-    sessionStorage.setItem(HUB_PREVIEW_CACHE_KEY, JSON.stringify(hubPreviewCache));
+    sessionStorage.setItem(`${HUB_PREVIEW_CACHE_KEY}:${contentTranslationMode()}`, JSON.stringify(hubPreviewCache));
   } catch (_) {}
 }
 
@@ -285,7 +289,10 @@ async function loadHubPreviewFast({ force = false } = {}) {
   previewError.value = '';
   if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) return;
   hubPreviewPending = true;
+  const requestId = ++hubPreviewRequestId;
+  const mode = contentTranslationMode();
   const controller = new AbortController();
+  hubPreviewController = controller;
   const timeout = window.setTimeout(() => controller.abort(), HUB_PREVIEW_TIMEOUT_MS);
   try {
     const response = await apiFetch(`/api/hub-preview?_=${Date.now().toString(36)}`, {
@@ -294,6 +301,7 @@ async function loadHubPreviewFast({ force = false } = {}) {
       signal: controller.signal
     });
     const result = await parseResponse(response);
+    if (requestId !== hubPreviewRequestId || mode !== contentTranslationMode()) return;
     if (!result.success || !result.data) throw new Error(result.message || 'Hub content unavailable');
     latestArticle.value = result.data.article || null;
     latestGalleryImage.value = result.data.gallery || null;
@@ -308,11 +316,14 @@ async function loadHubPreviewFast({ force = false } = {}) {
       siteStats: siteStats.value
     });
   } catch (error) {
+    if (requestId !== hubPreviewRequestId || mode !== contentTranslationMode()) return;
     if (!cached) previewError.value = error.name === 'AbortError' ? '内容读取超时，请重试' : (error.message || '内容读取失败');
   } finally {
     window.clearTimeout(timeout);
-    hubPreviewPending = false;
-    previewLoading.value = false;
+    if (requestId === hubPreviewRequestId) {
+      hubPreviewPending = false;
+      previewLoading.value = false;
+    }
   }
 }
 
@@ -464,7 +475,9 @@ async function submitPlazaQuick() {
 
 async function loadVisitPopupPreview() {
   try {
+    const mode = contentTranslationMode();
     const settings = await loadPublicSettings();
+    if (mode !== contentTranslationMode()) return;
     const content = announcementContent(settings);
     const title = content && content === String(settings.siteAnnouncement || '').trim()
       ? noticeSummary(content)
@@ -484,6 +497,16 @@ async function loadVisitPopupPreview() {
     };
   }
 }
+
+useContentTranslationRefresh(() => {
+  hubPreviewController?.abort();
+  hubPreviewRequestId += 1;
+  hubPreviewPending = false;
+  hubPreviewCache = readHubPreviewCache();
+  applyHubPreviewCache(hubPreviewCache || {});
+  loadHubPreviewFast({ force: true });
+  loadVisitPopupPreview();
+});
 
 onMounted(() => {
   loadVisitPopupPreview();
@@ -513,6 +536,8 @@ onDeactivated(() => {
 });
 
 onBeforeUnmount(() => {
+  hubPreviewRequestId += 1;
+  hubPreviewController?.abort();
   if (typeof window !== 'undefined') {
     window.removeEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
     window.cancelAnimationFrame(previewFrame);

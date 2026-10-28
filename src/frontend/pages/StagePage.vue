@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -334,6 +335,7 @@ onBeforeUnmount(() => {
   stageRequestRevision += 1;
   window.clearTimeout(stageReloadTimer);
 });
+useContentTranslationRefresh(() => loadArticles());
 </script>
 
 <template>
