@@ -13,38 +13,60 @@ async function setup(page) {
   await page.route('**/api/chat/stream', route => route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '我听见了，慢慢聊，今天有什么想分享的呢？' })+'\n\n' }));
   await page.goto('/room'); await waitForRoom(page);
 }
+async function openDrawer(page) {
+  if (!await page.locator('.room-relationship-trigger:visible').count()) await page.locator('.room-tools-disclosure > summary').click();
+  await page.locator('.room-relationship-trigger:visible').click();
+  await expect(page.locator('.room-relationship-drawer')).toBeVisible();
+  await expect(page.locator('.room-relationship-drawer')).toHaveCSS('opacity', '1');
+}
+async function closeDrawer(page) {
+  await page.locator('.relationship-drawer-close').click();
+  await expect(page.locator('.room-relationship-drawer')).toHaveCount(0);
+}
 
 test('completed chat visibly increases affinity, persists, and explains duplicates with memory disabled', async ({ page, browser, baseURL }, info) => {
   test.setTimeout(60000);
   const username = `affection-${info.project.name}`;
   await login(page, baseURL, username); await setup(page);
+  await expect(page.locator('.room-conversation-surface .room-relationship')).toHaveCount(0);
+  await expect(page.locator('.room-relationship-drawer')).toHaveCount(0);
+  await openDrawer(page);
   const card=page.locator('.room-relationship');
   await expect(card.locator('.relationship-score')).toHaveText('0/1000');
+  await closeDrawer(page);
   const send=async text=>{
     await page.locator('#chatInput').fill(text);
     await page.locator('#sendChatBtn').click();
-    await expect(card.locator('.relationship-feedback')).toContainText('本次');
+    await expect(page.locator('.room-relationship-notice')).toBeVisible();
   };
   await send('今天想和你聊聊窗外的晚霞。');
+  await expect(page.locator('.room-relationship-notice')).toContainText('好感度 +1');
+  await page.screenshot({path:info.outputPath('affinity-compact-chat.png')});
+  await page.locator('.room-relationship-notice').click();
   await expect(card.locator('.relationship-score')).toHaveText('1/1000');
   await expect(card.locator('.relationship-feedback')).toContainText('本次 +1');
   for(const theme of ['light','dark']) {
     await page.evaluate(theme=>{document.documentElement.dataset.theme=theme},theme);
     await expect(card).toBeVisible();
+    await expect(page.locator('.room-relationship-drawer')).toHaveCSS('opacity', '1');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
     await page.screenshot({path:info.outputPath(`affinity-${theme}.png`)});
   }
   await page.reload(); await waitForRoom(page);
+  await expect(page.locator('.room-relationship-notice')).toHaveCount(0);
+  await openDrawer(page);
   await expect(card.locator('.relationship-score')).toHaveText('1/1000');
+  await closeDrawer(page);
   await send('今天想和你聊聊窗外的晚霞。');
+  await expect(page.locator('.room-relationship-notice')).toContainText('未增加');
+  await openDrawer(page);
   await expect(card.locator('.relationship-feedback')).toContainText('重复互动');
   await expect(card.locator('.relationship-score')).toHaveText('1/1000');
-  await card.locator('summary').click();
   await expect(card).toContainText('无需开启长期记忆或写日记');
   await expect(card).toContainText('日常交流');
   const other=await browser.newContext({baseURL});
   try {
-    const p=await other.newPage();await login(p,baseURL,`affection-other-${info.project.name}`);await setup(p);
+    const p=await other.newPage();await login(p,baseURL,`affection-other-${info.project.name}`);await setup(p);await openDrawer(p);
     await expect(p.locator('.relationship-score')).toHaveText('0/1000');
   } finally {await other.close();}
 });
@@ -59,22 +81,23 @@ test('daily limit and guest state provide explicit next steps', async({page,base
     if(i===10)expect(body.relationshipChange.reason).toBe('今日已达加分上限');
   }
   await setup(page);
+  await openDrawer(page);
   const card=page.locator('.room-relationship');await expect(card).toContainText('今日 +10/10');
-  await card.locator('summary').click();await expect(card).toContainText('今日已达加分上限');
+  await expect(card).toContainText('今日已达加分上限');
   // A fresh anonymous context must show sign-in rather than another account's score.
   const guest=await page.context().browser().newContext({baseURL});
-  try {const p=await guest.newPage();await setup(p);await expect(p.locator('.relationship-guest')).toHaveText('登录后记录好感度');await expect(p.locator('.relationship-score')).toHaveCount(0);}finally{await guest.close();}
+  try {const p=await guest.newPage();await setup(p);await expect(p.locator('.relationship-guest')).toHaveCount(0);await openDrawer(p);await expect(p.locator('.relationship-guest')).toHaveText('登录后记录好感度');await expect(p.locator('.relationship-score')).toHaveCount(0);await p.keyboard.press('Escape');await expect(p.locator('.room-relationship-drawer')).toHaveCount(0);}finally{await guest.close();}
 });
 
 test('English and Japanese affinity feedback remains readable', async({page,baseURL},info)=>{
   await login(page,baseURL,`affection-other-${info.project.name}`);
   await page.addInitScript(()=>localStorage.setItem('lang','en'));
   await setup(page);
+  await openDrawer(page);
   await expect(page.locator('.room-relationship')).toContainText('Affinity');
-  await page.locator('.relationship-details summary').click();
   await expect(page.locator('.room-relationship')).toContainText('Complete and save a new conversation turn');
   await page.addInitScript(()=>localStorage.setItem('lang','ja'));
   await page.reload();await waitForRoom(page);
-  await page.locator('.relationship-details summary').click();
+  await openDrawer(page);
   await expect(page.locator('.room-relationship')).toContainText('新しい会話を1往復完了');
 });

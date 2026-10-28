@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import TsIcon from '../TsIcon.vue';
-const props = defineProps({ relationship: { type: Object, required: true }, lang: { type: String, default: 'zh' } });
+const props = defineProps({ relationship: { type: Object, required: true }, lang: { type: String, default: 'zh' }, expanded: Boolean });
 const state = computed(() => props.relationship.state.value);
 const status = computed(() => props.relationship.status.value);
 const feedback = computed(() => props.relationship.feedback.value);
@@ -22,8 +22,9 @@ function label(value) { return props.lang === 'zh' ? value : labels[value]?.[pro
     <RouterLink v-if="status === 'guest'" to="/login?redirect=%2Froom" class="relationship-guest"><TsIcon name="heart" :size="16" />{{ copy.guest }}</RouterLink>
     <p v-else-if="!state && status === 'loading'" role="status">{{ copy.loading }}</p>
     <template v-else>
-      <details v-if="state" class="relationship-details">
+      <details v-if="state" class="relationship-details" :open="expanded">
         <summary><TsIcon name="heart" :size="16" /><strong>{{ copy.title }} <span class="relationship-score">{{ state.score }}/{{ state.max }}</span></strong><span>{{ label(state.stage) }}</span><small>{{ copy.today }} +{{ state.todayDelta }}/{{ state.rules.dailyLimit }}</small></summary>
+        <progress :value="state.score" :max="state.max" :aria-label="copy.title"></progress>
         <div class="relationship-info">
           <p>{{ copy.rules }}</p>
           <p v-if="state.nextStage">{{ copy.next }}: {{ label(state.nextStage.name) }} · {{ state.nextStage.score }}/{{ state.max }} (+{{ state.nextStage.remaining }})</p>
@@ -33,7 +34,6 @@ function label(value) { return props.lang === 'zh' ? value : labels[value]?.[pro
           <p>{{ copy.legacy }}</p>
         </div>
       </details>
-      <progress v-if="state" :value="state.score" :max="state.max" :aria-label="copy.title"></progress>
       <button v-if="status === 'error'" class="relationship-retry" type="button" @click="relationship.refresh(4)">{{ copy.error }}</button>
       <p v-else-if="state" class="relationship-feedback" role="status" aria-live="polite" aria-atomic="true">
         <template v-if="feedback"><strong>{{ copy.last }} {{ feedback.delta > 0 ? `+${feedback.delta}` : feedback.delta < 0 ? feedback.delta : copy.unchanged }}</strong> · {{ label(feedback.reason) }}</template>

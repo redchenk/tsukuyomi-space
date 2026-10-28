@@ -31,7 +31,7 @@ const features = [
       <section aria-labelledby="room-discover-title"><h3 id="room-discover-title">还可以做这些</h3>
         <div class="room-help-features"><a v-for="feature in features" :key="feature.path" :href="feature.path" @click.prevent="emit('go', feature.path)"><TsIcon :name="feature.icon" :size="20" /><strong>{{ feature.title }}</strong><span>{{ feature.description }}</span></a></div>
       </section>
-      <details><summary>好感度为什么没有变化？</summary><p>登录后，完成并保存一轮新对话 +1，每天最多 +10；聊天界面会显示本次变化和未加分原因。重复内容、重新生成和要求加分不重复计分。无需写日记或开启长期记忆。日记里的数值是历史记录，当前进度以聊天界面为准。</p><button class="ghost-btn" type="button" @click="emit('diary')">查看日记与当前存档</button></details>
+      <details><summary>好感度为什么没有变化？</summary><p>登录后，完成并保存一轮新对话 +1，每天最多 +10；变化时会短暂提示，点开好感度抽屉可查看当前进度和未加分原因。手机上从房间功能菜单进入，电脑上点击心形按钮。重复内容、重新生成和要求加分不重复计分。无需写日记或开启长期记忆。日记里的数值是历史记录。</p><button class="ghost-btn" type="button" @click="emit('diary')">查看日记与当前存档</button></details>
       <details><summary>有文字，但角色没有反应？</summary><p>文字回复、角色动作和语音是分别运行的。先等角色加载完成，在舞台试一次“点头”；仍无反应时查看角色加载提示。只有开启并配置语音后才会发声，不是每条文字都会带动作。</p><a href="/live2d" @click.prevent="emit('go', '/live2d')">去舞台检查</a></details>
     </dialog>
   </Teleport>

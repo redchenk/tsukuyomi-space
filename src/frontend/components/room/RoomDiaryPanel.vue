@@ -73,7 +73,7 @@ function onImportFile(event) {
 
       <details class="diary-notice diary-affection-help">
         <summary>存档好感度 {{ diary.affection?.value ?? 0 }} · 存档 {{ diary.slotId?.value ?? 1 }} · 如何变化？</summary>
-        <p>这里保留写日记时的历史数值。当前好感度请看聊天界面的好感度进度条：完成并保存一轮新对话 +1，每天最多 +10。无需写日记或开启长期记忆；重复内容与重新生成不重复加分。导入旧存档不会覆盖当前互动进度。</p>
+        <p>这里保留写日记时的历史数值。当前好感度可在房间的好感度抽屉查看：完成并保存一轮新对话 +1，每天最多 +10。无需写日记或开启长期记忆；重复内容与重新生成不重复加分。导入旧存档不会覆盖当前互动进度。</p>
         <p>{{ entries.length ? `最近记录：${entries[entries.length - 1].date || ''} ${entries[entries.length - 1].time || ''}` : '还没有生成日记。先聊几句，再使用“结束并写日记”。' }}</p>
       </details>
       <!-- A backup can hold several diary authors; chat identity is separate. -->

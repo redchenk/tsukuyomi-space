@@ -12,7 +12,7 @@ import RoomWeatherCard from '../components/room/RoomWeatherCard.vue';
 import RoomShareDialog from '../components/room/RoomShareDialog.vue';
 import RoomSetupDialog from '../components/room/RoomSetupDialog.vue';
 import RoomHelpDialog from '../components/room/RoomHelpDialog.vue';
-import RoomRelationshipCard from '../components/room/RoomRelationshipCard.vue';
+import RoomRelationshipDrawer from '../components/room/RoomRelationshipDrawer.vue';
 import { useRoomRelationship } from '../composables/room/useRoomRelationship';
 import { roomChatConfigured } from '../services/room/roomOfficialApi.mjs';
 import { getSession } from '../api/client';
@@ -38,6 +38,18 @@ const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
 const desktopPanel = ref('chatPanel');
 const panelHostReady = ref(false);
 const helpOpen = ref(false);
+const relationshipOpen = ref(false);
+const relationshipTitle = computed(() => props.lang === 'en' ? 'Affinity' : '好感度');
+function openRelationship() {
+  closeMobileTools();
+  relationshipOpen.value = true;
+  void relationship.refresh(4);
+}
+async function closeRelationship() {
+  relationshipOpen.value = false;
+  await nextTick();
+  document.querySelector(mobileRoom.value ? '.room-tools-disclosure > summary' : '.room-desktop-tabs .room-relationship-trigger')?.focus({ preventScroll: true });
+}
 const configuredForHelp = ref(false);
 const completedConversation = computed(() => room.chat.messages.value.some(message =>
   message.role === 'assistant' && !message.pending && !message.failed && message.content?.trim()
@@ -216,6 +228,7 @@ watch(() => props.shareId, loadSharedConversation);
         <nav class="room-mobile-tools" aria-label="房间功能">
           <span class="room-tools-heading">这一刻，慢慢聊</span>
           <button v-if="!shareId" type="button" @click="openHelp"><TsIcon name="helpCircle" :size="18" /><span>开始使用与发现功能</span></button>
+          <button v-if="!shareId" class="room-relationship-trigger" type="button" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /><span>{{ relationshipTitle }}</span></button>
           <button type="button" :disabled="mobileSessionBusy" @click="newMobileConversation"><TsIcon name="plus" :size="18" /><span>{{ room.chat.resetting.value ? '正在新建' : '新建会话' }}</span></button>
           <button type="button" @click="showMobileHistory"><TsIcon name="undo" :size="18" /><span>查看对话开头</span></button>
           <button v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)"><TsIcon :name="button.icon" :size="18" /><span>{{ button.label }}</span></button>
@@ -244,12 +257,12 @@ watch(() => props.shareId, loadSharedConversation);
           <div><h1>{{ companionName }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
         </div>
       </section>
-      <RoomRelationshipCard v-if="!shareId" :relationship="relationship" :lang="lang" />
       <nav v-segmented class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
         <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
           <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
         </button>
         <button v-if="!shareId" type="button" aria-label="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
+        <button v-if="!shareId" class="room-relationship-trigger" type="button" :aria-label="relationshipTitle" :title="relationshipTitle" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /></button>
         <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /></a>
       </nav>
       <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">
@@ -305,6 +318,7 @@ watch(() => props.shareId, loadSharedConversation);
       @explore="openHelp"
     />
     <RoomHelpDialog :open="helpOpen" :configured="configuredForHelp" :completed="completedConversation" @close="helpOpen = false" @go="helpNavigate" @chat="helpChat" @diary="helpOpen = false; openDiary()" />
+    <RoomRelationshipDrawer v-if="!shareId" :open="relationshipOpen" :relationship="relationship" :lang="lang" @open="openRelationship" @close="closeRelationship" />
     <RoomShareDialog
       :open="shareDialogOpen"
       :turn="selectedShareTurn"
