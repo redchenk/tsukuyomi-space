@@ -19,7 +19,7 @@ async function waitForRoom(page) {
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect.poll(async () => page.evaluate(() => document.querySelector('.room-entry-splash')?.dataset.phase || 'idle'),
         { timeout: 45000 }).not.toMatch(/^(loading|revealing)$/);
-    const fallback = page.locator('.room-entry-splash').getByRole('button', { name: '先进入房间', exact: true });
+    const fallback = page.locator('.room-entry-splash').getByRole('button', { name: /^(先进入房间|Enter room|部屋に入る)$/ });
     if (await fallback.isVisible()) await fallback.click();
     await expect(page.locator('.room-entry-splash')).toHaveCount(0);
     await expect(page.locator('.app-shell')).not.toHaveAttribute('inert', '');

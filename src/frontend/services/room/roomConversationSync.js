@@ -1,5 +1,6 @@
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { applyGrowthResult } from '../userGrowth';
+import { announceRelationship } from './roomRelationship';
 import { guestMemoryKey, saveGuestMemory, usesLocalRoomMemory } from './roomLocalMemory';
 import { accountLocalMemoryKey } from './roomMemorySource.mjs';
 import { normalizeRoomImage, clearLocalRoomImages } from './roomChatImages';
@@ -205,6 +206,7 @@ async function postConversationTurn(turn, userId, epoch) {
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     if (saveEpoch(userId) !== epoch) throw new Error('会话已清空，旧消息不会重新发送');
     if (currentUserId() === userId && result.growth) applyGrowthResult(result.growth);
+    if (result.relationship) announceRelationship(userId, result.relationship, result.relationshipChange);
     removePendingTurn(turn.turnId, userId);
     return normalizeHistory(result.data);
   })();
@@ -413,6 +415,7 @@ export async function replaceRoomConversationTurn({ turnId, expectedUserMessage,
     requireCurrentSession(userId, epoch);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     next = normalizeHistory(result.data);
+    if (result.relationship) announceRelationship(userId, result.relationship, result.relationshipChange);
     if (captureTurn.memorySource === 'local') {
       await saveGuestMemory(captureTurn, localMemoryOptions(captureTurn, userId));
       requireCurrentSession(userId, epoch);

@@ -715,7 +715,9 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         const turn = { turnId, userMessage, assistantMessage, opener,
             memoryEnabled: req.body?.memorySource !== 'local' && req.body?.memoryEnabled === true };
         let memoryIds = [];
+        let relationshipChange = null;
         const messageIds = roomChatRepository.saveTurn(req.user.id, turn, () => {
+            relationshipChange = require('../services/room-local-analysis').recordConversation(req.user.id, turn);
             memoryIds = roomMemory.captureChatTurn(req.user.id, turn);
         });
         if (messageIds.length) {
@@ -727,7 +729,9 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         res.status(messageIds.length ? 201 : 200).json({
             success: true,
             data: roomChatRepository.listMessages(req.user.id, 24),
-            growth
+            growth,
+            relationship: require('../services/room-local-analysis').relationship(req.user.id),
+            relationshipChange: relationshipChange || (!opener ? { turnId, delta: 0, reason: '本轮已记录，不重复加分' } : null)
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn sync failed' });
@@ -741,9 +745,12 @@ router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
         const expectedAssistantMessage = normalizeChatContent(req.body?.expectedAssistantMessage, 'expectedAssistantMessage');
         const userMessage = normalizeOptionalChatContent(req.body?.userMessage, 'userMessage');
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
+        let relationshipChange = null;
         const result = roomChatRepository.replaceLatestTurn(req.user.id, {
             turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage
         }, () => {
+            relationshipChange = require('../services/room-local-analysis').recordConversation(req.user.id,
+                { turnId, userMessage, assistantMessage }, { replace: true });
             // Local memory mode still synchronizes chat text, while preserving
             // the account's cloud memories until cloud mode is chosen again.
             if (req.body?.memorySource === 'local') return [];
@@ -760,7 +767,8 @@ router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
             }
         }
         setNoStore(res);
-        res.json({ success: true, data: roomChatRepository.listMessages(req.user.id, 24), growth: null });
+        res.json({ success: true, data: roomChatRepository.listMessages(req.user.id, 24), growth: null,
+            relationship: require('../services/room-local-analysis').relationship(req.user.id), relationshipChange });
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn replace failed' });
     }

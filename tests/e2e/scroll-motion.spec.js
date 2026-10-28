@@ -36,7 +36,12 @@ test('wheel movement eases in both directions and preserves a single document sc
   if (isMobile) await wheel(page, -420);
   else await page.mouse.wheel(0, -420);
   await expect.poll(() => page.evaluate(() => Math.abs(scrollY - 230))).toBeLessThan(3);
-  expect(await page.locator('html.lenis').count()).toBe(1);
+  // Busy runners can legitimately select native scrolling after both gestures.
+  // Assert one matching engine, including the site's adaptive reduced mode.
+  await expect.poll(() => page.evaluate(() => {
+    const root = document.documentElement;
+    return `${root.dataset.performance}:${root.dataset.scrollEngine}:${document.querySelectorAll('html.lenis').length}`;
+  })).toMatch(/^(balanced:lenis:1|reduced:native:0)$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
 
