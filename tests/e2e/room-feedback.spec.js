@@ -118,7 +118,7 @@ test('relationship UI explains older points, zero-point reasons and can page thr
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '长期记忆' }).click();
   const status = page.locator('.local-memory-status');
   await expect(status).toContainText('更早记录 +2');
-  await expect(status).toContainText('日常分享 +1');
+  await expect(status).toContainText('完成并保存一轮新对话 +1');
   await status.locator('summary').click();
   await expect(status).toContainText('未发现可计分互动');
   await status.getByRole('button', { name: '查看更早记录' }).click();

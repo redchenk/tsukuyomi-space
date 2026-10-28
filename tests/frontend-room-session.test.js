@@ -31,7 +31,7 @@ async function setup(overrides = {}) {
     ...localTransport,
     roomChatConfigured: settings => officialApi.roomChatConfigured(settings, 'https://example.test'),
     memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
-    console, Date, URL, AbortController, getSession: () => null, ...oneclickTts, ...siteKnowledge,
+    console, Date, URL, AbortController, setTimeout, clearTimeout, getSession: () => null, ...oneclickTts, ...siteKnowledge,
     document: { documentElement: { lang: 'zh' } },
     fetchSiteKnowledge: async () => ({ sources: [], mode: 'skipped' }),
     apiFetch: async () => ({ ok: false }),

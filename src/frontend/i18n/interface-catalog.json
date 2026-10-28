@@ -1,4 +1,10 @@
 {
+  "互动记录已更新": {"en": "Interaction progress updated", "ja": "交流の記録を更新"},
+  "聊完第一轮，看看这里的变化。": {"en": "Complete your first turn to see progress here.", "ja": "最初の会話を終えると、ここに進捗が表示されます。"},
+  "存档好感度": {"en": "Archived affinity", "ja": "保存時の好感度"},
+  "这里保留写日记时的历史数值。当前好感度请看聊天界面的好感度进度条：完成并保存一轮新对话 +1，每天最多 +10。无需写日记或开启长期记忆；重复内容与重新生成不重复加分。导入旧存档不会覆盖当前互动进度。": {"en": "These are historical values from diary creation. See the chat affinity bar for current progress: complete and save a new turn for +1, up to +10 daily. No diary or long-term memory is required. Repeated content and regeneration do not add points. Importing an old archive does not replace current progress.", "ja": "ここは日記作成時の過去の数値です。現在の好感度はチャットの進捗バーに表示され、新しい会話の完了・保存で +1、1日最大 +10。日記や長期記憶は不要です。同じ内容や再生成では追加加点されません。古い記録を読み込んでも現在の進捗は変わりません。"},
+  "登录后，完成并保存一轮新对话 +1，每天最多 +10；聊天界面会显示本次变化和未加分原因。重复内容、重新生成和要求加分不重复计分。无需写日记或开启长期记忆。日记里的数值是历史记录，当前进度以聊天界面为准。": {"en": "After signing in, complete and save a new turn for +1, up to +10 daily. Chat shows the change or why no points were added. Repeated text, regeneration and requests for points do not earn extra points. No diary or long-term memory is required. Diary values are historical; chat shows current progress.", "ja": "ログイン後、新しい会話を完了・保存すると +1、1日最大 +10。今回の変化や加点されない理由をチャットに表示します。同じ内容、再生成、加点の要求では増えません。日記や長期記憶は不要です。日記は過去の記録で、現在の進捗はチャットに表示されます。"},
+  "完成并保存一轮新对话 +1，无需开启长期记忆或写日记。共同约定、表达信任经确认后，本轮最多 +2，不重复累加；所有互动每天最多增长 10 点。重复内容、重新生成、要求加分不重复计分，缺席、悲伤和拒绝不扣分。当前分数与本次变化也会显示在聊天界面。": {"en": "Complete and save a new turn for +1 without enabling memory or writing a diary. Confirmed shared plans or trust can raise that turn to +2 total, with a daily limit of 10. Repeated text, regeneration and requests for points do not earn extra points. Absence, sadness and refusal never deduct points. Chat also shows the current score and change.", "ja": "長期記憶や日記なしでも新しい会話の完了・保存で +1。約束や信頼が確認されると、その会話は合計最大 +2、1日最大 10。同じ内容、再生成、加点の要求では増えません。欠席、悲しみ、拒否で減点されません。現在の点数と変化はチャットにも表示されます。"},
   "星海来信": {"en": "Starlit Letters", "ja": "星の海からの手紙"},
   "文字与图片": {"en": "Text and images", "ja": "テキストと画像"},
   "文字": {"en": "Text", "ja": "テキスト"},

@@ -121,6 +121,11 @@ require('../backend/services/partner-oauth').registerClient({
     id: 'e2e-partner', name: '第八千代测试应用', redirectUris: [partnerCallback], secret: 'e'.repeat(43)
 });
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    for (const kind of ['affection', 'affection-cap', 'affection-other']) {
+        const owner = `${kind}-${project}`;
+        db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+            .run(owner, owner, owner + '@example.test', bcrypt.hashSync('mem0-test-password', 4), 'user');
+    }
     const id = `diary-cross-device-${project}`;
     db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
       .run(id, id, id + '@example.test', bcrypt.hashSync('mem0-test-password', 4), 'user');
