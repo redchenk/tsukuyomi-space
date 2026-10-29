@@ -29,7 +29,7 @@ async function expectReadable(page, selector) {
   })).toBeGreaterThan(4);
 }
 
-test('another device generates a complete cloud diary and retains messages sent during generation', async ({ page, browser, baseURL }, testInfo) => {
+test('a lost diary finish response recovers the saved diary and retains newer cloud messages', async ({ page, browser, baseURL }, testInfo) => {
   const username = `diary-cross-device-${testInfo.project.name}`;
   const login = await page.request.post('/api/auth/login', { headers: { Origin: baseURL, 'X-Requested-With': 'XMLHttpRequest' }, data: { username, password: 'mem0-test-password' } });
   expect(login.status()).toBe(200);
@@ -44,8 +44,15 @@ test('another device generates a complete cloud diary and retains messages sent 
   await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
   let releaseDiary;
   const waitForDiary = new Promise(resolve => { releaseDiary = resolve; });
-  let prompt;
+  let prompt, generations = 0, finishes = 0;
+  await page.route('**/api/room/chat/finish', async route => {
+    const committed = await route.fetch();
+    expect(committed.status()).toBe(200);
+    finishes++;
+    await route.fulfill({ status: 504, json: { success: false, message: 'Fixture: finish response lost after commit' } });
+  });
   await page.route('**/api/chat/stream', async route => {
+    generations++;
     prompt = route.request().postDataJSON().message;
     await waitForDiary;
     await route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '从早上的早餐和旅行计划，到晚上的月亮和晚安，今天的每一次交谈我都记在了心里。' })+'\n\n' });
@@ -84,7 +91,17 @@ test('another device generates a complete cloud diary and retains messages sent 
     const late = await phone.request.post('/api/room/chat/turn', { headers: { Origin: baseURL, 'X-Requested-With': 'XMLHttpRequest' }, data: { turnId: 'late-phone-message', userMessage: '日记生成时手机发来的新消息', assistantMessage: '这条应该留给下一篇日记', memoryEnabled: false } });
     expect(late.status()).toBe(201);
     releaseDiary();
+    await expect(dialog).toContainText('日记已保存在本机');
+    await page.reload(); await waitForRoom(page);
+    if (testInfo.project.name.includes('mobile')) {
+      await page.locator('.room-tools-disclosure > summary').click();
+      await page.getByRole('button', { name: '结束聊天', exact: true }).click();
+    } else await page.locator('#endChatBtn').click();
+    await dialog.getByRole('button', { name: '确认结束并写日记' }).click();
     await expect(page.getByRole('dialog', { name: '八千代的日记', exact: true })).toBeVisible();
+    expect(generations).toBe(1);
+    expect(finishes).toBe(1);
+    expect(await page.evaluate(id => JSON.parse(localStorage.getItem(`roomDiaryArchive:${id}:recording`)).pendingEntry, user.id)).toBeNull();
     for (const theme of ['light', 'dark']) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await expectReadable(page, '.diary-preview-body pre');
