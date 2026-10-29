@@ -4,6 +4,9 @@ module.exports = defineConfig({
     testDir: './tests/e2e',
     timeout: 30 * 1000,
     expect: { timeout: 8 * 1000 },
+    // Preserve the first failure trace, then retry once in a fresh worker on
+    // shared CI runners. Persistent failures still block deployment.
+    retries: process.env.CI ? 1 : 0,
     fullyParallel: false,
     reporter: [['list']],
     use: {
