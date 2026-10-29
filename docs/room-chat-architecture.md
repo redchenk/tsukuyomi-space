@@ -100,6 +100,7 @@ old name or arbitrary past agreement.
 ## Reference decisions
 
 - [SillyTavern character design](https://docs.sillytavern.app/usage/core-concepts/characterdesign/): separate character, personality, scenario and user persona.
+- [Character Card V2 specification](https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md): exported cards include mandatory nested extension objects. Import is an expression-reference adapter, not a lossless general card editor or full V2 frontend implementation.
 - [SillyTavern World Info](https://docs.sillytavern.app/usage/core-concepts/worldinfo/): selective contextual entries, ordering and budgets.
 - [SillyTavern Prompt Manager](https://docs.sillytavern.app/usage/prompts/prompt-manager/): ordered inspectable prompt blocks.
 - [SillyTavern source](https://github.com/SillyTavern/SillyTavern), inspected release commit `06bde939fb1e9c4c8d8641d810f0a916b5bce127`, AGPL-3.0. This implementation is independently authored from the concepts; no SillyTavern implementation or dependency is vendored.

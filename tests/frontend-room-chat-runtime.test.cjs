@@ -3,6 +3,23 @@ const assert = require('node:assert/strict');
 const runtime = require('../shared/room-chat-runtime.cjs');
 const continuity = require('../shared/room-continuity.cjs');
 
+test('export includes all mandatory Character Card V2 fields, including nested extension objects', () => {
+  const exported = runtime.exportBuiltinCard();
+  assert.equal(exported.spec_version, '2.0');
+  for (const key of ['name','description','personality','scenario','first_mes','mes_example','creator_notes','system_prompt','post_history_instructions','creator','character_version']) assert.equal(typeof exported.data[key], 'string', key);
+  for (const key of ['tags','alternate_greetings']) assert.ok(Array.isArray(exported.data[key]), key);
+  assert.equal(typeof exported.data.extensions, 'object');
+  assert.deepEqual(exported.data.character_book.extensions, {});
+  for (const entry of exported.data.character_book.entries) {
+    assert.ok(Array.isArray(entry.keys));
+    assert.equal(typeof entry.content, 'string');
+    assert.equal(typeof entry.enabled, 'boolean');
+    assert.equal(typeof entry.insertion_order, 'number');
+    assert.equal(typeof entry.extensions, 'object');
+    assert.notEqual(entry.extensions, null);
+  }
+});
+
 test('post-film identity, account and current task are independent ordered prompt blocks', () => {
   const result = runtime.compile({ message: '不要建议，只回答一句', account: { id: 'private-id', username: 'star-core', nickname: '月核', email: 'private@example.test', token: 'secret' }, protocol: '输出正文', context: '来源资料' });
   assert.match(result.systemPrompt, /电影结局后的日常/);

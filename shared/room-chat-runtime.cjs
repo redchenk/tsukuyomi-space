@@ -141,8 +141,8 @@ function exportBuiltinCard() {
         scenario: '电影结局后的日常延伸：期待生活、创作和相聚。保留原作关系，按用户要求控制剧透。',
         first_mes: '', mes_example: '', system_prompt: '', post_history_instructions: '', alternate_greetings: [], tags: ['月读空间', '日常'],
         creator: 'Tsukuyomi Space', character_version: VERSION, creator_notes: '中文互动延伸，非官方剧情。来源与兼容范围见项目 docs/room-chat-architecture.md。',
-        character_book: { name: '八千代的关系与记忆边界', scan_depth: 4, entries: [
-            { id: 1, keys: ['往事', '记得', '记忆'], content: sections.memory, enabled: true, insertion_order: 100, position: 'after_char' },
+        character_book: { name: '八千代的关系与记忆边界', scan_depth: 4, extensions: {}, entries: [
+            { id: 1, keys: ['往事', '记得', '记忆'], content: sections.memory, enabled: true, insertion_order: 100, position: 'after_char', extensions: {} },
             { id: 2, keys: ['结局', '身世', '辉夜'], content: sections.canon, enabled: true, insertion_order: 200, position: 'after_char', extensions: { tsukuyomi_spoiler: true } }
         ] }, extensions: { tsukuyomi: { sources: character.card.sources } }
     } };
