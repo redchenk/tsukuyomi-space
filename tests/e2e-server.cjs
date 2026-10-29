@@ -71,6 +71,14 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+// Each message journey has its own account quota. Sharing e2e-user across the
+// whole suite (and retries) otherwise exhausts the real 12 writes / 10 minutes
+// limiter. Keep the production limiter and exercise the real write endpoints.
+for (const scenario of ['publish', 'replies', 'edit', 'terminal']) {
+    const username = `main-message-${scenario}`;
+    db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+        .run(username, username, `${username}@example.test`, bcrypt.hashSync('e2e-password', 4), 'user');
+}
 // Browser scenarios need independent identities: the drift quota is per user,
 // and a full Chromium + mobile WebKit run must not consume a shared account.
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
