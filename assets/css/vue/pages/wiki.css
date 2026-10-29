@@ -866,9 +866,16 @@
   margin: 0;
 }
 
+.wiki-music-row dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.4rem;
+}
+
 .wiki-music-row dl div {
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   gap: 0.4rem;
   font-size: 0.72rem;
 }
@@ -1057,6 +1064,7 @@
 
 .wiki-derivative-card dl {
   display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 0.28rem;
   margin: 0.25rem 0 0;
   padding-top: 0.5rem;
@@ -1065,7 +1073,8 @@
 
 .wiki-derivative-card dl > div {
   display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   gap: 0.35rem;
   font-size: 0.68rem;
 }

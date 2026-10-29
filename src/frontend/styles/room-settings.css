@@ -1401,7 +1401,7 @@
 
 /* Room model runtime configuration and ephemeral diagnostics. */
 .runtime-level-row, .runtime-workbench-actions { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
-.runtime-level-row label { flex: 1; min-width: 180px; }
+.runtime-level-row label { flex: 1 0 min(180px, 100%); }
 .runtime-parameter-list, .runtime-capability-list { display: grid; gap: 14px; margin-top: 18px; }
 .runtime-parameter-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; }
 .runtime-parameter-row > small { grid-column: 1 / -1; overflow-wrap: anywhere; }
