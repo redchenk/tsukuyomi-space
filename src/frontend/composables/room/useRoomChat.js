@@ -1649,6 +1649,31 @@ export function useRoomChat({ live2d, world, diary = null }) {
     };
     let diaryPhase = 'sync';
     try {
+      if (existingEntry && getSession()?.user?.id && pendingDiaryEntry.snapshot?.lastId) {
+        // A previous finish can commit while its response is lost, or another
+        // device can end the chat. Never reuse that missing boundary to clear
+        // the new session, and never regenerate an already saved diary.
+        const active = await loadRoomDiaryConversation(sessionMessages());
+        if (!stillCurrent()) return null;
+        if (!active.messages.some(item => item.id === pendingDiaryEntry.snapshot.lastId)) {
+          await syncDiaryArchive({ ensureDiaryId: existingEntry.diaryId });
+          if (!stillCurrent()) return null;
+          pendingDiaryEntry = null;
+          currentSessionMessages.value = active.messages;
+          sessionStartedAt = Date.now();
+          persistDiaryRecording();
+          diary?.refresh?.();
+          endChatState.value = {
+            ...endChatState.value, status: 'done', entry: existingEntry,
+            message: active.messages.length
+              ? '上次日记已确认保存，原会话已结束。当前聊天已保留，可单独写入下一篇日记。'
+              : '上次日记已确认保存，原会话已结束，可以继续聊天。',
+            detail: '已恢复上次保存结果，没有重复生成日记。'
+          };
+          await refreshSyncedHistory();
+          return existingEntry;
+        }
+      }
       const conversation = existingEntry
         ? { messages: [], snapshot: pendingDiaryEntry.snapshot }
         : await loadRoomDiaryConversation(sessionMessages());

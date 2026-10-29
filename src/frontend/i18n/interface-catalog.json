@@ -10521,5 +10521,17 @@
   "邀请邮件链接已保存，后续邀请将使用此链接。": {
     "en": "Invitation link saved. Future invitations will use this link.",
     "ja": "招待リンクを保存しました。今後の招待にはこのリンクを使用します。"
+  },
+  "上次日记已确认保存，原会话已结束。当前聊天已保留，可单独写入下一篇日记。": {
+    "en": "Your previous diary is saved and its conversation has ended. Your current chat is preserved for the next diary.",
+    "ja": "前の日記の保存を確認しました。元の会話は終了しています。現在の会話は保持されており、次の日記に記録できます。"
+  },
+  "上次日记已确认保存，原会话已结束，可以继续聊天。": {
+    "en": "Your previous diary is saved and its conversation has ended. You can continue chatting.",
+    "ja": "前の日記の保存を確認しました。元の会話は終了しています。引き続きお話しできます。"
+  },
+  "已恢复上次保存结果，没有重复生成日记。": {
+    "en": "The previous save has been recovered without generating a duplicate diary.",
+    "ja": "前回の保存結果を復元しました。日記は重複して生成されていません。"
   }
 }
