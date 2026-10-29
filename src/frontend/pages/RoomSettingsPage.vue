@@ -1,4 +1,5 @@
 <script setup>
+import RoomDialogueSettings from '../components/room/RoomDialogueSettings.vue';
 import { readJson, writeJson } from '../services/room/roomStorage';
 import { memorySearchOptions } from '../services/room/roomMemoryRequest.mjs';
 import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../services/room/gptSovitsControl.mjs';
@@ -193,6 +194,7 @@ const savingSettings = ref(false);
 const knowledgeDraftOpen = ref(false);
 const knowledgeExpanded = reactive({});
 const settingsPanel = ref(null);
+const dialoguePanel = ref(null);
 const connectionCheck = reactive({ status: 'idle', snapshot: '' });
 const settingsNavigation = [
   { id: 'llm', label: '聊天模型', icon: 'message', group: '基础与陪伴', badge: '必需', keywords: 'API 密钥 模型 端点 代理 图片 补充指令 Ollama' },
@@ -229,6 +231,7 @@ function discardSettings() {
   if (!hasUnsavedSettings.value || savingSettings.value || memorySavePending.value) return;
   if (!window.confirm('放弃尚未保存的修改，恢复到上次保存的设置？已保存的记忆和条目不会撤销。')) return;
   cancelMemoryEdit();
+  dialoguePanel.value?.cancel();
   loadSettings();
   knowledgeDraftOpen.value = false;
   showToast('已恢复到上次保存的设置');
@@ -329,7 +332,7 @@ function memoryEditSnapshot(value) {
   });
 }
 const hasMemoryDraft = computed(() => Boolean(memory.editing && memoryEditSnapshot(memory.editing) !== memoryEditingOriginal.value));
-const hasUnsavedSettings = computed(() => pendingSections.value.length > 0 || hasKnowledgeDraft.value || hasMemoryDraft.value);
+const hasUnsavedSettings = computed(() => pendingSections.value.length > 0 || hasKnowledgeDraft.value || hasMemoryDraft.value || Boolean(dialoguePanel.value?.dirty));
 
 function persistSettings(key, value, label) {
   try {
@@ -345,6 +348,10 @@ async function saveAllSettings() {
   if (savingSettings.value || memorySavePending.value || memoryChoice.pending) return false;
   savingSettings.value = true;
   try {
+    if (dialoguePanel.value?.loading || (dialoguePanel.value?.dirty && !dialoguePanel.value.save())) {
+      await selectSettingsSection('knowledge');
+      return false;
+    }
     const sections = new Set(pendingSections.value);
     if (hasKnowledgeDraft.value) sections.add('knowledge');
     const actions = { model: saveModel, llm: () => saveLLM(false), tts: () => saveTTS(false), memory: saveMemory, knowledge: () => saveKnowledge(false), mcp: () => saveMCP(false), diary: saveDiaryPersona };
@@ -3432,6 +3439,7 @@ onBeforeUnmount(() => {
               <p>角色设定与长期记忆分开管理，避免相互覆盖。</p>
             </div>
           </div>
+          <RoomDialogueSettings ref="dialoguePanel" :key="roomUser?.id || 'guest'" />
           <label class="settings-toggle-row"
             ><span
               ><strong>启用角色知识库注入</strong

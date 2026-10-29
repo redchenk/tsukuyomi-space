@@ -962,7 +962,7 @@ async function sendMemoryList(req, res) {
         const result = await roomMemory.retrieveChatMemories(req.user.id, query, params.limit,
             { sourceOnly: params.retrieval === 'source', excludeTurnIds: params.excludeTurnIds,
                 snapshotIds: params.memoryIds });
-        return res.json({ success: true, data: result.memories, retrieval: result.retrieval });
+        return res.json({ success: true, data: result.memories, continuity: result.continuity, retrieval: result.retrieval });
     }
     const memories = query
         ? await roomMemory.searchMemories(req.user.id, query, limit)

@@ -34,6 +34,15 @@ async function login(page, username) {
         data: { username, password: 'mem0-test-password' } });
     expect(response.status()).toBe(200);
     const user = (await response.json()).data.user;
+    // Playwright retries replace the browser worker, not the fixture database.
+    // Reset only this file's disposable accounts on the loopback test server.
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(origin).hostname)
+        || !['mem0-browser', 'mem0-isolated', 'mem0-fallback-browser'].includes(username)) {
+        throw new Error('Mem0 fixture reset requires an isolated loopback test account');
+    }
+    const headers = { Origin: origin, 'X-Requested-With': 'XMLHttpRequest' };
+    expect((await page.request.delete('/api/room/chat', { headers })).ok()).toBe(true);
+    expect((await page.request.delete(`/api/room/memory?expectedUserId=${encodeURIComponent(user.id)}`, { headers })).ok()).toBe(true);
     await page.addInitScript(user => localStorage.setItem('tsukuyomi_user', JSON.stringify(user)), user);
 }
 async function newChat(page) {
@@ -43,6 +52,9 @@ async function newChat(page) {
 }
 
 test('embedded Mem0 really injects a saved fact after a new chat and reload, with account isolation', async ({ page, browser }, testInfo) => {
+    // Three generations, a reload and a second account's Live2D initialization.
+    // Keep per-assertion deadlines while budgeting the complete traced journey.
+    test.setTimeout(90000);
     const requests = await configure(page);
     await login(page, 'mem0-browser');
     await page.goto('/room');

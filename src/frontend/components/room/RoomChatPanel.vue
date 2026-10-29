@@ -418,6 +418,12 @@ function endChatStatusLabel() {
         :title="[chat.memoryTrace?.value.reason, chat.memoryTrace?.value.fallbackReason].filter(Boolean).join(' / ')">
         {{ memoryRetrievalNotice(chat.memoryTrace?.value, englishRoom) }}
       </div>
+      <details v-if="chat.promptTrace?.value" class="chat-generation-notice room-prompt-trace">
+        <summary>{{ englishRoom ? 'Context for this reply' : '本轮参考' }}</summary>
+        <p>{{ englishRoom ? 'Character, scene and current speaker are included.' : '已带入角色、场景与当前对话者。' }}</p>
+        <p>{{ englishRoom ? 'Saved names and agreements' : '称呼与明确约定' }}：{{ chat.memoryTrace?.value.continuityCount || 0 }} · {{ englishRoom ? 'World book entries' : '世界书' }}：{{ chat.promptTrace.value.worldBook.selected.length }}</p>
+        <p v-if="chat.promptTrace.value.omittedBlocks.length || chat.promptTrace.value.worldBook.omitted.length">{{ englishRoom ? 'Some optional references were omitted to keep the conversation within its length budget.' : '部分可选参考因篇幅限制未带入。' }}</p>
+      </details>
       <div v-if="chat.diaryRecordingError?.value" class="chat-generation-notice" role="alert">{{ chat.diaryRecordingError.value }}</div>
       <div v-if="chat.memorySaveError?.value" class="chat-generation-notice" role="status">{{ chat.memorySaveError.value }}</div>
       <UploadProgress v-if="chat.imageUploadState" class="room-image-upload" :state="chat.imageUploadState" @dismiss="chat.dismissImageUpload()" />
