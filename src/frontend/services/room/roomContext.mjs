@@ -9,6 +9,7 @@ const MIN_BUDGET = 800;
 const MAX_BUDGET = 20_000;
 
 const SOURCES = [
+  { key: 'continuity', limit: 1600, itemLimit: 500 },
   { key: 'time', limit: 220, itemLimit: 220 },
   { key: 'environment', limit: 600, itemLimit: 600 },
   { key: 'siteKnowledge', limit: 2_000, itemLimit: 450 },

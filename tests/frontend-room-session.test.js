@@ -26,6 +26,7 @@ async function setup(overrides = {}) {
   const saved = [];
   const requests = [];
   const context = {
+    roomChatRuntime: require('../shared/room-chat-runtime.cjs'), readRoomDialogueSettings: () => ({}),
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
     ...officialApi,
     ...localTransport,
@@ -548,6 +549,7 @@ function conversationSyncHarness(authFetch, overrides = {}) {
   let account = 'account-a';
   const localSaves = [];
   const context = {
+    roomChatRuntime: require('../shared/room-chat-runtime.cjs'), readRoomDialogueSettings: () => ({}),
     AbortController, console, localStorage, Map, Set, Date, URLSearchParams,
     getSession: () => ({ user: { id: account } }),
     usesLocalRoomMemory: () => !account || storage.get(`roomMemorySource:${account}`) === 'local',

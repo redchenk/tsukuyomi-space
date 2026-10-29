@@ -85,7 +85,7 @@ test('actual local retrieval excludes automatic turns, preserves manual edits an
     { id: 'old', sourceTurnId: 'old-turn', content: '红茶', updatedAt: '3' },
     { id: 'manual', sourceTurnId: 'target-turn', manuallyEdited: true, content: '红茶', updatedAt: '4' }
   ];
-  const context = { retrieval: require('../shared/room-memory-retrieval.cjs'), getSession: () => ({ user: { id: 'one' } }),
+  const context = { continuity: require('../shared/room-continuity.cjs'), retrieval: require('../shared/room-memory-retrieval.cjs'), getSession: () => ({ user: { id: 'one' } }),
     readMemorySource: () => ({ mode: 'local' }), accountLocalMemoryKey: id => 'local:' + id, queueMicrotask };
   vm.runInNewContext(code + '\nglobalThis.retrieve = retrieveGuestMemories;', context);
   context.openRoomMemoryDb = async () => ({ close() {}, transaction: () => ({ objectStore: () => ({

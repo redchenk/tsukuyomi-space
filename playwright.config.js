@@ -24,12 +24,12 @@ module.exports = defineConfig({
         },
         {
             name: 'chromium-mobile',
-            testMatch: /(?:room-affection|drift-keyboard|drift-themes|scroll-motion|access-transition|room-entry|site-knowledge|article-sharing|pixel-mobile-canvas|room-feedback|game-center|kaguya-ride|upload-ui|attachment-upload)\.spec\.js/,
+            testMatch: /(?:room-dialogue-architecture|room-affection|drift-keyboard|drift-themes|scroll-motion|access-transition|room-entry|site-knowledge|article-sharing|pixel-mobile-canvas|room-feedback|game-center|kaguya-ride|upload-ui|attachment-upload)\.spec\.js/,
             use: { ...devices['Pixel 7'], channel: process.env.PW_CHANNEL || undefined }
         },
         {
             name: 'webkit-mobile',
-            testMatch: /(?:room-affection|drift-keyboard|drift-themes|scroll-motion|access-transition|room-entry|site-knowledge|github-oauth|qq-binding|partner-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|room-feedback|game-center|kaguya-ride|upload-ui|attachment-upload|article-loading|article-jump|article-sharing|pixel-mobile-canvas|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
+            testMatch: /(?:room-dialogue-architecture|room-affection|drift-keyboard|drift-themes|scroll-motion|access-transition|room-entry|site-knowledge|github-oauth|qq-binding|partner-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|room-feedback|game-center|kaguya-ride|upload-ui|attachment-upload|article-loading|article-jump|article-sharing|pixel-mobile-canvas|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
             use: { ...devices['iPhone 13'] }
         }
     ],
