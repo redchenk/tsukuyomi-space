@@ -337,6 +337,33 @@ class DeploymentSafetyTest(unittest.TestCase):
         self.assertFalse(release.code_path('assets/css/vue/model.moc3'))
         self.assertFalse(release.code_path('assets/music/song.css'))
 
+    def test_staging_definitions_release_and_rollback_preserve_local_environment(self):
+        names = ('.env.drift-test.example', 'docker-compose.drift-test.yml')
+        for name in names:
+            self.write(self.root / name, 'staging definition')
+        self.git('add', '--', *names)
+        self.write(self.root / '.env.drift-test.local', 'operator staging configuration')
+        state = self.prepare()
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            for name in names:
+                self.assertEqual((self.root / name).read_text(), 'staging definition')
+            release.rollback(state)
+        for name in names:
+            self.assertFalse((self.root / name).exists())
+        self.assertEqual((self.root / '.env.drift-test.local').read_text(), 'operator staging configuration')
+
+    def test_staging_definition_exception_does_not_allow_local_or_unknown_configs(self):
+        for name in ('.env', '.env.drift-test.local', '.env.production',
+                     '.env.other-test.example', 'docker-compose.override.yml'):
+            with self.subTest(name=name):
+                self.git('checkout', '--detach', self.before)
+                self.write(self.root / name, 'operator configuration')
+                self.git('add', '--', name)
+                self.git('commit', '-qm', 'unmanaged configuration')
+                with self.assertRaisesRegex(RuntimeError, 'protected/unmanaged'):
+                    release.check_git(self.root, self.before, 'HEAD')
+
     def test_conflicting_server_edit_is_not_discarded(self):
         state = self.prepare()
         self.write(self.root / 'backend/hotfix.js', 'new operator edit')
