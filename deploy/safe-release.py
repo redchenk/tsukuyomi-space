@@ -37,6 +37,9 @@ RETIRED_ROOM_ARTWORK = {
 }
 CODE_FILES = ('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore', '.gitignore',
               '.gitattributes', '.env.example', '.env.docker.example', '.env.overseas',
+              # Versioned staging definitions only; real .env and local overrides
+              # remain unmanaged. A code-only release never starts this stack.
+              '.env.drift-test.example', 'docker-compose.drift-test.yml',
               'docker-compose.yml', 'docker-compose.resources.example.yml',
               'vite.config.js', 'vite.frontend.config.js', 'playwright.config.js',
               'README.md', 'README_EN.md', 'LICENSE', 'design.md', 'design-qa.md')
