@@ -254,6 +254,8 @@ test('brief edge reversals finish a reveal instead of flashing it repeatedly', a
   const top = await target.evaluate(el => el.getBoundingClientRect().top + scrollY);
   await page.evaluate(top => scrollTo({top: top - innerHeight + 100, behavior: 'instant'}), top);
   await expect(target).toHaveAttribute('data-scroll-motion', 'from-below');
+  // The observer sets its direction before WebKit exposes the new animation.
+  await expect.poll(() => target.evaluate(el => el.getAnimations().length)).toBe(1);
   const sameAnimation = await target.evaluate(async (el, top) => {
     const animation = el.getAnimations()[0];
     scrollTo({top: top + innerHeight, behavior: 'instant'});

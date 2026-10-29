@@ -2,7 +2,9 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
     testDir: './tests/e2e',
-    timeout: 30 * 1000,
+    // Shared CI runners need time for browser setup and multi-page journeys.
+    // Individual UI assertions keep their independent 8-second deadline.
+    timeout: (process.env.CI ? 90 : 30) * 1000,
     expect: { timeout: 8 * 1000 },
     // Preserve the first failure trace, then retry once in a fresh worker on
     // shared CI runners. Persistent failures still block deployment.
