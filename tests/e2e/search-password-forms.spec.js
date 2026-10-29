@@ -16,7 +16,8 @@ for (const width of [1280, 390]) {
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true }) });
     });
     await page.route('**/api/user/profile*', async route => {
-      const response = await route.fetch();
+      // Retry only a transient connection reset on this read-only fixture fetch.
+      const response = await route.fetch({ maxRetries: 1 });
       const body = await response.json();
       body.data.oauth_accounts = [{ provider: 'qq', nickname: 'Test QQ' }];
       await route.fulfill({ response, json: body });

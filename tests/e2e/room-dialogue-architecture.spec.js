@@ -9,7 +9,10 @@ async function category(page, label) {
 }
 
 for (const width of [390, 1440]) test(`character reference and continuity reach the real request at ${width}px`, async ({ page }, testInfo) => {
-  test.setTimeout(60000);
+  // This covers import, export, four generations and three full navigations.
+  // Retain each assertion's short timeout while allowing the complete journey
+  // to finish on native WebKit runners that record a trace concurrently.
+  test.setTimeout(120000);
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(() => {
     localStorage.setItem('roomMemoryGuestId', 'dialogue-architecture');
