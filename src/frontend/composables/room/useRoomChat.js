@@ -1396,7 +1396,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
       });
       const systemPrompt = compiled.systemPrompt;
       promptTrace.value = compiled.trace;
-      memoryTrace.value = { ...roomContext.retrieval, count: roomContext.trace.filter(item => item.source === 'memories').length };
+      memoryTrace.value = { ...roomContext.retrieval, count: roomContext.trace.filter(item => item.source === 'memories').length,
+        continuityCount: roomContext.trace.filter(item => item.source === 'continuity').length };
       const visionToolSucceeded = roomContext.text.includes('"id":"understand_image"');
       if (image && settings.visionMode === 'auto' && llmProtocol.runtime.resolveCapabilities(settings).image.value === false && visionToolSucceeded) settings = { ...settings, visionMode: 'mcp' };
       if (image && settings.visionMode === 'mcp' && !visionToolSucceeded) {
