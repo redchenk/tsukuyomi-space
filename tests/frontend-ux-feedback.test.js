@@ -51,7 +51,7 @@ test('gallery rejects failed requests, rolls back grid and dialog and permits re
 function article() {
   const request = deferred();
   const c = { articleLike: { loading: false, liked: false, count: 8 }, articleId: { value: '12' }, articleLoadRevision: 1, requireLogin: () => true,
-    authHeaders: () => ({}), parseResponse: r => r, props: { t: {} }, showMessage: m => { c.message = m; },
+    getSession: () => ({ user: { id: 'user' } }), authHeaders: () => ({}), parseResponse: r => r, props: { t: {} }, showMessage: m => { c.message = m; },
     authFetch: (_, options) => { c.method = options.method; return request.promise; } };
   const api = functions('pages/ArticlePage.vue', ['isCurrentArticle', 'toggleArticleLike'], c);
   return { c, api, request };

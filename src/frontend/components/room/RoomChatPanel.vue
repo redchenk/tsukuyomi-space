@@ -294,7 +294,7 @@ function endChatStatusLabel() {
           <span class="room-growth-mobile-label">Lv.{{ chat.growth.value.level.level }}</span>
           <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
           <span class="room-growth-copy">
-            <strong>Lv.{{ chat.growth.value.level.level }} {{ chat.growth.value.level.title }}</strong>
+            <strong>Lv.{{ chat.growth.value.level.level }} {{ $ui(chat.growth.value.level.title) }}</strong>
             <small>{{ chat.growth.value.today.completed }}/{{ chat.growth.value.today.total }} 今日约定</small>
           </span>
           <span class="room-growth-progress" aria-hidden="true"><i :style="{ width: `${chat.growth.value.level.progressPercent}%` }"></i></span>
@@ -356,7 +356,7 @@ function endChatStatusLabel() {
             <template v-else-if="message.role === 'assistant'">
               <div v-for="(part, index) in replyParts(message)" :key="index" class="chat-content chat-reply-part">{{ part }}</div>
             </template>
-            <div v-else class="chat-content">{{ message.content }}</div>
+            <div v-else class="chat-content">{{ message.role === 'system' ? $ui(message.content) : message.content }}</div>
             <div v-if="message.role === 'assistant' && !message.pending && knowledgeReply(message).sources.length" class="chat-knowledge-sources">
               <span>{{ knowledgeReply(message).label }}：</span>
               <a v-for="source in knowledgeReply(message).sources" :key="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>

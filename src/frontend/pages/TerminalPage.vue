@@ -669,7 +669,7 @@ function linkMonitorLabel(item) {
   };
   const status = labels[item.monitor_status] ? item.monitor_status : 'unchecked';
   const latency = Number(item.response_time_ms) || 0;
-  return `${labels[status]}${latency && status !== 'offline' ? ` · ${latency}ms` : ''}`;
+  return `${uiText(labels[status])}${latency && status !== 'offline' ? ` · ${latency}ms` : ''}`;
 }
 
 async function checkLink(id) {

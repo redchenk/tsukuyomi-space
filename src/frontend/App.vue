@@ -4,7 +4,7 @@ import { installSmoothScroll } from './utils/smoothScroll';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
-import { setInterfaceLanguage } from './i18n/runtime';
+import { setInterfaceLanguage, uiText } from './i18n/runtime';
 import AppShell from './layouts/AppShell.vue';
 import RouteViewFrame from './components/RouteViewFrame.vue';
 import { createRouteHistory, ROUTE_CACHE_LIMIT, shouldCacheRoute } from './utils/routeHistory';
@@ -326,9 +326,9 @@ async function loadVisitPopup() {
     if (localStorage.getItem(VISIT_POPUP_SEEN_KEY) === signature) return;
     visitPopup.value = {
       visible: true,
-      title: title || '月读空间',
+      title: title || uiText('月读空间'),
       content,
-      button: String(settings.visitPopupButton || '').trim() || '我知道了',
+      button: String(settings.visitPopupButton || '').trim() || uiText('我知道了'),
       signature
     };
   } catch (error) {

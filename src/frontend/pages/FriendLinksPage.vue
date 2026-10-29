@@ -20,7 +20,7 @@ const state = reactive({
 
 const isZh = computed(() => props.lang === 'zh');
 const copy = computed(() => props.lang === 'en' ? {
-  eyebrow: 'Friend Links',
+  eyebrow: 'Partner Sites',
   title: 'Partner Sites',
   subtitle: 'A collection of sites worth visiting along the way.',
   back: 'Back to Plaza',

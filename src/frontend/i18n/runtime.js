@@ -49,6 +49,8 @@ export function translateFeedback(value) {
   if (direct !== text) return direct;
   const retry = /^请 (\d+) 秒后再发送验证码$/.exec(text);
   if (retry) return uiText('请 {0} 秒后再发送验证码', [retry[1]]);
+  const modelList = /^模型列表服务暂不可用（HTTP (\d+)），请稍后重试。$/.exec(text);
+  if (modelList) return uiText('模型列表服务暂不可用（HTTP {0}），请稍后重试。', [modelList[1]]);
   for (const prefix of ['请求失败：', '请求失败: ', '网络请求失败：', '连接失败：', '保存失败：', '加载失败：']) {
     if (text.startsWith(prefix)) return uiText(prefix) + text.slice(prefix.length);
   }

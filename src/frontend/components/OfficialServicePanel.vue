@@ -1,4 +1,5 @@
 <script setup>
+import { translateFeedback } from '../i18n/runtime';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { assertDashboardAccount, moneyAtoms, officialRequest, usageStatus } from '../services/official-service.mjs';
 import { formatDateTime } from '../utils/time';
@@ -60,7 +61,7 @@ defineExpose({ reload: load });
 <template>
   <section id="models" class="panel payment-models" aria-labelledby="payment-models-title" :aria-busy="loading">
     <div class="payment-section-heading"><div><span class="eyebrow">OFFICIAL API</span><h2 id="payment-models-title">站内直供</h2></div><button type="button" class="ghost-btn" :disabled="loading" @click="load">{{ loading ? '读取中…' : '刷新用量' }}</button></div>
-    <p v-if="error" class="form-message error" role="alert">{{ error }}</p>
+    <p v-if="error" class="form-message error" role="alert">{{ translateFeedback(error) }}</p>
     <p v-if="loading" role="status">正在读取模型与用量…</p>
     <p v-else-if="!dashboard">暂时无法读取直供服务。充值与订单仍可独立使用。</p>
     <template v-if="dashboard">
@@ -82,7 +83,7 @@ defineExpose({ reload: load });
 
   <section id="usage" class="panel payment-usage" aria-labelledby="payment-usage-title">
     <div class="payment-section-heading"><div><span class="eyebrow">YOUR USAGE</span><h2 id="payment-usage-title">用量账单</h2></div><label class="payment-month">账单月份<input v-model="month" type="month" min="2020-01" :max="maxMonth" :disabled="monthBusy || !dashboard" @change="loadMonth" /></label></div>
-    <p v-if="usageError" class="form-message error" role="alert">{{ usageError }}</p>
+    <p v-if="usageError" class="form-message error" role="alert">{{ translateFeedback(usageError) }}</p>
     <p class="payment-fine">按 UTC 自然月统计。余额不按月清零，账单汇总不会再次扣费。</p>
     <div v-if="statement" class="payment-metrics" aria-live="polite"><div><span>已结算消费</span><strong>¥{{ moneyAtoms(statement.charged_atoms) }}</strong></div><div><span>已到账充值</span><strong>¥{{ moneyAtoms(statement.credited_atoms) }}</strong></div><div><span>待核对冻结</span><strong>¥{{ moneyAtoms(statement.pending_hold_atoms) }}</strong></div></div>
     <p v-else-if="monthBusy" role="status">正在读取月账单…</p>
@@ -92,7 +93,7 @@ defineExpose({ reload: load });
     <ol v-else-if="usage?.items.length" class="payment-usage-list">
       <li v-for="item in usage.items" :key="item.request_id" class="payment-usage-row">
         <div><h4>{{ item.model }}</h4><time>{{ formatDateTime(item.created_at, 'zh-CN') }}</time><code>{{ item.request_id }}</code></div>
-        <div><span class="payment-badge" :class="{ 'is-muted': item.status !== 'settled' }">{{ usageStatus(item.status) }}</span><p v-if="item.usage" class="payment-fine">输入 {{ item.usage.input_uncached }} · 缓存 {{ item.usage.input_cached }} · 输出 {{ item.usage.output }}</p><p v-else class="payment-fine">{{ item.status === 'released' ? '未产生消费，冻结已释放' : '最终用量待核对' }}</p></div>
+        <div><span class="payment-badge" :class="{ 'is-muted': item.status !== 'settled' }">{{ $ui(usageStatus(item.status)) }}</span><p v-if="item.usage" class="payment-fine">输入 {{ item.usage.input_uncached }} · 缓存 {{ item.usage.input_cached }} · 输出 {{ item.usage.output }}</p><p v-else class="payment-fine">{{ item.status === 'released' ? '未产生消费，冻结已释放' : '最终用量待核对' }}</p></div>
         <strong v-if="item.status === 'released'">未扣费</strong><strong v-else-if="item.billing_mode === 'sponsored'">免扣费</strong><strong v-else-if="item.charged_atoms !== null && item.charged_atoms !== undefined">¥{{ moneyAtoms(item.charged_atoms) }}</strong><span v-else class="payment-muted">尚未结算</span>
       </li>
     </ol>

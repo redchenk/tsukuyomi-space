@@ -117,7 +117,7 @@ const ucCopy = computed(() => props.lang === 'en' ? {
   publicProfile: 'Public profile', accountInfo: 'View account information',
   profileHint: 'Choose the name and introduction people see.', avatarHint: 'Update your avatar',
   discard: 'Reset changes', unsaved: 'Unsaved changes', saved: 'Your profile is up to date',
-  growth: 'Bond growth', growthHint: 'A little connection, every day.', growthOpen: 'Check in & view tasks',
+  growth: 'Moon Bond', growthHint: 'A little connection, every day.', growthOpen: 'Check in & view tasks',
   growthUnavailable: 'Growth is unavailable right now.', maxLevel: 'Max level', xp: 'XP',
   security: 'Account security', email: 'Email', qq: 'QQ login', linked: 'Linked', unlinked: 'Not linked',
   securityOpen: 'Manage account security', room: 'Yachiyo is here', roomHint: 'Take a moment, make yourself at home.',

@@ -9,6 +9,7 @@ import raiSource from '../data/wiki-sources/rai.mediawiki?raw';
 import rokaSource from '../data/wiki-sources/roka.mediawiki?raw';
 import yachiyoSource from '../data/wiki-sources/yachiyo.mediawiki?raw';
 import { parseKaguyaMediaWiki, parseMediaWikiArticle } from '../utils/mediaWikiArticle';
+import { localizeWikiSourceArticle } from '../services/wikiSourceLocalization';
 
 const props = defineProps({
   sourceKey: { type: String, required: true }
@@ -25,9 +26,9 @@ const sourceMap = {
   yachiyo: yachiyoSource
 };
 
-const article = computed(() => props.sourceKey === 'kaguya'
+const article = computed(() => localizeWikiSourceArticle(props.sourceKey === 'kaguya'
   ? parseKaguyaMediaWiki(sourceMap[props.sourceKey])
-  : parseMediaWikiArticle(sourceMap[props.sourceKey] || ''));
+  : parseMediaWikiArticle(sourceMap[props.sourceKey] || '')));
 const visibleSections = computed(() => article.value.sections.filter((section) => section.id !== 'source-notes'));
 </script>
 
