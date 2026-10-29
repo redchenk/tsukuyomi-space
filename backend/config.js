@@ -85,6 +85,7 @@ module.exports = {
             redirectUri: process.env.GITHUB_REDIRECT_URI || `${oauthRedirectBaseUrl}/api/auth/oauth/github/callback`
         },
         qq: {
+            nativeAppId: process.env.QQ_NATIVE_APP_ID ?? '1905926637',
             clientId: process.env.QQ_CLIENT_ID || '',
             clientSecret: process.env.QQ_CLIENT_SECRET || '',
             redirectUri: process.env.QQ_REDIRECT_URI || `${oauthRedirectBaseUrl}/api/auth/oauth/qq/callback`

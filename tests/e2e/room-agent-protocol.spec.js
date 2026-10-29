@@ -1,3 +1,4 @@
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
@@ -28,7 +29,7 @@ test('Room settings tests and persists a Streamable HTTP handshake in the browse
 
 for (const toolFails of [false, true]) test(`Room native tool loop preserves streaming, private protocol fields and one saved turn (tool failure=${toolFails})`, async ({ page }) => {
     await page.addInitScript(() => {
-        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' }));
+        localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiKey: 'fixture-room-key', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' }));
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
         localStorage.setItem('roomMCPSettings', JSON.stringify({ enabled: true, endpoint: 'https://mcp.example.test/bridge', transport: 'rest', toolAllowlist: 'web_search' }));
     });
@@ -52,7 +53,7 @@ for (const toolFails of [false, true]) test(`Room native tool loop preserves str
             await route.fulfill({ contentType: 'text/event-stream', body: `event: delta\ndata: ${JSON.stringify({ text: reply })}\n\nevent: done\ndata: ${JSON.stringify({ reply })}\n\n` });
         }
     });
-    await page.goto('/room'); await page.locator('#chatInput').fill('月球离地球有多远？'); await page.locator('#sendChatBtn').click();
+    await page.goto('/room'); await waitForRoom(page); await page.locator('#chatInput').fill('月球离地球有多远？'); await page.locator('#sendChatBtn').click();
     await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toContainText(reply);
     expect(models).toBe(2); expect(tools).toBe(1);
     expect((await page.locator('.chat-message').allTextContents()).join('\n')).not.toMatch(/private-|call_moon|"query"/);

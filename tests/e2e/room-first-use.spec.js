@@ -91,7 +91,7 @@ for (const width of [390, 1280]) {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('link', { name: /辉夜快跑/ })).toHaveAttribute('href', '/game');
     await dialog.getByText('好感度为什么没有变化？', { exact: true }).click();
-    await expect(dialog).toContainText('不按发消息条数');
+    await expect(dialog).toContainText('完成并保存一轮新对话 +1');
     await page.screenshot({ path: info.outputPath(`discovery-${width}.png`) });
     await dialog.getByRole('button', { name: '查看日记与当前存档' }).click();
     await expect(page.locator('.diary-affection-help')).toBeVisible();

@@ -94,6 +94,7 @@ function createApp() {
         '/api/auth/email-code',
         '/api/auth/password/reset',
         '/api/auth/oauth/qq/start',
+        '/api/auth/oauth/qq/native',
         '/api/auth/oauth/qq/create',
         '/api/auth/oauth/qq/email',
         '/api/auth/oauth/qq/bind',
@@ -125,6 +126,8 @@ function createApp() {
     // Parse message writes with a small cap before the much larger media-aware API parser.
     const messageIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: 'message-ip' });
     app.use('/api/messages', (req, res, next) => req.method === 'POST' ? messageIpLimiter(req, res, next) : next());
+    app.use('/api/drift', strictJson('16kb'));
+    app.use('/api/moderation/drift', strictJson('4kb'));
     app.use('/api/messages', strictJson('16kb'));
     app.use('/api/messages', express.urlencoded({ limit: '16kb', extended: true }));
     app.use('/api/fushi', strictJson('16kb'));
@@ -191,6 +194,8 @@ function createApp() {
     app.use('/api/articles', articleRoutes);
     app.use('/api/article-categories', require('./routes/article-categories').publicRouter);
     app.use('/api/messages', messageRoutes);
+    app.use('/api/drift', require('./routes/drift').router);
+    app.use('/api/moderation/drift', require('./routes/drift').adminRouter);
     app.use('/api/stats', statsRoutes);
     app.use('/api/chat', chatRoutes);
     app.use('/api/tts', ttsRoutes);

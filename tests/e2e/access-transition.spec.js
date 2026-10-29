@@ -42,6 +42,14 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
     // Observe actual topmost, fully opaque frames without delaying any resource.
     await page.addInitScript(() => {
       window.brandFrames = [];
+      // WebKit can pause rAF sampling during screenshots. The splash remains
+      // painted in that interval; measure its fade/removal via DOM mutation.
+      new MutationObserver(() => {
+        const splash = document.getElementById('boot-splash');
+        if (window.brandFrames.length && !window.brandOpaqueUntil && (!splash || splash.classList.contains('is-ready'))) {
+          window.brandOpaqueUntil = performance.now();
+        }
+      }).observe(document, { childList: true, attributes: true, subtree: true });
       const observe = () => {
         const splash = document.getElementById('boot-splash');
         if (splash && getComputedStyle(splash).opacity === '1'
@@ -55,10 +63,14 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
     for (const reload of [false, true]) {
       if (reload) await page.reload({ waitUntil: 'domcontentloaded' });
       else await page.goto('/', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('#boot-splash')).toBeVisible();
-      if (!reload) await page.screenshot({ path: `output/access-transition/${test.info().project.name}-boot-${reducedMotion}.png` });
+      // The protocol may return after this deliberately short splash is gone.
+      // Its in-page observer records the actual opaque, topmost painted frames.
+      await expect.poll(() => page.evaluate(() => window.brandFrames.length)).toBeGreaterThan(0);
+      if (!reload && await page.locator('#boot-splash').isVisible()) {
+        await page.screenshot({ path: `output/access-transition/${test.info().project.name}-boot-${reducedMotion}.png` });
+      }
       await expect(page.locator('#boot-splash')).toHaveCount(0);
-      const duration = await page.evaluate(() => window.brandFrames.at(-1) - window.brandFrames[0]);
+      const duration = await page.evaluate(() => window.brandOpaqueUntil - window.brandFrames[0]);
       expect(duration).toBeGreaterThanOrEqual(800);
       await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
       await expect(page.locator('.access-enter')).toBeEnabled();

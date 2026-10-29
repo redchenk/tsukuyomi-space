@@ -1,4 +1,6 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
+test.beforeEach(async ({ page }) => configureRoomFixture(page));
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 test('mobile diary selection, persona switching and confirmed deletion preserve the archive', async ({ page }) => {
@@ -10,7 +12,7 @@ test('mobile diary selection, persona switching and confirmed deletion preserve 
                 diary: [1, 2].map(id => ({ diaryId: `entry-${id}`, date: `2026/9/${id}`, time: '12:00', content: `Test diary ${id}` })) }
         }));
     });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.locator('.room-tools-disclosure > summary').click();
     await page.getByRole('button', { name: '日记', exact: true }).click();
     const diary = page.locator('#diaryPanel');
@@ -32,8 +34,11 @@ test('mobile diary selection, persona switching and confirmed deletion preserve 
 });
 
 test('character can open a new chat without creating a user message', async ({ page }) => {
+    await page.route('**/api/chat/stream', route => route.fulfill({
+        contentType: 'text/event-stream', body: 'event: done\ndata: '+ JSON.stringify({ reply: '今天的月色很好。' }) + '\n\n'
+    }));
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await page.getByRole('button', { name: '我先说', exact: true }).click();
     await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toHaveCount(1);
     await expect(page.locator('.chat-message.user')).toHaveCount(0);

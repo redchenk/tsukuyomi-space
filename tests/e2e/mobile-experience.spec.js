@@ -1,10 +1,14 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
+test.beforeEach(async ({ page }) => configureRoomFixture(page));
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 async function openPage(page, path, theme = 'dark') {
     await page.addInitScript((value) => localStorage.setItem('tsukuyomi_theme', value), theme);
     await page.goto(path);
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
+    if (path === '/room') await waitForRoom(page);
     await expect(page.locator('main')).toBeVisible();
 }
 
@@ -37,7 +41,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     expect(await dialog.evaluate((node) => node.matches(':modal'))).toBe(true);
     await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.locator('.site-menu-account')).toBeFocused();
+    await expect(dialog.locator('button, a[href], select, input, summary').filter({ visible: true }).last()).toBeFocused();
     for (let i = 0; i < 18; i++) {
         await page.keyboard.press('Tab');
         expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
@@ -89,6 +93,7 @@ test('mobile content, settings controls and empty states stay compact and usable
     expect((await firstArticle.boundingBox()).y).toBeLessThan(500);
     await page.locator('.stage-about summary').click();
     await expect(page.locator('.stage-seo-intro')).toBeVisible();
+    await page.route(/\/api\/(?:live\/[^/]+\/)?messages(?:\?|$)/, route => route.fulfill({ json: { success: true, data: { messages: [], activity: [], pagination: { total: 0, totalPages: 1, page: 1 } } } }));
     await page.goto('/plaza');
     await expect(page.locator('.plaza-wall')).toBeVisible();
     expect((await page.locator('.plaza-wall').boundingBox()).y).toBeLessThan(550);
@@ -136,6 +141,8 @@ test('account pages show their own navigation title on mobile', async ({ page })
     await expect(page).toHaveURL(/\/hub$/);
     for (const [path, title] of [['/user-center', '用户中心'], ['/notifications', '站内信'], ['/attachments', '附件库']]) {
         await page.goto(path);
+        await expect(page.locator('#boot-splash')).toHaveCount(0);
+    if (path === '/room') await waitForRoom(page);
         await expect(page.locator('.site-brand small')).toHaveText(title);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }

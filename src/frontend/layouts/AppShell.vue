@@ -63,6 +63,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
+  { path: '/drift', key: 'drift', label: props.lang === 'en' ? 'Starlit Letters' : props.lang === 'ja' ? '星の海からの手紙' : '星海来信', icon: 'plaza', active: props.routeName === 'drift', spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
@@ -155,7 +156,7 @@ const accountItems = computed(() => props.isAuthed ? [
 ]);
 const searchItems = computed(() => [...navItems.value.filter(item => item.key !== 'growth'), ...accountItems.value]);
 const exploreGroups = computed(() => [
-  { title: copy.value.discover, keys: ['wiki', 'gallery', 'game'] },
+  { title: copy.value.discover, keys: ['wiki', 'drift', 'gallery', 'game'] },
   { title: copy.value.create, keys: ['stage', 'pixel'] },
   { title: copy.value.spaces, keys: ['download', 'agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => navItems.value.find(item => item.key === key)).filter(Boolean) }))
@@ -201,7 +202,15 @@ function closeNavigationOnBackdrop(event) {
 }
 
 function cycleNavigationFocus(event) {
-  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter((node) => node.getClientRects().length);
+  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter((node) => {
+    if (!node.getClientRects().length) return false;
+    // Closed details can retain layout rectangles for their hidden controls.
+    // Only their summary belongs in the keyboard loop.
+    for (let parent = node.parentElement; parent && parent !== navigationRef.value; parent = parent.parentElement) {
+      if (parent.matches('details:not([open])') && !parent.querySelector(':scope > summary')?.contains(node)) return false;
+    }
+    return true;
+  });
   const target = event.shiftKey ? controls.at(-1) : controls[0];
   if (document.activeElement === (event.shiftKey ? controls[0] : controls.at(-1))) {
     event.preventDefault();

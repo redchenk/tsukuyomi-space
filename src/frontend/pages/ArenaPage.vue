@@ -1597,7 +1597,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
       <header class="pw-document">
         <div class="pw-document-name"><span class="pw-document-icon"><TsIcon name="grid" :size="19" /></span><button type="button" @click="preparePublish" :title="copy.draftPlaceholder"><h1>{{ form.title || copy.draftTitle }}</h1><TsIcon name="penLine" :size="14" /></button><span class="pw-draft-status" :title="draftSaved ? workspaceCopy.saved : draftSaveFailed ? workspaceCopy.saveFailed : workspaceCopy.saving"><TsIcon :name="draftSaved ? 'check' : 'info'" :size="14" />{{ workspaceCopy.draft }}</span></div>
         <div class="pw-document-actions">
-          <button class="ghost-btn" type="button" :aria-label="copy.gallery" @click="toggleGalleryPanel" :aria-expanded="galleryOpen"><TsIcon name="image" :size="17" /><span>{{ copy.gallery }}</span></button>
+          <button class="ghost-btn" type="button" :aria-label="copy.gallery" aria-controls="arena-gallery-panel" @click="toggleGalleryPanel" :aria-expanded="galleryOpen"><TsIcon name="image" :size="17" /><span>{{ copy.gallery }}</span></button>
           <button class="ghost-btn" type="button" :aria-label="workspaceCopy.new" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="17" /><span>{{ workspaceCopy.new }}</span></button>
           <label class="ghost-btn pw-import"><TsIcon name="upload" :size="17" /><span>{{ copy.imageImport }}</span><input ref="imageInputRef" class="sr-only" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
           <button class="ghost-btn" type="button" :aria-label="copy.download" @click="downloadDraft"><TsIcon name="download" :size="17" /><span>{{ copy.download }}</span></button>

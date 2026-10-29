@@ -3137,7 +3137,7 @@ onBeforeUnmount(() => {
               <p>向量与对话分析只在服务器本地执行。后台繁忙时使用已有记忆检索，聊天保存不等待模型。</p>
               <p>{{ memoryVector.local.relationship.stage }} · 好感度 {{ memoryVector.local.relationship.score }}/1000
                 <span v-if="memoryVector.local.relationship.pending"> · {{ memoryVector.local.relationship.pending }} 轮待分析</span></p>
-              <small>这是角色互动进度。真诚感谢、主动关心各 +1；共同约定、表达信任各 +2。有具体内容且被语义分析确认的日常分享 +1，每天最多 3 次；所有互动每天最多增长 10 点。简单问候、重复内容、要求加分不计分，缺席、悲伤和拒绝不扣分。</small>
+              <small>完成并保存一轮新对话 +1，无需开启长期记忆或写日记。共同约定、表达信任经确认后，本轮最多 +2，不重复累加；所有互动每天最多增长 10 点。重复内容、重新生成、要求加分不重复计分，缺席、悲伤和拒绝不扣分。当前分数与本次变化也会显示在聊天界面。</small>
               <p v-if="memoryVector.local.relationship.totalRecords != null">历史共 {{ memoryVector.local.relationship.totalRecords }} 条互动，累计 +{{ memoryVector.local.relationship.totalDelta }}；最近 12 条 +{{ memoryVector.local.relationship.recentDelta }}，更早记录 +{{ memoryVector.local.relationship.earlierDelta }}。今日 +{{ memoryVector.local.relationship.todayDelta }}/10。</p>
               <p v-if="memoryVector.local.analysisFailed">{{ memoryVector.local.analysisFailed }} 轮分析暂未完成，评分与互动进度可能尚未更新。可重新处理失败任务。</p>
               <details v-if="memoryVector.local.relationship.records.length">

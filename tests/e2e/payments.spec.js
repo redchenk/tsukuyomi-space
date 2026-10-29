@@ -75,7 +75,7 @@ test('Terminal configures the toggle and products without accepting credentials'
   await page.getByLabel('开启在线收款', { exact: true }).check();
   await page.getByRole('button', { name: '保存支付配置', exact: true }).click();
   await expect(page.getByText('支付配置已保存', { exact: true })).toBeVisible();
-  expect(saved).toEqual({ enabled: true, products: [{ id: 'service', title: '测试服务', price: '1.23', description: '服务内容与交付说明', enabled: true }] });
+  expect(saved).toEqual({ enabled: true, products: [{ id: 'service', title: '测试服务', price: '1.23', description: '服务内容与交付说明', enabled: true, walletCredit: false }] });
   fs.mkdirSync(output, { recursive: true });
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));

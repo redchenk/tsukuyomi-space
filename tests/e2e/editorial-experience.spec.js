@@ -257,10 +257,10 @@ test('gallery lightbox replaces the list thumbnail with the full image', async (
     }));
 
     await page.goto('/gallery');
-    const thumbnail = page.locator('.gallery-card-image img').first();
+    const thumbnail = page.locator('.gallery-thumb img').first();
     await expect(thumbnail).toHaveAttribute('src', '/e2e-gallery-preview.svg');
     await thumbnail.click();
-    const fullImage = page.locator('.gallery-lightbox > section > img');
+    const fullImage = page.locator('.gallery-viewer-image > img');
     await expect(fullImage).toHaveAttribute('src', '/e2e-gallery-original.svg');
     await expect(fullImage).toHaveAttribute('data-image-state', 'loaded');
     await expect.poll(() => fullImage.evaluate((node) => node.naturalWidth)).toBe(1600);
@@ -270,7 +270,7 @@ test('image cards retain readable text in the mobile light theme', async ({ page
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => localStorage.setItem('tsukuyomi_theme', 'light'));
     await page.goto('/hub');
-    await expect(page.locator('.scene-card').first().locator('.scene-name')).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(page.locator('.scene-card').first().locator('.scene-name')).toHaveCSS('color', await page.locator('.scene-card').first().evaluate(el => { const probe = document.createElement('span'); probe.style.color = 'var(--ts-editorial-ink)'; el.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color; }));
     await expect(page.locator('.site-global-bg')).toHaveCSS('opacity', '1');
 });
 
@@ -278,6 +278,7 @@ test('image cards retain readable text in the mobile light theme', async ({ page
 test('growth keeps recent activity without a separate article XP panel after mobile refresh', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/login?redirect=%2Fgrowth');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.getByLabel('用户名或邮箱', { exact: true }).fill('e2e-user');
     await page.getByLabel('密码', { exact: true }).fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();

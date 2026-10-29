@@ -71,6 +71,17 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+// Browser scenarios need independent identities: the drift quota is per user,
+// and a full Chromium + mobile WebKit run must not consume a shared account.
+for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    for (const scenario of ['keyboard', 'themes']) {
+        for (const role of ['owner', 'reader']) {
+            const username = `drift-${scenario}-${role}-${project}`;
+            db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+                .run(username, username, `${username}@example.test`, bcrypt.hashSync('mem0-test-password', 4), 'user');
+        }
+    }
+}
 // A legacy manually marked invitation has no delivery receipt until explicitly sent.
 db.prepare('INSERT INTO play_test_applications(id,email,status,consent_version,created_at,updated_at) VALUES(?,?,?,?,?,?)')
     .run('play-invitation-legacy', 'legacy-invitation@example.test', 'invited', '2026-10-23', new Date().toISOString(), new Date().toISOString());
@@ -104,10 +115,17 @@ db.prepare('INSERT INTO articles(id,title,content,author_id,status) VALUES(?,?,?
     .run(987601, '成长任务验收文章', '这是一篇用于验证点赞或收藏任务的公开文章。', 'e2e-user-001', 'published');
 db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
     .run('upload-super-admin', 'upload-super-admin', 'upload-super-admin@example.test', bcrypt.hashSync('upload-super-password', 4), 'super_admin');
+const partnerPort = Number(process.env.PORT) + 1;
+const partnerCallback = `https://127.0.0.1:${partnerPort}/callback`;
 require('../backend/services/partner-oauth').registerClient({
-    id: 'e2e-partner', name: '第八千代测试应用', redirectUris: ['https://partner.example.test/callback'], secret: 'e'.repeat(43)
+    id: 'e2e-partner', name: '第八千代测试应用', redirectUris: [partnerCallback], secret: 'e'.repeat(43)
 });
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    for (const kind of ['affection', 'affection-cap', 'affection-other']) {
+        const owner = `${kind}-${project}`;
+        db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+            .run(owner, owner, owner + '@example.test', bcrypt.hashSync('mem0-test-password', 4), 'user');
+    }
     const id = `diary-cross-device-${project}`;
     db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
       .run(id, id, id + '@example.test', bcrypt.hashSync('mem0-test-password', 4), 'user');
@@ -137,13 +155,44 @@ if (process.env.UI_PREVIEW_FIXTURES === 'true') {
         insertMessage.run('月下旅人', content, 'e2e-user-001', 'approved');
     }
 }
+// A separate origin exercises the real 303 redirect, without external DNS or
+// Playwright route interception (which only sees the first URL in a redirect).
+const partnerKey = path.join(dataDir, 'partner-key.pem');
+const partnerCert = path.join(dataDir, 'partner-cert.pem');
+require('node:child_process').execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+    '-subj', '/CN=127.0.0.1', '-keyout', partnerKey, '-out', partnerCert], { stdio: 'ignore' });
+const partnerServer = require('node:https').createServer({ key: fs.readFileSync(partnerKey), cert: fs.readFileSync(partnerCert) }, (req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<p>合作方回调测试页</p>');
+}).listen(partnerPort, process.env.HOST);
+const uploadConfirmations = new Map();
 const server = require('node:http').createServer((req, res) => {
+    // Native XHR progress requires an actual request, not Playwright routing.
+    // Let upload tests hold the server acknowledgement until assertions finish.
+    const fixtureUrl = new URL(req.url, 'http://127.0.0.1');
+    if (req.method === 'POST' && ['/__e2e/upload-hold', '/__e2e/upload-release'].includes(fixtureUrl.pathname)) {
+        const key = fixtureUrl.searchParams.get('key');
+        if (fixtureUrl.pathname.endsWith('hold')) {
+            let release;
+            const pending = new Promise(resolve => { release = resolve; });
+            uploadConfirmations.set(key, { pending, release });
+        } else {
+            uploadConfirmations.get(key)?.release();
+            uploadConfirmations.delete(key);
+        }
+        res.writeHead(204); res.end(); return;
+    }
     // A test-only response delay lets native XHR send its body before the API
     // acknowledgement. Other suites and all production servers stay unaffected.
     if (req.headers['x-upload-fixture-delay'] === '1800' && ['POST', 'PUT'].includes(req.method)
         && ['/api/assets', '/api/user/avatar', '/api/articles', '/api/room/chat/images'].includes(req.url.split('?')[0])) {
         const end = res.end.bind(res);
-        res.end = (...args) => { setTimeout(() => end(...args), 1800); return res; };
+        const gate = uploadConfirmations.get(req.headers['x-upload-fixture-gate']);
+        res.end = (...args) => {
+            if (gate) gate.pending.then(() => end(...args));
+            else setTimeout(() => end(...args), 1800);
+            return res;
+        };
     }
     fixtureRequest.run(req.headers['x-upload-fixture-delay'] === '1800' && req.url.split('?')[0] === '/api/room/chat/images', () => app(req, res));
 }).listen(Number(process.env.PORT), process.env.HOST, () => {
@@ -152,6 +201,7 @@ const server = require('node:http').createServer((req, res) => {
 });
 
 function shutdown() {
+    partnerServer.close();
     server.close(() => {
         db.close();
         fs.rmSync(dataDir, { recursive: true, force: true });

@@ -665,11 +665,6 @@ router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
 
         const profile = compactOAuthProfile(pending.profile);
         const existingOAuthUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
-        if (existingOAuthUser) {
-            await authState.consumeOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
-            const sessionUser = setUserLoginSession(req, res, existingOAuthUser);
-            return res.json({ success: true, message: '登录成功', data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) } });
-        }
 
         let user = null;
         if (req.user?.id) {
@@ -686,6 +681,10 @@ router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
 
         if (!user) {
             return res.status(401).json({ success: false, message: '请先登录或验证要绑定的邮箱账号' });
+        }
+
+        if (existingOAuthUser && existingOAuthUser.id !== user.id) {
+            return res.status(409).json({ success: false, message: '该 QQ 已绑定其他账号' });
         }
 
         const linkedUser = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, user.id));
@@ -743,6 +742,8 @@ router.post('/oauth/qq/unlink', authenticateToken, (req, res) => {
 require('./github-oauth')(router, { httpError, siteUrl, safeRedirectPath, compactOAuthProfile,
     oauthAccountFromProfile, pendingOAuthResponse, createUserFromOAuthProfile, validatedNewPassword,
     setUserLoginSession, userResponse, isUserMissingPublicEmail });
+
+require('./qq-native')(router, { safeRedirectPath, setUserLoginSession, oauthAccountFromProfile, isUserMissingPublicEmail });
 
 router.post('/logout', async (req, res) => {
     const tokens = readAuthTokens(req);

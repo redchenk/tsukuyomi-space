@@ -39,12 +39,12 @@ let desktopQuery;
 
 const home = computed(() => props.items.find(item => item.key === 'hub'));
 const groups = computed(() => [
-  { key: 'discover', label: props.copy.menuLabels.discover, keys: ['wiki', 'plaza', 'gallery', 'game'] },
+  { key: 'discover', label: props.copy.menuLabels.discover, keys: ['wiki', 'plaza', 'drift', 'gallery', 'game'] },
   { key: 'create', label: props.copy.menuLabels.create, keys: ['stage', 'pixel'] },
   { key: 'spaces', label: props.copy.menuLabels.spaces, keys: ['download', 'agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => props.items.find(item => item.key === key)).filter(Boolean) })));
 const artwork = computed(() => ({
-  stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt,
+  drift: plazaArt, stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt,
   ...(activeSeason.value !== 'spring' ? { stage: siteArt.articleCover, plaza: siteArt.galleryCover, gallery: siteArt.hero, pixel: siteArt.pixelCover } : {})
 }));
 const preview = computed(() => groups.value[0].items.find(item => item.key === previewKey.value) || groups.value[0].items[0]);
@@ -131,7 +131,15 @@ async function focusPanel(key, last = false) {
   await Promise.allSettled((floating.value?.getAnimations() || []).map(animation => animation.finished));
   if (run !== updateRun || current.value !== key || !visible.value) return;
   const links = panels.get(key)?.querySelectorAll('a[href]');
-  (last ? links?.[links.length - 1] : links?.[0])?.focus({ preventScroll: true });
+  const target = last ? links?.[links.length - 1] : links?.[0];
+  target?.focus({ preventScroll: true });
+  // With reduced motion Safari can report no animations before the newly
+  // visible panel accepts focus. Retry on its next painted frame, unless a
+  // newer navigation action has already taken ownership.
+  if (target && document.activeElement !== target) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (run === updateRun && current.value === key && visible.value) target.focus({ preventScroll: true });
+  }
 }
 function triggerKey(event, key) {
   if (event.key === 'Tab' && !event.shiftKey && visible.value && current.value === key && pinned) {

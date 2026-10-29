@@ -968,7 +968,7 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
 
 async function fetchRelationship(signal) {
   const accountId = getSession()?.user?.id;
-  if (!accountId || usesLocalRoomMemory() || readJson('roomMemorySettings', {}).enabled === false) return null;
+  if (!accountId) return null;
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener('abort', abort, { once: true });
@@ -1678,6 +1678,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       }
       const currentPersona = activePersonaPrompt(readDiaryArchive());
       const generated = existingEntry ? null : await generateDiaryEntry(turns, { persona: currentPersona, now });
+      const relationshipSnapshot = existingEntry ? null : await fetchRelationship();
       diaryPhase = 'sync';
       await validateRoomDiarySnapshot(conversation.snapshot);
       if (destroyed || revision !== conversationRevision || archiveKey !== diaryArchiveKey()) {
@@ -1686,6 +1687,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       }
       const entry = existingEntry || appendDiaryEntry({
         content: generated.body,
+        ...(relationshipSnapshot ? { affection: relationshipSnapshot.score } : {}),
         characterName: generated.personaName,
         conversationLength: generated.conversationLength,
         mode: 'Deepseek'

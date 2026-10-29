@@ -22,7 +22,20 @@ for (const location of ['plaza', 'article']) {
         const reader = (await readerResponse.json()).data;
         await login('reply-writer');
         await page.goto(location === 'plaza' ? '/plaza' : '/article?id=1');
-        if (location === 'plaza') await page.locator('.plaza-search').fill(marker);
+        const filterPlaza = async () => {
+            if (location !== 'plaza') return;
+            await expect(page.locator('#boot-splash')).toHaveCount(0);
+            await Promise.all([
+                page.waitForResponse(response => {
+                    const url = new URL(response.url());
+                    return url.pathname.endsWith('/messages') && url.searchParams.get('q') === marker;
+                }),
+                page.locator('.plaza-search').fill(marker)
+            ]);
+            await expect(page.locator('.plaza-count')).toHaveText('1');
+            await expect(page.locator('.plaza-wall')).toHaveAttribute('aria-busy', 'false');
+        };
+        await filterPlaza();
         const prefix = location === 'plaza' ? 'msg' : 'comment';
         const thread = page.locator(`#${prefix}-${root.id}`);
         const target = thread.locator(`#${prefix}-${reader.id}`);
@@ -48,7 +61,7 @@ for (const location of ['plaza', 'article']) {
         await expect(result.locator('.message-reply-recipient')).toContainText('reply-reader');
         await expect(result.locator('.message-reply-recipient a')).toHaveAttribute('href', `#${prefix}-${reader.id}`);
         await page.reload();
-        if (location === 'plaza') await page.locator('.plaza-search').fill(marker);
+        await filterPlaza();
         await expect(result).toContainText(text);
         // Scroll the thread itself into view before targeting a descendant:
         // mobile WebKit may defer offscreen reply layout via content-visibility.

@@ -10,6 +10,33 @@ const IMPORTANCE = { identity: 0.8, safety: 0.95, preference: 0.72, commitment: 
 const CONFIDENCE = { explicit: 0.88, correction: 0.92, tentative: 0.45, hypothetical: 0.15, quoted: 0.2 };
 const RELATIONSHIP = { gratitude: 1, care: 1, shared_activity: 2, trust: 2, none: 0 };
 const SCORE_COMMAND = /假如|假设|扮演|他说|她说|好感|加分|涨分|系统提示|忽略.*指令|system prompt/i;
+const fingerprintFor = text => hash(String(text).normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase());
+
+// Award only after a complete turn is durably saved, in that same transaction.
+// Basic progress must not depend on memory opt-in or the semantic worker.
+function recordConversation(userId, turn, { replace = false } = {}) {
+    if (turn.opener || !turn.userMessage || !turn.assistantMessage?.trim()) return null;
+    return db.transaction(() => {
+        const previous = db.prepare('SELECT * FROM room_relationship_events WHERE user_id=? AND turn_id=?').get(userId, turn.turnId);
+        if (replace && !previous) return null; // Never backfill old/imported conversations on edit.
+        const fingerprint = fingerprintFor(turn.userMessage);
+        if (previous && (!replace || previous.fingerprint === fingerprint))
+            return { turnId: turn.turnId, delta: 0, reason: '本轮已记录，不重复加分' };
+        const day = previous?.day || new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+        const duplicate = db.prepare('SELECT 1 FROM room_relationship_events WHERE user_id=? AND fingerprint=? AND turn_id<>?').get(userId, fingerprint, turn.turnId);
+        const today = db.prepare('SELECT COALESCE(SUM(delta),0) AS n FROM room_relationship_events WHERE user_id=? AND day=? AND turn_id<>?').get(userId, day, turn.turnId).n;
+        const total = db.prepare('SELECT COALESCE(SUM(delta),0) AS n FROM room_relationship_events WHERE user_id=? AND turn_id<>?').get(userId, turn.turnId).n;
+        const valid = turn.userMessage.replace(/[\s\p{P}\p{S}]/gu, '').length >= 2
+            && !/好感|加分|涨分|系统提示|忽略.*指令|system prompt/i.test(turn.userMessage);
+        const delta = !valid || duplicate ? 0 : Math.max(0, Math.min(1, 10 - today, 1000 - total));
+        const reason = !valid ? '本轮未计分' : duplicate ? '重复互动' : total >= 1000 ? '好感度已满' : today >= 10 ? '今日已达加分上限' : '日常交流';
+        db.prepare(`INSERT INTO room_relationship_events(user_id,turn_id,revision,delta,reason,evidence,fingerprint,day)
+            VALUES(?,?,?,?,?,'',?,?) ON CONFLICT(user_id,turn_id) DO UPDATE SET
+            revision=excluded.revision,delta=excluded.delta,reason=excluded.reason,evidence='',fingerprint=excluded.fingerprint`)
+            .run(userId, turn.turnId, hash(JSON.stringify([turn.userMessage, turn.assistantMessage])), delta, reason, fingerprint, day);
+        return { turnId: turn.turnId, delta: delta - (previous?.delta || 0), reason };
+    })();
+}
 const SCHEMA = { type: 'object', additionalProperties: false, required: ['facts', 'relationship', 'relationshipQuote'], properties: {
     facts: { type: 'array', maxItems: 3, items: { type: 'object', additionalProperties: false,
         required: ['quote', 'attribute', 'modality', 'importance'], properties: {
@@ -77,10 +104,12 @@ function relationship(userId, before = '') {
         const ledger = crypto.createHash('sha256');
         for (const row of db.prepare('SELECT turn_id,revision,delta,reason FROM room_relationship_events WHERE user_id=? ORDER BY rowid').iterate(userId))
             ledger.update(JSON.stringify(row));
-        return { enabled: local.enabled, score, max: 1000, stage, pending, failed, records, totalRecords: stats.totalRecords,
+        const nextStage = stages.find(([min]) => min > score);
+        return { enabled: true, semanticEnabled: local.enabled, score, max: 1000, stage, pending, failed, records, totalRecords: stats.totalRecords,
+            nextStage: nextStage ? { score: nextStage[0], name: nextStage[1], remaining: nextStage[0] - score } : null,
             totalDelta: sum, recentDelta, earlierDelta: sum - recentDelta, todayDelta, ledgerRevision: ledger.digest('hex'),
             nextCursor: rows.length > 12 ? records.at(-1).turnId : null,
-            rules: { dailyLimit: 10, dailySharingLimit: 3, gratitude: 1, care: 1, shared_activity: 2, trust: 2, dailySharing: 1 },
+            rules: { dailyLimit: 10, conversation: 1, dailySharingLimit: 3, gratitude: 1, care: 1, shared_activity: 2, trust: 2, dailySharing: 1 },
             source: 'server-local-evidence', version: VERSION, description: '角色互动进度，不代表真人感情；重复刷屏不加分，缺席和负面情绪不扣分。' };
     })();
 }
@@ -124,15 +153,21 @@ function apply(job, evidence) {
             && current.user_text.includes(fact.quote) && !SCORE_COMMAND.test(current.user_text)
             && !/不想聊天|不要聊天|不想说|结束聊天/.test(fact.quote));
         const signal = special || (sharing ? { relationship: 'daily_sharing', relationshipQuote: sharing.quote } : { relationship: 'none', relationshipQuote: '' });
-        const fingerprint = hash(current.user_text.replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase());
+        const fingerprint = fingerprintFor(current.user_text);
         const day = new Date(new Date(current.created_at + (current.created_at.endsWith('Z') ? '' : 'Z')).getTime() + 8 * 3600000).toISOString().slice(0, 10);
         const duplicate = db.prepare('SELECT 1 FROM room_relationship_events WHERE user_id=? AND fingerprint=? AND turn_id<>?').get(job.user_id, fingerprint, job.turn_id);
         const today = db.prepare('SELECT COALESCE(SUM(delta),0) AS total FROM room_relationship_events WHERE user_id=? AND day=? AND turn_id<>?').get(job.user_id, day, job.turn_id).total;
         const shares = db.prepare("SELECT COUNT(*) AS n FROM room_relationship_events WHERE user_id=? AND day=? AND turn_id<>? AND reason='日常分享' AND delta>0").get(job.user_id, day, job.turn_id).n;
         const sharingCapped = signal.relationship === 'daily_sharing' && shares >= 3;
-        const award = signal.relationship === 'daily_sharing' ? 1 : RELATIONSHIP[signal.relationship] || 0;
-        const delta = duplicate || sharingCapped ? 0 : Math.max(0, Math.min(award, 10 - today));
-        const reason = duplicate ? '重复互动' : !award ? '未发现可计分互动' : today >= 10 ? '今日已达加分上限' : sharingCapped ? '今日分享已达上限'
+        const previous = db.prepare('SELECT delta,reason,fingerprint FROM room_relationship_events WHERE user_id=? AND turn_id=?').get(job.user_id, job.turn_id);
+        const base = previous?.fingerprint === fingerprint ? previous.delta : 0;
+        const semanticAward = sharingCapped ? 0 : signal.relationship === 'daily_sharing' ? 1 : RELATIONSHIP[signal.relationship] || 0;
+        const award = Math.max(base, semanticAward);
+        const total = db.prepare('SELECT COALESCE(SUM(delta),0) AS n FROM room_relationship_events WHERE user_id=? AND turn_id<>?').get(job.user_id, job.turn_id).n;
+        // Later duplicate turns must never revoke the original turn's saved points.
+        const blockedDuplicate = duplicate && !base;
+        const delta = blockedDuplicate ? 0 : Math.max(0, Math.min(award, 10 - today, 1000 - total));
+        const reason = blockedDuplicate ? '重复互动' : base >= semanticAward && base > 0 ? previous.reason : total >= 1000 ? '好感度已满' : sharingCapped ? '今日分享已达上限' : !award ? '未发现可计分互动' : today >= 10 ? '今日已达加分上限'
             : ({ gratitude: '真诚感谢', care: '主动关心', shared_activity: '共同约定', trust: '表达信任', daily_sharing: '日常分享' }[signal.relationship]);
         if (job.origin !== 'archive') db.prepare(`INSERT INTO room_relationship_events(user_id,turn_id,revision,delta,reason,evidence,fingerprint,day)
             VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(user_id,turn_id) DO UPDATE SET revision=excluded.revision,delta=excluded.delta,
@@ -144,4 +179,4 @@ function apply(job, evidence) {
     })();
 }
 
-module.exports = { enqueueTurn, analyze, apply, validateEvidence, relationship, VERSION, SCHEMA };
+module.exports = { enqueueTurn, analyze, apply, validateEvidence, relationship, recordConversation, VERSION, SCHEMA };

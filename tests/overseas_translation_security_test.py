@@ -1,4 +1,9 @@
 import importlib.util
+import contextlib
+import http.client
+import io
+import json
+import threading
 import os
 import pathlib
 import sys
@@ -79,9 +84,48 @@ class OverseasTranslationSecurityTests(unittest.TestCase):
             normalize("/en-api/articles/12/messages"),
             "/en-api/articles/12/messages",
         )
-        for value in ("/en-api/auth/me", "/en-api/admin/settings", "/en-api/room/memory"):
+        for value in ("/en-api/auth/me", "/en-api/admin/settings", "/en-api/room/memory", "/en-api/drift", "/en-api/drift/1", "/en-api/live/test/drift"):
             with self.assertRaises(ValueError, msg=value):
                 normalize(value)
+
+    def test_private_translation_never_reads_or_writes_shared_cache(self):
+        engine = object.__new__(self.service.EnglishTranslator)
+        engine.store = mock.Mock()
+        engine.model_lock = __import__("threading").Lock()
+        with mock.patch.object(self.service.argostranslate.translate, "translate", return_value="A private thought", create=True):
+            translated = engine.translate_text("这是一句私人心事", private=True)
+        self.assertEqual(translated, "A private thought")
+        engine.store.get_translation.assert_not_called()
+        engine.store.put_translation.assert_not_called()
+        self.assertTrue(self.service.PRIVATE_PATH_RE.match("/drift"))
+        with self.assertRaises(ValueError):
+            self.service.normalize_public_seo_path("/drift?bottle=1")
+
+    def test_translation_errors_never_log_private_text_from_model_exceptions(self):
+        secret = "PRIVATE-MODEL-ERROR-这是一封私密纸条"
+        engine = mock.Mock()
+        engine.translate_text.side_effect = RuntimeError(f"Model rejected input: {secret}")
+        server = self.service.ThreadingHTTPServer(("127.0.0.1", 0), self.service.Handler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        captured = io.StringIO()
+        try:
+            with mock.patch.object(self.service, "translator", return_value=engine), contextlib.redirect_stdout(captured):
+                worker.start()
+                for endpoint in ("/translate/private", "/translate"):
+                    connection = http.client.HTTPConnection(*server.server_address, timeout=5)
+                    try:
+                        connection.request("POST", endpoint, json.dumps({"texts": [secret], "private": True}), {"Content-Type": "application/json"})
+                        response = connection.getresponse()
+                        self.assertEqual(response.status, 502)
+                        self.assertNotIn(secret, response.read().decode())
+                    finally:
+                        connection.close()
+        finally:
+            server.shutdown()
+            worker.join(timeout=5)
+            server.server_close()
+        self.assertIn("RuntimeError", captured.getvalue())
+        self.assertNotIn(secret, captured.getvalue())
 
     def test_article_list_cache_ignores_live_nonces_but_preserves_query_filters(self):
         cache_key = self.service.translated_article_list_cache_key

@@ -230,6 +230,7 @@ function sendRobots(req, res) {
         'Allow: /',
         'Disallow: /terminal',
         'Disallow: /admin',
+        'Disallow: /drift',
         'Disallow: /editor',
         'Disallow: /room/settings',
         'Disallow: /room-settings',
@@ -494,7 +495,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/apply', '/admin/play-testing', '/privacy', '/delete-account', '/admin/account-deletions', '/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/live2d', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/download', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/payments', '/payments/', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game', '/game/gomoku', '/game/kaguya-run']);
+        const vueRoutes = new Set(['/drift', '/admin/drift', '/apply', '/admin/play-testing', '/privacy', '/delete-account', '/admin/account-deletions', '/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/live2d', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/download', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/payments', '/payments/', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game', '/game/gomoku', '/game/kaguya-run']);
         const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
         if (vueRoutes.has(req.path) || ['/fushi/connect', '/fushi/astrbot/callback'].includes(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {

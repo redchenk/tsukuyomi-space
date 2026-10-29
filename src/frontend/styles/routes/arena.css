@@ -235,3 +235,7 @@ body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bot
   .pixel-workspace .pw-context .pw-fit-top { display: none; }
 }
 }
+
+/* The gallery is a body-level dialog, outside .page's shared like styles. */
+.pw-gallery-dialog .like-btn.liked { color: #ff5f73; }
+.pw-gallery-dialog .like-btn.liked .ts-icon { fill: currentColor; stroke: currentColor; }

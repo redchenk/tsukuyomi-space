@@ -27,7 +27,8 @@ const sceneRequests = page => {
 
 for (const width of [1440, 390]) {
   test('Room four seasons and both lighting variants preserve layout at ' + width + 'px', async ({ page }, testInfo) => {
-    test.setTimeout(120000);
+    // Sixteen decoded scenes and screenshots, including the live GPU canvas.
+    test.setTimeout(240000);
     await page.setViewportSize({ width, height: 900 });
     await page.clock.setFixedTime(new Date('2026-10-06T10:00:00+08:00'));
     await page.addInitScript(key => {

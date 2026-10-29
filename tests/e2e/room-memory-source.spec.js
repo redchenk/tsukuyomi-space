@@ -1,4 +1,5 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
@@ -11,7 +12,7 @@ function writeHeaders(page) {
 async function configure(page, guestId) {
   await page.addInitScript((id) => {
     localStorage.setItem('roomMemoryGuestId', id);
-    localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
+    localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true, apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-room-key', model: 'deepseek-chat' }));
     localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: true }));
   }, guestId);
   const requests = [];
@@ -20,6 +21,7 @@ async function configure(page, guestId) {
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: done\ndata: {"reply":"我记下了，也会参考已有记忆。"}\n\n' });
   });
   await page.goto('/login');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   const records = [
     { id: `${guestId}-cat`, userKey: `guest:${guestId}`, type: 'preference', summary: '本地猫的名字',
       content: '我的本地猫叫麦芽。', importance: 0.4, confidence: 0.7, tags: ['猫', '本地'],
@@ -62,6 +64,7 @@ async function readLocalRows(page, userKey) {
 
 async function login(page, username) {
   await page.goto('/login');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await page.locator('#loginAccount').fill(username);
   await page.locator('#loginPassword').fill('mem0-test-password');
   await page.locator('button[type="submit"]').click();
@@ -111,6 +114,7 @@ async function openMemoryManager(page) {
 }
 
 async function send(page, message, accountId) {
+  await waitForRoom(page);
   const before = await page.locator('.chat-message.assistant:not([aria-busy="true"])').count();
   await page.locator('#chatInput').fill(message);
   await page.locator('#sendChatBtn').click();
@@ -133,7 +137,8 @@ async function newChat(page) {
 
 for (const width of [1280, 390]) {
   test(`memory source local choice, scores and explicit merge work at ${width}px`, async ({ page }, testInfo) => {
-    test.setTimeout(60000);
+    // Local editing, two Room entries, merge verification and three screenshots.
+    test.setTimeout(90000);
     await page.setViewportSize({ width, height: 844 });
     const accountId = width === 1280 ? 'memory-source-local-desktop' : 'memory-source-local-mobile';
     const guestId = `source-guest-${width}`;
@@ -187,7 +192,7 @@ for (const width of [1280, 390]) {
     page.on('request', (request) => {
       if (request.method() === 'POST' && request.url().endsWith('/api/room/chat/turn')) turns.push(request.postDataJSON());
     });
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await send(page, '我的本地猫和云端猫叫什么名字？', accountId);
     expect(requests.at(-1).systemPrompt).toContain('麦芽');
     expect(requests.at(-1).systemPrompt).not.toContain('云栖');
@@ -222,7 +227,7 @@ for (const width of [1280, 390]) {
     expect(duplicate.status()).toBe(200);
     expect((await duplicate.json()).data).toMatchObject({ imported: 0, skipped: 4, count: 5 });
 
-    await page.goto('/room');
+    await page.goto('/room'); await waitForRoom(page);
     await newChat(page);
     await page.reload();
     await send(page, '我的本地猫和云端猫叫什么名字？', accountId);
@@ -250,7 +255,7 @@ test('choosing cloud leaves guest records intact and performs no import', async 
   expect(await readLocalRows(page, `user-local:${accountId}`)).toEqual([]);
   await page.reload();
   await expect(page.locator('.memory-source-choice')).toBeHidden();
-  await page.goto('/room');
+  await page.goto('/room'); await waitForRoom(page);
   await send(page, '我的本地猫和云端猫叫什么名字？', accountId);
   expect(requests.at(-1).systemPrompt).toContain('云栖');
   expect(requests.at(-1).systemPrompt).not.toContain('麦芽');

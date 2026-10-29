@@ -1,3 +1,4 @@
+const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const source = { id: 'guide:voice:0', documentId: 'guide:voice', title: '语音连接教程', content: '先启动语音服务，再在房间设置填写实际服务地址。', url: '/room/settings', revision: 'a'.repeat(64) };
 async function setup(page) {
@@ -11,7 +12,7 @@ test('Room injects retrieved evidence, cites it, and refreshes sources on regene
   await setup(page); let lookup = 0, prompt = '';
   await page.route('**/api/knowledge/search', route => { lookup++; return route.fulfill({ json: { success: true, data: { mode: 'hybrid', sources: lookup === 1 ? [source] : [] } } }); });
   await page.route('**/api/chat/stream', route => { prompt = route.request().postDataJSON().systemPrompt; return route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '先启动语音服务，然后填写地址。' })+'\n\n' }); });
-  await page.goto('/room'); await page.locator('#chatInput').fill('怎么配置语音服务？'); await page.locator('#sendChatBtn').click();
+  await page.goto('/room'); await waitForRoom(page); await page.locator('#chatInput').fill('怎么配置语音服务？'); await page.locator('#sendChatBtn').click();
   const assistant = page.locator('.chat-message.assistant').last();
   await expect(assistant).toContainText('参考资料');
   expect(prompt).toContain(source.content);
@@ -28,10 +29,10 @@ test('retrieval failure does not prevent chat and the saved switch disables look
   await setup(page); let lookup = 0;
   await page.route('**/api/knowledge/search', route => { lookup++; return route.abort(); });
   await page.route('**/api/chat/stream', route => route.fulfill({ contentType: 'text/event-stream', body: 'event: done\ndata: '+JSON.stringify({ reply: '资料暂时不足，可以从房间设置查看。' })+'\n\n' }));
-  await page.goto('/room'); await page.locator('#chatInput').fill('网站语音怎么设置？'); await page.locator('#sendChatBtn').click();
+  await page.goto('/room'); await waitForRoom(page); await page.locator('#chatInput').fill('网站语音怎么设置？'); await page.locator('#sendChatBtn').click();
   await expect(page.locator('.chat-message.assistant').last()).toContainText('资料暂时不足'); expect(lookup).toBe(1);
   await page.evaluate(() => localStorage.setItem('roomKnowledgeSettings', JSON.stringify({ enabled: true, siteEnabled: false })));
-  await page.reload(); await page.locator('#chatInput').fill('网站记忆怎么设置？'); await page.locator('#sendChatBtn').click();
+  await page.reload(); await waitForRoom(page); await page.locator('#chatInput').fill('网站记忆怎么设置？'); await page.locator('#sendChatBtn').click();
   await expect(page.locator('.chat-message.assistant').last()).toContainText('资料暂时不足'); expect(lookup).toBe(1);
 });
 test('site guide grounds instructions and shows source links on desktop and mobile', async ({ page }, info) => {
