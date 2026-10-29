@@ -56,11 +56,14 @@ function importCard(input) {
 function normalizeSettings(input = {}) {
     if (!input || typeof input !== 'object') input = {};
     let reference = null;
-    if (input.reference) { try { reference = importCard(input.reference).card; } catch { /* Invalid old drafts are not instructions. */ } }
+    // New accounts/browsers immediately use the bundled card. An explicit null
+    // or disabled switch remains a user choice, including after reload.
+    const referenceInput = Object.prototype.hasOwnProperty.call(input, 'reference') ? input.reference : exportBuiltinCard();
+    if (referenceInput) { try { reference = importCard(referenceInput).card; } catch { /* Invalid old drafts are not instructions. */ } }
     return {
-        version: 1, spoiler: input.spoiler === 'allow' ? 'allow' : 'avoid',
+        version: 1, spoiler: input.spoiler === 'avoid' ? 'avoid' : 'allow',
         userPersona: text(input.userPersona, 800), scenario: text(input.scenario, 1200),
-        reference, referenceEnabled: Boolean(reference && input.referenceEnabled),
+        reference, referenceEnabled: Boolean(reference && input.referenceEnabled !== false),
         worldBookEnabled: input.worldBookEnabled !== false
     };
 }

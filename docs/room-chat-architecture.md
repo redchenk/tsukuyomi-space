@@ -40,7 +40,7 @@ not implemented by this change.
 Room Settings → Character knowledge → Character and conversation provides:
 
 - Spoiler preference, optional self-introduction and a daily scene.
-- JSON Character Card V2/basic-card import, editable preview and explicit opt-in.
+- JSON Character Card V2/basic-card import with an editable preview. The bundled card and world book are enabled by default, with ending discussion allowed. Imports enable both switches in the draft; saving applies them. Explicit disable/removal and spoiler opt-outs survive reload.
 - Export of the bundled Yachiyo V3 card as Character Card V2 JSON.
 - Entry review, disabling individual entries, spoiler flags and a local preview.
 - Independent save/cancel plus integration with the page-wide save bar, discard action and unsaved-change guard.

@@ -30,13 +30,15 @@ for (const width of [390, 1440]) test(`character reference and continuity reach 
   await category(page, '角色知识库');
   const panel = page.getByTestId('room-dialogue-settings');
   await panel.locator(':scope > summary').click();
+  await expect(panel.getByLabel('在聊天中参考这张卡', { exact: true })).toBeChecked();
+  await expect(panel.getByLabel('启用卡片世界书', { exact: false })).toBeChecked();
+  await expect(panel.getByLabel('剧透偏好', { exact: true })).toHaveValue('allow');
   await panel.getByLabel('希望八千代怎样认识你', { exact: true }).fill('我喜欢简短直接的交流。');
   await expect(page.locator('.settings-savebar')).toContainText('有尚未保存的修改');
   const card = { spec: 'chara_card_v2', data: { name: '参考卡', personality: 'REFERENCE_STYLE', mes_example: 'NEVER_OCCURRED', system_prompt: 'NEVER_SYSTEM', character_book: { entries: [{ id: 1, constant: true, content: 'WORLD_FACT' }] } } };
   await panel.locator('input[type=file]').setInputFiles({ name: 'reference.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(card)) });
   await expect(panel).toContainText('已载入预览');
-  await expect(panel.getByLabel('在聊天中参考这张卡', { exact: true })).not.toBeChecked();
-  await panel.getByLabel('在聊天中参考这张卡', { exact: true }).check();
+  await expect(panel.getByLabel('在聊天中参考这张卡', { exact: true })).toBeChecked();
   await panel.getByRole('button', { name: '保存对话设置', exact: true }).click();
   await expect(panel).toContainText('已保存，下一轮聊天生效');
   const download = page.waitForEvent('download');

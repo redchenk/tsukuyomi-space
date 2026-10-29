@@ -45,7 +45,7 @@
   "对话设置尚未保存，确定离开并放弃这些修改？": {"en":"Conversation settings are not saved. Leave and discard these changes?","ja":"会話設定は未保存です。変更を破棄して移動しますか？"},
   "请选择不超过 200 KB 的 JSON 角色卡": {"en":"Choose a JSON character card no larger than 200 KB.","ja":"200 KB 以下の JSON キャラクターカードを選択してください。"},
   "账号已变化，请重新打开对话设置": {"en":"The account changed. Please reopen conversation settings.","ja":"アカウントが変わりました。会話設定を開き直してください。"},
-  "已载入预览。检查内容后可开启参考，再保存到聊天。": {"en":"Preview loaded. Review the content, enable the reference, then save it for chat.","ja":"プレビューを読み込みました。内容を確認して参考利用をオンにし、会話用に保存してください。"},
+  "已载入预览并开启角色卡与世界书，保存后用于聊天。": {"en":"Preview loaded with the character reference and world book enabled. Save to use them in chat.","ja":"プレビューを読み込み、キャラクター参考とワールドブックを有効にしました。保存すると会話に反映されます。"},
   "已保存，下一轮聊天生效。": {"en":"Saved. Changes apply to the next reply.","ja":"保存しました。次の会話から反映されます。"},
   "已恢复到上次保存的设置。": {"en":"Restored the last saved settings.","ja":"最後に保存した設定に戻しました。"},
   "关闭好感度": {"en": "Close affinity", "ja": "好感度を閉じる"},

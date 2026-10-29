@@ -24,9 +24,10 @@ async function importReference(event) {
     const result = runtime.importCard(await file.text());
     if (ownerKey !== roomDialogueSettingsKey()) throw new Error('账号已变化，请重新打开对话设置');
     draft.value.reference = result.card;
-    draft.value.referenceEnabled = false;
+    draft.value.referenceEnabled = true;
+    draft.value.worldBookEnabled = true;
     warnings.value = result.warnings;
-    feedback.value = '已载入预览。检查内容后可开启参考，再保存到聊天。';
+    feedback.value = '已载入预览并开启角色卡与世界书，保存后用于聊天。';
   } catch (cause) { error.value = cause.message; }
   finally { loading.value = false; }
 }
@@ -54,7 +55,7 @@ function exportCard() {
   <summary><strong>角色与对话</strong><span>结局后的日常 · 剧透偏好 · 角色卡与世界书</span></summary>
   <div class="dialogue-body">
     <p>八千代默认生活在电影结局之后：期待日常、创作与相聚，保留原作身份和关系。你的称呼和明确约定来自当前账号的记忆。</p>
-    <label>剧透偏好<select v-model="draft.spoiler"><option value="avoid">不主动剧透，问到时再聊</option><option value="allow">可以聊结局与身世</option></select></label>
+    <label>剧透偏好<select v-model="draft.spoiler" aria-label="剧透偏好"><option value="avoid">不主动剧透，问到时再聊</option><option value="allow">可以聊结局与身世</option></select></label>
     <label>希望八千代怎样认识你<textarea v-model="draft.userPersona" maxlength="800" placeholder="可选：希望使用的称呼、交流习惯；不要填写密码等敏感信息" /></label>
     <label>今天的聊天场景<textarea v-model="draft.scenario" maxlength="1200" placeholder="可选：一起讨论新作品，或只是轻松聊聊。留空使用结局后的日常。" /></label>
     <p class="hint">只保存在当前账号的这个浏览器中。长期记忆关闭后，下面“长期记忆”中的记录不会用于聊天；这里主动填写的介绍仍会使用。</p>

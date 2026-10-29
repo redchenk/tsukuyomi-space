@@ -50,9 +50,27 @@ test('import rejects malformed and excessive files; normalizes primitive entries
   assert.equal(result.card.character_book.entries.length, 1);
 });
 
-test('reference is opt-in; examples and diary personas never enter the compiler', () => {
+test('bundled card, world book and ending discussion are enabled by default; explicit opt-outs persist', () => {
+  const defaults = runtime.normalizeSettings();
+  assert.equal(defaults.reference.name, '月见八千代');
+  assert.equal(defaults.referenceEnabled, true);
+  assert.equal(defaults.worldBookEnabled, true);
+  assert.equal(defaults.spoiler, 'allow');
+  const compiled = runtime.compile({ message: '聊聊辉夜的身世与结局' });
+  assert.ok(compiled.trace.blocks.some(block => block.id === 'card-reference'));
+  assert.ok(compiled.trace.worldBook.selected.includes('2'));
+  const off = runtime.normalizeSettings({ reference: null, referenceEnabled: false, worldBookEnabled: false, spoiler: 'avoid' });
+  assert.deepEqual(runtime.normalizeSettings(off), off);
+  assert.equal(off.reference, null);
+  assert.equal(off.referenceEnabled, false);
+  assert.equal(off.worldBookEnabled, false);
+  assert.equal(off.spoiler, 'avoid');
+  assert.deepEqual(runtime.compile({ settings: off }).trace.worldBook.selected, []);
+});
+
+test('reference can be disabled; examples and diary personas never enter the compiler', () => {
   const reference = { name: '参考', personality: 'UNIQUE_REFERENCE', mes_example: 'FAKE_SHARED_MEMORY' };
-  assert.doesNotMatch(runtime.compile({ settings: { reference } }).systemPrompt, /UNIQUE_REFERENCE|FAKE_SHARED_MEMORY/);
+  assert.doesNotMatch(runtime.compile({ settings: { reference, referenceEnabled: false } }).systemPrompt, /UNIQUE_REFERENCE|FAKE_SHARED_MEMORY/);
   assert.match(runtime.compile({ settings: { reference, referenceEnabled: true } }).systemPrompt, /UNIQUE_REFERENCE/);
   assert.doesNotMatch(runtime.compile({ persona: { name: 'DIARY_PERSONA' } }).systemPrompt, /DIARY_PERSONA/);
 });
