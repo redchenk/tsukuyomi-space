@@ -7,6 +7,29 @@ const sse = items => new Response(items.map(p => `data: ${typeof p === 'string' 
 const tool = (id = 'call_1', query = '现在天气') => ({ id, name: 'web_search', arguments: JSON.stringify({ query }) });
 const completion = calls => ({ reply: '', toolCalls: calls, continuation: { protocol: 'openai', items: [{ role: 'assistant', content: null, tool_calls: calls.map(p => ({ id: p.id, type: 'function', function: { name: p.name, arguments: p.arguments } })) }] } });
 
+test('proxy provider requests retain the compiled character and world book for all chat protocols', async () => {
+  const runtime = require('../shared/room-chat-runtime.cjs');
+  const reference = { name: '参考', personality: 'PROVIDER_CARD_MARKER', character_book: { entries: [{ id: 1, constant: true, content: 'PROVIDER_WORLD_MARKER' }] } };
+  const { systemPrompt } = runtime.compile({ message: '你好', settings: { reference } });
+  const original = global.fetch;
+  try {
+    for (const [apiUrl, model, field, reply] of [
+      ['https://api.deepseek.com/chat/completions', 'deepseek-chat', 'messages', { choices: [{ message: { content: '收到' } }] }],
+      ['https://api.openai.com/v1/responses', 'gpt-5.5', 'instructions', { output_text: '收到' }],
+      ['https://api.anthropic.com/v1/messages', 'claude-opus-5-5', 'system', { content: [{ type: 'text', text: '收到' }] }]
+    ]) {
+      let sent;
+      global.fetch = async (_, options) => { sent = JSON.parse(options.body); return new Response(JSON.stringify(reply), { headers: { 'Content-Type': 'application/json' } }); };
+      const result = await createChatCompletion({ message: '你好', apiUrl, model, apiKey: 'synthetic', systemPrompt });
+      assert.equal(result.reply, '收到');
+      const prompt = field === 'messages' ? sent.messages[0].content : sent[field];
+      assert.equal(prompt, systemPrompt);
+      assert.match(prompt, /PROVIDER_CARD_MARKER/);
+      assert.match(prompt, /PROVIDER_WORLD_MARKER/);
+    }
+  } finally { global.fetch = original; }
+});
+
 test('direct and proxy Qwen settings are controlled without exporting vendor fields or stored reasoning', () => {
   const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
   assert.deepEqual(protocol.chatOptions(url, 'qwen3.8-flash'), { temperature: 0.6, preserve_thinking: false });

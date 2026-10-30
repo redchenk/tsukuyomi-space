@@ -75,6 +75,44 @@ test('reference can be disabled; examples and diary personas never enter the com
   assert.doesNotMatch(runtime.compile({ persona: { name: 'DIARY_PERSONA' } }).systemPrompt, /DIARY_PERSONA/);
 });
 
+test('card and world book switches independently control the compiled request and its trace', () => {
+  const reference = { name: '参考', personality: 'CARD_ONLY_MARKER', character_book: { scan_depth: 0, entries: [{ id: 1, keys: ['星灯'], content: 'WORLD_ONLY_MARKER' }] } };
+  for (const referenceEnabled of [false, true]) for (const worldBookEnabled of [false, true]) {
+    const result = runtime.compile({ message: '聊聊星灯', settings: { reference, referenceEnabled, worldBookEnabled } });
+    assert.equal(result.systemPrompt.includes('CARD_ONLY_MARKER'), referenceEnabled);
+    assert.equal(result.systemPrompt.includes('WORLD_ONLY_MARKER'), worldBookEnabled);
+    assert.equal(result.trace.cardReference.included, referenceEnabled);
+    assert.equal(result.trace.worldBook.enabled, worldBookEnabled);
+    assert.deepEqual(result.trace.worldBook.selected, worldBookEnabled ? ['1'] : []);
+  }
+  const noMatch = runtime.compile({ message: '你好', settings: { reference } }).trace;
+  assert.equal(noMatch.worldBook.enabled, true);
+  assert.deepEqual(noMatch.worldBook.selected, []);
+  const removed = runtime.compile({ settings: { reference: null, worldBookEnabled: true } }).trace;
+  assert.equal(removed.cardReference.available, false);
+  assert.equal(removed.worldBook.available, false);
+  assert.equal(removed.worldBook.enabled, false);
+});
+
+test('world book budgets charge the sent envelope, not keyword and editor metadata', () => {
+  const content = '事实'.repeat(1000);
+  const reference = { name: '参考', personality: '自然', character_book: { entries: [{ id: 'long', constant: true, content, keys: Array(20).fill('长关键词'.repeat(20)) }] } };
+  const result = runtime.compile({ settings: { reference } });
+  assert.deepEqual(result.trace.worldBook.selected, ['long']);
+  assert.ok(result.systemPrompt.includes(content));
+  assert.deepEqual(result.trace.worldBook.omitted, []);
+});
+
+test('trace reports world entries excluded by the total prompt budget', () => {
+  const reference = { name: '参考', personality: 'p'.repeat(3000), character_book: { entries: [{ id: 'budget', content: 'w'.repeat(2000), constant: true }] } };
+  const result = runtime.compile({ settings: { reference, scenario: 's'.repeat(1200), userPersona: 'u'.repeat(800) }, context: 'c'.repeat(7500), userPrompt: 'i'.repeat(4000), protocol: 'p'.repeat(4000) });
+  assert.equal(result.trace.cardReference.enabled, true);
+  assert.equal(result.trace.cardReference.included, false);
+  assert.deepEqual(result.trace.worldBook.selected, []);
+  assert.deepEqual(result.trace.worldBook.omitted, ['budget']);
+  assert.ok(result.systemPrompt.length <= 20000);
+});
+
 test('world book respects literal keys, secondary logic, disable, spoilers and scan depth', () => {
   const entries = [
     { id: 1, content: '常驻', constant: true }, { id: 2, content: '结局', constant: true, spoiler: true },

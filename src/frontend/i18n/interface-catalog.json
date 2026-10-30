@@ -1,4 +1,12 @@
 {
+  "角色卡参考：": {"en":"Character card reference: ","ja":"キャラクターカード参考："},
+  "未载入": {"en":"Not loaded","ja":"未読み込み"},
+  "已带入": {"en":"Included","ja":"反映済み"},
+  "因篇幅限制未带入": {"en":"Omitted due to the length limit","ja":"長さ制限により省略"},
+  "世界书：": {"en":"World book: ","ja":"ワールドブック："},
+  "已带入 {0} 条": {"en":"{0} entries included","ja":"{0} 件を反映"},
+  "已开启，本轮未命中": {"en":"Enabled; no match this turn","ja":"有効・今回は一致なし"},
+  "两个开关分别生效，保存后用于下一轮聊天。世界书按关键词匹配，“始终参考”的条目会直接带入。": {"en":"The switches work independently. Save to apply them to the next turn. World book entries match keywords; constant entries are included automatically.","ja":"2 つの設定は独立しており、保存後の次の会話に反映されます。ワールドブックはキーワードで選び、常時参照の項目は自動で反映します。"},
   "本轮参考": {"en":"Context for this reply","ja":"今回の参考情報"},
   "已带入角色、场景与当前对话者。": {"en":"Character, scene and current speaker are included.","ja":"キャラクター、場面、現在の話し相手を反映しています。"},
   "称呼与明确约定": {"en":"Saved names and agreements","ja":"呼び名と明確な約束"},
