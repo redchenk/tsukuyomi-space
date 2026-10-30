@@ -76,7 +76,7 @@ function taskHint(task) {
 }
 
 function taskIcon(key) {
-  return { checkin: 'calendar', daily_share: 'send', daily_article_engage: 'heart', daily_stage_visit: 'eye', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image', daily_kaguya_run: 'gamepad' }[key] || 'sparkles';
+  return { checkin: 'calendar', daily_share: 'send', daily_article_engage: 'heart', daily_stage_visit: 'eye', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image', daily_kaguya_run: 'gamepad', daily_drift_prompt: 'moonStar' }[key] || 'sparkles';
 }
 
 function eventText(item) {
