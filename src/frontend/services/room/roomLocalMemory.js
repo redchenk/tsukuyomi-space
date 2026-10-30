@@ -1,3 +1,4 @@
+import continuity from '../../../../shared/room-continuity.cjs';
 import retrieval from '../../../../shared/room-memory-retrieval.cjs';
 import { getSession } from '../../api/client';
 import { publishLocalRoomMemoryUpdate } from './roomMemorySync';
@@ -104,6 +105,11 @@ export async function saveGuestMemory({ turnId, userMessage, assistantMessage, m
       }
       if (allowed && (replace || !rows.some(row => row.sourceTurnId === turnId))) {
         // Preserve manually edited records when regenerating this turn.
+        const newFacts = continuity.extract(userMessage);
+        for (const old of rows) {
+          const retired = continuity.fromRecord(old).filter(fact => newFacts.some(next => next.key === fact.key)).map(fact => fact.key);
+          if (retired.length && old.sourceTurnId !== turnId) store.put({ ...old, continuityRetired: [...new Set([...(old.continuityRetired || []), ...retired])] });
+        }
         const now = new Date().toISOString();
         store.put({ id: `${userKey}:${turnId}:${crypto.randomUUID()}`, userKey, sourceTurnId: turnId,
           type: 'conversation', summary: content.slice(0, 280), content, importance: 0.5,
@@ -128,13 +134,17 @@ export async function retrieveGuestMemories(query, limit, options = {}) {
       request.onerror = () => reject(request.error);
     });
     if (roomLocalMemoryKey() !== userKey) return [];
-    const owned = records.filter(row => memoryAllowedForTurns(row, excluded));
+    const owned = records.filter(row => memoryAllowedForTurns(row, excluded) && (!row.continuityRetired?.length || continuity.fromRecord(row).length));
+    const anchors = continuity.selectLocal(records, excluded);
+    const anchored = new Map(anchors.map(row => [row.id, row]));
     const selected = scope.snapshotIds !== undefined
       ? scope.snapshotIds.flatMap(id => { const row = owned.find(item => item.id === id); return row ? [{ ...row, score: 0 }] : []; })
       : owned.map(row => ({ ...row, score: lexicalScore(query, row.content) }))
         .filter(row => row.score > 0).sort((a, b) => b.score - a.score || b.updatedAt.localeCompare(a.updatedAt));
-    return selected.slice(0, normalizeMemoryRetrievalLimit(limit)).map(row => ({ ...row,
-      context: memoryExcerpt(row.content, query), source: 'indexeddb',
-      retrievalRevision: JSON.stringify([row.summary, row.content, row.importance, row.confidence, row.manuallyEdited, row.sourceTurnId]) }));
+    const result = selected.slice(0, normalizeMemoryRetrievalLimit(limit)).map(row => ({ ...row,
+      context: memoryExcerpt(row.content, query), continuity: anchored.has(row.id), source: 'indexeddb',
+      retrievalRevision: JSON.stringify([row.summary, row.content, row.importance, row.confidence, row.manuallyEdited, row.sourceTurnId, row.continuityRetired]) }));
+    result.continuity = anchors.map(row => ({ id: row.id, content: row.context, sourceTurnId: row.sourceTurnId }));
+    return result;
   } finally { db.close(); }
 }

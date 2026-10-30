@@ -8,7 +8,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: production-deploy
+  # PR checks do not touch servers. Only main/deployment runs share the
+  # production lock (also used by server diagnostics).
+  group: ${{ github.event_name == 'pull_request' && format('pr-checks-{0}', github.event.pull_request.number) || 'production-deploy' }}
   cancel-in-progress: false
 
 jobs:

@@ -1,3 +1,4 @@
+const continuity = require('../../shared/room-continuity.cjs');
 const crypto = require('crypto');
 const db = require('../db');
 const roomChatRepository = require('../repositories/room-chat-repository');
@@ -187,6 +188,17 @@ function captureChatTurn(userId, { turnId, userMessage, assistantMessage, opener
             estimateImportance(userMessage), JSON.stringify(metadata));
         return result.changes ? [id] : [];
     });
+    // Reuse the existing source-owned fact table; no second memory store.
+    for (const fact of continuity.extract(userMessage)) {
+        const row = ids.map(id => db.prepare('SELECT rowid AS source_order,* FROM room_memories WHERE id=? AND user_id=?').get(id, userId))
+            .find(row => row?.content.includes(fact.quote));
+        if (!row) continue;
+        const attribute = `continuity:${fact.key}`;
+        db.prepare('UPDATE room_memory_facts SET active=0 WHERE user_id=? AND attribute=? AND source_order<?').run(userId, attribute, row.source_order);
+        if (fact.key === 'name') db.prepare("UPDATE room_memory_facts SET active=0 WHERE user_id=? AND attribute='name' AND source_order<?").run(userId, row.source_order);
+        db.prepare('INSERT OR IGNORE INTO room_memory_facts(id,user_id,memory_id,turn_id,attribute,value,quote,confidence,importance,source_order,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,1,?)')
+            .run(`continuity:${row.id}:${fact.key}`, userId, row.id, turnId, attribute, fact.value, fact.quote, 1, 0.9, row.source_order, row.created_at);
+    }
     require('./room-local-analysis').enqueueTurn(userId, { turnId, userMessage, assistantMessage }, ids);
     return ids;
 }
@@ -218,6 +230,21 @@ async function retrieveChatMemories(userId, query, limit, options = {}) {
     const semantic = new Map(index.results.map(item => [item.id, item.score]));
     const semanticChunks = new Map(index.results.map(item => [item.id, item.context]));
     const queryVector = createEmbedding(expanded);
+    // Names and explicit next-chat cues are selected independently of query
+    // similarity. Join the owned source so deletion immediately removes them.
+    const anchorFacts = db.prepare(`SELECT f.*,m.content FROM room_memory_facts f JOIN room_memories m ON m.id=f.memory_id AND m.user_id=f.user_id
+        WHERE f.user_id=? AND f.active=1 AND f.confidence>=0.8
+        AND (f.attribute IN ('name','continuity:name') OR f.attribute LIKE 'continuity:cue:%')
+        ORDER BY CASE WHEN f.attribute IN ('name','continuity:name') THEN 0 ELSE 1 END, f.source_order DESC LIMIT 40`).all(userId);
+    const anchorKeys = new Set();
+    const anchors = new Map();
+    for (const fact of anchorFacts) {
+        const key = fact.attribute === 'name' ? 'continuity:name' : fact.attribute;
+        if (anchorKeys.has(key)) continue;
+        anchorKeys.add(key);
+        if (excluded.has(fact.turn_id) || !fact.content.includes(fact.quote)) continue;
+        if (anchors.size < 4) anchors.set(fact.memory_id, [...(anchors.get(fact.memory_id) || []), fact.quote]);
+    }
     const candidates = snapshot
         ? snapshotIds.flatMap(id => { const row = db.prepare('SELECT * FROM room_memories WHERE id=? AND user_id=?').get(id, userId); return row ? [row] : []; })
         : localIntelligence.enabled ? [...new Map([...ownedMemoryRows(userId), ...ownedMemoryRows(userId, index.results.map(item => item.id))].map(row => [row.id, row])).values()] : ownedMemoryRows(userId);
@@ -236,11 +263,13 @@ async function retrieveChatMemories(userId, query, limit, options = {}) {
         .slice(0, safeLimit);
     touchMemories(userId, ranked.map(item => item.row.id));
     const memories = ranked.flatMap(({ row, score }) => {
-            const facts = localIntelligence.enabled ? db.prepare('SELECT quote,active FROM room_memory_facts WHERE memory_id=? AND user_id=?').all(row.id, userId) : [];
+            const facts = db.prepare('SELECT quote,active,attribute FROM room_memory_facts WHERE memory_id=? AND user_id=?').all(row.id, userId);
             // An old singleton identity remains in the archive, but must not
             // overwrite a later correction in the actual prompt.
             if (facts.length && !facts.some(fact => fact.active)) return [];
-            const context = facts.length ? facts.filter(fact => fact.active).map(fact => fact.quote).join('\n')
+            const semanticFacts = facts.filter(fact => !fact.attribute.startsWith('continuity:'));
+            // Fast-path names do not summarize the rest of a source turn.
+            const context = semanticFacts.length ? facts.filter(fact => fact.active).map(fact => fact.quote).join('\n')
                 : semanticChunks.get(row.id) || memoryExcerpt(row.content, query);
             // The snapshot is revalidated against the owned source on every
             // retry. Index refreshes do not change the version; edits, source
@@ -249,12 +278,13 @@ async function retrieveChatMemories(userId, query, limit, options = {}) {
             const retrievalRevision = crypto.createHash('sha256').update(JSON.stringify([
                 row.memory_type, row.summary, row.content, row.importance, meta.confidence,
                 meta.sourceKind, meta.sourceTurnId, meta.sourceRevision, meta.tags,
-                facts.map(fact => [fact.quote, fact.active]).sort()
+                facts.map(fact => [fact.quote, fact.active, fact.attribute]).sort()
             ])).digest('hex');
-            return [{ ...toPublicMemory(row, score), context, source: index.backend, retrievalRevision }];
+            return [{ ...toPublicMemory(row, score), context, continuity: anchors.has(row.id), source: index.backend, retrievalRevision }];
         });
     return {
         memories,
+        continuity: [...anchors].map(([id, quotes]) => ({ id, content: quotes.join('\n'), source: 'explicit_memory', sourceTurnId: anchorFacts.find(fact => fact.memory_id === id)?.turn_id })),
         retrieval: { backend: index.backend, fallback: index.fallback, count: memories.length,
             ...(index.reason ? { reason: index.reason } : {}), ...(snapshot ? { selection: 'snapshot' } : {}) }
     };
@@ -1204,8 +1234,8 @@ async function updateMemory(userId, id, payload = {}) {
     delete oldMetadata.sourceRevision;
     if (localIntelligence.enabled) {
         oldMetadata.analysis = { state: 'manual', version: 'user-edit' };
-        db.prepare('DELETE FROM room_memory_facts WHERE memory_id=? AND user_id=?').run(id, userId);
     }
+    db.prepare('DELETE FROM room_memory_facts WHERE memory_id=? AND user_id=?').run(id, userId);
     // Commit the edit before any remote embedding await. Otherwise a turn
     // replacement can retire this row while the user's PATCH is in flight.
     // Vector sync will upgrade the local embedding when configured.

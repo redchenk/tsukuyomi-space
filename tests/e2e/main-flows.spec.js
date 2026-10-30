@@ -1,9 +1,9 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 
-async function loginAsUser(page) {
+async function loginAsUser(page, username = 'e2e-user') {
     await page.goto('/login');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
-    await page.locator('#loginAccount').fill('e2e-user');
+    await page.locator('#loginAccount').fill(username);
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/hub$/);
@@ -317,7 +317,7 @@ test('user can read an article and post a comment', async ({ page }) => {
 });
 
 test('user can publish a plaza message', async ({ page }) => {
-    await loginAsUser(page);
+    await loginAsUser(page, 'main-message-publish');
     await page.goto('/plaza');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
 
@@ -332,7 +332,10 @@ test('user can publish a plaza message', async ({ page }) => {
 });
 
 test('plaza shows the latest reply first and lets readers expand the rest', async ({ page }) => {
-    await loginAsUser(page);
+    // This checks reply controls, not scroll choreography (covered separately).
+    // Scroll-triggered card motion can move the target between pointer down/up.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loginAsUser(page, 'main-message-replies');
     const marker = `E2E plaza replies ${Date.now()}`;
     const createResponse = await page.request.post('/api/messages', {
         headers: sameOriginWriteHeaders(page),
@@ -413,7 +416,7 @@ test('plaza shows the latest reply first and lets readers expand the rest', asyn
 });
 
 test('user can edit and delete their own message from user center', async ({ page }) => {
-    await loginAsUser(page);
+    await loginAsUser(page, 'main-message-edit');
     const original = `E2E managed message ${Date.now()}`;
     const createResponse = await page.request.post('/api/messages', {
         headers: sameOriginWriteHeaders(page),
@@ -777,7 +780,7 @@ test('game leaderboard pages a large ranking in a bounded vertical scroll region
 });
 
 test('admin can open the terminal dashboard and user panel', async ({ page }) => {
-    await loginAsUser(page);
+    await loginAsUser(page, 'main-message-terminal');
     const pendingMessage = `E2E terminal moderation 政治 ${Date.now()}`;
     const createResponse = await page.request.post('/api/messages', {
         headers: sameOriginWriteHeaders(page),

@@ -7,6 +7,9 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
     Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+    // Exercise the balanced profile deterministically, including Chrome's
+    // measured network class (which otherwise changes with localhost timing).
+    Object.defineProperty(navigator, 'connection', { get: () => ({ effectiveType: '4g', saveData: false }) });
     try { sessionStorage.setItem('tsukuyomi_visit_popup_seen', '1'); } catch (_) { /* Sandboxed game frames have no storage. */ }
   });
   await page.route(/\/api\/(?:live\/[^/]+\/)?articles\/3\/live\//, route => route.fulfill({ json: { success: true, data: article } }));
@@ -23,6 +26,17 @@ async function wheel(page, amount, selector = '.article-content') {
   // Mobile WebKit has no Playwright mouse.wheel implementation. Dispatch at the
   // real event target to exercise Lenis; desktop also uses real wheel below.
   await page.locator(selector).dispatchEvent('wheel', { deltaY: amount, deltaX: 0, bubbles: true, cancelable: true });
+}
+
+async function matchingEngine(page, locked = false) {
+  await expect.poll(() => page.evaluate(locked => {
+    const root = document.documentElement;
+    const profile = root.dataset.performance;
+    const native = profile === 'reduced' && root.dataset.scrollEngine === 'native' && !root.classList.contains('lenis');
+    const smooth = profile === 'balanced' && root.dataset.scrollEngine === 'lenis'
+      && root.classList.contains('lenis') && root.classList.contains('lenis-stopped') === locked;
+    return native || smooth;
+  }, locked)).toBe(true);
 }
 
 test('wheel movement eases in both directions and preserves a single document scroller', async ({ page, isMobile }) => {
@@ -72,7 +86,7 @@ test('reduced motion changes at runtime restore native scrolling and cancel reve
   expect(await target.evaluate(el => el.getAnimations().length)).toBe(0);
   await expect(target).toHaveCSS('opacity', '1');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await expect(page.locator('html')).toHaveAttribute('data-scroll-engine', 'lenis');
+  await matchingEngine(page);
 });
 
 test('pointer intent and BFCache restoration cannot resume stale wheel inertia', async ({ page }) => {
@@ -87,10 +101,13 @@ test('pointer intent and BFCache restoration cannot resume stale wheel inertia',
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
   await expect(page.locator('html')).toHaveAttribute('data-scroll-engine', 'native');
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-  await expect(page.locator('html')).toHaveAttribute('data-scroll-engine', 'lenis');
+  // Frame pressure can legitimately enable native scrolling during this test.
+  // BFCache must restore the engine matching that profile, with no stale inertia.
+  await matchingEngine(page);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(Math.abs(await page.evaluate(() => scrollY) - position)).toBeLessThan(2);
-  await wheel(page, -100);
+  if (await page.locator('html').getAttribute('data-scroll-engine') === 'lenis') await wheel(page, -100);
+  else await page.evaluate(() => scrollBy({ top: -100, behavior: 'instant' }));
   await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(position);
 });
 
@@ -124,7 +141,8 @@ test('modal scroll locks and nested scrollers release cleanly', async ({ page, b
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
   });
-  await expect(page.locator('html')).toHaveClass(/lenis-stopped/);
+  await matchingEngine(page, true);
+  await expect(page.locator('body')).toHaveCSS('overflow-y', 'hidden');
   await page.mouse.move(180, 300);
   await wheel(page, 500);
   expect(await page.evaluate(() => scrollY)).toBe(0);
@@ -153,7 +171,10 @@ test('modal scroll locks and nested scrollers release cleanly', async ({ page, b
   }
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await page.locator('#scroll-fixture').evaluate(el => el.remove());
-  await wheel(page, 450);
+  await matchingEngine(page);
+  await expect(page.locator('body')).not.toHaveCSS('overflow-y', 'hidden');
+  if (await page.locator('html').getAttribute('data-scroll-engine') === 'lenis') await wheel(page, 450);
+  else await page.evaluate(() => scrollBy({ top: 450, behavior: 'instant' }));
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(200);
 });
 
@@ -233,6 +254,8 @@ test('brief edge reversals finish a reveal instead of flashing it repeatedly', a
   const top = await target.evaluate(el => el.getBoundingClientRect().top + scrollY);
   await page.evaluate(top => scrollTo({top: top - innerHeight + 100, behavior: 'instant'}), top);
   await expect(target).toHaveAttribute('data-scroll-motion', 'from-below');
+  // The observer sets its direction before WebKit exposes the new animation.
+  await expect.poll(() => target.evaluate(el => el.getAnimations().length)).toBe(1);
   const sameAnimation = await target.evaluate(async (el, top) => {
     const animation = el.getAnimations()[0];
     scrollTo({top: top + innerHeight, behavior: 'instant'});

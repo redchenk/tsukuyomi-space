@@ -26,6 +26,7 @@ async function setup(overrides = {}) {
   const saved = [];
   const requests = [];
   const context = {
+    roomChatRuntime: require('../shared/room-chat-runtime.cjs'), readRoomDialogueSettings: () => ({}),
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
     ...officialApi,
     ...localTransport,
@@ -548,6 +549,7 @@ function conversationSyncHarness(authFetch, overrides = {}) {
   let account = 'account-a';
   const localSaves = [];
   const context = {
+    roomChatRuntime: require('../shared/room-chat-runtime.cjs'), readRoomDialogueSettings: () => ({}),
     AbortController, console, localStorage, Map, Set, Date, URLSearchParams,
     getSession: () => ({ user: { id: account } }),
     usesLocalRoomMemory: () => !account || storage.get(`roomMemorySource:${account}`) === 'local',
@@ -933,7 +935,9 @@ test('refreshing after diary finish HTTP 504 retries only the persisted entry', 
     writeJson: (key, value) => storage.set(key, JSON.stringify(value)),
     readJson: (key, fallback) => storage.has(key) ? JSON.parse(storage.get(key)) : fallback,
     getSession: () => ({ user: { id: 'account-a' } }),
-    loadRoomDiaryConversation: async messages => ({ messages, snapshot })
+    loadRoomDiaryConversation: async messages => ({ messages: messages.map((item, index) => ({
+      ...item, id: index === messages.length - 1 ? snapshot.lastId : `cloud-${index}`
+    })), snapshot })
   };
   const first = await setup({ ...persisted, clearRoomConversation: async () => { throw new Error('HTTP 504'); } });
   await send(first.chat, '今天一起看了月亮');
@@ -974,6 +978,59 @@ test('a second device with no recording writes all cloud turns and ignores stale
   assert.equal(cleared.snapshot, snapshot);
   assert.match(h.chat.endChatState.value.message, /随后发来的消息已保留/);
   h.chat.destroy();
+});
+
+test('a persisted diary whose chat already ended recovers without regenerating it or clearing a newer conversation', async () => {
+  for (const hasNewChat of [false, true]) {
+    const storage = new Map();
+    const oldSnapshot = { lastId: 'old-last', digest: 'a'.repeat(64) };
+    const oldEntry = { diaryId: 'saved-before-timeout', content: 'An already generated diary.', timestamp: Date.now() };
+    storage.set('guest:recording', JSON.stringify({ version: 2, pendingEntry: oldEntry, snapshot: oldSnapshot,
+      messages: [{ role: 'user', content: 'old conversation' }] }));
+    let cloud = hasNewChat ? [{ id: 'new-last', role: 'user', content: 'Keep this newer conversation' }] : [];
+    let archiveOffline = true;
+    let confirmed = 0;
+    const h = await setup({
+      getSession: () => ({ user: { id: 'account-a' } }),
+      writeJson: (key, value) => storage.set(key, JSON.stringify(value)),
+      readJson: (key, fallback) => storage.has(key) ? JSON.parse(storage.get(key)) : fallback,
+      loadRoomConversation: async () => cloud,
+      loadRoomDiaryConversation: async () => ({ messages: cloud, snapshot: cloud.length ? { lastId: 'new-last', digest: 'b'.repeat(64) } : null }),
+      validateRoomDiarySnapshot: async snapshot => {
+        if (snapshot?.lastId === oldSnapshot.lastId) throw new Error('会话已在其他设备结束，请重新读取会话');
+      },
+      syncDiaryArchive: async options => {
+        if (options?.ensureDiaryId === oldEntry.diaryId) {
+          if (archiveOffline) throw new Error('offline');
+          confirmed++;
+        }
+        return { synced: true };
+      }
+    });
+    await h.chat.openEndChatDialog();
+    await h.chat.confirmEndChat();
+    assert.equal(h.chat.endChatState.value.status, 'error');
+    assert.equal(JSON.parse(storage.get('guest:recording')).pendingEntry.diaryId, oldEntry.diaryId);
+    assert.equal(h.clearCount(), 0);
+    archiveOffline = false;
+    await h.chat.confirmEndChat();
+    assert.equal(h.chat.endChatState.value.status, 'done');
+    assert.equal(confirmed, 1);
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.saved.length, 0);
+    assert.equal(h.clearCount(), 0);
+    assert.equal(JSON.parse(storage.get('guest:recording')).pendingEntry, null);
+    if (hasNewChat) {
+      assert.match(h.chat.endChatState.value.message, /当前.*保留/);
+      await h.chat.openEndChatDialog();
+      await h.chat.confirmEndChat();
+      assert.equal(h.requests.length, 1);
+      assert.equal(h.requests[0][0].content, 'Keep this newer conversation');
+      assert.equal(h.saved.length, 1);
+      assert.equal(h.clearCount(), 1);
+    }
+    h.chat.destroy();
+  }
 });
 
 test('an unavailable or edited cloud snapshot cannot create a partial diary or clear the chat', async () => {

@@ -37,7 +37,7 @@ export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGue
               ...(scope.excludeTurnIds.length ? { excludeTurnIds: JSON.stringify(scope.excludeTurnIds) } : {}),
               ...(selectedIds ? { memoryIds: JSON.stringify(scope.snapshotIds) } : {}),
               ...(sourceOnly ? { retrieval: 'source' } : {}) }), controller.signal)
-          : retrieveGuest(message, scope, limit).then(data => ({ success: true, data, retrieval: { backend: 'indexeddb' } }));
+          : retrieveGuest(message, scope, limit).then(data => ({ success: true, data, continuity: data.continuity || [], retrieval: { backend: 'indexeddb' } }));
         const result = await Promise.race([operation, interrupted]);
         check();
         if (!result?.success) throw failure('success_false');
@@ -45,7 +45,8 @@ export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGue
         // Defence in depth for a mixed-version rollout or a legacy fallback.
         const data = result.retrieval?.selection === 'recent' ? [] : result.data.filter(row =>
           memoryAllowedForTurns(row, excluded) && (!selectedIds || selectedIds.has(row.id))).slice(0, limit);
-        return { data, retrieval: { ...result.retrieval, count: data.length } };
+        const continuity = (Array.isArray(result.continuity) ? result.continuity : []).filter(row => memoryAllowedForTurns(row, excluded) && typeof row.content === 'string').slice(0, 4).map(row => ({ id: row.id, content: row.content.slice(0, 500), sourceTurnId: row.sourceTurnId }));
+        return { data, continuity, retrieval: { ...result.retrieval, count: data.length, continuityCount: continuity.length } };
       } catch (error) {
         if (timedOut && !signal?.aborted) throw failure('timeout');
         throw error;
