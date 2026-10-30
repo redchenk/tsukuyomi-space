@@ -7,6 +7,7 @@ import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
 import PaymentManager from '../components/terminal/PaymentManager.vue';
 import MailCampaignManager from '../components/terminal/MailCampaignManager.vue';
+import OfficialUsagePanel from '../components/terminal/OfficialUsagePanel.vue';
 import { formatDateTime } from '../utils/time';
 import { uiText } from '../i18n/runtime';
 import { terminalSettingsPayload } from '../services/terminalSettings.mjs';
@@ -40,6 +41,7 @@ const terminal = reactive({
   notificationSaving: false,
   paymentsRevision: 0,
   mailRevision: 0,
+  analyticsRevision: 0,
   mailConfigured: false,
   ossCredentialsConfigured: false,
   ossCredentialsEditing: false,
@@ -396,7 +398,7 @@ async function logout() {
 
 function initialPanel(fallback) {
   const panel = new URLSearchParams(window.location.search).get('panel');
-  return ['messages', 'notifications', ...(canManageAccounts.value ? ['mail'] : [])].includes(panel) ? panel : fallback;
+  return ['messages', 'notifications', 'analytics', ...(canManageAccounts.value ? ['mail'] : [])].includes(panel) ? panel : fallback;
 }
 
 async function loadPanel(panel = terminal.activePanel) {
@@ -415,6 +417,7 @@ async function loadPanel(panel = terminal.activePanel) {
   terminal.activePanel = panel;
   if (panel === 'payments') terminal.paymentsRevision += 1;
   if (panel === 'mail') terminal.mailRevision += 1;
+  if (panel === 'analytics') terminal.analyticsRevision += 1;
   terminal.loading = true;
   terminal.message = '';
   terminal.loadError = '';
@@ -1354,6 +1357,7 @@ onUnmounted(() => {
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon purple"><TsIcon name="layers" :size="18" /></span><span class="terminal-stat-copy"><small>30 日访问</small><strong>{{ terminal.analytics.monthViews || 0 }}</strong></span></div>
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon warning"><TsIcon name="sparkles" :size="18" /></span><span class="terminal-stat-copy"><small>总访问</small><strong>{{ terminal.analytics.totalViews || 0 }}</strong></span></div>
             </div>
+            <OfficialUsagePanel v-if="authed && terminal.activePanel === 'analytics'" :request="adminApi" :revision="terminal.analyticsRevision" />
           </div>
 
           <form v-if="!terminal.loading && !terminal.loadError && terminal.activePanel === 'notifications'" class="terminal-settings terminal-notification-settings" :aria-busy="terminal.notificationSaving" @submit.prevent="saveNotificationSettings">
