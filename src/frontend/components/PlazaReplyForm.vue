@@ -8,11 +8,19 @@ const props = defineProps({
   t: { type: Object, required: true },
   target: { type: Object, default: () => ({}) },
   lang: { type: String, default: 'zh' },
+  modelValue: { type: String, default: undefined },
   variant: { type: String, default: 'plaza' }
 });
 
-const emit = defineEmits(['cancel']);
-const text = ref('');
+const emit = defineEmits(['cancel', 'update:modelValue']);
+const localText = ref('');
+const text = computed({
+  get: () => props.modelValue ?? localText.value,
+  set: value => {
+    localText.value = value;
+    emit('update:modelValue', value);
+  }
+});
 const submitting = ref(false);
 const input = ref(null);
 const copy = computed(() => replyCopy(props.lang));
@@ -38,7 +46,7 @@ async function submit() {
     <textarea ref="input" v-model="text" :class="variant === 'article' ? 'comment-input' : 'plaza-textarea plaza-reply-textarea'" maxlength="220" :aria-label="label" :placeholder="t.replyContentRequired"></textarea>
     <div :class="variant === 'article' ? 'comment-actions' : 'plaza-msg-footer'">
       <button class="primary-btn" type="button" :disabled="submitting" :aria-busy="submitting" @click="submit">{{ t.publishReply }}</button>
-      <button class="ghost-btn" type="button" :disabled="submitting" @click="emit('cancel')">{{ copy.cancel }}</button>
+      <button class="ghost-btn" type="button" :disabled="submitting" @click="text = ''; emit('cancel')">{{ copy.cancel }}</button>
     </div>
     <StatusLoader v-if="submitting" :label="t.syncing" compact />
   </div>

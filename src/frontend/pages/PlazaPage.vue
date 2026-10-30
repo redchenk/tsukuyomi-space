@@ -54,6 +54,7 @@ const compact = ref(false);
 let compactQuery;
 const updateCompact = () => { compact.value = compactQuery?.matches || false; };
 const replyModeration = reactive({});
+const replyDrafts = reactive({});
 let plazaToastTimer = 0;
 let plazaMounted = false;
 let applyingPlazaPage = false;
@@ -419,14 +420,14 @@ function patchPlazaMessage(message) {
   if (index >= 0) plaza.messages.splice(index, 1, { ...plaza.messages[index], ...message });
 }
 
-async function refreshPlaza({ force = true } = {}) {
+async function refreshPlaza({ force = true, background = false } = {}) {
   session.value = getSession();
   if (force) clearPlazaMessageCache();
   loadPlazaStats();
   loadTrendingTopics();
   const anchorId = String(location.hash || '').match(/^#msg-(\d+)$/)?.[1] || null;
   // Public messages never wait for session recovery, levels, likes or topics.
-  const messages = loadPlazaMessages({ force, anchorId });
+  const messages = loadPlazaMessages({ force, anchorId, background });
   if (!session.value) loadCurrentSession().then(() => {
     if (!plazaMounted) return;
     session.value = getSession();
@@ -506,6 +507,7 @@ async function plazaSubmitReply(parentId, content) {
       }
       loadTrendingTopics();
     }
+    delete replyDrafts[parentId];
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
     const rootId = threads.value.rootId(parentId);
     if (rootId) plaza.repliesExpanded[rootId] = true;
@@ -710,7 +712,7 @@ onUnmounted(() => {
   pausePlaza();
   ++plazaRequestRevision;
 });
-useContentTranslationRefresh(() => refreshPlaza());
+useContentTranslationRefresh(() => refreshPlaza({ background: true }));
 </script>
 
 <template>
@@ -816,7 +818,7 @@ useContentTranslationRefresh(() => refreshPlaza());
               </button>
             </div>
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
-              <PlazaReplyForm :t="t" :lang="lang" :target="msg" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
+              <PlazaReplyForm v-model="replyDrafts[msg.id]" :t="t" :lang="lang" :target="msg" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
             </div>
             <ModerationNotice :feedback="replyModeration[msg.id]" />
             <div v-if="(msg.replies || []).length" :id="'plaza-replies-' + msg.id" class="plaza-replies">
@@ -850,7 +852,7 @@ useContentTranslationRefresh(() => refreshPlaza());
                   <button class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author_nickname || reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
                 </div>
                 <div v-if="plaza.replyOpen[reply.id]" class="plaza-reply-form">
-                  <PlazaReplyForm :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
+                  <PlazaReplyForm v-model="replyDrafts[reply.id]" :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
                 </div>
                 <ModerationNotice :feedback="replyModeration[reply.id]" />
               </div>
