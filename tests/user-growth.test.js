@@ -73,7 +73,8 @@ describe('user growth service', () => {
             daily_plaza_engage: 'plaza_like',
             daily_pixel_engage: 'pixel_publish',
             daily_gallery_upload: 'gallery_upload',
-            daily_kaguya_run: 'kaguya_score'
+            daily_kaguya_run: 'kaguya_score',
+            daily_drift_prompt: 'drift_daily_prompt'
         };
         const firstRotating = growth.recordDailyActivity('daily-user', activityByTask[rotatingTask.key], 'source-1', now);
         const secondRotating = growth.recordDailyActivity('daily-user', activityByTask[rotatingTask.key], 'source-2', now);
@@ -94,9 +95,9 @@ describe('user growth service', () => {
         assert.equal(growth.getState('isolated-user', now).level.totalXp, 0);
     });
 
-    it('keeps the rotating task stable for the day and cycles all task types across five days', () => {
+    it('keeps the rotating task stable for the day and cycles all task types across the pool length', () => {
         const taskKeys = [];
-        for (let day = 20; day <= 24; day += 1) {
+        for (let day = 20; day < 20 + growth.RANDOM_DAILY_TASKS.length; day += 1) {
             const now = new Date(`2026-07-${day}T04:00:00.000Z`);
             const first = growth.getState('rotation-user', now).today.tasks;
             const second = growth.getState('rotation-user', now).today.tasks;

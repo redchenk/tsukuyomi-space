@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const db = require('../db');
+const { getDailyPrompt } = require('./drift-prompts');
 
 const HONG_KONG_TIME_ZONE = 'Asia/Hong_Kong';
 const REFERRAL_ACCOUNT_MAX_AGE_DAYS = 7;
@@ -26,7 +27,8 @@ const RANDOM_DAILY_TASKS = Object.freeze([
     { key: 'daily_plaza_engage', xp: 20, label: '月读广场留言或点赞', path: '/plaza', activities: ['plaza_message', 'plaza_like'] },
     { key: 'daily_pixel_engage', xp: 20, label: '像素画绘画或点赞', path: '/pixel', activities: ['pixel_publish', 'pixel_like'] },
     { key: 'daily_gallery_upload', xp: 20, label: '图库上传图片', path: '/gallery/manage', activities: ['gallery_upload'] },
-    { key: 'daily_kaguya_run', xp: 20, label: '辉夜快跑获得 100 分', path: '/game/kaguya-run', activities: ['kaguya_score'] }
+    { key: 'daily_kaguya_run', xp: 20, label: '辉夜快跑获得 100 分', path: '/game/kaguya-run', activities: ['kaguya_score'] },
+    { key: 'daily_drift_prompt', xp: 20, label: '回应今日漂流瓶话题', path: '/drift?daily=1', activities: ['drift_daily_prompt'] }
 ]);
 
 const DAILY_ACTIVITY_KEYS = new Set(RANDOM_DAILY_TASKS.flatMap((task) => task.activities));
@@ -46,6 +48,7 @@ const EVENT_LABELS = Object.freeze({
     daily_pixel_engage: '像素画绘画或点赞',
     daily_gallery_upload: '图库上传图片',
     daily_kaguya_run: '辉夜快跑获得 100 分',
+    daily_drift_prompt: '回应今日漂流瓶话题',
     referral_joined: '接受好友邀请',
     referral_invite: '好友完成首次聊天'
 });
@@ -91,10 +94,11 @@ function rotatingDailyTask(userId, eventDate) {
 }
 
 function dailyTasks(userId, eventDate) {
+    const rotating = rotatingDailyTask(userId, eventDate);
     return [
         { key: 'checkin', ...DAILY_ACTIONS.checkin, path: '/growth', type: 'fixed' },
         { key: 'daily_share', ...DAILY_ACTIONS.daily_share, path: '/growth', type: 'fixed' },
-        { ...rotatingDailyTask(userId, eventDate), type: 'rotating' }
+        { ...rotating, type: 'rotating', ...(rotating.key === 'daily_drift_prompt' ? { prompt: getDailyPrompt(eventDate) } : {}) }
     ];
 }
 
@@ -267,6 +271,7 @@ function buildState(userId, now = new Date()) {
                 xp: task.xp,
                 path: task.path,
                 type: task.type,
+                ...(task.prompt ? { prompt: task.prompt } : {}),
                 completed: todayEvents.has(task.key),
                 earnedXp: todayEvents.get(task.key) || 0
             }))
