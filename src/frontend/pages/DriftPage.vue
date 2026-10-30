@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { authFetch, parseResponse, getSession, loadCurrentSession } from '../api/client';
 import { driftCopy } from '../data/driftCopy';
 import { createDriftSubmissions } from '../services/driftSubmission';
+import { loadGrowth } from '../services/userGrowth';
+import prompts from '../../../shared/drift-prompts.json';
 import { formatDateMinute } from '../utils/time';
 import DriftBottle from '../components/DriftBottle.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -15,6 +17,11 @@ const session = ref(getSession());
 const bottles = ref([]);
 const current = ref(null);
 const draft = ref('');
+const dailyDraft = ref('');
+const dailyPrompt = ref(null);
+const composingPrompt = ref(null);
+const pendingDaily = ref(null);
+const inspiration = ref(null);
 const replyDrafts = reactive({});
 const submissions = createDriftSubmissions();
 const busy = ref(false);
@@ -31,10 +38,14 @@ const writingArea = ref(null);
 const tabBar = ref(null);
 const hasNewLetters = ref(false);
 let pollTimer;
+let promptTimer;
 let disposed = false;
 let revision = 0;
 
 const copy = computed(() => driftCopy[props.lang] || driftCopy.zh);
+const activeDraft = computed({ get: () => composingPrompt.value ? dailyDraft.value : draft.value, set: value => { if (composingPrompt.value) dailyDraft.value = value; else draft.value = value; } });
+const promptStale = computed(() => composingPrompt.value && dailyPrompt.value && (composingPrompt.value.date !== dailyPrompt.value.date || composingPrompt.value.id !== dailyPrompt.value.id));
+const promptText = prompt => prompt?.text?.[props.lang] || prompt?.text?.zh || '';
 const activeTab = computed(() => route.query.tab === 'bottles' || route.query.tab === 'chat' || (!route.query.tab && route.query.bottle) ? 'bottles' : 'sea');
 const tabs = computed(() => [{ key: 'sea', label: copy.value.sea, icon: 'moonStar' }, { key: 'bottles', label: copy.value.mine, icon: 'mail' }]);
 const reply = computed({ get: () => replyDrafts[current.value?.bottle.id] || '', set: value => { if (current.value) replyDrafts[current.value.bottle.id] = value; } });
@@ -42,7 +53,7 @@ const visibleBottles = computed(() => bottles.value.filter(b => filter.value ===
 const canReply = computed(() => current.value?.bottle.status === 'approved' && current.value.bottle.recipient_id && !current.value.bottle.closed && !current.value.blocked);
 const canReturn = computed(() => current.value && current.value.bottle.user_id !== session.value?.user.id && canReply.value && !current.value.replies.length);
 const writing = computed(() => phase.value === 'write' || phase.value === 'reply');
-const dialogTitle = computed(() => phase.value === 'write' ? copy.value.write : phase.value === 'sealed' ? copy.value.found : phase.value === 'reply' ? copy.value.replyTitle : copy.value.read);
+const dialogTitle = computed(() => phase.value === 'write' ? (composingPrompt.value ? copy.value.dailyWrite : copy.value.write) : phase.value === 'sealed' ? copy.value.found : phase.value === 'reply' ? copy.value.replyTitle : copy.value.read);
 const locale = computed(() => ({ zh: 'zh-CN', en: 'en', ja: 'ja' }[props.lang] || 'zh-CN'));
 const dateLabel = value => formatDateMinute(value, locale.value);
 function bottleStatus(b) {
@@ -55,9 +66,15 @@ async function request(path, method = 'GET', body) {
     response = await authFetch(path, { method, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
     result = await parseResponse(response);
   } catch {
-    throw new Error(body?.requestId ? copy.value.submissionUnknown : copy.value.networkError);
+    throw Object.assign(new Error(body?.requestId ? copy.value.submissionUnknown : copy.value.networkError), { code: body?.requestId ? 'DRIFT_SUBMISSION_UNKNOWN' : '' });
   }
-  if (body?.requestId && (response.status >= 500 || (response.ok && !result.success))) throw new Error(copy.value.submissionUnknown);
+  if (body?.requestId && (response.status >= 500 || (response.ok && !result.success))) throw Object.assign(new Error(copy.value.submissionUnknown), { code: 'DRIFT_SUBMISSION_UNKNOWN' });
+  if (result.code === 'DRIFT_PROMPT_CHANGED') {
+    dailyPrompt.value = result.data.prompt;
+    throw new Error(copy.value.promptChanged);
+  }
+  if (response.status === 422) throw new Error(copy.value.invalidContent);
+  if (response.status === 429) throw new Error(copy.value.rateLimited);
   if (!response.ok || !result.success) throw new Error(result.code === 'DRIFT_SUBMISSION_CONFLICT' ? copy.value.submissionConflict : result.message || copy.value.unavailable);
   return result.data;
 }
@@ -102,11 +119,32 @@ async function showDialog(nextPhase) {
   if (letterScroll.value) letterScroll.value.scrollTop = 0;
   if (nextPhase === 'write' || nextPhase === 'reply') writingArea.value?.focus();
 }
+async function writeBottle() {
+  composingPrompt.value = null;
+  notice.value = '';
+  await showDialog('write');
+}
+async function writeDaily() {
+  if (pendingDaily.value) {
+    composingPrompt.value = pendingDaily.value.prompt;
+    notice.value = copy.value.submissionUnknown;
+    await showDialog('write');
+    return;
+  }
+  dailyPrompt.value = await request('/api/drift/daily-prompt');
+  composingPrompt.value = dailyPrompt.value;
+  notice.value = '';
+  await showDialog('write');
+}
+function inspire() {
+  const choices = prompts.filter(prompt => prompt.id !== inspiration.value?.id);
+  inspiration.value = choices[Math.floor(Math.random() * choices.length)];
+}
 function closeDialog() { bottleDialog.value?.close(); }
 function dialogClosed() {
   phase.value = 'idle';
-  if (route.query.bottle) {
-    const { bottle, ...query } = route.query;
+  if (route.query.bottle || route.query.daily) {
+    const { bottle, daily, ...query } = route.query;
     router.replace({ query });
   }
 }
@@ -124,17 +162,37 @@ async function pick() {
   await open(result.id, { sealed: true });
 }
 async function send() {
-  const submitted = draft.value;
-  const scope = `${session.value.user.id}:bottle`;
-  const payload = await submissions.prepare(scope, submitted, props.lang);
-  const result = await request('/api/drift', 'POST', payload);
+  const prompt = composingPrompt.value;
+  let attempt = prompt && pendingDaily.value;
+  if (!attempt) {
+    const scope = `${session.value.user.id}:bottle${prompt ? `:daily:${prompt.date}:${prompt.id}` : ''}`;
+    const payload = await submissions.prepare(scope, activeDraft.value, props.lang);
+    if (prompt) Object.assign(payload, { promptDate: prompt.date, promptId: prompt.id });
+    attempt = { scope, payload, prompt };
+  }
+  const { scope, payload } = attempt;
+  const submitted = payload.content;
+  // Until the receipt is known, retain the original day, body and language in
+  // memory. A rollover or reopened writer must not create a second submission.
+  if (prompt) pendingDaily.value = attempt;
+  let result;
+  try { result = await request(prompt ? '/api/drift/daily' : '/api/drift', 'POST', payload); }
+  catch (error) {
+    if (prompt && error.code !== 'DRIFT_SUBMISSION_UNKNOWN') pendingDaily.value = null;
+    throw error;
+  }
+  if (prompt) pendingDaily.value = null;
   submissions.complete(scope, payload.requestId);
-  if (draft.value === submitted) draft.value = '';
+  if (activeDraft.value === submitted) activeDraft.value = '';
+  // Fetch current state: a durable receipt can contain an older growth snapshot.
+  if (prompt) loadGrowth({ force: true }).catch(() => {});
   closeDialog();
-  notice.value = `${copy.value.saved} · ${copy.value[result.status]}`;
+  const completed = result.growth?.award?.awarded && result.growth.award.eventKey === 'daily_drift_prompt'
+    ? copy.value.questCompleted.replace('{xp}', String(result.growth.award.xp)) : '';
+  notice.value = completed || `${prompt ? copy.value.dailySaved : copy.value.saved} · ${copy.value[result.status]}`;
   filter.value = 'sent';
   await selectTab('bottles');
-  try { await load(); } catch { notice.value = copy.value.savedRefreshFailed; }
+  try { await load(); } catch { notice.value = `${completed ? `${completed} ` : ''}${copy.value.savedRefreshFailed}`; }
 }
 async function latestLetters() {
   await nextTick();
@@ -165,6 +223,13 @@ async function refreshThread() {
   try { await loadThread(current.value.bottle.id); }
   catch (_) { /* Keep the current note and unsent letter available; manual refresh reports errors. */ }
   finally { refreshing.value = false; }
+}
+async function refreshDailyPrompt() {
+  if (!session.value || document.visibilityState !== 'visible') return;
+  try {
+    const prompt = await request('/api/drift/daily-prompt');
+    if (!disposed) dailyPrompt.value = prompt;
+  } catch { /* Opening the daily writer retries; keep the current draft. */ }
 }
 async function throwBack() {
   await request(`/api/drift/${current.value.bottle.id}/return`, 'POST');
@@ -209,13 +274,17 @@ onMounted(async () => {
     session.value = await loadCurrentSession();
     if (!session.value) return;
     await load();
+    dailyPrompt.value = await request('/api/drift/daily-prompt');
     loading.value = false;
     if (route.query.bottle) await open(route.query.bottle, { updateRoute: false });
+    else if (route.query.daily === '1') await writeDaily();
   });
   loading.value = false;
   if (session.value && !disposed) {
     pollTimer = window.setInterval(refreshThread, 8000);
+    promptTimer = window.setInterval(refreshDailyPrompt, 60000);
     window.addEventListener('focus', refreshThread);
+    window.addEventListener('focus', refreshDailyPrompt);
     document.addEventListener('visibilitychange', refreshThread);
   }
 });
@@ -223,13 +292,18 @@ onUnmounted(() => {
   disposed = true;
   revision++;
   clearInterval(pollTimer);
+  clearInterval(promptTimer);
   window.removeEventListener('focus', refreshThread);
+  window.removeEventListener('focus', refreshDailyPrompt);
   document.removeEventListener('visibilitychange', refreshThread);
 });
 watch(() => route.query.bottle, value => {
   if (loading.value || busy.value) return;
   if (value && (!bottleDialog.value?.open || String(current.value?.bottle.id) !== String(value))) run(() => open(value, { updateRoute: false }));
   else if (!value && bottleDialog.value?.open && phase.value !== 'write') closeDialog();
+});
+watch(() => route.query.daily, value => {
+  if (value === '1' && !loading.value && !busy.value && session.value && !route.query.bottle) run(writeDaily);
 });
 </script>
 
@@ -244,13 +318,17 @@ watch(() => route.query.bottle, value => {
         <section v-show="activeTab === 'sea'" id="drift-panel-sea" role="tabpanel" aria-labelledby="drift-tab-sea" class="drift-ocean">
           <div class="drift-ocean-sky" aria-hidden="true"><span class="drift-ocean-moon"></span><i class="drift-star star-one"></i><i class="drift-star star-two"></i><i class="drift-star star-three"></i></div><div class="drift-ocean-water" aria-hidden="true"><span class="drift-moonlight"></span><i class="drift-wave wave-one"></i><i class="drift-wave wave-two"></i><DriftBottle class="drift-floating-bottle" /></div><div class="drift-ocean-beach" aria-hidden="true"></div>
           <div class="drift-ocean-copy"><p class="drift-eyebrow">LET THE TIDE CARRY YOUR WORDS</p><h2>{{ copy.seaTitle }}</h2><p>{{ copy.seaHint }}</p></div>
-          <div class="drift-shore-dock"><button class="drift-dock-action" :disabled="busy" @click="showDialog('write')"><span class="drift-dock-icon"><DriftBottle /></span><strong>{{ copy.throw }}</strong></button><button class="drift-dock-action drift-dock-pick" :disabled="busy" @click="run(pick)"><span class="drift-dock-icon"><TsIcon name="sparkles" :size="32" /></span><strong>{{ copy.pick }}</strong></button><button class="drift-dock-action" @click="selectTab('bottles')"><span class="drift-dock-icon"><TsIcon name="mail" :size="31" /></span><strong>{{ copy.mine }}</strong></button></div>
+          <div class="drift-shore-dock"><button class="drift-dock-action" :disabled="busy" @click="writeBottle"><span class="drift-dock-icon"><DriftBottle /></span><strong>{{ copy.throw }}</strong></button><button class="drift-dock-action drift-dock-pick" :disabled="busy" @click="run(pick)"><span class="drift-dock-icon"><TsIcon name="sparkles" :size="32" /></span><strong>{{ copy.pick }}</strong></button><button class="drift-dock-action" @click="selectTab('bottles')"><span class="drift-dock-icon"><TsIcon name="mail" :size="31" /></span><strong>{{ copy.mine }}</strong></button></div>
+        </section>
+        <section v-if="dailyPrompt && activeTab === 'sea'" class="drift-panel drift-daily-entry" aria-labelledby="drift-daily-title">
+          <div><h2 id="drift-daily-title"><TsIcon name="moonStar" :size="19" />{{ copy.dailyTitle }}</h2><p class="drift-prompt-text">{{ promptText(dailyPrompt) }}</p></div>
+          <button class="drift-primary" :disabled="busy" @click="run(writeDaily)">{{ copy.dailyWrite }}</button>
         </section>
         <section v-show="activeTab === 'bottles'" id="drift-panel-bottles" role="tabpanel" aria-labelledby="drift-tab-bottles" class="drift-panel drift-inbox">
           <header class="drift-section-header"><div><h2>{{ copy.mine }}</h2><p>{{ copy.lettersHint }}</p></div><button class="drift-icon-button" :aria-label="copy.refresh" :disabled="busy" @click="run(() => load())"><TsIcon name="refresh" :size="18" /></button></header>
           <div class="drift-filters"><button v-for="item in [{ key: 'all', label: copy.all }, { key: 'sent', label: copy.sentFilter }, { key: 'received', label: copy.receivedFilter }]" :key="item.key" :aria-pressed="filter === item.key" @click="filter = item.key">{{ item.label }}</button></div>
           <div v-if="!bottles.length" class="drift-empty"><DriftBottle /><h3>{{ copy.noBottles }}</h3><p>{{ copy.noBottlesHint }}</p><button @click="selectTab('sea')">{{ copy.sea }}<TsIcon name="arrowRight" :size="16" /></button></div><p v-else-if="!visibleBottles.length" class="drift-empty">{{ copy.emptyFilter }}</p>
-          <div class="drift-bottle-shelf"><button v-for="b in visibleBottles" :key="b.id" class="drift-list-item" :disabled="busy" @click="run(() => open(b.id))"><DriftBottle class="drift-shelf-bottle" /><span class="drift-list-copy"><span class="drift-list-meta"><small>{{ b.user_id === session.user.id ? copy.sent : `${copy.from} ${b.nickname}` }}</small><small>{{ bottleStatus(b) }}</small></span><span class="drift-preview" translate="no">{{ b.content }}</span><time>{{ dateLabel(b.created_at) }}</time></span><TsIcon name="chevronRight" :size="18" /></button></div><button v-if="hasMore" class="drift-older" :disabled="busy" @click="run(() => load(true))">{{ copy.older }}</button>
+          <div class="drift-bottle-shelf"><button v-for="b in visibleBottles" :key="b.id" class="drift-list-item" :disabled="busy" @click="run(() => open(b.id))"><DriftBottle class="drift-shelf-bottle" /><span class="drift-list-copy"><span class="drift-list-meta"><small>{{ b.user_id === session.user.id ? copy.sent : `${copy.from} ${b.nickname}` }}</small><small>{{ bottleStatus(b) }}</small></span><span v-if="b.dailyPrompt" class="drift-daily-badge">{{ copy.dailyResponse }}</span><span class="drift-preview" translate="no">{{ b.content }}</span><time>{{ dateLabel(b.created_at) }}</time></span><TsIcon name="chevronRight" :size="18" /></button></div><button v-if="hasMore" class="drift-older" :disabled="busy" @click="run(() => load(true))">{{ copy.older }}</button>
         </section>
         <details class="drift-rules"><summary>{{ copy.rules }}</summary><p>{{ copy.rule }}</p></details>
       </template>
@@ -260,7 +338,12 @@ watch(() => route.query.bottle, value => {
       <p v-if="notice" class="drift-dialog-notice" role="status">{{ notice }}</p>
       <div v-if="phase === 'sealed'" class="drift-found"><div class="drift-found-glow"><DriftBottle /></div><p>{{ copy.foundHint }}</p><button class="drift-primary" @click="showDialog('read')">{{ copy.openBottle }}<TsIcon name="arrowRight" :size="17" /></button></div>
       <template v-else-if="phase === 'write'">
-        <form class="drift-letter-form" @submit.prevent="run(send)"><div class="drift-writing-paper"><label for="drift-draft">{{ copy.toSea }}</label><textarea id="drift-draft" ref="writingArea" v-model="draft" :placeholder="copy.writeHint" maxlength="2000" rows="7" required /><small>{{ [...draft].length }} / 2000</small></div><footer class="drift-letter-actions"><button type="button" @click="closeDialog">{{ copy.cancel }}</button><button class="drift-primary" :disabled="busy || !draft.trim()">{{ copy.send }}<TsIcon name="send" :size="16" /></button></footer></form>
+        <form class="drift-letter-form" @submit.prevent="run(send)">
+          <aside v-if="composingPrompt" id="drift-composing-context" class="drift-prompt-context" aria-live="polite"><strong>{{ copy.dailyTitle }}</strong><time>{{ composingPrompt.date }}</time><p>{{ promptText(composingPrompt) }}</p><p v-if="promptStale && !pendingDaily">{{ copy.promptChanged }}</p><button v-if="promptStale && !pendingDaily" type="button" :disabled="busy" @click="composingPrompt = dailyPrompt; notice = ''">{{ copy.useTodayPrompt }}</button></aside>
+          <div v-else class="drift-inspiration"><button type="button" :disabled="busy" @click="inspire"><TsIcon name="sparkles" :size="16" />{{ copy.inspire }}</button><aside v-if="inspiration" id="drift-composing-context" class="drift-prompt-context" aria-live="polite"><p>{{ promptText(inspiration) }}</p></aside></div>
+          <div class="drift-writing-paper"><label for="drift-draft">{{ copy.toSea }}</label><textarea id="drift-draft" ref="writingArea" v-model="activeDraft" :readonly="Boolean(composingPrompt && pendingDaily)" :aria-describedby="composingPrompt || inspiration ? 'drift-composing-context' : undefined" :placeholder="composingPrompt ? copy.dailyWriteHint : copy.writeHint" maxlength="2000" rows="7" required /><small>{{ [...activeDraft].length }} / 2000</small></div>
+          <footer class="drift-letter-actions"><button type="button" @click="closeDialog">{{ copy.cancel }}</button><button class="drift-primary" :disabled="busy || (promptStale && !pendingDaily) || !activeDraft.trim()">{{ composingPrompt && pendingDaily ? copy.confirmSubmission : copy.send }}<TsIcon name="send" :size="16" /></button></footer>
+        </form>
       </template>
       <template v-else-if="current && (phase === 'read' || phase === 'reply')">
         <template v-if="phase === 'read'">

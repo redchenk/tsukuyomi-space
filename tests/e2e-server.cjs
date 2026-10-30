@@ -105,6 +105,22 @@ db.prepare('INSERT INTO play_test_applications(id,email,status,consent_version,c
 // Stable login names with a server-selected article task on the current day.
 // The disposable fixture exercises real rewards without a production test hook.
 const articleTaskGrowth = require('../backend/services/user-growth');
+for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    const password = bcrypt.hashSync('mem0-test-password',4);
+    for (const scenario of ['zh','en','ja','retry','midnight']) {
+        const name = `drift-daily-${scenario}-${project}`;
+        let assigned = false;
+        for (let index = 0; index < 100; index++) {
+            const id = `${name}-${index}`;
+            db.prepare('INSERT INTO users(id,username,email,password_hash) VALUES(?,?,?,?)').run(id,id,`${id}@example.test`,password);
+            if (articleTaskGrowth.getState(id).today.tasks[2].key !== 'daily_drift_prompt') continue;
+            db.prepare('UPDATE users SET username=? WHERE id=?').run(name,id);
+            assigned = true;
+            break;
+        }
+        if (!assigned) throw new Error('Could not seed bottle quest fixture');
+    }
+}
 for (const name of ['article-task-like', 'article-task-bookmark']) {
     let assigned = false;
     const password = bcrypt.hashSync('article-task-password', 4);

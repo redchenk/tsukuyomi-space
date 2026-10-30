@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
+import { driftCopy } from '../data/driftCopy';
 import {
   GROWTH_UPDATED_EVENT,
   captureReferralCode,
@@ -57,6 +58,7 @@ const inviteUrl = computed(() => state.value?.referral?.inviteCode
   : '');
 
 function taskText(task) {
+  if (task.key === 'daily_drift_prompt') return (driftCopy[props.lang] || driftCopy.zh).questLabel;
   const labels = props.lang === 'ja'
     ? { checkin: '毎日のサインイン', daily_share: '月読空間を共有', daily_article_engage: '記事にいいね、または保存', daily_stage_visit: 'ステージを開く', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザに投稿またはいいね', daily_pixel_engage: 'ピクセル絵を投稿またはいいね', daily_gallery_upload: 'ギャラリーに画像を追加', daily_kaguya_run: 'かぐやランで100点を獲得' }
     : props.lang === 'en'
@@ -66,6 +68,7 @@ function taskText(task) {
 }
 
 function taskHint(task) {
+  if (task.key === 'daily_drift_prompt') return task.prompt?.text?.[props.lang] || task.prompt?.text?.zh || '';
   if (task.key !== 'daily_article_engage') return '';
   return props.lang === 'ja' ? '記事を開き、いいねか保存を押すと達成できます。'
     : props.lang === 'en' ? 'Open any article, then click Like or Bookmark to complete.'
@@ -73,10 +76,11 @@ function taskHint(task) {
 }
 
 function taskIcon(key) {
-  return { checkin: 'calendar', daily_share: 'send', daily_article_engage: 'heart', daily_stage_visit: 'eye', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image', daily_kaguya_run: 'gamepad' }[key] || 'sparkles';
+  return { checkin: 'calendar', daily_share: 'send', daily_article_engage: 'heart', daily_stage_visit: 'eye', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image', daily_kaguya_run: 'gamepad', daily_drift_prompt: 'moonStar' }[key] || 'sparkles';
 }
 
 function eventText(item) {
+  if (item.key === 'daily_drift_prompt') return (driftCopy[props.lang] || driftCopy.zh).questLabel;
   const articleLabels = { zh: { article_view: '文章获得有效阅读', article_like: '文章获得点赞', article_bookmark: '文章获得收藏', article_history: '文章历史经验补发' }, en: { article_view: 'Qualified article read', article_like: 'Article liked', article_bookmark: 'Article bookmarked', article_history: 'Historical article XP' }, ja: { article_view: '記事の有効閲覧', article_like: '記事にいいね', article_bookmark: '記事が保存されました', article_history: '過去の記事経験値' } };
   if (articleLabels[props.lang]?.[item.key]) return articleLabels[props.lang][item.key];
   const labels = props.lang === 'ja'

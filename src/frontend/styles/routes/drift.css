@@ -162,3 +162,23 @@ body:has(.drift-bottle-dialog[open]) :is(.site-pet-wrap,.site-music-drawer) { vi
 /* Only the shore artwork changes; the page keeps the shared site theme. */
 html[data-theme="dark"] .drift-ocean { background: url('../../assets/drift/mirror-coast-night.webp') center / cover no-repeat; }
 @media (max-width: 860px) { .drift-floating-bottle { display: none; } }
+
+.drift-daily-entry { display: flex; align-items: center; gap: 24px; margin-top: 18px; }
+.drift-daily-entry > div { flex: 1; min-width: 0; }
+.drift-daily-entry h2 { display: flex; align-items: center; gap: 8px; color: var(--ts-accent); font-size: 1rem; }
+.drift-daily-entry .drift-prompt-text { margin: 12px 0 0; font-family: var(--ts-font-serif); line-height: 1.8; overflow-wrap: anywhere; }
+.drift-daily-entry > button { flex-shrink: 0; }
+.drift-prompt-context { margin: 0; padding: 14px 16px; border-left: 2px solid var(--ts-accent); background: var(--drift-soft); overflow-wrap: anywhere; }
+.drift-prompt-context strong, .drift-daily-badge { color: var(--ts-accent); font-size: .78rem; font-weight: 600; }
+.drift-prompt-context time { display: block; margin-top: 4px; font-size: .72rem; color: var(--ts-muted); }
+.drift-page .drift-prompt-context p { margin: 8px 0; font-family: var(--ts-font-serif); font-size: .95rem; line-height: 1.8; }
+.drift-prompt-context button { margin-top: 10px; }
+.drift-inspiration { display: grid; justify-items: start; gap: 12px; }
+.drift-inspiration .drift-prompt-context { width: 100%; }
+.drift-page .drift-inspiration .drift-prompt-context p { margin: 0; }
+@media (max-width: 600px) {
+  .drift-daily-entry { align-items: stretch; flex-direction: column; gap: 16px; padding: 20px; }
+}
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-prompt-context { max-height: 100px; overflow-y: auto; padding: 6px 10px; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-prompt-context :is(small,time,strong) { display: none; }
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-inspiration { display: none; }

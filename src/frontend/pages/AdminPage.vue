@@ -3,9 +3,11 @@ import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { useRoute, useRouter } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
+import { driftCopy } from '../data/driftCopy';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
+  lang: { type: String, default: 'zh' },
   user: { type: Object, default: null }
 });
 
@@ -18,7 +20,7 @@ const tabs = [
   { id: 'messages', label: '留言', icon: 'message' },
   { id: 'gallery', label: '图库', icon: 'image' },
   { id: 'attachments', label: '附件', icon: 'paperclip' },
-  { id: 'drift', label: '星海来信', icon: 'message' }
+  { id: 'drift', label: '星海来信', icon: 'moonStar' }
 ];
 const messageFilters = [
   { id: 'all', label: '全部' },
@@ -493,6 +495,7 @@ onUnmounted(() => {
         <article v-for="row in state.drift" :key="`${row.kind}-${row.id}`" class="admin-row admin-message-row">
           <div class="admin-row-main">
             <strong>{{ row.kind === 'bottles' ? '漂流瓶' : '回信' }} #{{ row.id }}</strong>
+            <p v-if="row.dailyPrompt">{{ (driftCopy[lang] || driftCopy.zh).dailyResponse }}</p>
             <p translate="no">{{ row.content }}</p>
             <span>{{ row.user_id }} · {{ formatDate(row.created_at) }}<template v-if="row.bottle_id"> · 所属瓶子 #{{ row.bottle_id }}</template></span>
             <div v-if="driftReview(row).matchedKeywords?.length" class="admin-risk">关键词：{{ driftReview(row).matchedKeywords.join('、') }}</div>

@@ -249,6 +249,12 @@ describe('growth API', () => {
                     storage: 'local'
                 })
             });
+        } else if (task.key === 'daily_drift_prompt') {
+            result = await call('/api/drift/daily', {
+                method: 'POST',
+                headers: headers(true, actionToken),
+                body: JSON.stringify({ content: 'A quiet moment by the sea.', promptDate: task.prompt.date, promptId: task.prompt.id })
+            });
         } else {
             result = await call('/api/growth/game/score', {
                 method: 'POST',

@@ -39,3 +39,16 @@
 同一管理页面的“星海来信”标签，展示关键词和外链待审项。示例域名使用 `example.org`；命中关键词不代表违规。
 
 ![内容管理星海来信标签](moderation-desktop.png)
+
+## 每日漂流瓶任务
+
+以下为每日任务更新的隔离浏览器回归截图，使用合成账号 `drift-daily-zh-webkit-mobile`，
+390 × 844 CSS 像素。题目只出现在写作入口，阅读瓶子时只显示正文。
+
+<img src="daily-quest-mobile.png" alt="每日话题写作入口" width="390">
+
+<img src="daily-inspiration-mobile.png" alt="普通投瓶的找找灵感按钮与提示正文" width="390">
+
+<img src="daily-quest-completed-mobile.png" alt="每日任务完成后显示获得20经验" width="390">
+
+<img src="daily-letter-mobile.png" alt="阅读投出的瓶子时不附带题目" width="390">

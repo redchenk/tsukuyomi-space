@@ -6,6 +6,8 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const { reviewMessageContent } = require('../services/message-moderation');
 const { createNotification } = require('../repositories/notification-repository');
+const userGrowth = require('../services/user-growth');
+const { getDailyPrompt, bottleWithPrompt } = require('../services/drift-prompts');
 const router = express.Router();
 const adminRouter = express.Router();
 const writeLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'drift-write', keyGenerator: req => req.user.id });
@@ -34,7 +36,8 @@ function submissionContext(kind) {
         }
         const fingerprint = createHash('sha256').update(JSON.stringify({ kind,
             bottleId: kind === 'reply' ? id(req.params.id) : null,
-            content: req.body?.content, language: language(req.body?.language) })).digest('hex');
+            content: req.body?.content, language: language(req.body?.language),
+            ...(kind === 'daily-bottle' ? { promptDate: req.body?.promptDate, promptId: req.body?.promptId } : {}) })).digest('hex');
         req.driftSubmission = { requestId, fingerprint };
         try {
             // Acknowledging a saved submission must not consume another write quota.
@@ -49,12 +52,32 @@ function saveRequest(req, create) {
     return saveSubmission(req.user.id,requestId,fingerprint,create);
 }
 router.use(authenticateToken);
+router.get('/daily-prompt', (req,res) => ok(res,getDailyPrompt(userGrowth.hongKongDate())));
 router.get('/', (req,res) => {
     const before = id(req.query.before) || Number.MAX_SAFE_INTEGER;
     ok(res, db.prepare(`SELECT b.id,b.content,b.language,b.status,b.closed,b.created_at,b.recipient_id,
-        b.user_id,u.username,COALESCE(NULLIF(u.nickname,''),u.username) AS nickname
+        b.user_id,b.daily_prompt_date,b.daily_prompt_id,b.daily_prompt_json,u.username,COALESCE(NULLIF(u.nickname,''),u.username) AS nickname
         FROM drift_bottles b JOIN users u ON u.id=b.user_id
-        WHERE b.id < ? AND (b.user_id=? OR (b.recipient_id=? AND b.status='approved')) ORDER BY b.id DESC LIMIT 30`).all(before,req.user.id,req.user.id));
+        WHERE b.id < ? AND (b.user_id=? OR (b.recipient_id=? AND b.status='approved')) ORDER BY b.id DESC LIMIT 30`).all(before,req.user.id,req.user.id).map(bottleWithPrompt));
+});
+router.post('/daily', submissionContext('daily-bottle'), writeLimiter, (req,res) => {
+    const review = reviewMessageContent(req.body?.content);
+    if (!review.accepted) return fail(res,422,'内容无效，请使用不超过 2000 字的纯文本');
+    // A saved receipt is checked before the day validation, so a retry after
+    // midnight still acknowledges the original bottle without another reward.
+    const now = new Date();
+    const prompt = getDailyPrompt(userGrowth.hongKongDate(now));
+    if (req.body?.promptDate !== prompt.date || req.body?.promptId !== prompt.id) {
+        return res.status(409).json({ success:false, code:'DRIFT_PROMPT_CHANGED', data:{ prompt } });
+    }
+    const result = saveRequest(req, () => {
+        const inserted = db.prepare(`INSERT INTO drift_bottles(user_id,content,language,status,review,daily_prompt_date,daily_prompt_id,daily_prompt_json)
+            VALUES(?,?,?,?,?,?,?,?)`).run(req.user.id,review.content,language(req.body?.language),review.status,JSON.stringify(review),prompt.date,prompt.id,JSON.stringify(prompt.text));
+        const bottleId = Number(inserted.lastInsertRowid);
+        const growth = review.status === 'approved' ? userGrowth.recordDailyActivity(req.user.id,'drift_daily_prompt',bottleId,now) : null;
+        return { id:bottleId, status:review.status, dailyPrompt:{ date:prompt.date, id:prompt.id }, growth };
+    });
+    res.status(201).json({ success:true, data:result });
 });
 router.post('/', submissionContext('bottle'), writeLimiter, (req,res) => {
     const review = reviewMessageContent(req.body?.content);
@@ -87,7 +110,7 @@ router.get('/:id', (req,res) => {
     const peer = peerId ? db.prepare("SELECT id,username,COALESCE(NULLIF(nickname,''),username) AS nickname FROM users WHERE id=?").get(peerId) : null;
     const replies = db.prepare(`SELECT r.id,r.user_id,r.content,r.language,r.status,r.created_at
         FROM drift_replies r WHERE bottle_id=? AND (r.status='approved' OR r.user_id=?) ORDER BY r.id DESC LIMIT 100`).all(b.id,req.user.id).reverse();
-    ok(res,{ bottle:b, peer, blocked: peerId ? blocked(req.user.id,peerId) : false, replies });
+    ok(res,{ bottle:bottleWithPrompt(b), peer, blocked: peerId ? blocked(req.user.id,peerId) : false, replies });
 });
 router.post('/:id/replies', submissionContext('reply'), writeLimiter, (req,res) => {
     const bottleId = id(req.params.id);
@@ -146,7 +169,7 @@ router.post('/:id/report', writeLimiter, (req,res) => {
 });
 adminRouter.use(authenticateToken,requireAdmin);
 adminRouter.get('/', (req,res) => ok(res,{
-    bottles: db.prepare("SELECT * FROM drift_bottles WHERE status='pending' ORDER BY id LIMIT 50").all(),
+    bottles: db.prepare("SELECT * FROM drift_bottles WHERE status='pending' ORDER BY id LIMIT 50").all().map(bottleWithPrompt),
     replies: db.prepare("SELECT * FROM drift_replies WHERE status='pending' ORDER BY id LIMIT 50").all()
 }));
 adminRouter.post('/:kind/:id', (req,res) => {
@@ -157,6 +180,10 @@ adminRouter.post('/:kind/:id', (req,res) => {
         const row = db.prepare(`SELECT * FROM ${table} WHERE id=? AND status='pending'`).get(id(req.params.id));
         if (!row) return false;
         db.prepare(`UPDATE ${table} SET status=? WHERE id=? AND status='pending'`).run(req.body.status,row.id);
+        if (table==='drift_bottles' && req.body.status==='approved' && row.daily_prompt_date) {
+            // Moderation completes the quest for the submission's original day.
+            userGrowth.recordDailyActivity(row.user_id,'drift_daily_prompt',row.id,new Date(`${row.daily_prompt_date}T04:00:00Z`));
+        }
         if (table==='drift_replies' && req.body.status==='approved') {
             const b = db.prepare('SELECT * FROM drift_bottles WHERE id=?').get(row.bottle_id);
             if (b && !b.closed && b.status==='approved' && !blocked(b.user_id,b.recipient_id)) notify(b,row.user_id);

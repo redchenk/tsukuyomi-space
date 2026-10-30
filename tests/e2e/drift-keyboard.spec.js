@@ -73,6 +73,15 @@ test('bottle draft and actions remain reachable through portrait and wide touch 
     await expect(input).toHaveValue(draft);
 });
 
+test('daily prompt context keeps the draft and send controls reachable with a touch keyboard', async ({ page, baseURL }, info) => {
+    await installViewport(page);
+    await login(page.request, baseURL, `drift-keyboard-owner-${info.project.name}`);
+    await page.goto('/drift?daily=1');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
+    await expect(page.locator('.drift-prompt-context')).toBeVisible();
+    await verifyKeyboardCycle(page,page.locator('#drift-draft'),'今天的小愿望是听一首喜欢的歌。',info);
+});
+
 test('reply draft and actions survive keyboard panning, rotation, dismissal and returning to the letter', async ({ page, browser, baseURL }, info) => {
     await installViewport(page);
     const owner = await browser.newContext({ baseURL });

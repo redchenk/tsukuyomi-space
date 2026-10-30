@@ -110,7 +110,7 @@ test('legacy completion only counts for its original day', () => {
     const today = new Date();
     db.prepare('INSERT INTO user_growth_events(user_id,event_key,event_date,xp) VALUES(?,?,?,20)').run(user, 'daily_stage_visit', growth.hongKongDate(today));
     db.prepare('UPDATE user_growth_profiles SET total_xp=20 WHERE user_id=?').run(user);
-    const nextRotation = new Date(today.getTime() + 5 * 86400000);
+    const nextRotation = new Date(today.getTime() + growth.RANDOM_DAILY_TASKS.length * 86400000);
     assert.equal(growth.getState(user, nextRotation).today.tasks[2].completed, false);
     const result = growth.recordDailyActivity(user, 'article_bookmark', article, nextRotation);
     assert.equal(result.award.xp, 20);
