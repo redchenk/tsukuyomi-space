@@ -1,9 +1,11 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 for (const location of ['plaza', 'article']) {
-    test(`${location} keeps an unsent reply when switching community translation`, async ({ page, baseURL }) => {
+    test(`${location} keeps an unsent reply when switching community translation`, async ({ page, baseURL }, info) => {
         const headers = { Origin: baseURL, 'Sec-Fetch-Site': 'same-origin', 'X-Requested-With': 'XMLHttpRequest' };
-        const login = await page.request.post('/api/auth/login', { headers, data: { username: 'e2e-user', password: 'e2e-password' } });
+        const login = await page.request.post('/api/auth/login', { headers, data: {
+            username: `translation-drafts-${location}-${info.project.name}`, password: 'mem0-test-password'
+        } });
         expect(login.ok()).toBe(true);
         const created = await page.request.post('/api/messages', { headers, data: {
             content: `月下的故事 ${location} ${Date.now()}`,
@@ -42,6 +44,17 @@ for (const location of ['plaza', 'article']) {
             } else await route.fulfill({ response });
         });
         await page.goto(`http://tsukuyomi-space.com/${location === 'plaza' ? 'plaza' : 'article?id=1'}`);
+        await expect(page.locator('#boot-splash')).toHaveCount(0);
+        if (location === 'plaza') {
+            const filtered = page.waitForResponse(response => {
+                const url = new URL(response.url());
+                return url.pathname.endsWith('/messages') && url.searchParams.get('q') === root.content;
+            });
+            await page.locator('.plaza-search').fill(root.content);
+            await (await filtered).finished();
+            await expect(page.locator('.plaza-wall')).toHaveAttribute('aria-busy', 'false');
+            await expect(page.locator('.plaza-count')).toHaveText('1');
+        }
         const prefix = location === 'plaza' ? 'msg' : 'comment';
         const target = page.locator(`#${prefix}-${root.id}`);
         const replyButton = target.getByRole('button', { name: /^Reply(?: to)?(?: \d+)?$/ }).first();
@@ -68,9 +81,16 @@ for (const location of ['plaza', 'article']) {
         }
         expect(writes).toEqual([]);
         const submitted = page.waitForResponse(response => response.url().endsWith(`/api/messages/${root.id}/reply`) && response.request().method() === 'POST');
+        const refreshedThread = location === 'plaza' ? page.waitForResponse(response => {
+            const url = new URL(response.url());
+            return url.pathname.endsWith('/messages') && url.searchParams.get('thread_id') === String(root.id);
+        }) : null;
         await target.locator('.message-reply-form .primary-btn').click();
         const response = await submitted;
         expect(response.status(), await response.text()).toBe(201);
+        const saved = (await response.json()).data;
+        if (refreshedThread) await (await refreshedThread).finished();
+        await expect(target.locator(`#${prefix}-${saved.id}`)).toBeVisible();
         await expect(target.locator('.message-reply-form')).toHaveCount(0);
         expect(writes).toEqual([{ path: `/api/messages/${root.id}/reply`, body: { content: draft } }]);
         await replyButton.click();
