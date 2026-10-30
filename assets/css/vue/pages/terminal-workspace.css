@@ -1087,6 +1087,14 @@ body .page.terminal-page .terminal-login-card > :not(.terminal-login-mark, .term
         grid-column: 1 / -1;
     }
 
+    body .page.terminal-page .terminal-context-actions > :is(.primary-btn, .ghost-btn) {
+        height: auto;
+        padding-block: 8px;
+        line-height: 1.4;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
     body .page.terminal-page .terminal-hero {
         align-items: stretch;
         gap: 16px;

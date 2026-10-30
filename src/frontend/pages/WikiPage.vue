@@ -4,26 +4,12 @@ import { useRouter } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
 import { wikiEntryPath } from '../data/cosmicKaguyaWikiEntries';
 import { decodeWikiHash, trustedWikiAssetPath, trustedWikiSourceUrl } from '../utils/wikiSecurity';
-import {
-  boxOfficeMilestones,
-  cast,
-  characterGroups,
-  characters,
-  derivativeWorks,
-  findTerm,
-  infoRows,
-  music,
-  musicGroups,
-  navigationGroups,
-  quickEntries,
-  references,
-  spoilerSteps,
-  staff,
-  terms,
-  timeline,
-  tocEntries,
-  verifiedAt
-} from '../data/cosmicKaguyaWiki';
+import * as sourceWiki from '../data/cosmicKaguyaWiki';
+import { localizeWikiData } from '../services/wikiLocalization';
+import { interfaceLanguage } from '../i18n/runtime';
+const localizedWiki = computed(() => localizeWikiData(sourceWiki));
+const { verifiedAt } = sourceWiki;
+const findTerm = id => localizeWikiData(sourceWiki.findTerm(id));
 
 const activeSection = ref('overview');
 const router = useRouter();
@@ -50,19 +36,19 @@ const SECTION_ANCHOR_RATIO = 0.2;
 const normalizedSearch = computed(() => searchQuery.value.trim().toLocaleLowerCase());
 const searchResults = computed(() => {
   const query = normalizedSearch.value;
-  if (!query) return quickEntries.slice(0, 7);
-  return quickEntries.filter((entry) => [entry.label, entry.meta, ...entry.keywords]
+  if (!query) return localizedWiki.value.quickEntries.slice(0, 7);
+  return localizedWiki.value.quickEntries.filter((entry) => [entry.label, entry.meta, ...entry.keywords]
     .join(' ')
     .toLocaleLowerCase()
     .includes(query)).slice(0, 10);
 });
 const filteredCharacters = computed(() => activeCharacterGroup.value === 'all'
-  ? characters
-  : characters.filter((character) => character.groups.includes(activeCharacterGroup.value)));
+  ? localizedWiki.value.characters
+  : localizedWiki.value.characters.filter((character) => character.groups.includes(activeCharacterGroup.value)));
 const filteredMusic = computed(() => activeMusicGroup.value === 'all'
-  ? music
-  : music.filter((song) => song.category === activeMusicGroup.value));
-const trustedReferences = computed(() => references
+  ? localizedWiki.value.music
+  : localizedWiki.value.music.filter((song) => song.category === activeMusicGroup.value));
+const trustedReferences = computed(() => localizedWiki.value.references
   .map((reference) => ({ ...reference, url: trustedWikiSourceUrl(reference.url) }))
   .filter((reference) => reference.url));
 
@@ -273,7 +259,7 @@ onBeforeUnmount(() => {
             <summary><TsIcon name="list" :size="18" /> 页面目录</summary>
             <nav aria-label="超辉夜姬 Wiki 移动目录">
               <a
-                v-for="entry in tocEntries"
+                v-for="entry in localizedWiki.tocEntries"
                 :key="`mobile-${entry.id}`"
                 :href="`#${entry.id}`"
                 :aria-current="activeSection === entry.id ? 'location' : undefined"
@@ -301,7 +287,7 @@ onBeforeUnmount(() => {
             </div>
             <nav class="wiki-toc" aria-label="超辉夜姬 Wiki 目录">
               <a
-                v-for="entry in tocEntries"
+                v-for="entry in localizedWiki.tocEntries"
                 :key="entry.id"
                 :href="`#${entry.id}`"
                 :class="{ active: activeSection === entry.id }"
@@ -328,13 +314,13 @@ onBeforeUnmount(() => {
         <article id="wiki-article" class="wiki-article" data-material="content">
           <div class="wiki-notice" role="note">
             <div><span>粉丝整理</span><strong>非官方网站</strong></div>
-            <p>正文为依据公开资料重新撰写的中文摘要，包含轻度剧透；完整结局默认折叠。页面标题依用户指定，角色中文名为本站通行译法，日文原名为准。资料核验至 {{ verifiedAt }}。</p>
+            <p>正文为依据公开资料重新撰写的中文摘要，包含轻度剧透；完整结局默认折叠。页面标题依用户指定，角色中文名为本站通行译法，日文原名为准。资料核验至 {{ verifiedAt }}{{ interfaceLanguage === 'en' ? '.' : '。' }}</p>
             <a href="https://www.cho-kaguyahime.com/" target="_blank" rel="noopener noreferrer">官方网站 <TsIcon name="external" :size="15" /></a>
           </div>
 
           <section id="overview" class="wiki-section" data-wiki-section tabindex="-1">
             <div class="wiki-section-heading"><span>01</span><div><small>OVERVIEW</small><h2>本作介绍</h2></div></div>
-            <p>《超かぐや姫！》是一部长篇原创动画电影，以古典<a class="wiki-text-link" href="#term-taketori">《竹取物语》</a>为母题，把“竹中诞生、迅速成长、月之迎接”移入稍近未来。17 岁的酒寄彩叶遇见从虹光电线杆中出现的辉夜，两人在<button class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">虚拟空间“月读”</button>组成创作搭档：辉夜站上镜头前唱歌，彩叶则以制作人的身份写下旋律。</p>
+            <p v-if="interfaceLanguage === 'en'">Cosmic Princess Kaguya! (超かぐや姫！) is an original animated feature inspired by <a class="wiki-text-link" href="#term-taketori">The Tale of the Bamboo Cutter</a>. It brings the bamboo-born child, rapid growth and return to the moon into the near future. Seventeen-year-old Iroha Sakayori meets Kaguya, who emerges from a rainbow-lit utility pole. In <button class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">virtual Tsukuyomi</button>, they become creative partners: Kaguya sings on camera while Iroha writes music as her producer.</p><p v-else>《超かぐや姫！》是一部长篇原创动画电影，以古典<a class="wiki-text-link" href="#term-taketori">《竹取物语》</a>为母题，把“竹中诞生、迅速成长、月之迎接”移入稍近未来。17 岁的酒寄彩叶遇见从虹光电线杆中出现的辉夜，两人在<button class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">虚拟空间“月读”</button>组成创作搭档：辉夜站上镜头前唱歌，彩叶则以制作人的身份写下旋律。</p>
             <p>作品将网络直播、虚拟偶像与 VOCALOID 创作文化写进人物关系，让“相遇与离别”不只发生在月球和地球之间，也发生在创作者与观众、现实身份与虚拟人格之间。动画由 STUDIO COLORIDO 与 STUDIO CHROMATO 制作，山下清悟执导。<sup><a href="#ref-official">[1]</a></sup></p>
             <p>本作于 2025 年 11 月首次公开预告与视觉图，2026 年 1 月由 Netflix 全球上线，并在同年 2 月进入日本院线、3 月扩大至全国上映。音乐创作阵容汇集 ryo（supercell）、kz（livetune）、40mP、HoneyWorks、Aqu3ra 与 yuigot，让网络音乐本身成为剧情推进的一部分。</p>
             <div class="wiki-work-highlights" aria-label="作品亮点">
@@ -343,7 +329,7 @@ onBeforeUnmount(() => {
               <div><span>音乐阵容</span><strong>六组 VOCALOID 创作者参与</strong></div>
             </div>
             <ol class="wiki-timeline" aria-label="作品时间线">
-              <li v-for="item in timeline" :key="item.date"><time>{{ item.date }}</time><div><strong>{{ item.label }}</strong><span>{{ item.detail }}</span></div></li>
+              <li v-for="item in localizedWiki.timeline" :key="item.date"><time>{{ item.date }}</time><div><strong>{{ item.label }}</strong><span>{{ item.detail }}</span></div></li>
             </ol>
           </section>
 
@@ -357,7 +343,7 @@ onBeforeUnmount(() => {
               <summary><span><TsIcon name="shield" :size="19" /> 展开完整剧情与结局剧透</span><TsIcon class="wiki-spoiler-chevron" name="chevronDown" :size="18" /></summary>
               <div class="wiki-spoiler-warning"><strong>严重剧透警告</strong><span>以下内容揭示角色身份、离别、时间循环与最终结局。</span></div>
               <ol class="wiki-spoiler-steps">
-                <li v-for="([title, detail], index) in spoilerSteps" :key="title"><span>{{ index + 1 }}</span><div><strong>{{ title }}</strong><p>{{ detail }}</p></div></li>
+                <li v-for="([title, detail], index) in localizedWiki.spoilerSteps" :key="title"><span>{{ index + 1 }}</span><div><strong>{{ title }}</strong><p>{{ detail }}</p></div></li>
               </ol>
               <p class="wiki-analysis-note"><strong>考察边界：</strong>最后舞台中实体辉夜与虚拟八千代同时出现的机制存在不同理解，本页只描述演出表现，不将人格副本等二手推测写成官方设定。</p>
             </details>
@@ -367,7 +353,7 @@ onBeforeUnmount(() => {
             <div class="wiki-section-heading"><span>03</span><div><small>CHARACTERS</small><h2>登场人物</h2></div></div>
             <div class="wiki-filter-bar" aria-label="角色筛选">
               <button
-                v-for="group in characterGroups"
+                v-for="group in localizedWiki.characterGroups"
                 :key="group.id"
                 type="button"
                 :aria-pressed="activeCharacterGroup === group.id"
@@ -406,7 +392,7 @@ onBeforeUnmount(() => {
             <div class="wiki-section-heading"><span>04</span><div><small>GLOSSARY</small><h2>世界观与术语</h2></div></div>
             <p>点击正文中的蓝紫色词条可快速查看解释；这里保留完整词条位置，方便复制链接和交叉阅读。</p>
             <div class="wiki-term-grid">
-              <article v-for="term in terms.filter((entry) => !entry.id.match(/remember|reply/))" :id="term.target" :key="term.id" class="wiki-term-card" tabindex="-1">
+              <article v-for="term in localizedWiki.terms.filter((entry) => !entry.id.match(/remember|reply/))" :id="term.target" :key="term.id" class="wiki-term-card" tabindex="-1">
                 <h3>{{ term.label }}</h3>
                 <p>{{ term.summary }}</p>
                 <div><span v-for="alias in term.aliases" :key="alias">{{ alias }}</span></div>
@@ -420,7 +406,7 @@ onBeforeUnmount(() => {
             <p>电影把网络音乐文化直接写入叙事。这里仅整理歌名、创作者、演唱角色与剧情位置，不提供音频或歌词全文；官方试听请前往作品 Music 页面。<sup><a href="#ref-music">[2]</a></sup></p>
             <div class="wiki-filter-bar" aria-label="音乐筛选">
               <button
-                v-for="group in musicGroups"
+                v-for="group in localizedWiki.musicGroups"
                 :key="group.id"
                 type="button"
                 :aria-pressed="activeMusicGroup === group.id"
@@ -431,7 +417,7 @@ onBeforeUnmount(() => {
             <div class="wiki-music-list">
               <article v-for="song in filteredMusic" :id="song.id" :key="song.id" class="wiki-music-row" tabindex="-1">
                 <div><span>{{ song.type }} · {{ song.category === 'cover' ? 'COVER' : song.category === 'remix' ? 'REMIX' : 'ORIGINAL' }}</span><h3>{{ song.title }}</h3></div>
-                <dl><div><dt>创作</dt><dd>{{ song.creator }}</dd></div><div><dt>演唱</dt><dd>{{ song.performer }}</dd></div></dl>
+                <dl><div><dt>{{ $ui('音乐创作人员') }}</dt><dd>{{ song.creator }}</dd></div><div><dt>演唱</dt><dd>{{ song.performer }}</dd></div></dl>
                 <p>{{ song.note }}</p>
               </article>
             </div>
@@ -441,8 +427,8 @@ onBeforeUnmount(() => {
           <section id="staff-cast" class="wiki-section" data-wiki-section tabindex="-1">
             <div class="wiki-section-heading"><span>06</span><div><small>CREDITS</small><h2>制作与配音</h2></div></div>
             <div class="wiki-credit-grid">
-              <div><h3>STAFF</h3><dl><div v-for="([role, person]) in staff" :key="role"><dt>{{ role }}</dt><dd>{{ person }}</dd></div></dl></div>
-              <div><h3>CAST</h3><dl><div v-for="([role, person]) in cast" :key="role"><dt>{{ role }}</dt><dd>{{ person }}</dd></div></dl></div>
+              <div><h3>STAFF</h3><dl><div v-for="([role, person]) in localizedWiki.staff" :key="role"><dt>{{ role }}</dt><dd>{{ person }}</dd></div></dl></div>
+              <div><h3>CAST</h3><dl><div v-for="([role, person]) in localizedWiki.cast" :key="role"><dt>{{ role }}</dt><dd>{{ person }}</dd></div></dl></div>
             </div>
           </section>
 
@@ -453,7 +439,7 @@ onBeforeUnmount(() => {
               <div class="wiki-box-office-card">
                 <div class="wiki-subsection-title"><span>BOX OFFICE</span><h3>日本院线票房节点</h3></div>
                 <ol>
-                  <li v-for="milestone in boxOfficeMilestones" :key="milestone.day"><span>{{ milestone.day }}</span><strong>{{ milestone.gross }}</strong></li>
+                  <li v-for="milestone in localizedWiki.boxOfficeMilestones" :key="milestone.day"><span>{{ milestone.day }}</span><strong>{{ milestone.gross }}</strong></li>
                 </ol>
               </div>
               <div class="wiki-release-note">
@@ -464,15 +450,15 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="wiki-derivative-grid" aria-label="衍生作品">
-              <article v-for="work in derivativeWorks" :key="work.type" class="wiki-derivative-card">
+              <article v-for="work in localizedWiki.derivativeWorks" :key="work.type" class="wiki-derivative-card">
                 <img v-if="trustedWikiAssetPath(work.image)" :src="trustedWikiAssetPath(work.image)" :alt="work.imageAlt" loading="lazy" decoding="async" data-image-bloom>
                 <span>{{ work.type }}</span>
                 <h3>{{ work.title }}</h3>
                 <p>{{ work.detail }}</p>
                 <dl>
                   <div><dt>制作</dt><dd>{{ work.credits }}</dd></div>
-                  <div><dt>出版</dt><dd>{{ work.publisher }}</dd></div>
-                  <div><dt>发行</dt><dd>{{ work.release }}</dd></div>
+                  <div><dt>{{ $ui('出版方') }}</dt><dd>{{ work.publisher }}</dd></div>
+                  <div><dt>{{ $ui('发行日期') }}</dt><dd>{{ work.release }}</dd></div>
                   <div><dt>ISBN</dt><dd>{{ work.isbn }}</dd></div>
                 </dl>
               </article>
@@ -488,7 +474,7 @@ onBeforeUnmount(() => {
             <ol class="wiki-reference-list">
               <li v-for="(reference, index) in trustedReferences" :id="reference.id" :key="reference.id">
                 <span>[{{ index + 1 }}]</span>
-                <div><a :href="reference.url" target="_blank" rel="noopener noreferrer">{{ reference.label }} <TsIcon name="external" :size="14" /></a><p>{{ reference.scope }}（核验：{{ verifiedAt }}）</p></div>
+                <div><a :href="reference.url" target="_blank" rel="noopener noreferrer">{{ reference.label }} <TsIcon name="external" :size="14" /></a><p>{{ reference.scope }} <span>{{ $ui('核验日期：{0}', [verifiedAt]) }}</span></p></div>
               </li>
             </ol>
             <p class="wiki-image-credit">视觉说明：主视觉为本站为本页面制作的原创环境插画；公开素材不等于自由许可，因此交付包不包含官方角色图、动画截图、Logo 或商品扫描。请勿将本站页面误认为官方产品。</p>
@@ -496,7 +482,7 @@ onBeforeUnmount(() => {
 
           <nav class="wiki-navigation-template" aria-label="相关词条导航">
             <div class="wiki-template-title"><span>超辉夜姬！Wiki</span><strong>相关词条索引</strong></div>
-            <div v-for="group in navigationGroups" :key="group.title" class="wiki-template-group">
+            <div v-for="group in localizedWiki.navigationGroups" :key="group.title" class="wiki-template-group">
               <strong>{{ $ui(group.title) }}</strong>
               <div>
                 <RouterLink v-for="link in group.links.filter((item) => item.route)" :key="link.target" :to="link.route">{{ link.label }}</RouterLink>
@@ -508,7 +494,7 @@ onBeforeUnmount(() => {
 
         <aside class="wiki-info-panel" data-material="sidebar" aria-label="作品信息">
           <div class="wiki-info-head"><span>作品档案</span><strong>超かぐや姫！</strong></div>
-          <dl><div v-for="([label, value]) in infoRows" :key="label"><dt>{{ $ui(label) }}</dt><dd>{{ value }}</dd></div></dl>
+          <dl><div v-for="([label, value]) in localizedWiki.infoRows" :key="label"><dt>{{ $ui(label) }}</dt><dd>{{ value }}</dd></div></dl>
           <a href="https://www.netflix.com/sg-zh/title/81756595" target="_blank" rel="noopener noreferrer">Netflix 作品页 <TsIcon name="external" :size="15" /></a>
           <small>资料核验至 {{ verifiedAt }}</small>
         </aside>

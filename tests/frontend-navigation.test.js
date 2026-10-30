@@ -469,7 +469,7 @@ describe('frontend navigation routes', () => {
             assert.match(content, /Markdown/);
         }
         assert.match(reality, /开源技术参考/);
-        assert.match(reality, /Open-source technology reference/);
+        assert.match(reality, /Frontend credits/);
         assert.match(reality, /オープンソース技術の参考元/);
         assert.match(readme, /无刷新平滑切页/);
         assert.match(readme, /图片渐显加载/);

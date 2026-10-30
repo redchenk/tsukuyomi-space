@@ -1,5 +1,15 @@
 export function markdownTemplates(english = false) {
-  const item = (id, zh, en, source) => ({ id, label: english ? en : zh, source });
+  const examples = {
+    table: '| Item | Description |\n| :--- | :--- |\n| Tsukuyomi Space | Write your content |',
+    task: '- [ ] To do\n- [x] Done',
+    callout: '::: tip A little reminder\nUse **bold**, lists and links here.\n:::',
+    alert: '> [!IMPORTANT]\n> Keep this information in mind.',
+    details: '::: details Show more\nThis content can be collapsed.\n:::',
+    footnote: 'Text with a note[^note]\n\n[^note]: Add an explanation or source.',
+    gallery: '::: gallery\n![Image description](https://example.com/image-1.jpg)\n\n![Image description](https://example.com/image-2.jpg)\n:::',
+    abbr: '*[SSR]: Server-Side Rendering\n\nSSR can display content sooner.'
+  };
+  const item = (id, zh, en, source) => ({ id, label: english ? en : zh, source: english ? (examples[id] || source) : source });
   return [
     item('table', '表格', 'Table', '| 项目 | 说明 |\n| :--- | :--- |\n| 月读空间 | 写下你的内容 |'),
     item('task', '任务清单', 'Task list', '- [ ] 待完成的事项\n- [x] 已完成的事项'),

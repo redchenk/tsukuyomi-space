@@ -12,11 +12,37 @@ const emit = defineEmits(['go']);
 const isJa = computed(() => props.lang === 'ja');
 const isEnglish = computed(() => props.lang === 'en');
 
-const privacyHeaders = computed(() => isJa.value
+const privacyHeaders = computed(() => isEnglish.value ? ['Data type', 'Purpose', 'Storage and notes'] : isJa.value
   ? ['\u30c7\u30fc\u30bf\u7a2e\u5225', '\u5229\u7528\u76ee\u7684', '\u4fdd\u5b58\u5834\u6240\u3068\u8aac\u660e']
   : ['\u6570\u636e\u7c7b\u578b', '\u4f7f\u7528\u76ee\u7684', '\u4fdd\u5b58\u4f4d\u7f6e\u4e0e\u8bf4\u660e']);
 
-const privacyRows = computed(() => isJa.value ? [
+const privacyRows = computed(() => isEnglish.value ? [
+  {
+    "type": "Account information",
+    "purpose": "Registration, sign-in, account display and access permissions.",
+    "storage": "Includes your username, email, password hash, role and creation date. Passwords are not stored in plain text."
+  },
+  {
+    "type": "Articles and messages",
+    "purpose": "Displaying submissions, comments and messages, moderation and community interactions.",
+    "storage": "Published content may be visible to other visitors. Administrators can review, manage and delete it."
+  },
+  {
+    "type": "Visit statistics",
+    "purpose": "Understanding page-visit trends and maintaining site reliability.",
+    "storage": "Used for site statistics, not advertising profiles or cross-site tracking."
+  },
+  {
+    "type": "Room settings",
+    "purpose": "Saving Live2D model positions, chat history, and chat/voice service preferences.",
+    "storage": "Settings are saved in localStorage and guest memories in IndexedDB. Signed-in conversations and long-term memories are stored privately by account on this site’s server and can be managed in Room Settings."
+  },
+  {
+    "type": "Third-party API configuration",
+    "purpose": "Connecting the chat or voice services you choose for the room.",
+    "storage": "Avoid saving API keys on shared devices. The site does not publish your keys on public pages."
+  }
+] : isJa.value ? [
   {
     type: '\u30a2\u30ab\u30a6\u30f3\u30c8\u60c5\u5831',
     purpose: '\u767b\u9332\u3001\u30ed\u30b0\u30a4\u30f3\u3001\u30e6\u30fc\u30b6\u30fc\u30bb\u30f3\u30bf\u30fc\u8868\u793a\u3001\u6a29\u9650\u5224\u5b9a\u306b\u4f7f\u7528\u3057\u307e\u3059\u3002',
@@ -70,7 +96,7 @@ const privacyRows = computed(() => isJa.value ? [
   }
 ]);
 
-const rightsCards = computed(() => isJa.value ? [
+const rightsCards = computed(() => isEnglish.value ? [{ title: props.t.realityRightsAccess, items: ["After signing in, you can view basic account information in the User Center.", "To request a correction to public content, include a link to the affected page."] }, { title: props.t.realityRightsDelete, items: ["You can request deletion of your messages, articles or account-related data.", "You can remove local room settings by clearing this site\u2019s data in your browser."] }, { title: props.t.realityRightsSecurity, items: ["Report XSS, unauthorized access or sensitive-data exposure through GitHub Issues or the repository\u2019s contact details.", "Do not publish real keys, passwords, tokens or anyone else\u2019s private information in a report."] }] : isJa.value ? [
   {
     title: props.t.realityRightsAccess,
     items: [
@@ -116,7 +142,7 @@ const rightsCards = computed(() => isJa.value ? [
   }
 ]);
 
-const noticePrefixes = computed(() => isJa.value
+const noticePrefixes = computed(() => isEnglish.value ? { virtual: 'Virtual characters: ', links: 'External links: ', update: 'Updates: ' } : isJa.value
   ? {
       virtual: '\u30d0\u30fc\u30c1\u30e3\u30eb\u30ad\u30e3\u30e9\u30af\u30bf\u30fc\u30b3\u30f3\u30c6\u30f3\u30c4\uff1a',
       links: '\u5916\u90e8\u30ea\u30f3\u30af\uff1a',
@@ -271,7 +297,7 @@ function go(path) {
           <p v-if="isEnglish">Local semantic memory uses <a href="https://huggingface.co/BAAI/bge-small-zh-v1.5" target="_blank" rel="noopener noreferrer">BGE</a>, <a href="https://github.com/microsoft/onnxruntime" target="_blank" rel="noopener noreferrer">ONNX Runtime</a> and <a href="https://github.com/asg017/sqlite-vec" target="_blank" rel="noopener noreferrer">sqlite-vec</a>. Vectors and evidence scoring stay on the server. Relationship progress is a fictional interaction record; your selected chat provider still generates replies.</p>
           <p v-else-if="!isJa">本地语义记忆感谢 <a href="https://huggingface.co/BAAI/bge-small-zh-v1.5" target="_blank" rel="noopener noreferrer">BGE</a>、<a href="https://github.com/microsoft/onnxruntime" target="_blank" rel="noopener noreferrer">ONNX Runtime</a> 与 <a href="https://github.com/asg017/sqlite-vec" target="_blank" rel="noopener noreferrer">sqlite-vec</a>。向量和证据评分仅在服务器本地计算。好感度是角色互动记录，聊天回复仍由你配置的模型生成。</p>
           <p v-if="isEnglish">
-            <strong>Long-term memory — thank you:</strong> Room embeds the open-source <a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a> SDK (Apache-2.0). Signed-in chat memories and the retrieval index are stored privately on this site's server; relevant excerpts are sent to your selected chat model. We do not use Mem0's cloud service. Guest memories stay in this browser. You can disable, edit or delete memories in Room Settings.
+            <strong>Long-term memory credits:</strong> The chat room uses the open-source <a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a> SDK (Apache-2.0). Signed-in chat memories and the retrieval index are stored privately on this site's server; relevant excerpts are sent to your selected chat model. We do not use Mem0's cloud service. Guest memories stay in this browser. You can disable, edit or delete memories in Room Settings.
           </p>
           <p v-else-if="!isJa">
             <strong>长期记忆致谢：</strong>感谢 <a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a>（Apache-2.0）提供开源记忆能力。Room 将其 SDK 直接封装进后端：登录用户的对话记忆及检索索引私有保存在本站服务器，相关片段会发送给你选择的聊天模型；不使用 Mem0 云服务。访客记忆保存在当前浏览器，可在房间设置中关闭、编辑或删除记忆。
@@ -298,7 +324,7 @@ function go(path) {
             <strong>Live2D モデル出典：</strong>サイト内の Live2D モデルは Bilibili の <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">雪熊企划</a> に由来し、モデルの権利は原作者および関連権利者に帰属します。
           </p>
           <p v-if="isEnglish">
-            <strong>Web pet source:</strong> The Yachiyo pet in the lower-right corner comes from <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a>. Refer to its Petdex page for attribution and usage terms.
+            <strong>Site companion credits:</strong> The Yachiyo pet in the lower-right corner comes from <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a>. Refer to its Petdex page for attribution and usage terms.
           </p>
           <p v-else-if="!isJa">
             <strong>网页宠物来源：</strong>右下角 Yachiyo 宠物来自 <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a>，请以 Petdex 页面标注的来源与使用说明为准。
@@ -307,7 +333,7 @@ function go(path) {
             <strong>Webペット出典：</strong>右下の Yachiyo ペットは <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a> に由来します。出典と利用条件は Petdex のページ表記に従います。
           </p>
           <p v-if="isEnglish">
-            <strong>Agent OS music app technology:</strong> The Agent OS music app and the site's NetEase player reference <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a> (Apache-2.0). The web player's limited QR and playback protocols reference <a href="https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced" target="_blank" rel="noopener noreferrer">api-enhanced</a> (MIT); QR encoding uses <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener noreferrer">qrcode-generator</a> (MIT).
+            <strong>Music player credits:</strong> The Agent OS music app and the site's NetEase player reference <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a> (Apache-2.0). The web player's limited QR and playback protocols reference <a href="https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced" target="_blank" rel="noopener noreferrer">api-enhanced</a> (MIT); QR encoding uses <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener noreferrer">qrcode-generator</a> (MIT).
           </p>
           <p v-else-if="!isJa">
             <strong>Agent OS 音乐 App 技术来源：</strong>Agent OS 音乐 App 与全站网易云播放器参考 <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a>（Apache-2.0）。网页扫码与播放协议参考 <a href="https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced" target="_blank" rel="noopener noreferrer">api-enhanced</a>（MIT），二维码生成使用 <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener noreferrer">qrcode-generator</a>（MIT）。感谢这些开源项目。
@@ -316,7 +342,7 @@ function go(path) {
             <strong>Agent OS 音楽 App の技術出典：</strong>Agent OS の音楽 App とサイトの NetEase プレイヤーは <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a>（Apache-2.0）を参考にしています。Web の QR と再生プロトコルは <a href="https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced" target="_blank" rel="noopener noreferrer">api-enhanced</a>（MIT）、QR 生成は <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener noreferrer">qrcode-generator</a>（MIT）に基づきます。
           </p>
           <p v-if="isEnglish">
-            <strong>Open-source technology reference:</strong> Some front-end techniques used by this site, including smooth client-side page transitions, Markdown editing enhancements and progressive image loading, were informed by <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a>. Refer to the original repository for its source and license information.
+            <strong>Frontend credits:</strong> Some front-end techniques used by this site, including smooth client-side page transitions, Markdown editing enhancements and progressive image loading, were informed by <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a>. Refer to the original repository for its source and license information.
           </p>
           <p v-else-if="!isJa">
             <strong>开源技术参考：</strong>本站的无刷新平滑切页、Markdown 编辑增强和图片渐显加载等部分前端技术，参考了 <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a>；原项目的代码与许可证信息请以其仓库说明为准。
@@ -325,7 +351,7 @@ function go(path) {
             <strong>オープンソース技術の参考元：</strong>本サイトのシームレスなページ遷移、Markdown 編集機能の拡張、画像のプログレッシブ読み込みなど、一部のフロントエンド技術は <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a> を参考にしています。ソースコードとライセンスの詳細は元のリポジトリをご確認ください。
           </p>
           <p v-if="isEnglish">
-            <strong>Icon source:</strong> Some interface icons use the open-source <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> icon set under its license.
+            <strong>Icon credits:</strong> Some interface icons use the open-source <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> icon set under its license.
           </p>
           <p v-else-if="!isJa">
             <strong>图标来源：</strong>站内部分界面图标使用 <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> 开源图标集，遵循其开源许可证。

@@ -1,4 +1,5 @@
 import { apiFetch, apiUrl, getSession, parseResponse } from '../api/client';
+import { contentTranslationMode } from './contentTranslation';
 
 export const PLAZA_PAGE_SIZE = 8;
 const MAX_AGE_MS = 30 * 1000;
@@ -15,7 +16,7 @@ function copy(payload) {
 
 async function read(path, privateRead = false, force = false) {
   const owner = getSession()?.user?.id || 'guest';
-  const key = `${owner}:${path}`;
+  const key = `${owner}:${privateRead ? 'private' : contentTranslationMode()}:${path}`;
   const cached = pages.get(key);
   if (!force && cached && Date.now() - cached.at < MAX_AGE_MS) return copy(cached.data);
   const startedRevision = revision;

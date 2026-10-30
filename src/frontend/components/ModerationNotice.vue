@@ -1,4 +1,6 @@
 <script setup>
+import { translateFeedback } from '../i18n/runtime';
+import { moderationReason } from '../services/systemText';
 defineProps({ feedback: { type: Object, default: null } });
 </script>
 
@@ -12,11 +14,11 @@ defineProps({ feedback: { type: Object, default: null } });
     aria-atomic="true"
   >
     <strong>{{ feedback.status === 'rejected' ? '未能提交' : '已提交，等待人工审核' }}</strong>
-    <small v-if="feedback.basis">{{ feedback.basis }}</small>
+    <small v-if="feedback.basis">{{ translateFeedback(feedback.basis) }}</small>
     <ul v-if="feedback.reasons?.length">
-      <li v-for="reason in feedback.reasons" :key="reason.code">{{ reason.message }}</li>
+      <li v-for="reason in feedback.reasons" :key="reason.code">{{ moderationReason(reason) }}</li>
     </ul>
-    <p>{{ feedback.nextStep }}</p>
+    <p>{{ translateFeedback(feedback.nextStep) }}</p>
     <RouterLink v-if="feedback.status === 'pending'" to="/user-center">查看我的留言与评论</RouterLink>
   </div>
 </template>

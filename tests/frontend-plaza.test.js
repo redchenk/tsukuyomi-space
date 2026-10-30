@@ -14,7 +14,7 @@ function service() {
     const handler = () => Promise.resolve({ success: true, data: payload(calls.length) });
     const state = { handler };
     const context = { URLSearchParams, Date: class extends Date { static now() { return now; } },
-        getSession: () => session, apiUrl: path => path,
+        getSession: () => session, apiUrl: path => path, contentTranslationMode: () => 'original',
         apiFetch: (path, options) => { calls.push({ path, options, private: false }); return state.handler(); },
         fetch: (path, options) => { calls.push({ path, options, private: true }); return state.handler(); },
         parseResponse: response => response };
@@ -82,7 +82,7 @@ function page(overrides = {}) {
     const location = { hash: '', origin: 'https://example.test' };
     const context = { ...vue, console, URL, Date,
         setTimeout: fn => { const id = Symbol(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
-        onMounted: () => {}, onUnmounted: () => {}, onActivated: () => {}, onDeactivated: () => {},
+        onMounted: () => {}, onUnmounted: () => {}, onActivated: () => {}, onDeactivated: () => {}, useContentTranslationRefresh: () => {},
         defineProps: () => ({ lang: 'zh', t: { plazaLoadFailed: '无法读取留言', refresh: '刷新' } }), defineEmits: () => () => {},
         useRoute: () => route, useRouter: () => ({ replace: options => { location.hash = options.hash || ''; route.hash = location.hash; return Promise.resolve(); } }),
         getSession: () => currentSession, loadCurrentSession: () => new Promise(() => {}),

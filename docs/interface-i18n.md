@@ -4,6 +4,8 @@
 
 ## 翻译维护
 
+海外站菜单的偏好区域提供 “Translate community content” 开关；文章页也有 “Show original / Translate to English” 快捷入口。两处共用浏览器偏好 `tsukuyomi_content_translation`（默认 `on`，关闭为 `off`），访客无需登录。关闭后公开内容读取直接使用 `/api`，界面仍固定英文；重新开启恢复 `/en-api`。切换只刷新公开内容，不重载页面。文章列表、广场、公告和大厅缓存按内容语言隔离，已缓存的页面在再次显示时刷新。此偏好不改变搜索关键词、不翻译私人内容，也不影响服务端 SEO、RSS 或 sitemap 的英文输出。仅需重新构建并发布海外前端，无需后端迁移或新凭证。
+
 - 导航、登录等核心文案继续使用 `src/frontend/i18n/messages.js` 与 `messages.en.js`。
 - 其他界面文案的英文、日文保存在 `src/frontend/i18n/interface-catalog.json`。中文原文是键；键首尾空白被去除，连续空白被合并。
 - 动态提示使用 `{0}`、`{1}` 等参数，例如 `uiText('已更新 {0} 个聊天模型', [count])`。参数按原样替换，不作为翻译键，也不拼成 HTML。
@@ -11,6 +13,8 @@
 - `scripts/i18n-plugin.mjs` 统一解析按语言拆分的词典模块。网站与独立 Live2D 调试页的构建入口均接入解析；调试页不额外改写自身模板。
 - 对于作为内部分类标识使用的中文值，保持存储值与比较条件不变，只在显示位置调用 `uiText`。后台分组和房间设置分组是示例。
 - API 的已知错误通过 `translateFeedback` 本地匹配。未知服务商错误保留原文，避免改变含义；这个错误匹配过程不发送外部翻译请求。
+- Wiki 的结构化资料通过 `services/wikiLocalization.js` 显示本地译文；补充英文保存在 `data/wiki.en.json`，原名、路由 ID、来源 URL 和原始资料不变。导入角色文章的英文文字及图片说明保存在 `data/wiki-sources/en.json`，由 `wikiSourceLocalization.js` 仅替换已清理 HTML 内的文字和显示属性，保留链接、图片、章节锚点及剧透折叠。
+- 通知标题和审核说明通过 `services/systemText.js` 匹配已知事件模板；昵称、文章名、留言正文与未知通知仍按原样显示。状态映射、服务错误、隐私表格等动态绑定需要显式选择译文，不能只依赖构建提取。
 
 英文、日文词典各自构建为带哈希的独立模块，仅在需要时加载和缓存。中文访问不下载这两个词典。切换语言不重载页面，不清空草稿或 API 密钥。新增文案后补齐两种译文，运行 `npm run test:i18n` 和 `npm run test:frontend`，再构建国内与海外版本。更新词典后重启本地预览，核对实际按钮、占位提示和弹窗。
 
@@ -23,6 +27,8 @@ Access 首次挂载不等待附加语言词典；其他页面的词典下载异�
 ## 验证
 
 `tests/frontend-i18n.test.cjs` 检查构建提取的界面文案翻译、参数一致性、Vue/JavaScript 编译、协议与用户内容保护、核心词典键一致性。
+
+`tests/frontend-localization-completeness.test.cjs` 检查英文控件无误用日文、全部 Wiki 词条与八篇导入角色文章的英文覆盖、原始资料与 HTML 结构保留、通知与审核参数保护，以及新增 Markdown 示例的语言。修改 Wiki 原文时同步维护本地英文资料，角色原名、作品名与引用不应被当作界面漏译。
 
 `tests/frontend-access.test.cjs` 检查自动播放失败、页面返回、原生全屏回退、重复进入以及事件/定时器清理。
 

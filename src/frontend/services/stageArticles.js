@@ -1,4 +1,5 @@
 import { apiFetch, parseResponse } from '../api/client';
+import { contentTranslationMode } from './contentTranslation';
 
 const STAGE_PAGE_SIZE = 6;
 const STAGE_CACHE_MAX_AGE_MS = 30 * 1000;
@@ -40,13 +41,14 @@ function rememberPage(key, payload) {
 
 export async function loadStageArticles(options = {}, { force = false } = {}) {
   const normalized = normalizedOptions(options);
-  const key = requestPath(normalized);
+  const url = requestPath(normalized);
+  const key = `${contentTranslationMode()}:${url}`;
   const cached = stagePageCache.get(key);
   if (!force && cached && Date.now() - cached.cachedAt < STAGE_CACHE_MAX_AGE_MS) return cached.payload;
 
   let request = stagePageRequests.get(key);
   if (!request) {
-    request = apiFetch(key, { headers: { Accept: 'application/json' } })
+    request = apiFetch(url, { headers: { Accept: 'application/json' } })
       .then(parseResponse)
       .then((result) => {
         if (!result.success) throw Object.assign(new Error(result.message || 'Unable to load articles'), { status: result.status || (result.message?.includes('第一页') ? 409 : 0) });

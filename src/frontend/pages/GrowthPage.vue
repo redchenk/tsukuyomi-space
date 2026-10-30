@@ -27,7 +27,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   recent: '最近の記録', noEvents: '最初の記録は今日から始まります。', loading: '成長記録を読み込み中',
   retry: '再読込', done: '完了', go: '進む', max: '最高レベル', xp: 'EXP', rotating: '毎日更新', streakReward: '7日連続ごとに +20 EXP'
 } : props.lang === 'en' ? {
-  kicker: 'Moon Bond', title: 'Bond growth', subtitle: 'Small daily moments become part of your history with Yachiyo.',
+  kicker: 'Moon Bond', title: 'Moon Bond', subtitle: 'Small daily moments become part of your history with Yachiyo.',
   today: 'Today', checkin: 'Check in', checked: 'Claimed', streak: 'Streak', best: 'Best', days: 'days',
   tasks: 'Today\'s bond', path: 'Growth path', invite: 'Invite a friend', inviteHint: 'You both earn XP after your friend completes their first chat with Yachiyo.',
   copyLink: 'Copy invite link', share: 'Share', copied: 'Invite link copied', pending: 'Awaiting chat', qualified: 'Completed', rewarded: 'Rewarded',

@@ -1,4 +1,5 @@
 import { isEnglishSite } from '../utils/siteVariant';
+import { contentTranslationEnabled } from '../services/contentTranslation';
 import { translateFeedback, uiText } from '../i18n/runtime';
 
 export async function parseResponse(response) {
@@ -69,9 +70,8 @@ let sessionRevision = 0;
 let trustedSessionUntil = 0;
 let publicStatsRequest = null;
 let publicStatsCache = null;
-let publicSettingsRequest = null;
-let publicSettingsCache = null;
-let publicSettingsCachedAt = 0;
+const publicSettingsRequests = new Map();
+const publicSettingsCaches = new Map();
 let liveReadSequence = 0;
 
 const PUBLIC_STATS_CACHE_KEY = 'tsukuyomi_public_stats_cache';
@@ -175,7 +175,7 @@ function liveContentUrl(url, options = {}) {
 function englishContentUrl(url, options = {}) {
   const value = liveContentUrl(url, options);
   const method = String(options.method || 'GET').toUpperCase();
-  if (!FORCED_ENGLISH_SITE || !['GET', 'HEAD'].includes(method)) return value;
+  if (!FORCED_ENGLISH_SITE || !contentTranslationEnabled.value || !['GET', 'HEAD'].includes(method)) return value;
   if (!/^\/api\/(?:live\/[^/]+\/)?(?:settings|hub-preview|articles|messages|assets\/gallery|pixel-art|friend-links)(?:[/?#]|$)/.test(value)) {
     return value;
   }
@@ -278,27 +278,26 @@ export async function loadPublicStats(options = {}) {
 }
 
 export async function loadPublicSettings(options = {}) {
+  const mode = FORCED_ENGLISH_SITE && contentTranslationEnabled.value ? 'en' : 'original';
   const maxAgeMs = Math.max(0, Number(options.maxAgeMs ?? 30000));
-  const fresh = publicSettingsCache && Date.now() - publicSettingsCachedAt < maxAgeMs;
-  if (!options.force && fresh) return publicSettingsCache;
-  if (publicSettingsRequest) return publicSettingsRequest;
+  const cached = publicSettingsCaches.get(mode);
+  if (!options.force && cached && Date.now() - cached.at < maxAgeMs) return cached.data;
+  if (publicSettingsRequests.has(mode)) return publicSettingsRequests.get(mode);
 
-  publicSettingsRequest = apiFetch(noStoreUrl('/api/settings'), {
+  const request = apiFetch(noStoreUrl('/api/settings'), {
     headers: { Accept: 'application/json' },
     cache: 'no-store'
   })
     .then(parseResponse)
     .then((result) => {
       if (!result.success) throw new Error(result.message || 'Settings unavailable');
-      publicSettingsCache = result.data || {};
-      publicSettingsCachedAt = Date.now();
-      return publicSettingsCache;
+      const data = result.data || {};
+      publicSettingsCaches.set(mode, { data, at: Date.now() });
+      return data;
     })
-    .finally(() => {
-      publicSettingsRequest = null;
-    });
-
-  return publicSettingsRequest;
+    .finally(() => publicSettingsRequests.delete(mode));
+  publicSettingsRequests.set(mode, request);
+  return request;
 }
 
 async function resolveCurrentSession({ allowClear = true } = {}) {

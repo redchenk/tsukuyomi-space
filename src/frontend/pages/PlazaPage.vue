@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -53,6 +54,7 @@ const compact = ref(false);
 let compactQuery;
 const updateCompact = () => { compact.value = compactQuery?.matches || false; };
 const replyModeration = reactive({});
+const replyDrafts = reactive({});
 let plazaToastTimer = 0;
 let plazaMounted = false;
 let applyingPlazaPage = false;
@@ -380,19 +382,23 @@ function plazaReplyTarget(reply) {
   return { ...target, id: target.id || (target.name ? reply.reply_to_id : null) };
 }
 
+let topicsRequestRevision = 0;
 async function loadTrendingTopics() {
+  const revision = ++topicsRequestRevision;
   plaza.topicsLoading = true;
   plaza.topicsError = '';
   try {
     const response = await apiFetch('/api/messages/topics?limit=8');
     const result = await parseResponse(response);
+    if (revision !== topicsRequestRevision) return;
     if (!result.success) throw new Error(result.message || props.t.plazaLoadFailed);
     plaza.topics = Array.isArray(result.data) ? result.data : [];
   } catch (error) {
+    if (revision !== topicsRequestRevision) return;
     plaza.topics = [];
     plaza.topicsError = error.message || props.t.plazaLoadFailed;
   } finally {
-    plaza.topicsLoading = false;
+    if (revision === topicsRequestRevision) plaza.topicsLoading = false;
   }
 }
 
@@ -414,14 +420,14 @@ function patchPlazaMessage(message) {
   if (index >= 0) plaza.messages.splice(index, 1, { ...plaza.messages[index], ...message });
 }
 
-async function refreshPlaza({ force = true } = {}) {
+async function refreshPlaza({ force = true, background = false } = {}) {
   session.value = getSession();
   if (force) clearPlazaMessageCache();
   loadPlazaStats();
   loadTrendingTopics();
   const anchorId = String(location.hash || '').match(/^#msg-(\d+)$/)?.[1] || null;
   // Public messages never wait for session recovery, levels, likes or topics.
-  const messages = loadPlazaMessages({ force, anchorId });
+  const messages = loadPlazaMessages({ force, anchorId, background });
   if (!session.value) loadCurrentSession().then(() => {
     if (!plazaMounted) return;
     session.value = getSession();
@@ -501,6 +507,7 @@ async function plazaSubmitReply(parentId, content) {
       }
       loadTrendingTopics();
     }
+    delete replyDrafts[parentId];
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
     const rootId = threads.value.rootId(parentId);
     if (rootId) plaza.repliesExpanded[rootId] = true;
@@ -705,6 +712,7 @@ onUnmounted(() => {
   pausePlaza();
   ++plazaRequestRevision;
 });
+useContentTranslationRefresh(() => refreshPlaza({ background: true }));
 </script>
 
 <template>
@@ -810,7 +818,7 @@ onUnmounted(() => {
               </button>
             </div>
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
-              <PlazaReplyForm :t="t" :lang="lang" :target="msg" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
+              <PlazaReplyForm v-model="replyDrafts[msg.id]" :t="t" :lang="lang" :target="msg" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
             </div>
             <ModerationNotice :feedback="replyModeration[msg.id]" />
             <div v-if="(msg.replies || []).length" :id="'plaza-replies-' + msg.id" class="plaza-replies">
@@ -844,7 +852,7 @@ onUnmounted(() => {
                   <button class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author_nickname || reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
                 </div>
                 <div v-if="plaza.replyOpen[reply.id]" class="plaza-reply-form">
-                  <PlazaReplyForm :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
+                  <PlazaReplyForm v-model="replyDrafts[reply.id]" :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
                 </div>
                 <ModerationNotice :feedback="replyModeration[reply.id]" />
               </div>
