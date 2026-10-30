@@ -5,6 +5,7 @@ const adminRepository = require('./repositories/admin-repository');
 const friendLinkRepository = require('./repositories/friend-link-repository');
 const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
+const officialUsage = require('./repositories/official-usage-repository');
 const authState = require('./services/auth-state');
 const { queueLoginLocationCheck } = require('./services/login-location-alert');
 const { approveAndNotify } = require('./services/approved-reply-notification');
@@ -330,6 +331,17 @@ router.get('/analytics', (req, res) => {
     } catch (error) {
         console.error('Admin analytics error:', error);
         fail(res, 500, '无法读取访问统计');
+    }
+});
+
+router.get('/official-usage', (req, res) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    try {
+        ok(res, officialUsage.dailyUsage({ days: req.query.days, end: req.query.end }));
+    } catch (error) {
+        if (error.status === 400) return fail(res, 400, error.message);
+        console.error('Official usage analytics error:', error);
+        fail(res, 500, '无法读取官方服务调用统计');
     }
 });
 
