@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import runtime from '../../../../shared/room-chat-runtime.cjs';
+import RoomPromptSources from './RoomPromptSources.vue';
 import { readRoomDialogueSettings, roomDialogueSettingsKey, saveRoomDialogueSettings } from '../../services/room/roomDialogueSettings';
 
 const ownerKey = roomDialogueSettingsKey();
@@ -74,6 +75,7 @@ function exportCard() {
       <p v-for="warning in warnings" :key="warning" class="hint">{{ warning }}</p>
       <label class="toggle"><input type="checkbox" v-model="draft.referenceEnabled" />在聊天中参考这张卡</label>
       <label class="toggle"><input type="checkbox" v-model="draft.worldBookEnabled" />启用卡片世界书（{{ draft.reference.character_book.entries.length }} 条）</label>
+      <p class="hint">两个开关分别生效，保存后用于下一轮聊天。世界书按关键词匹配，“始终参考”的条目会直接带入。</p>
       <details v-if="draft.reference.character_book.entries.length"><summary>检查世界书条目</summary>
         <article v-for="(entry, index) in draft.reference.character_book.entries" :key="index">
           <label class="toggle"><input type="checkbox" v-model="entry.enabled" />{{ entry.name || `条目 ${index + 1}` }}</label>
@@ -82,11 +84,12 @@ function exportCard() {
           <textarea v-model="entry.content" maxlength="2000" :aria-label="`世界书内容 ${index + 1}`" />
         </article>
       </details>
-      <button type="button" @click="draft.reference = null; draft.referenceEnabled = false">移除参考卡</button>
+      <button type="button" @click="draft.reference = null; draft.referenceEnabled = false; draft.worldBookEnabled = false">移除参考卡</button>
     </div>
     <details><summary>预览本轮会参考什么</summary>
       <label>试写一句话<input v-model="previewMessage" maxlength="1000" /></label>
       <p class="hint">仅在本机检查编排，不调用模型，不保存聊天。</p>
+      <RoomPromptSources :trace="preview" />
       <p>世界书命中 {{ preview.worldBook.selected.length }} 条<span v-if="preview.worldBook.omitted.length">，{{ preview.worldBook.omitted.length }} 条因篇幅限制省略</span>。</p>
       <ol><li v-for="block in preview.blocks" :key="block.id">{{ block.title }}<span v-if="block.truncated">（已缩短）</span></li></ol>
     </details>
@@ -106,7 +109,8 @@ summary span { display: block; font-size: .85rem; opacity: .7; }
 label { display: grid; gap: 8px; font-size: .9rem; }
 textarea, select, input:not([type=checkbox]):not([type=file]) { font: inherit; color: inherit; background: var(--bg-color, transparent); border: 1px solid #8885; border-radius: 8px; padding: 10px; min-width: 0; width: 100%; box-sizing: border-box; }
 textarea { min-height: 84px; resize: vertical; }
-.toggle { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.toggle input[type='checkbox'] { appearance: auto; flex: 0 0 18px; width: 18px; min-width: 18px; max-width: 18px; height: 18px; min-height: 18px; max-height: 18px; margin: 0; padding: 0; accent-color: var(--ts-accent); box-shadow: none; cursor: pointer; }
 .hint, small { opacity: .7; font-size: .82rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 button, .file-button { min-height: 44px; padding: 10px 14px; border: 1px solid #8885; border-radius: 9px; background: transparent; color: inherit; font: inherit; cursor: pointer; }

@@ -1324,6 +1324,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     }
     if (userMessage) userMessage.failed = false;
     sending.value = true;
+    promptTrace.value = null;
     generationState.value = { status: 'preparing', turnId, error: '' };
     const pendingId = uid();
     messages.value.push({ id: pendingId, turnId, role: 'assistant', content: '', parts: [], pending: true, createdAt: Date.now() });
@@ -1395,7 +1396,6 @@ export function useRoomChat({ live2d, world, diary = null }) {
         account: getSession()?.user, settings: readRoomDialogueSettings()
       });
       const systemPrompt = compiled.systemPrompt;
-      promptTrace.value = compiled.trace;
       memoryTrace.value = { ...roomContext.retrieval, count: roomContext.trace.filter(item => item.source === 'memories').length,
         continuityCount: roomContext.trace.filter(item => item.source === 'continuity').length };
       const visionToolSucceeded = roomContext.text.includes('"id":"understand_image"');
@@ -1450,6 +1450,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       if (!stripActionHints(stripControlTags(unwrapJsonEnvelope(result.reply))).trim()) {
         throw new Error('模型没有返回可显示的回复，请重试');
       }
+      promptTrace.value = compiled.trace;
       const structured = parseAssistantPayload(result.reply);
       const spokenReply = structured.reply || fallbackReply(message, image);
       const reply = appendKnowledgeSources(spokenReply, roomContext.knowledgeSources, document.documentElement.lang || (ROOM_ENGLISH ? 'en' : 'zh'));

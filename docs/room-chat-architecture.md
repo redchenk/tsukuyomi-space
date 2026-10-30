@@ -43,6 +43,8 @@ Room Settings → Character knowledge → Character and conversation provides:
 - JSON Character Card V2/basic-card import with an editable preview. The bundled card and world book are enabled by default, with ending discussion allowed. Imports enable both switches in the draft; saving applies them. Explicit disable/removal and spoiler opt-outs survive reload.
 - Export of the bundled Yachiyo V3 card as Character Card V2 JSON.
 - Entry review, disabling individual entries, spoiler flags and a local preview.
+- Card reference and world-book switches are independent: disabling expression reference does not disable an enabled world book. Removing the card removes both sources.
+- Both the local preview and the last successful reply report whether the card was included and whether world entries were included, disabled, unmatched or omitted for length. The reply indicator is published only after a nonempty provider response, not from an unsent preview.
 - Independent save/cancel plus integration with the page-wide save bar, discard action and unsaved-change guard.
 
 Settings use `roomDialogueSettingsV1:<account-id-or-guest>`. No existing settings,
@@ -59,6 +61,10 @@ regex execution, arbitrary macros, remote URL loading, scripts or extensions are
 executed. Advanced/depth positions fall back to after-character reference data.
 PNG cards, full V3 cards, lore outlets, timed effects and complete SillyTavern
 extension compatibility are outside this implementation.
+
+The world-book budget counts the actual serialized source/id/content envelope sent
+to the provider. Editor metadata and trigger keywords do not consume that budget.
+Entries dropped by the overall prompt limit are also reported as omitted.
 
 Imported `system_prompt` and `post_history_instructions` are not adopted.
 Examples/opening messages are preview-only: they are not fabricated shared
