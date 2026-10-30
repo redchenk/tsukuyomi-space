@@ -154,9 +154,60 @@ test('stale question review preserves the draft and lost-response retries save o
         await send.click();
         await expect(dialog.getByRole('status')).toHaveText(copy.en.submissionUnknown);
         await expect(input).toHaveValue(content);
-        await send.click();
+        await dialog.getByRole('button',{ name:copy.en.confirmSubmission,exact:true }).click();
         await expect(dialog).toBeHidden();
         expect(attempts[0].requestId).toBe(attempts[1].requestId);
+        const rows = (await (await page.request.get('/api/drift')).json()).data;
+        expect(rows.filter(row => row.content === content)).toHaveLength(1);
+        expect((await (await page.request.get('/api/growth/me')).json()).data.level.totalXp).toBe(20);
+    } finally {
+        if (id) await page.request.post(`/api/drift/${id}/close`,{ headers:headers(baseURL),data:{} });
+    }
+});
+
+test('an unconfirmed daily submission keeps its original receipt after midnight and reopening', async ({ page, baseURL }, info) => {
+    await login(page.request,baseURL,`drift-daily-midnight-${info.project.name}`);
+    await page.addInitScript(() => localStorage.setItem('lang','en'));
+    const prompt = (await (await page.request.get('/api/drift/daily-prompt')).json()).data;
+    await page.goto('/drift?daily=1');
+    await expect(page.locator('#boot-splash')).toBeHidden();
+    const dialog = page.getByRole('dialog');
+    const input = page.locator('#drift-draft');
+    const content = `Receipt across midnight ${info.project.name}`;
+    await input.fill(content);
+    const attempts = [];
+    let id;
+    await page.route('**/api/drift/daily',async route => {
+        attempts.push(route.request().postDataJSON());
+        if (attempts.length !== 1) return route.continue();
+        const response = await route.fetch();
+        expect(response.status()).toBe(201);
+        id = (await response.json()).data.id;
+        return route.abort('connectionclosed');
+    });
+    try {
+        const send = dialog.locator('.drift-letter-actions .drift-primary');
+        await send.click();
+        await expect(dialog.getByRole('status')).toHaveText(copy.en.submissionUnknown);
+        // The API suite covers a real server-date rollover. Here the shared
+        // prompt refresh advances while a real saved receipt remains unread.
+        const next = { ...prompts.find(p => p.id !== prompt.id),
+            date:new Date(Date.parse(prompt.date+'T00:00:00Z')+86400000).toISOString().slice(0,10) };
+        await page.route('**/api/drift/daily-prompt',route => route.fulfill({ json:{ success:true,data:next } }));
+        const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === '/api/drift/daily-prompt');
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await refreshed;
+        await expect(send).toBeEnabled();
+        await expect(dialog.getByRole('button',{ name:copy.en.useTodayPrompt,exact:true })).toHaveCount(0);
+        await dialog.getByRole('button',{ name:copy.en.closeWindow,exact:true }).click();
+        await page.getByRole('button',{ name:copy.en.dailyWrite,exact:true }).click();
+        await expect(dialog.locator('.drift-prompt-context time')).toHaveText(prompt.date);
+        await expect(input).toHaveValue(content);
+        await expect(input).toHaveAttribute('readonly','');
+        await send.click();
+        await expect(dialog).toBeHidden();
+        expect(attempts).toHaveLength(2);
+        expect(attempts[1]).toEqual(attempts[0]);
         const rows = (await (await page.request.get('/api/drift')).json()).data;
         expect(rows.filter(row => row.content === content)).toHaveLength(1);
         expect((await (await page.request.get('/api/growth/me')).json()).data.level.totalXp).toBe(20);

@@ -107,7 +107,7 @@ db.prepare('INSERT INTO play_test_applications(id,email,status,consent_version,c
 const articleTaskGrowth = require('../backend/services/user-growth');
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
     const password = bcrypt.hashSync('mem0-test-password',4);
-    for (const scenario of ['zh','en','ja','retry']) {
+    for (const scenario of ['zh','en','ja','retry','midnight']) {
         const name = `drift-daily-${scenario}-${project}`;
         let assigned = false;
         for (let index = 0; index < 100; index++) {

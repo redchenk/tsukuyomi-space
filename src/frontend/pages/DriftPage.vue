@@ -20,6 +20,7 @@ const draft = ref('');
 const dailyDraft = ref('');
 const dailyPrompt = ref(null);
 const composingPrompt = ref(null);
+const pendingDaily = ref(null);
 const inspiration = ref(null);
 const replyDrafts = reactive({});
 const submissions = createDriftSubmissions();
@@ -65,9 +66,9 @@ async function request(path, method = 'GET', body) {
     response = await authFetch(path, { method, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
     result = await parseResponse(response);
   } catch {
-    throw new Error(body?.requestId ? copy.value.submissionUnknown : copy.value.networkError);
+    throw Object.assign(new Error(body?.requestId ? copy.value.submissionUnknown : copy.value.networkError), { code: body?.requestId ? 'DRIFT_SUBMISSION_UNKNOWN' : '' });
   }
-  if (body?.requestId && (response.status >= 500 || (response.ok && !result.success))) throw new Error(copy.value.submissionUnknown);
+  if (body?.requestId && (response.status >= 500 || (response.ok && !result.success))) throw Object.assign(new Error(copy.value.submissionUnknown), { code: 'DRIFT_SUBMISSION_UNKNOWN' });
   if (result.code === 'DRIFT_PROMPT_CHANGED') {
     dailyPrompt.value = result.data.prompt;
     throw new Error(copy.value.promptChanged);
@@ -124,6 +125,12 @@ async function writeBottle() {
   await showDialog('write');
 }
 async function writeDaily() {
+  if (pendingDaily.value) {
+    composingPrompt.value = pendingDaily.value.prompt;
+    notice.value = copy.value.submissionUnknown;
+    await showDialog('write');
+    return;
+  }
   dailyPrompt.value = await request('/api/drift/daily-prompt');
   composingPrompt.value = dailyPrompt.value;
   notice.value = '';
@@ -155,12 +162,26 @@ async function pick() {
   await open(result.id, { sealed: true });
 }
 async function send() {
-  const submitted = activeDraft.value;
   const prompt = composingPrompt.value;
-  const scope = `${session.value.user.id}:bottle${prompt ? `:daily:${prompt.date}:${prompt.id}` : ''}`;
-  const payload = await submissions.prepare(scope, submitted, props.lang);
-  if (prompt) Object.assign(payload, { promptDate: prompt.date, promptId: prompt.id });
-  const result = await request(prompt ? '/api/drift/daily' : '/api/drift', 'POST', payload);
+  let attempt = prompt && pendingDaily.value;
+  if (!attempt) {
+    const scope = `${session.value.user.id}:bottle${prompt ? `:daily:${prompt.date}:${prompt.id}` : ''}`;
+    const payload = await submissions.prepare(scope, activeDraft.value, props.lang);
+    if (prompt) Object.assign(payload, { promptDate: prompt.date, promptId: prompt.id });
+    attempt = { scope, payload, prompt };
+  }
+  const { scope, payload } = attempt;
+  const submitted = payload.content;
+  // Until the receipt is known, retain the original day, body and language in
+  // memory. A rollover or reopened writer must not create a second submission.
+  if (prompt) pendingDaily.value = attempt;
+  let result;
+  try { result = await request(prompt ? '/api/drift/daily' : '/api/drift', 'POST', payload); }
+  catch (error) {
+    if (prompt && error.code !== 'DRIFT_SUBMISSION_UNKNOWN') pendingDaily.value = null;
+    throw error;
+  }
+  if (prompt) pendingDaily.value = null;
   submissions.complete(scope, payload.requestId);
   if (activeDraft.value === submitted) activeDraft.value = '';
   // Fetch current state: a durable receipt can contain an older growth snapshot.
@@ -318,10 +339,10 @@ watch(() => route.query.daily, value => {
       <div v-if="phase === 'sealed'" class="drift-found"><div class="drift-found-glow"><DriftBottle /></div><p>{{ copy.foundHint }}</p><button class="drift-primary" @click="showDialog('read')">{{ copy.openBottle }}<TsIcon name="arrowRight" :size="17" /></button></div>
       <template v-else-if="phase === 'write'">
         <form class="drift-letter-form" @submit.prevent="run(send)">
-          <aside v-if="composingPrompt" id="drift-composing-context" class="drift-prompt-context" aria-live="polite"><strong>{{ copy.dailyTitle }}</strong><time>{{ composingPrompt.date }}</time><p>{{ promptText(composingPrompt) }}</p><p v-if="promptStale">{{ copy.promptChanged }}</p><button v-if="promptStale" type="button" :disabled="busy" @click="composingPrompt = dailyPrompt; notice = ''">{{ copy.useTodayPrompt }}</button></aside>
+          <aside v-if="composingPrompt" id="drift-composing-context" class="drift-prompt-context" aria-live="polite"><strong>{{ copy.dailyTitle }}</strong><time>{{ composingPrompt.date }}</time><p>{{ promptText(composingPrompt) }}</p><p v-if="promptStale && !pendingDaily">{{ copy.promptChanged }}</p><button v-if="promptStale && !pendingDaily" type="button" :disabled="busy" @click="composingPrompt = dailyPrompt; notice = ''">{{ copy.useTodayPrompt }}</button></aside>
           <div v-else class="drift-inspiration"><button type="button" :disabled="busy" @click="inspire"><TsIcon name="sparkles" :size="16" />{{ copy.inspire }}</button><aside v-if="inspiration" id="drift-composing-context" class="drift-prompt-context" aria-live="polite"><p>{{ promptText(inspiration) }}</p></aside></div>
-          <div class="drift-writing-paper"><label for="drift-draft">{{ copy.toSea }}</label><textarea id="drift-draft" ref="writingArea" v-model="activeDraft" :aria-describedby="composingPrompt || inspiration ? 'drift-composing-context' : undefined" :placeholder="composingPrompt ? copy.dailyWriteHint : copy.writeHint" maxlength="2000" rows="7" required /><small>{{ [...activeDraft].length }} / 2000</small></div>
-          <footer class="drift-letter-actions"><button type="button" @click="closeDialog">{{ copy.cancel }}</button><button class="drift-primary" :disabled="busy || promptStale || !activeDraft.trim()">{{ copy.send }}<TsIcon name="send" :size="16" /></button></footer>
+          <div class="drift-writing-paper"><label for="drift-draft">{{ copy.toSea }}</label><textarea id="drift-draft" ref="writingArea" v-model="activeDraft" :readonly="Boolean(composingPrompt && pendingDaily)" :aria-describedby="composingPrompt || inspiration ? 'drift-composing-context' : undefined" :placeholder="composingPrompt ? copy.dailyWriteHint : copy.writeHint" maxlength="2000" rows="7" required /><small>{{ [...activeDraft].length }} / 2000</small></div>
+          <footer class="drift-letter-actions"><button type="button" @click="closeDialog">{{ copy.cancel }}</button><button class="drift-primary" :disabled="busy || (promptStale && !pendingDaily) || !activeDraft.trim()">{{ composingPrompt && pendingDaily ? copy.confirmSubmission : copy.send }}<TsIcon name="send" :size="16" /></button></footer>
         </form>
       </template>
       <template v-else-if="current && (phase === 'read' || phase === 'reply')">
