@@ -25,14 +25,14 @@ onMounted(() => load()); onUnmounted(() => { epoch++; });
 <template>
   <main class="page privacy-page">
     <header class="privacy-heading"><span class="eyebrow">TSUKUYOMI · PRIVATE REQUESTS</span><h1>注销申请工作台</h1><p>仅超级管理员可查看。核验后按清单处理；“开始处理”不会删除用户，“完成”也不会代替实际清理。</p><RouterLink to="/admin">返回管理中心</RouterLink></header>
-    <div class="privacy-actions"><label>申请状态 <select v-model="status" :disabled="busy" @change="load(1)"><option v-for="(label, value) in labels" :key="value" :value="value">{{ label }}</option></select></label><button class="ghost-btn" :disabled="busy" @click="load(state.page)">刷新</button><span>共 {{ state.total }} 条</span></div>
+    <div class="privacy-actions"><label>申请状态 <select v-model="status" :disabled="busy" @change="load(1)"><option v-for="(label, value) in labels" :key="value" :value="value">{{ $ui(label) }}</option></select></label><button class="ghost-btn" :disabled="busy" @click="load(state.page)">刷新</button><span>共 {{ state.total }} 条</span></div>
     <p v-if="error" class="form-message error" role="alert">{{ error }}</p><p v-if="busy" role="status">正在处理…</p><p v-else-if="!state.items.length && !error">暂无此状态的申请。</p>
     <section v-for="item in state.items" :key="item.id" class="panel privacy-section">
-      <h2>{{ item.username || '账号已移除' }} · {{ labels[item.status] }}</h2><p>编号：<code>{{ item.id }}</code></p><p>核验邮箱：{{ item.email || '请查阅受控处理回执' }}</p><p>收到：{{ item.requested_at.slice(0, 10) }} · 预计处理：{{ item.due_at.slice(0, 10) }} <strong v-if="['pending','processing'].includes(item.status) && Date.parse(item.due_at) < Date.now()">（已逾期，请优先联系）</strong></p>
+      <h2>{{ item.username || '账号已移除' }} · {{ $ui(labels[item.status]) }}</h2><p>编号：<code>{{ item.id }}</code></p><p>核验邮箱：{{ item.email || '请查阅受控处理回执' }}</p><p>收到：{{ item.requested_at.slice(0, 10) }} · 预计处理：{{ item.due_at.slice(0, 10) }} <strong v-if="['pending','processing'].includes(item.status) && Date.parse(item.due_at) < Date.now()">（已逾期，请优先联系）</strong></p>
       <button v-if="item.status === 'pending'" class="primary-btn" :disabled="busy" @click="update(item, 'processing')">开始核验处理</button>
       <template v-if="item.status === 'processing'">
         <p>先保存受控的数据清理清单，再删除账号；原有“删除用户”操作不代表关联内容、存储及备份已清理。不要在下方填写密码、密钥、身份证或聊天内容。</p>
-        <label v-for="(label, key) in checks" :key="key" class="privacy-confirm"><input v-model="draft(item.id).checklist[key]" type="checkbox" :disabled="busy"><span>{{ label }}</span></label>
+        <label v-for="(label, key) in checks" :key="key" class="privacy-confirm"><input v-model="draft(item.id).checklist[key]" type="checkbox" :disabled="busy"><span>{{ $ui(label) }}</span></label>
         <label :for="`resolution-${item.id}`">处理回执摘要（至少 10 字，保留依据与期限，不含敏感原文）</label><textarea :id="`resolution-${item.id}`" v-model="draft(item.id).resolution" maxlength="2000" :disabled="busy" />
         <p v-if="item.user_id">账号仍存在，清理前无法登记完成。</p><button class="primary-btn" :disabled="busy || !!item.user_id || !Object.keys(checks).every(k => draft(item.id).checklist[k]) || draft(item.id).resolution.trim().length < 10" @click="update(item, 'completed')">登记已核验完成</button>
       </template><p v-else-if="item.resolution">{{ item.resolution }}</p>

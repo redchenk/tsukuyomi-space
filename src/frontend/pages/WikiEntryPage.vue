@@ -8,6 +8,8 @@ import {
   relatedWikiEntries,
   wikiEntryPath
 } from '../data/cosmicKaguyaWikiEntries';
+import { interfaceLanguage } from '../i18n/runtime';
+import { localizeWikiData } from '../services/wikiLocalization';
 import { applySeo } from '../utils/seo';
 import { decodeWikiHash, trustedWikiAssetPath, trustedWikiSourceUrl } from '../utils/wikiSecurity';
 
@@ -16,9 +18,10 @@ const props = defineProps({
   slug: { type: String, required: true }
 });
 
-const entry = computed(() => getWikiEntry(props.kind, props.slug));
-const related = computed(() => relatedWikiEntries(entry.value));
-const songs = computed(() => entrySongs(entry.value));
+const sourceEntry = computed(() => getWikiEntry(props.kind, props.slug));
+const entry = computed(() => localizeWikiData(sourceEntry.value));
+const related = computed(() => localizeWikiData(relatedWikiEntries(sourceEntry.value)));
+const songs = computed(() => localizeWikiData(entrySongs(sourceEntry.value)));
 const trustedMoegirlUrl = computed(() => trustedWikiSourceUrl(entry.value?.moegirl?.url));
 const trustedSourceLinks = computed(() => (entry.value?.sourceLinks || [])
   .map((source) => ({ ...source, url: trustedWikiSourceUrl(source.url) }))
@@ -81,7 +84,7 @@ function applyEntrySeo() {
       description: entry.value.headline,
       image: entry.value.image ? [`https://yachiyo.hk${entry.value.image}`] : undefined,
       mainEntityOfPage: `https://yachiyo.hk${path}`,
-      inLanguage: 'zh-CN',
+      inLanguage: interfaceLanguage.value === 'en' ? 'en' : 'zh-CN',
       keywords: keywords.join(', '),
       about: entry.value.title
     }
@@ -163,13 +166,12 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             <img v-if="trustedWikiAssetPath(activeImage?.image)" :key="activeImage.image" :src="trustedWikiAssetPath(activeImage.image)" :alt="activeImage.imageAlt" decoding="async" data-image-bloom>
             <div v-else class="wiki-entry-image-placeholder" role="img" :aria-label="`${entry.title}图片预留位置`">
               <TsIcon :name="entry.kind === 'character' ? 'user' : 'image'" :size="38" />
-              <strong>{{ entry.title }} · 图片预留</strong>
-              <span>{{ entry.imageSuggestion }}</span>
-              <code>{{ entry.imageTarget }}</code>
+              <strong>{{ entry.title }}</strong>
+              <span>{{ $ui('暂无可用图片') }}</span>
             </div>
           </div>
           <figcaption v-if="activeImage?.imageSource && !entry.sourceArticle">
-            图源：{{ activeImage.imageSource.title }}<template v-if="activeImage.imageSource.page"> 第 {{ activeImage.imageSource.page }} 页</template>
+            图源：{{ activeImage.imageSource.title }}<template v-if="activeImage.imageSource.page"> {{ $ui('第 {0} 页', [activeImage.imageSource.page]) }}</template>
           </figcaption>
         </figure>
       </header>
@@ -188,7 +190,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
         <article class="wiki-entry-article" data-material="content">
           <div v-if="!entry.sourceArticle" class="wiki-entry-notice" role="note">
             <TsIcon name="note" :size="20" />
-            <p>本页参考官方资料与萌娘百科式信息结构重新撰写，不复制原条目文案。中文译名和社区资料均以来源说明为准。</p>
+            <p>本页依据官方资料与所列参考来源整理。原文名称与引用以来源为准。</p>
           </div>
 
           <KaguyaSourceArticle v-if="entry.sourceArticle" :source-key="entry.sourceArticle" />
@@ -249,12 +251,12 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
 
           <section v-else id="gallery" class="wiki-entry-section" tabindex="-1">
             <div class="wiki-entry-section-title"><span>▣</span><h2>图片资料</h2></div>
-            <p class="wiki-entry-gallery-intro">以下位置为图片资料槽。没有权利清晰素材时保留占位，后续只需替换文件并在数据中填写路径。</p>
+            <p class="wiki-entry-gallery-intro">更多图片将在取得使用许可并确认来源后添加。</p>
             <div class="wiki-entry-gallery">
               <div v-for="slot in entry.gallerySlots" :key="slot.label" class="wiki-entry-gallery-slot">
                 <TsIcon name="image" :size="28" />
                 <strong>{{ $ui(slot.label) }}</strong>
-                <span>{{ slot.suggestion }}</span>
+                <span>{{ $ui('暂无可用图片') }}</span>
                 <small>等待补充授权清晰的图片</small>
               </div>
             </div>
@@ -265,7 +267,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             <ul class="wiki-entry-sources">
               <li v-for="source in trustedSourceLinks" :key="source.url"><a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }} <TsIcon name="external" :size="14" /></a></li>
             </ul>
-            <p class="wiki-entry-source-note">核验日期：{{ entry.verifiedAt }}。图片、截图与角色立绘的著作权归原权利方；上传替换素材前需确认使用条件并补充逐图来源。</p>
+            <p class="wiki-entry-source-note">核验日期：{{ entry.verifiedAt }}。图片、截图与角色立绘的著作权归原权利方；图片使用条件以所列来源为准。</p>
           </section>
         </article>
 

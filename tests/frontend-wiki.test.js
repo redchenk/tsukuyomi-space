@@ -214,8 +214,8 @@ test('Wiki landing page includes the expanded release, credits, music and deriva
   assert.match(data, /帝明／酒寄朝日/);
   assert.match(page, /id="release"/);
   assert.match(page, /上映、票房与衍生作品/);
-  assert.match(page, /v-for="milestone in boxOfficeMilestones"/);
-  assert.match(page, /v-for="work in derivativeWorks"/);
+  assert.match(page, /v-for="milestone in localizedWiki.boxOfficeMilestones"/);
+  assert.match(page, /v-for="work in localizedWiki.derivativeWorks"/);
   assert.match(styles, /\.wiki-work-highlights/);
   assert.match(styles, /\.wiki-release-grid/);
   assert.match(styles, /\.wiki-derivative-grid/);

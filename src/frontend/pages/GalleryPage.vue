@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import UploadProgress from '../components/UploadProgress.vue';
 import { useUploadProgress } from '../composables/useUploadProgress';
 
@@ -482,6 +483,7 @@ onUnmounted(() => {
   viewer.value?.close();
   releaseViewerScroll?.();
 });
+useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.page); });
 </script>
 
 <template>

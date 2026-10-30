@@ -13,6 +13,8 @@ import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import ReplyRecipient from '../components/ReplyRecipient.vue';
 import { messageThreads, replyCopy } from '../services/messageThreads.mjs';
 import TsIcon from '../components/TsIcon.vue';
+import ContentTranslationControl from '../components/ContentTranslationControl.vue';
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
@@ -55,6 +57,8 @@ const openReplies = reactive({});
 const expandedReplies = reactive({});
 const commentModeration = ref(null);
 const replyModeration = reactive({});
+// Keep unsent replies in this page's memory when translated lists remount.
+const replyDrafts = reactive({});
 const session = ref(getSession());
 const articleShareOpen = ref(false);
 const articleLike = reactive({ loading: false, liked: false, count: 0 });
@@ -212,23 +216,26 @@ function showMessage(text, type = 'error') {
   messageType.value = type;
 }
 
-async function loadArticle() {
+async function loadArticle(options = {}) {
+  const background = options?.background === true;
   articleTaskMessage.value = '';
   const revision = ++articleLoadRevision;
   articleRequests?.abort();
   articleRequests = new AbortController();
   const context = { revision, id: articleId.value, signal: articleRequests.signal };
   readingReceipt.value = null;
-  comments.value = [];
-  commentsLoading.value = false;
-  commentsError.value = false;
-  commentModeration.value = null;
-  Object.keys(replyModeration).forEach(key => delete replyModeration[key]);
-  Object.keys(expandedReplies).forEach(key => delete expandedReplies[key]);
-  Object.keys(openReplies).forEach(key => delete openReplies[key]);
-  loading.value = true;
+  if (!background) {
+    comments.value = [];
+    commentsLoading.value = false;
+    commentsError.value = false;
+    commentModeration.value = null;
+    for (const state of [replyModeration, expandedReplies, openReplies, replyDrafts]) {
+      Object.keys(state).forEach(key => delete state[key]);
+    }
+    loading.value = true;
+    article.value = null;
+  }
   showMessage('');
-  article.value = null;
 
   if (!articleId.value) {
     showMessage('文章 ID 不存在');
@@ -473,6 +480,7 @@ async function submitReply(commentId, text) {
     const result = await parseResponse(response);
     replyModeration[commentId] = result.moderation || null;
     if (!result.success) throw new Error(result.message || '回复失败');
+    delete replyDrafts[commentId];
     openReplies[commentId] = false;
     showMessage(result.moderation?.status === 'pending' ? '回复已提交，等待人工审核。' : result.message || '回复已提交', 'success');
     if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
@@ -549,6 +557,7 @@ function jumpToArticleTarget(id) {
 }
 
 onMounted(loadArticle);
+useContentTranslationRefresh(() => loadArticle({ background: true }));
 onBeforeUnmount(() => {
   articleLoadRevision += 1;
   articleRequests?.abort();
@@ -566,6 +575,7 @@ watch(() => route.hash, revealCommentHash);
         <span>{{ readerCopy.back }}</span>
       </a>
 
+      <ContentTranslationControl compact />
       <LoadingSkeleton v-if="loading" variant="article" :count="1" :label="t.loading" />
       <div v-else-if="message && !article" class="article-status error" role="alert">{{ message }}</div>
 
@@ -689,7 +699,7 @@ watch(() => route.hash, revealCommentHash);
               </div>
 
               <div v-if="openReplies[comment.id]" class="reply-form">
-                <PlazaReplyForm :t="t" :lang="lang" :target="comment" :msg-id="comment.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(comment.id)" />
+                <PlazaReplyForm v-model="replyDrafts[comment.id]" :t="t" :lang="lang" :target="comment" :msg-id="comment.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(comment.id)" />
               </div>
 
               <ModerationNotice :feedback="replyModeration[comment.id]" />
@@ -712,7 +722,7 @@ watch(() => route.hash, revealCommentHash);
                     <button class="icon-btn comment-tool-btn" type="button" :aria-label="`${replyLabels.to} ${commentAuthorName(reply)}`" @click="toggleReply(reply.id)"><TsIcon name="message" :size="16" /><span>{{ t.reply }}</span></button>
                   </div>
                   <div v-if="openReplies[reply.id]" class="reply-form">
-                    <PlazaReplyForm :t="t" :lang="lang" :target="reply" :msg-id="reply.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(reply.id)" />
+                    <PlazaReplyForm v-model="replyDrafts[reply.id]" :t="t" :lang="lang" :target="reply" :msg-id="reply.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(reply.id)" />
                   </div>
                   <ModerationNotice :feedback="replyModeration[reply.id]" />
                 </div>

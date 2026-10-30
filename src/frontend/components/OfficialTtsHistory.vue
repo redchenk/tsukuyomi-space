@@ -26,7 +26,7 @@ const labels = { processing: '合成中，金额预留', ready: '已合成', fai
     <p v-else-if="!rows.length">{{ loading ? '正在读取…' : '暂无语音记录。' }}</p>
     <article v-for="row in rows" :key="row.id" class="payment-history-row">
       <div><h3>八千代语音</h3><p>{{ new Date(row.createdAt).toLocaleString() }}</p></div>
-      <div><strong>¥{{ moneyAtoms(row.chargedAtoms) }}</strong><p>{{ labels[row.state] }}</p></div>
+      <div><strong>¥{{ moneyAtoms(row.chargedAtoms) }}</strong><p>{{ $ui(labels[row.state]) }}</p></div>
     </article>
   </section>
 </template>

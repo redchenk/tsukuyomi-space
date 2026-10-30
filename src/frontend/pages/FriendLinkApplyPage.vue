@@ -30,7 +30,7 @@ const isZh = computed(() => props.lang === 'zh');
 const isAuthed = computed(() => Boolean(props.user?.id));
 const recentApplications = computed(() => applications.value.slice(0, 3));
 const copy = computed(() => props.lang === 'en' ? {
-  eyebrow: 'Friend Link',
+  eyebrow: 'Partner Sites',
   title: 'Apply for a Link Exchange',
   subtitle: 'Enter your site details. Approved sites will appear in Tsukuyomi Plaza.',
   back: 'Back to partner sites',
@@ -47,7 +47,7 @@ const copy = computed(() => props.lang === 'en' ? {
   detectingAvatar: 'Detecting',
   enterSiteFirst: 'Enter the site URL first',
   advanced: 'Notes',
-  backlink: 'Friend-links page URL (recommended)',
+  backlink: 'Partner-sites page URL (recommended)',
   backlinkPlaceholder: 'https://example.com/links',
   backlinkHint: 'We periodically look for a real link to this site on that page.',
   note: 'Notes (optional)',
@@ -72,7 +72,7 @@ const copy = computed(() => props.lang === 'en' ? {
   loading: 'Loading applications',
   submitFailed: 'Unable to submit application'
 } : isZh.value ? {
-  eyebrow: 'Friend Link',
+  eyebrow: 'Partner Sites',
   title: '友链申请',
   subtitle: '填写站点信息，审核通过后将在月读广场展示。',
   back: '返回友链',
@@ -114,7 +114,7 @@ const copy = computed(() => props.lang === 'en' ? {
   loading: '正在读取申请记录',
   submitFailed: '申请提交失败'
 } : {
-  eyebrow: 'Friend Link',
+  eyebrow: 'Partner Sites',
   title: '相互リンク申請',
   subtitle: 'サイト情報を入力してください。承認後、月読広場に表示されます。',
   back: '相互リンクへ戻る',

@@ -34,7 +34,7 @@ const ENGLISH_ROUTE_SEO = Object.freeze({
   plaza: ['Tsukuyomi Plaza', 'Browse public messages, join conversations and meet visitors and creators.'],
   friendLinks: ['Partner Sites', 'Discover approved independent sites, blogs and creative partners.'],
   friendLinkApply: ['Apply for a Link Exchange', 'Submit a partner-site application and check its review status.'],
-  reality: ['Reality Anchor and Project Notes', 'Learn about the project’s sources, open-source work, privacy and limits of responsibility.'],
+  reality: ['About & Credits', 'Learn about the project’s sources, open-source work, privacy and limits of responsibility.'],
   editor: ['Article Editor', 'Edit and publish a Tsukuyomi Space article.'],
   attachments: ['Attachments', 'Manage article images and personal uploads.'],
   gallery: ['Public Gallery', 'Browse public illustrations, fan art, site images and other creative media.'],

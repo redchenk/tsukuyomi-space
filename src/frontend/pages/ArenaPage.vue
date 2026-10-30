@@ -1,4 +1,5 @@
 <script setup>
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
@@ -1319,7 +1320,9 @@ function closeArtworkPreview(event = null) {
   if (previewFromGallery) { previewFromGallery = false; galleryOpen.value = true; galleryDialogRef.value?.showModal(); }
 }
 
+let artworkListRevision = 0;
 async function loadArtworks(page = gallery.page) {
+  const revision = ++artworkListRevision;
   gallery.loading = true;
   gallery.error = '';
   session.value = getSession();
@@ -1337,18 +1340,21 @@ async function loadArtworks(page = gallery.page) {
       });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
+    if (revision !== artworkListRevision) return;
     gallery.items = Array.isArray(result.data) ? result.data : [];
     await hydrateUserLevels(gallery.items.map((artwork) => artwork.author_id)).catch(() => {});
+    if (revision !== artworkListRevision) return;
     gallery.page = nextPage;
     gallery.total = Number(result.pagination?.total || gallery.items.length);
     gallery.totalPages = Math.max(1, Math.ceil(gallery.total / PIXEL_GALLERY_PAGE_SIZE));
     focusSharedArtwork();
   } catch (error) {
+    if (revision !== artworkListRevision) return;
     gallery.items = [];
     gallery.error = error.message || copy.value.publishFailed;
     showToast(error.message || copy.value.publishFailed, 'error');
   } finally {
-    gallery.loading = false;
+    if (revision === artworkListRevision) gallery.loading = false;
   }
 }
 
@@ -1582,6 +1588,7 @@ onBeforeUnmount(() => {
   if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
   clearTimeout(toastTimer);
 });
+useContentTranslationRefresh(() => loadArtworks(gallery.page));
 </script>
 
 <template>
@@ -1590,10 +1597,10 @@ onBeforeUnmount(() => {
       <header class="pw-document">
         <div class="pw-document-name"><span class="pw-document-icon"><TsIcon name="grid" :size="19" /></span><button type="button" @click="preparePublish" :title="copy.draftPlaceholder"><h1>{{ form.title || copy.draftTitle }}</h1><TsIcon name="penLine" :size="14" /></button><span class="pw-draft-status" :title="draftSaved ? workspaceCopy.saved : draftSaveFailed ? workspaceCopy.saveFailed : workspaceCopy.saving"><TsIcon :name="draftSaved ? 'check' : 'info'" :size="14" />{{ workspaceCopy.draft }}</span></div>
         <div class="pw-document-actions">
-          <button class="ghost-btn" type="button" :aria-label="copy.gallery" aria-controls="arena-gallery-panel" @click="toggleGalleryPanel" :aria-expanded="galleryOpen"><TsIcon name="image" :size="17" /><span>{{ copy.gallery }}</span></button>
-          <button class="ghost-btn" type="button" :aria-label="workspaceCopy.new" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="17" /><span>{{ workspaceCopy.new }}</span></button>
-          <label class="ghost-btn pw-import"><TsIcon name="upload" :size="17" /><span>{{ copy.imageImport }}</span><input ref="imageInputRef" class="sr-only" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
-          <button class="ghost-btn" type="button" :aria-label="copy.download" @click="downloadDraft"><TsIcon name="download" :size="17" /><span>{{ copy.download }}</span></button>
+          <button class="ghost-btn" type="button" :aria-label="copy.gallery" :title="copy.gallery" aria-controls="arena-gallery-panel" @click="toggleGalleryPanel" :aria-expanded="galleryOpen"><TsIcon name="image" :size="17" /><span>{{ copy.gallery }}</span></button>
+          <button class="ghost-btn" type="button" :aria-label="workspaceCopy.new" :title="workspaceCopy.new" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="17" /><span>{{ workspaceCopy.new }}</span></button>
+          <label class="ghost-btn pw-import" :title="copy.imageImport"><TsIcon name="upload" :size="17" /><span>{{ copy.imageImport }}</span><input ref="imageInputRef" class="sr-only" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
+          <button class="ghost-btn" type="button" :aria-label="copy.download" :title="copy.download" @click="downloadDraft"><TsIcon name="download" :size="17" /><span>{{ copy.download }}</span></button>
           <button class="primary-btn" type="button" @click="preparePublish"><TsIcon name="send" :size="17" /><span>{{ editingArtwork ? copy.saveUpdate : copy.share }}</span></button>
         </div>
       </header>

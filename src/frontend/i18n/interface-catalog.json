@@ -241,10 +241,10 @@
   "和八千代对弈五子棋，支持先后手、难度选择、悔棋、提示和本地续局。": {"en": "Play Gomoku with Yachiyo. Choose your color and difficulty, undo turns, get hints and resume locally.", "ja": "ヤチヨと五目並べ。先後手・難しさの選択、一手戻す、ヒント、対局の再開に対応。"},
   "先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。": {"en":"Finish chat setup, then send a message below. Once a reply arrives, keep chatting; voice can be enabled later.","ja":"チャットを設定し、下の欄から話しかけてみましょう。返信が届いたら会話を続けられます。音声は後から設定できます。"},
   "第一次使用 / 发现功能": {"en":"Getting started / Discover features","ja":"使い方・機能を見つける"},
-  "当前好感度": {"en":"Current affection","ja":"現在の好感度"},
+  "当前好感度": {"en":"Current affinity","ja":"現在の好感度"},
   "· 存档": {"en":"· Save slot","ja":"・セーブ"},
   "· 如何变化？": {"en":"· How does it change?","ja":"・変化のしくみ"},
-  "好感度来自当前日记存档。结束聊天并成功生成、保存日记后，会记录本次好感度；不会按消息条数或点击角色次数自动增加，也可能保持不变。导入或同步存档后，数值可能改变。": {"en":"Affection comes from the current diary save. It is recorded when a diary is successfully generated and saved after a chat. It does not increase with each message or character tap, and may stay unchanged. Importing or syncing saves may change the value.","ja":"好感度は現在の日記セーブに記録されています。会話を終えて日記の生成・保存が成功すると記録されます。メッセージ数やタップ回数では自動的に増えず、変わらないこともあります。セーブのインポートや同期で変わる場合があります。"},
+  "好感度来自当前日记存档。结束聊天并成功生成、保存日记后，会记录本次好感度；不会按消息条数或点击角色次数自动增加，也可能保持不变。导入或同步存档后，数值可能改变。": {"en":"Affinity comes from the current diary save. It is recorded when a diary is successfully generated and saved after a chat. It does not increase with each message or character tap, and may stay unchanged. Importing or syncing saves may change the value.","ja":"好感度は現在の日記セーブに記録されています。会話を終えて日記の生成・保存が成功すると記録されます。メッセージ数やタップ回数では自動的に増えず、変わらないこともあります。セーブのインポートや同期で変わる場合があります。"},
   "最近记录：{0} {1}": {"en":"Latest record: {0} {1}","ja":"最新の記録：{0} {1}"},
   "还没有生成日记。先聊几句，再使用“结束并写日记”。": {"en":"No diary yet. Chat for a while, then choose “End and write diary”.","ja":"日記はまだありません。少し会話してから「終了して日記を書く」を選びましょう。"},
   "第一次来，先和八千代聊起来": {"en":"New here? Start a chat with Yachiyo","ja":"はじめての方へ。八千代と話してみましょう"},
@@ -302,8 +302,8 @@
   "去说第一句话": {"en":"Send your first message","ja":"最初のメッセージへ"},
   "查看配置步骤": {"en":"View setup steps","ja":"設定手順を見る"},
   "还可以做这些": {"en":"More things to try","ja":"ほかにもできること"},
-  "好感度为什么没有变化？": {"en":"Why has affection not changed?","ja":"好感度が変わらないのはなぜ？"},
-  "好感度来自当前日记存档，不按发消息条数或点击角色次数自动增加。结束聊天并成功生成、保存日记后，会记录本次好感度；数值也可能保持不变。导入或同步其他存档后，显示值可能改变。": {"en":"Affection comes from the current diary save; it does not increase with message counts or character taps. After a chat ends and a diary is successfully generated and saved, affection is recorded and may stay unchanged. Importing or syncing other saves can change the displayed value.","ja":"好感度は現在の日記セーブに記録され、メッセージ数やタップ回数では増えません。会話を終えて日記の生成・保存に成功すると記録され、変わらない場合もあります。別のセーブのインポートや同期で表示値が変わることがあります。"},
+  "好感度为什么没有变化？": {"en":"Why has affinity not changed?","ja":"好感度が変わらないのはなぜ？"},
+  "好感度来自当前日记存档，不按发消息条数或点击角色次数自动增加。结束聊天并成功生成、保存日记后，会记录本次好感度；数值也可能保持不变。导入或同步其他存档后，显示值可能改变。": {"en":"Affinity comes from the current diary save; it does not increase with message counts or character taps. After a chat ends and a diary is successfully generated and saved, affinity is recorded and may stay unchanged. Importing or syncing other saves can change the displayed value.","ja":"好感度は現在の日記セーブに記録され、メッセージ数やタップ回数では増えません。会話を終えて日記の生成・保存に成功すると記録され、変わらない場合もあります。別のセーブのインポートや同期で表示値が変わることがあります。"},
   "查看日记与当前存档": {"en":"View diary and current save","ja":"日記と現在のセーブを見る"},
   "有文字，但角色没有反应？": {"en":"Text appears, but the character does not respond?","ja":"文字は出るのにキャラクターが反応しない？"},
   "文字回复、角色动作和语音是分别运行的。先等角色加载完成，在舞台试一次“点头”；仍无反应时查看角色加载提示。只有开启并配置语音后才会发声，不是每条文字都会带动作。": {"en":"Text replies, character motions and voice run separately. Wait for the character to load, then try a nod on the stage. If nothing moves, check the loading message. Sound requires voice to be configured and enabled; not every reply includes a motion.","ja":"返信・動作・音声は個別に動きます。読み込み後にステージでうなずきを試し、動かない場合は読み込み表示を確認してください。音声には設定と有効化が必要です。すべての返信に動作が付くわけではありません。"},
@@ -316,7 +316,7 @@
   "作品百科": {"en":"Story encyclopedia","ja":"作品百科"},
   "查找角色、故事与音乐，继续回味作品。": {"en":"Explore characters, stories and music to revisit the work.","ja":"キャラクター・物語・音楽を調べて、作品を振り返りましょう。"},
   "浏览大家分享的图片，找到喜欢的作品。": {"en":"Browse shared images and find works you like.","ja":"共有された画像を眺めて、好きな作品を見つけましょう。"},
-  "查看签到、任务与等级；这里的等级与日记好感度分开记录。": {"en":"View check-ins, tasks and levels. Levels are recorded separately from diary affection.","ja":"チェックイン・タスク・レベルを確認できます。レベルと日記の好感度は別々に記録されます。"},
+  "查看签到、任务与等级；这里的等级与日记好感度分开记录。": {"en":"View check-ins, tasks and levels. Levels are recorded separately from diary affinity.","ja":"チェックイン・タスク・レベルを確認できます。レベルと日記の好感度は別々に記録されます。"},
   "访问主舞台": { "en": "Visit the Stage", "ja": "ステージを開く" },
   "参考内容与真实曝光反馈，给新作、低曝光作品和优质旧文留出位置；任务帖后置。": { "en": "Content and feedback after real exposure make room for new, less-seen and valuable older work. Task posts appear later.", "ja": "内容と実際の表示後の反応を参考に、新作・未発見の作品・良質な過去作を紹介。タスク投稿は後方に表示します。" },
   "模型响应超时，原对话已保留，请稍后重试。": { "en": "The model timed out. Your conversation is kept; try again later.", "ja": "モデルの応答がタイムアウトしました。会話は保持されています。後で再試行してください。" },
@@ -1102,7 +1102,7 @@
     "ja": "· 確信度"
   },
   "、挑战": {
-    "en": "and challenge",
+    "en": " and challenge ",
     "ja": "に参加し、挑戦を重ね、"
   },
   "。24 小时内重新选择同一文件可继续": {
@@ -1194,7 +1194,7 @@
     "ja": "アップロード先"
   },
   "上传目录由系统自动按用户与文件类型分类：users/{用户ID}/image、video、audio、document、file。普通用户只能查看和管理自己的附件；管理员请从终端入口进入全站附件管理。": {
-    "en": "Uploads are organized automatically by user and file type: users/{用户ID}/image, video, audio, document and file. Users can manage only their own files; administrators can manage all attachments through the terminal.",
+    "en": "Uploads are organized automatically by user and file type: users/{userId}/image, video, audio, document and file. Users can manage only their own files; administrators can manage all attachments through the terminal.",
     "ja": "アップロードはユーザーと種類ごとに自動分類されます：users/{用户ID}/image・video・audio・document・file。一般ユーザーは自分の添付ファイルのみ管理でき、管理者はターミナルから全体を管理できます。"
   },
   "上传策略、CDN 域名、连接测试和 OSS 大文件登记": {
@@ -1278,7 +1278,7 @@
     "ja": "世界観と用語"
   },
   "两次输入的新密码不一致": {
-    "en": "error",
+    "en": "The new passwords do not match.",
     "ja": "新しいパスワードが一致しません"
   },
   "严重剧透警告": {
@@ -1314,7 +1314,7 @@
     "ja": "八千代の返信を合成音声で再生します。"
   },
   "为母题，把“竹中诞生、迅速成长、月之迎接”移入稍近未来。17 岁的酒寄彩叶遇见从虹光电线杆中出现的辉夜，两人在": {
-    "en": "inspired this near-future retelling of a bamboo-born child, rapid growth and a return to the moon. Seventeen-year-old Iroha Sakayori meets Kaguya, who emerges from a rainbow utility pole. In",
+    "en": "inspired this near-future retelling of a bamboo-born child, rapid growth and a return to the moon. Seventeen-year-old Iroha Sakayori meets Kaguya, who emerges from a rainbow utility pole. In ",
     "ja": "をモチーフに、「竹からの誕生・急成長・月への帰還」を近未来に移しました。17 歳の酒寄いろはは虹色の電柱から現れたかぐやと出会い、"
   },
   "主持《NEWS TSUKUYOMI!!》的月读主播，为观众介绍虚拟空间中的新鲜话题。": {
@@ -1490,7 +1490,7 @@
     "ja": "作品の見どころ"
   },
   "作品信息": {
-    "en": "Artwork details",
+    "en": "Film details",
     "ja": "作品情報"
   },
   "作品分页": {
@@ -1938,7 +1938,7 @@
     "ja": "公開ドメインは /assets・/models・/lib などの静的リソース用にフロントエンドへ渡します。AccessKey はバックエンドの設定内だけに保存します。"
   },
   "六组 VOCALOID 创作者参与": {
-    "en": "Six VOCALOID creators participate",
+    "en": "Featuring six VOCALOID acts",
     "ja": "6 組の VOCALOID クリエイターが参加"
   },
   "共": {
@@ -2378,7 +2378,7 @@
     "ja": "モーション"
   },
   "动画 BD": {
-    "en": "Animation Blu-ray",
+    "en": "Blu-ray release",
     "ja": "アニメ Blu-ray"
   },
   "动画电影 Blu-ray Disc 预定发售。": {
@@ -2466,7 +2466,7 @@
     "ja": "掲示板へ"
   },
   "去登录": {
-    "en": "ログイン",
+    "en": "Sign in",
     "ja": "ログイン"
   },
   "参考音频文本": {
@@ -2490,7 +2490,7 @@
     "ja": "参照音声で話している内容"
   },
   "友情链接": {
-    "en": "Friend links",
+    "en": "Partner Sites",
     "ja": "リンク集"
   },
   "友链": {
@@ -2498,23 +2498,23 @@
     "ja": "相互リンク"
   },
   "友链分页": {
-    "en": "Friend-link pages",
+    "en": "Partner-site pages",
     "ja": "友達リンクのページ"
   },
   "友链列表，可横向滚动": {
-    "en": "Friend-link list; scroll horizontally",
+    "en": "Partner-site list; scroll horizontally",
     "ja": "友達リンク一覧。横にスクロールできます"
   },
   "友链审核": {
-    "en": "Friend-link moderation",
+    "en": "Partner-site moderation",
     "ja": "友達リンクの審査"
   },
   "友链审核失败": {
-    "en": "Friend-link moderation failed",
+    "en": "Partner-site moderation failed",
     "ja": "友達リンクの審査に失敗しました"
   },
   "友链审核状态": {
-    "en": "Friend-link moderation status",
+    "en": "Partner-site moderation status",
     "ja": "友達リンクの審査状態"
   },
   "友链已删除": {
@@ -2530,7 +2530,7 @@
     "ja": "友達リンクを公開一覧から外しました"
   },
   "友链检测失败": {
-    "en": "Friend-link check failed",
+    "en": "Partner-site check failed",
     "ja": "友達リンクの確認に失敗しました"
   },
   "友链添加失败": {
@@ -2542,15 +2542,15 @@
     "ja": "相互リンク申請"
   },
   "友链申请已通过": {
-    "en": "Friend-link request approved",
+    "en": "Partner-site request approved",
     "ja": "友達リンク申請を承認しました"
   },
   "友链申请提交失败": {
-    "en": "Friend-link submission failed",
+    "en": "Partner-site submission failed",
     "ja": "友達リンクの申請に失敗しました"
   },
   "友链监测源读取失败": {
-    "en": "Unable to load friend-link monitoring source",
+    "en": "Unable to load partner-site monitoring source",
     "ja": "友達リンクの監視元を読み込めません"
   },
   "友链读取失败": {
@@ -2766,7 +2766,7 @@
     "ja": "管理データを読み込めません"
   },
   "向月读空间提交友链申请并查看审核状态。": {
-    "en": "Submit a friend-link request and check its review status.",
+    "en": "Submit a partner-site request and check its review status.",
     "ja": "友達リンクを申請し、審査状況を確認できます。"
   },
   "向量与对话分析只在服务器本地执行。后台繁忙时使用已有记忆检索，聊天保存不等待模型。": {
@@ -3078,7 +3078,7 @@
     "ja": "処理中"
   },
   "处理友链申请与收录状态": {
-    "en": "Manage friend-link requests and publication",
+    "en": "Manage partner-site requests and publication",
     "ja": "友達リンクの申請と公開状態を管理"
   },
   "备案信息": {
@@ -3174,7 +3174,7 @@
     "ja": "失敗"
   },
   "头像链接": {
-    "en": "アバター URL",
+    "en": "Avatar URL",
     "ja": "アバター URL"
   },
   "头像链接不可用或指向非公开地址": {
@@ -3746,7 +3746,7 @@
     "ja": "この状態のメッセージはありません"
   },
   "当前筛选下没有友链申请": {
-    "en": "No friend-link requests with this filter",
+    "en": "No partner-site requests with this filter",
     "ja": "この条件の友達リンク申請はありません"
   },
   "当前管理员": {
@@ -3786,7 +3786,7 @@
     "ja": "いろはの友人で美容系クリエイター。友人の無理に気づき、生活を気にかけています。"
   },
   "彩叶称她为“辉夜”。向往好玩事物的辉夜决定成为主播，彩叶也重拾搁置的音乐才能。她们参加": {
-    "en": "Iroha names her Kaguya. Drawn to fun, Kaguya becomes a streamer, and Iroha returns to music. Together they enter the",
+    "en": "Iroha names her Kaguya. Drawn to fun, Kaguya becomes a streamer, and Iroha returns to music. Together they enter the ",
     "ja": "いろはは彼女を「かぐや」と名付けます。楽しいことが好きなかぐやは配信者になり、いろはも音楽の才能を再び発揮します。二人は"
   },
   "影响检索优先级": {
@@ -4890,11 +4890,11 @@
     "ja": "ツクヨミ"
   },
   "月契成長": {
-    "en": "Moonlit Growth",
+    "en": "Moon Bond",
     "ja": "月契成長"
   },
   "月契成长": {
-    "en": "Bond growth",
+    "en": "Moon Bond",
     "ja": "月契成长"
   },
   "月见八千代": {
@@ -5322,7 +5322,7 @@
     "ja": "最新の記事を見る"
   },
   "查看月契成长": {
-    "en": "View Moonlit Growth",
+    "en": "View Moon Bond",
     "ja": "月契成長を見る"
   },
   "查看月读空间创作者的公开资料、文章、关注关系与创作动态。": {
@@ -5782,7 +5782,7 @@
     "ja": "本文から文字を抽出できません。概要を手動で入力してください。"
   },
   "正文为依据公开资料重新撰写的中文摘要，包含轻度剧透；完整结局默认折叠。页面标题依用户指定，角色中文名为本站通行译法，日文原名为准。资料核验至": {
-    "en": "Original summaries based on public sources include mild spoilers; ending details are collapsed by default. Titles follow the user's choice. Chinese character names follow site usage; Japanese originals take precedence. Sources verified through",
+    "en": "Original summaries based on public sources include mild spoilers; ending details are collapsed by default. Original Japanese names are retained where relevant. Sources checked through",
     "ja": "公開資料に基づく独自の要約で、軽いネタバレを含みます。結末は既定で折りたたみます。ページ名はユーザー指定、中国語名はサイトの表記に従い、日本語の原名を優先します。資料の確認日："
   },
   "正文过长，请手动填写摘要": {
@@ -6562,7 +6562,7 @@
     "ja": "このユーザーを削除しますか？"
   },
   "确定删除这条友链申请记录吗？": {
-    "en": "Delete this friend-link request record?",
+    "en": "Delete this partner-site request record?",
     "ja": "この友達リンクの申請記録を削除しますか？"
   },
   "确定删除这条留言吗？": {
@@ -6730,7 +6730,7 @@
     "ja": "接続先：{0}\nモデル：{1}\n接続方法：{2}\n画像理解：{3}"
   },
   "第": {
-    "en": "ページ",
+    "en": "Page",
     "ja": "ページ"
   },
   "第 {0} 页": {
@@ -6910,7 +6910,7 @@
     "ja": "紅葉の小屋"
   },
   "组成创作搭档：辉夜站上镜头前唱歌，彩叶则以制作人的身份写下旋律。": {
-    "en": "they become creative partners: Kaguya sings on camera while Iroha writes music as her producer.",
+    "en": " they become creative partners: Kaguya sings on camera while Iroha writes music as her producer.",
     "ja": "で創作の相棒になります。かぐやはカメラの前で歌い、いろははプロデューサーとして曲を作ります。"
   },
   "终端管理": {
@@ -7050,7 +7050,7 @@
     "ja": "サイトの曲"
   },
   "网络上线后，作品从日本限定上映逐步扩大至全国院线，并陆续推出漫画、小说、公式指南书及动画 BD。以下节点依据用户提供的主条目源文件整理，金额为累计票房。": {
-    "en": "Following online release, Japanese screenings expanded nationwide. Manga, novels, an official guide and Blu-ray followed. Milestones below follow the user-provided source entry; amounts are cumulative box office.",
+    "en": "Following its streaming release, Japanese theatrical screenings expanded nationwide. Manga, novels, an official guidebook and Blu-ray followed. The milestones below summarize the release information cited in Sources; box-office amounts are cumulative.",
     "ja": "配信後、日本の上映は限定公開から全国へ拡大し、漫画・小説・公式ガイド・BD が順次登場しました。以下は提供された資料に基づく節目です。金額は累計興行収入です。"
   },
   "网络中断，正在尝试续传": {
@@ -7238,7 +7238,7 @@
     "ja": "表情 モーション キュー JSON"
   },
   "视觉说明：主视觉为本站为本页面制作的原创环境插画；公开素材不等于自由许可，因此交付包不包含官方角色图、动画截图、Logo 或商品扫描。请勿将本站页面误认为官方产品。": {
-    "en": "Visual note: the hero is an original environment illustration made for this page. Publicly available assets are not necessarily freely licensed; the package excludes official character images, screenshots, logos and product scans. This is not an official product.",
+    "en": "Illustration credit: the hero is an original environment illustration created for this page. Public availability does not imply permission to reuse an asset. This page is a fan project and is not an official product.",
     "ja": "画像の説明：メイン画像はこのページ用の独自の環境イラストです。公開素材が自由に使えるとは限らないため、公式画像・スクリーンショット・ロゴ・商品画像は含めません。当サイトは公式製品ではありません。"
   },
   "视频": {
@@ -10559,6 +10559,890 @@
   "邀请邮件链接已保存，后续邀请将使用此链接。": {
     "en": "Invitation link saved. Future invitations will use this link.",
     "ja": "招待リンクを保存しました。今後の招待にはこのリンクを使用します。"
+  },
+  "文字与图片": {
+    "en": "Text and images",
+    "ja": "テキストと画像"
+  },
+  "文字": {
+    "en": "Text",
+    "ja": "テキスト"
+  },
+  "Room 可直接发送图片，图片与文字按实际 Token 用量统一计费。": {
+    "en": "Send images directly in the room. Images and text are billed together by actual token usage.",
+    "ja": "Room から画像を直接送信できます。画像とテキストは実際のトークン使用量でまとめて課金されます。"
+  },
+  "官方语音账单": {
+    "en": "Voice billing history",
+    "ja": "公式音声の利用明細"
+  },
+  "刷新语音记录": {
+    "en": "Refresh voice history",
+    "ja": "音声履歴を更新"
+  },
+  "¥0.05 / 条 · 与聊天共用网站余额。显示最近 30 条合成记录。": {
+    "en": "¥0.05 per synthesis · Uses the same site balance as chat. Shows your 30 most recent requests.",
+    "ja": "1 回 ¥0.05・チャットと同じサイト残高を使用します。直近 30 件の合成履歴を表示します。"
+  },
+  "正在读取…": {
+    "en": "Loading…",
+    "ja": "読み込み中…"
+  },
+  "暂无语音记录。": {
+    "en": "No voice requests yet.",
+    "ja": "音声の利用履歴はありません。"
+  },
+  "八千代语音": {
+    "en": "Yachiyo voice",
+    "ja": "ヤチヨの音声"
+  },
+  "暂时无法读取语音账单": {
+    "en": "Unable to load voice billing history. Try again later.",
+    "ja": "音声の利用明細を読み込めません。後ほどお試しください。"
+  },
+  "官方直供 · 八千代语音": {
+    "en": "Site-hosted Yachiyo voice",
+    "ja": "サイト提供・ヤチヨの音声"
+  },
+  "算力在线": {
+    "en": "Voice service online",
+    "ja": "音声サービス稼働中"
+  },
+  "检测中": {
+    "en": "Checking",
+    "ja": "確認中"
+  },
+  "算力离线": {
+    "en": "Voice service offline",
+    "ja": "音声サービス停止中"
+  },
+  "¥0.05 / 条 · 使用网站余额，无需填写 API 密钥。成功合成后扣费，失败不收费。超级管理员沿用无限额度。": {
+    "en": "¥0.05 per synthesis · Uses your site balance; no API key needed. Charged only after successful synthesis. Failed requests are free. Super administrators retain unlimited usage.",
+    "ja": "1 回 ¥0.05・サイト残高を使用し、API キーは不要です。合成成功時のみ課金され、失敗時は無料です。スーパー管理者は引き続き無制限で利用できます。"
+  },
+  "可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。": {
+    "en": "You can use the site-hosted voice service. Requests pause while it is offline and become available when it returns.",
+    "ja": "サイト提供の音声を利用できます。停止中は自動的に一時停止し、復旧後に再開できます。"
+  },
+  "当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。": {
+    "en": "Temporarily unavailable. It will reopen when the service recovers. You can also connect your own voice service.",
+    "ja": "現在は利用できません。サービス復旧後に自動的に利用可能になります。ご自身の音声サービスも設定できます。"
+  },
+  "每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。": {
+    "en": "Up to 1,000 characters per request. Replaying a valid cached result in the same page session is free. Cache entries last up to 24 hours.",
+    "ja": "1 回最大 1,000 文字です。同じページセッション内で有効なキャッシュを再生しても追加課金されません。キャッシュは最長 24 時間保持されます。"
+  },
+  "正在检测…": {
+    "en": "Checking…",
+    "ja": "確認中…"
+  },
+  "检测算力": {
+    "en": "Check availability",
+    "ja": "稼働状況を確認"
+  },
+  "余额与充值": {
+    "en": "Balance and top-up",
+    "ja": "残高とチャージ"
+  },
+  "支持文字、图片与工具调用。图片会自动压缩，按实际 Token 用量计费。": {
+    "en": "Supports text, images and tools. Images are compressed automatically and billed by actual token usage.",
+    "ja": "テキスト・画像・ツール呼び出しに対応します。画像は自動圧縮され、実際のトークン使用量で課金されます。"
+  },
+  "支持文字聊天和工具调用；图片请配合 MCP 识图。": {
+    "en": "Supports text chat and tools. Use MCP image recognition for images.",
+    "ja": "テキストチャットとツール呼び出しに対応します。画像には MCP 画像認識を併用してください。"
+  },
+  "官方语音使用网站余额，每条成功合成的语音收费 0.05 元。": {
+    "en": "Site-hosted voice uses your site balance and costs ¥0.05 per successful synthesis.",
+    "ja": "サイト提供の音声はサイト残高を使用し、合成成功 1 回につき 0.05 元かかります。"
+  },
+  "官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。": {
+    "en": "The site-hosted voice reads Japanese. Chinese replies are first translated into Japanese by your selected chat model; that translation is billed at the model’s rates.",
+    "ja": "サイト提供の音声は日本語で読み上げます。中国語の返信は現在のチャットモデルで日本語に翻訳され、そのモデルの料金で課金されます。"
+  },
+  "官方语音需要登录账号。": {
+    "en": "Sign in to use site-hosted voice.",
+    "ja": "サイト提供の音声にはログインが必要です。"
+  },
+  "前往登录": {
+    "en": "Sign in",
+    "ja": "ログイン"
+  },
+  "正在合成…": {
+    "en": "Synthesizing…",
+    "ja": "音声合成中…"
+  },
+  "保存并试听 · ¥0.05": {
+    "en": "Save and preview · ¥0.05",
+    "ja": "保存して試聴・¥0.05"
+  },
+  "仅保存设置": {
+    "en": "Save settings only",
+    "ja": "設定のみ保存"
+  },
+  "官方直供 · ¥0.05 / 条": {
+    "en": "Site-hosted · ¥0.05 per synthesis",
+    "ja": "サイト提供・1 回 ¥0.05"
+  },
+  "请登录后使用官方语音": {
+    "en": "Sign in to use site-hosted voice.",
+    "ja": "ログインしてからサイト提供の音声をご利用ください。"
+  },
+  "设置已保存，算力恢复在线后可继续使用": {
+    "en": "Settings saved. Voice will be available when the service is back online.",
+    "ja": "設定を保存しました。サービス復旧後に音声を利用できます。"
+  },
+  "官方语音设置已保存": {
+    "en": "Voice settings saved.",
+    "ja": "音声設定を保存しました。"
+  },
+  "请登录并等待官方算力上线后再试听": {
+    "en": "Sign in and wait for the voice service to come online before previewing.",
+    "ja": "ログインし、音声サービスの復旧を待ってから試聴してください。"
+  },
+  "官方语音试听": {
+    "en": "Voice preview",
+    "ja": "音声の試聴"
+  },
+  "正在合成八千代语音…": {
+    "en": "Synthesizing Yachiyo’s voice…",
+    "ja": "ヤチヨの音声を合成中…"
+  },
+  "成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。": {
+    "en": "Successful synthesis costs ¥0.05. Failed requests are free. Replaying a valid cached preview incurs no additional charge.",
+    "ja": "合成成功時に 1 回 ¥0.05 かかります。失敗時や有効なキャッシュの再試聴では追加課金されません。"
+  },
+  "请登录后重新保存官方语音设置。": {
+    "en": "Sign in, then save your voice settings again.",
+    "ja": "ログイン後、音声設定をもう一度保存してください。"
+  },
+  "官方语音暂不可用": {
+    "en": "Site-hosted voice is temporarily unavailable.",
+    "ja": "サイト提供の音声は一時的に利用できません。"
+  },
+  "官方语音算力离线，未发起翻译或合成，请稍后重试。": {
+    "en": "The voice service is offline. No translation or synthesis was started. Try again later.",
+    "ja": "音声サービスが停止中のため、翻訳も合成も実行していません。後ほどお試しください。"
+  },
+  "语音文本为空，未发起合成。": {
+    "en": "There is no text to read. No synthesis was started.",
+    "ja": "読み上げるテキストがないため、合成していません。"
+  },
+  "语音仍在处理中，请稍后再次点击，同一请求不会重复扣费。": {
+    "en": "Voice is still processing. Try again shortly; the same request will not be charged twice.",
+    "ja": "音声を処理中です。しばらくしてから再度押してください。同じリクエストに二重課金はありません。"
+  },
+  "暂时无法读取语音，请重试；缓存有效期内不会重复扣费。": {
+    "en": "Unable to load the audio. Try again; replaying within the cache validity period will not incur another charge.",
+    "ja": "音声を読み込めません。再試行してください。有効なキャッシュの再生には追加課金されません。"
+  },
+  "当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。": {
+    "en": "This site-hosted model does not support images. Choose an image-capable model or enable MCP image recognition in Settings.",
+    "ja": "このサイト提供モデルは画像に対応していません。画像対応モデルか、設定の MCP 画像認識を選択してください。"
+  },
+  "该 QQ 或当前账号已有其他绑定，请检查后重试": {
+    "en": "This QQ identity or site account is already linked elsewhere. Check the existing connection and try again.",
+    "ja": "この QQ またはサイトアカウントは別の連携があります。確認してから再試行してください。"
+  },
+  "QQ 绑定未完成，请重新授权": {
+    "en": "QQ linking was not completed. Authorize QQ again.",
+    "ja": "QQ 連携が完了していません。再度認証してください。"
+  },
+  "发送邮件": {
+    "en": "Send email",
+    "ja": "メール送信"
+  },
+  "自定义邮件、筛选收件人和查看群发进度": {
+    "en": "Compose email, filter recipients and track delivery",
+    "ja": "メール作成・宛先の絞り込み・送信状況の確認"
+  },
+  "正在读取邮件通道与用户…": {
+    "en": "Loading email service and users…",
+    "ja": "メールサービスとユーザーを読み込み中…"
+  },
+  "邮件通道已就绪 · 使用网站统一邮件样式": {
+    "en": "Email service ready · Uses the site’s email template",
+    "ja": "メールサービス準備完了・サイト共通のメール書式を使用"
+  },
+  "邮件通道未配置，仍可编辑和预览，配置完成后才能发送。": {
+    "en": "Email is not configured. You can compose and preview; sending becomes available after setup.",
+    "ja": "メールサービス未設定です。編集とプレビューはできますが、送信には設定が必要です。"
+  },
+  "1 · 选择收件人": {
+    "en": "1 · Choose recipients",
+    "ja": "1・宛先を選択"
+  },
+  "勾选用户": {
+    "en": "Select users",
+    "ja": "ユーザーを選択"
+  },
+  "群发给全部匹配用户": {
+    "en": "Send to all matching users",
+    "ja": "一致するすべてのユーザーへ送信"
+  },
+  "搜索用户": {
+    "en": "Search users",
+    "ja": "ユーザーを検索"
+  },
+  "昵称、用户名、邮箱或 ID": {
+    "en": "Nickname, username, email or ID",
+    "ja": "ニックネーム・ユーザー名・メール・ID"
+  },
+  "用户角色": {
+    "en": "User role",
+    "ja": "ユーザーロール"
+  },
+  "所有角色": {
+    "en": "All roles",
+    "ja": "すべてのロール"
+  },
+  "普通用户": {
+    "en": "Member",
+    "ja": "一般ユーザー"
+  },
+  "仅显示已绑定有效邮箱的用户；相同邮箱只发送一封。": {
+    "en": "Only users with a valid linked email are shown. Each email address receives one copy.",
+    "ja": "有効なメールアドレスを登録済みのユーザーのみ表示します。同じアドレスには 1 通だけ送信します。"
+  },
+  "正在搜索…": {
+    "en": "Searching…",
+    "ja": "検索中…"
+  },
+  "匹配 {0} 名用户": {
+    "en": "{0} matching users",
+    "ja": "一致するユーザー {0} 人"
+  },
+  "已勾选 {0} 人": {
+    "en": "{0} selected",
+    "ja": "{0} 人を選択中"
+  },
+  "将发送给全部匹配用户，包含其他分页": {
+    "en": "Includes all matching users across every page",
+    "ja": "他のページを含む一致するすべてのユーザーに送信します"
+  },
+  "勾选本页": {
+    "en": "Select this page",
+    "ja": "このページを選択"
+  },
+  "选择 {0}": {
+    "en": "Select {0}",
+    "ja": "{0} を選択"
+  },
+  "没有匹配的收件用户": {
+    "en": "No matching recipients",
+    "ja": "一致する宛先がありません"
+  },
+  "收件用户分页": {
+    "en": "Recipient pagination",
+    "ja": "宛先のページ切り替え"
+  },
+  "已勾选": {
+    "en": "Selected",
+    "ja": "選択中"
+  },
+  "人（跨页保留）": {
+    "en": "users (kept across pages)",
+    "ja": "人（ページを移動しても保持）"
+  },
+  "清空选择": {
+    "en": "Clear selection",
+    "ja": "選択を解除"
+  },
+  "移除 {0}": {
+    "en": "Remove {0}",
+    "ja": "{0} を削除"
+  },
+  "2 · 撰写邮件": {
+    "en": "2 · Compose email",
+    "ja": "2・メールを作成"
+  },
+  "邮件主题": {
+    "en": "Subject",
+    "ja": "件名"
+  },
+  "例如：月读空间本周更新": {
+    "en": "For example: This week at Tsukuyomi Space",
+    "ja": "例：月読空間の今週の更新"
+  },
+  "邮件正文": {
+    "en": "Email body",
+    "ja": "メール本文"
+  },
+  "写下想告诉用户的内容，支持分段与换行。": {
+    "en": "Write your message. Paragraphs and line breaks are supported.",
+    "ja": "伝えたい内容を入力してください。段落と改行に対応します。"
+  },
+  "按钮链接（选填）": {
+    "en": "Button link (optional)",
+    "ja": "ボタンのリンク（任意）"
+  },
+  "本站路径，例如 /stage": {
+    "en": "Site path, for example /stage",
+    "ja": "サイト内パス（例：/stage）"
+  },
+  "查看详情": {
+    "en": "View details",
+    "ja": "詳細を見る"
+  },
+  "主题、正文和按钮均可自定义；正文按文本呈现，保留换行。邮件自动使用网站统一横幅和卡片样式。": {
+    "en": "Customize the subject, body and button. The body is plain text with line breaks preserved. Emails use the site’s standard banner and card layout.",
+    "ja": "件名・本文・ボタンを編集できます。本文は改行を保持したテキストで表示し、サイト共通のバナーとカード書式を使用します。"
+  },
+  "正在生成预览…": {
+    "en": "Generating preview…",
+    "ja": "プレビューを作成中…"
+  },
+  "预览并确认收件人": {
+    "en": "Preview and review recipients",
+    "ja": "プレビューと宛先の確認"
+  },
+  "发送记录": {
+    "en": "Send history",
+    "ja": "送信履歴"
+  },
+  "刷新记录": {
+    "en": "Refresh history",
+    "ja": "履歴を更新"
+  },
+  "显示最近 30 批邮件。“已提交”表示邮件服务接收，不代表已进入收件箱；结果待核实的邮件不会自动重发。": {
+    "en": "Shows the 30 most recent campaigns. “Submitted” means accepted by the email service, not delivered to the inbox. Unconfirmed results are not retried automatically.",
+    "ja": "直近 30 回の送信を表示します。「送信受付」はメールサービスが受け付けたことを示し、受信箱への到達を保証しません。結果不明のメールは自動再送されません。"
+  },
+  "还没有发送记录": {
+    "en": "No emails sent yet",
+    "ja": "送信履歴はありません"
+  },
+  "· 已提交": {
+    "en": "· Submitted",
+    "ja": "・送信受付"
+  },
+  "· 失败": {
+    "en": "· Failed",
+    "ja": "・失敗"
+  },
+  "· 待核实": {
+    "en": "· Unconfirmed",
+    "ja": "・要確認"
+  },
+  "· 跳过": {
+    "en": "· Skipped",
+    "ja": "・スキップ"
+  },
+  "· 取消": {
+    "en": "· Cancelled",
+    "ja": "・キャンセル"
+  },
+  "发送进度": {
+    "en": "Send progress",
+    "ja": "送信状況"
+  },
+  "查看明细": {
+    "en": "View details",
+    "ja": "明細を見る"
+  },
+  "停止剩余发送": {
+    "en": "Stop remaining sends",
+    "ja": "残りの送信を停止"
+  },
+  "发送明细": {
+    "en": "Send details",
+    "ja": "送信明細"
+  },
+  "· 发送明细": {
+    "en": "· Send details",
+    "ja": "・送信明細"
+  },
+  "个邮箱": {
+    "en": "email addresses",
+    "ja": "件のメールアドレス"
+  },
+  "发送明细分页": {
+    "en": "Send-detail pagination",
+    "ja": "送信明細のページ切り替え"
+  },
+  "确认邮件与收件人": {
+    "en": "Review email and recipients",
+    "ja": "メールと宛先を確認"
+  },
+  "返回编辑": {
+    "en": "Back to editing",
+    "ja": "編集に戻る"
+  },
+  "本批将发送给": {
+    "en": "This campaign will be sent to",
+    "ja": "今回の送信先"
+  },
+  "查看收件邮箱": {
+    "en": "View recipient addresses",
+    "ja": "宛先アドレスを見る"
+  },
+  "（前 20 个）": {
+    "en": "(first 20)",
+    "ja": "（最初の 20 件）"
+  },
+  "邮件样式预览": {
+    "en": "Email preview",
+    "ja": "メールのプレビュー"
+  },
+  "每位收件人收到独立邮件，不会看到其他人的邮箱。确认后后台继续发送，关闭页面不影响进度。": {
+    "en": "Each recipient gets an individual email and cannot see other addresses. Sending continues in the background after confirmation, even if you close this page.",
+    "ja": "宛先ごとに個別送信され、他のアドレスは表示されません。確認後はバックグラウンドで続行し、ページを閉じても送信されます。"
+  },
+  "正在提交…": {
+    "en": "Submitting…",
+    "ja": "送信を開始中…"
+  },
+  "确认发送给 {0} 个邮箱": {
+    "en": "Confirm send to {0} email addresses",
+    "ja": "{0} 件のアドレスへの送信を確認"
+  },
+  "手动勾选用户": {
+    "en": "Manually selected users",
+    "ja": "手動で選択したユーザー"
+  },
+  "匹配用户 · {0} · {1}": {
+    "en": "Matching users · {0} · {1}",
+    "ja": "一致するユーザー・{0}・{1}"
+  },
+  "全部用户": {
+    "en": "All users",
+    "ja": "すべてのユーザー"
+  },
+  "已提交 {0} 个邮箱，发送将在后台继续，可在下方查看进度。": {
+    "en": "Submitted for {0} email addresses. Sending continues in the background; track progress below.",
+    "ja": "{0} 件のアドレスへの送信を受け付けました。バックグラウンドで続行し、下に進捗を表示します。"
+  },
+  "{0}。可再次点击确认，重复确认不会重复发送本批邮件。": {
+    "en": "{0}. You can confirm again; repeated confirmation will not send this campaign twice.",
+    "ja": "{0}。再度確認できます。繰り返し確認しても、このメールが二重送信されることはありません。"
+  },
+  "已停止尚未开始的邮件，正在发送的邮件会记录最终结果。": {
+    "en": "Unstarted emails have been stopped. In-progress emails will record their final result.",
+    "ja": "未開始の送信を停止しました。送信中のメールは最終結果を記録します。"
+  },
+  "进度刷新失败：{0}": {
+    "en": "Unable to refresh progress: {0}",
+    "ja": "進捗を更新できません：{0}"
+  },
+  "第 {0} 步，共 {1} 步": {
+    "en": "Step {0} of {1}",
+    "ja": "ステップ {0} / {1}"
+  },
+  "访客身份": {
+    "en": "Guest",
+    "ja": "ゲスト"
+  },
+  "来自当前服务商目录；请测试可用性": {
+    "en": "From your provider’s catalog; test availability",
+    "ja": "現在のサービスの一覧より・利用可否をテストしてください"
+  },
+  "本地预设示例": {
+    "en": "Local preset example",
+    "ja": "ローカルプリセットの例"
+  },
+  "Live2D 已就绪": {
+    "en": "Live2D is ready",
+    "ja": "Live2D の準備ができました"
+  },
+  "合成中，金额预留": {
+    "en": "Synthesizing; funds reserved",
+    "ja": "合成中・料金を仮確保"
+  },
+  "已合成": {
+    "en": "Ready",
+    "ja": "合成完了"
+  },
+  "失败，未扣费": {
+    "en": "Failed; no charge",
+    "ja": "失敗・課金なし"
+  },
+  "已合成，缓存过期": {
+    "en": "Synthesized; cache expired",
+    "ja": "合成済み・キャッシュ期限切れ"
+  },
+  "待核验": {
+    "en": "Awaiting verification",
+    "ja": "確認待ち"
+  },
+  "已撤回": {
+    "en": "Withdrawn",
+    "ja": "取り下げ済み"
+  },
+  "待核对": {
+    "en": "Awaiting reconciliation",
+    "ja": "照合待ち"
+  },
+  "待人工核对": {
+    "en": "Manual reconciliation needed",
+    "ja": "手動照合が必要"
+  },
+  "未消费，已释放": {
+    "en": "Unused; funds released",
+    "ja": "未使用・仮確保を解除"
+  },
+  "已结算": {
+    "en": "Settled",
+    "ja": "精算済み"
+  },
+  "已通过绑定邮箱核验身份和范围": {
+    "en": "Identity and request scope verified through the linked email",
+    "ja": "登録メールで本人確認と範囲の確認を完了"
+  },
+  "已核对余额、订单、退款或法定留存": {
+    "en": "Balance, orders, refunds and required retention reviewed",
+    "ja": "残高・注文・返金・法定保存を確認済み"
+  },
+  "已清理公开文章、评论、作品与关联": {
+    "en": "Public articles, comments, works and associations removed",
+    "ja": "公開記事・コメント・作品・関連付けを削除済み"
+  },
+  "已清理聊天、记忆、日记、登录绑定及账号": {
+    "en": "Chats, memories, diaries, sign-in links and account removed",
+    "ja": "チャット・記憶・日記・ログイン連携・アカウントを削除済み"
+  },
+  "已清理附件、对象版本及 CDN 缓存": {
+    "en": "Attachments, object versions and CDN caches removed",
+    "ja": "添付・オブジェクトの各バージョン・CDN キャッシュを削除済み"
+  },
+  "已处理向量库、独立 API 服务及第三方副本": {
+    "en": "Vector stores, separate API services and third-party copies handled",
+    "ja": "ベクトル DB・独立 API サービス・第三者のコピーを処理済み"
+  },
+  "已清理或隔离备份，并登记恢复后重新删除安排": {
+    "en": "Backups removed or isolated; deletion after restoration documented",
+    "ja": "バックアップを削除または隔離し、復元後の再削除を記録済み"
+  },
+  "已向核验邮箱发送完成回执及必要留存范围、依据和期限": {
+    "en": "Completion receipt and necessary retention scope, basis and duration sent to the verified email",
+    "ja": "確認済みメールに完了通知と必要な保存範囲・根拠・期間を送付済み"
+  },
+  "音乐创作人员": {
+    "en": "Credits",
+    "ja": "音楽クレジット"
+  },
+  "出版方": {
+    "en": "Publisher",
+    "ja": "出版社"
+  },
+  "发行日期": {
+    "en": "Release date",
+    "ja": "発売日"
+  },
+  "暂无可用图片": {
+    "en": "Image unavailable",
+    "ja": "画像はありません"
+  },
+  "更多图片将在取得使用许可并确认来源后添加。": {
+    "en": "More images will be added once their sources and usage permissions are confirmed.",
+    "ja": "出典と使用許可を確認できた画像を順次追加します。"
+  },
+  "本页依据官方资料与所列参考来源整理。原文名称与引用以来源为准。": {
+    "en": "Compiled from official materials and the references listed below. Consult the sources for original names and quotations.",
+    "ja": "公式資料と下記の参考文献をもとに編集しています。原文の名称や引用は出典をご確認ください。"
+  },
+  "。图片、截图与角色立绘的著作权归原权利方；图片使用条件以所列来源为准。": {
+    "en": ". Images, screenshots and character art belong to their respective rights holders. Consult the listed sources for usage terms.",
+    "ja": "。画像・スクリーンショット・キャラクターイラストの権利は各権利者に帰属します。使用条件は記載の出典をご確認ください。"
+  },
+  "{0} 关注了你": {
+    "en": "{0} followed you",
+    "ja": "{0} があなたをフォローしました"
+  },
+  "{0} 点赞了你的文章": {
+    "en": "{0} liked your article",
+    "ja": "{0} があなたの記事にいいねしました"
+  },
+  "{0} 收藏了你的文章": {
+    "en": "{0} bookmarked your article",
+    "ja": "{0} があなたの記事をブックマークしました"
+  },
+  "{0} 回复了你的评论": {
+    "en": "{0} replied to your comment",
+    "ja": "{0} があなたのコメントに返信しました"
+  },
+  "{0} 回复了你的留言": {
+    "en": "{0} replied to your message",
+    "ja": "{0} があなたのメッセージに返信しました"
+  },
+  "{0} 评论了你的文章《{1}》": {
+    "en": "{0} commented on your article “{1}”",
+    "ja": "{0} があなたの記事「{1}」にコメントしました"
+  },
+  "{0} 在评论中提到了你": {
+    "en": "{0} mentioned you in a comment",
+    "ja": "{0} がコメントであなたにメンションしました"
+  },
+  "{0} 在留言中提到了你": {
+    "en": "{0} mentioned you in a message",
+    "ja": "{0} がメッセージであなたにメンションしました"
+  },
+  "有{0}需要审核 #{1}": {
+    "en": "{0} awaiting review #{1}",
+    "ja": "{0} の審査待ち #{1}"
+  },
+  "包含需人工确认的关键词：{0}。命中关键词不代表内容违规。": {
+    "en": "Keywords need human review: {0}. A keyword match does not mean the content violates a rule.",
+    "ja": "確認が必要なキーワード：{0}。一致だけで違反と判断されるわけではありません。"
+  },
+  "包含需核实的站外链接：{0}。确认链接安全后才能公开。": {
+    "en": "External links need verification: {0}. The content can be published once the links are confirmed safe.",
+    "ja": "確認が必要な外部リンク：{0}。安全性の確認後に公開できます。"
+  },
+  "审核原因：{0}。内容尚未公开，请登录后台核对完整内容。": {
+    "en": "Review reasons: {0}. This content is not public. Sign in to the admin console to review it in full.",
+    "ja": "審査理由：{0}。内容は未公開です。管理画面で全文をご確認ください。"
+  },
+  "内容已保存，暂不公开。请等待人工审核，也可以在用户中心修改后重新提交。": {
+    "en": "Your content was saved and is not public yet. Wait for review, or edit and resubmit it from the User Center.",
+    "ja": "内容を保存しましたが、まだ公開されていません。審査をお待ちいただくか、ユーザーセンターで編集して再送信できます。"
+  },
+  "本次内容未保存，请修改后重新提交。": {
+    "en": "Your content was not saved. Edit it and submit again.",
+    "ja": "内容は保存されていません。修正して再送信してください。"
+  },
+  "初次连接": {
+    "en": "First Connection",
+    "ja": "初めての接続"
+  },
+  "微光相识": {
+    "en": "Glimmering Bond",
+    "ja": "微光の出会い"
+  },
+  "月下同行": {
+    "en": "Moonlit Journey",
+    "ja": "月下の同行"
+  },
+  "心声共鸣": {
+    "en": "Resonant Hearts",
+    "ja": "心の共鳴"
+  },
+  "记忆同调": {
+    "en": "Memory Sync",
+    "ja": "記憶の同調"
+  },
+  "星海相伴": {
+    "en": "Starlit Companion",
+    "ja": "星海の伴侶"
+  },
+  "月之眷属": {
+    "en": "Moonbound",
+    "ja": "月の眷属"
+  },
+  "永恒月契": {
+    "en": "Eternal Moon Pact",
+    "ja": "永遠の月契"
+  },
+  "八千代之约": {
+    "en": "Yachiyo’s Covenant",
+    "ja": "八千代の契り"
+  },
+  "智谱暂未提供已核验的模型列表接口；预设仅作示例，请以控制台模型 ID 为准。": {
+    "en": "Zhipu has no verified model-list endpoint here. Presets are examples; use the model ID from its console.",
+    "ja": "智譜の検証済みモデル一覧 API はありません。プリセットは例です。コンソールのモデル ID を使用してください。"
+  },
+  "火山方舟的接入点列表需要独立管理权限；请填写控制台的接入点 ID，本页不会索取管理密钥。": {
+    "en": "Volcengine endpoint listings require separate management access. Enter the endpoint ID from its console; this page does not request management keys.",
+    "ja": "火山方舟の接続先一覧には管理権限が必要です。コンソールの接続先 ID を入力してください。このページでは管理キーを求めません。"
+  },
+  "MiniMax 暂未提供已核验的模型列表接口；预设仅作示例，支持手动填写模型 ID。": {
+    "en": "MiniMax has no verified model-list endpoint here. Presets are examples; you can enter a model ID manually.",
+    "ja": "MiniMax の検証済みモデル一覧 API はありません。プリセットは例です。モデル ID を手動で入力できます。"
+  },
+  "MiMo 暂未提供已核验的模型列表接口；请按标准模式或 Token Plan 的控制台填写模型 ID。": {
+    "en": "MiMo has no verified model-list endpoint here. Enter the model ID from the Standard or Token Plan console.",
+    "ja": "MiMo の検証済みモデル一覧 API はありません。標準モードまたは Token Plan のコンソールでモデル ID を確認してください。"
+  },
+  "Perplexity 暂未提供已核验的模型列表接口；预设仅作示例，支持手动填写模型 ID。": {
+    "en": "Perplexity has no verified model-list endpoint here. Presets are examples; you can enter a model ID manually.",
+    "ja": "Perplexity の検証済みモデル一覧 API はありません。プリセットは例です。モデル ID を手動で入力できます。"
+  },
+  "本机模型请填写已下载的模型名称。": {
+    "en": "Enter the name of a model downloaded to this computer.",
+    "ja": "この端末にダウンロードしたモデル名を入力してください。"
+  },
+  "自定义端点不自动转发密钥；请手动填写完整模型 ID。": {
+    "en": "Custom endpoints do not forward keys automatically. Enter the complete model ID manually.",
+    "ja": "カスタム接続先にキーを自動転送しません。完全なモデル ID を手動で入力してください。"
+  },
+  "请填写服务商的完整聊天 API 端点。": {
+    "en": "Enter your provider’s complete chat API endpoint.",
+    "ja": "サービスの完全なチャット API 接続先を入力してください。"
+  },
+  "此地域的百炼模型列表需要工作空间 ID，可在高级设置填写；原聊天端点和模型保持不变。": {
+    "en": "This Model Studio region needs a workspace ID to list models. Enter it in Advanced settings; your chat endpoint and model stay the same.",
+    "ja": "この地域の百錬モデル一覧にはワークスペース ID が必要です。詳細設定で入力できます。チャット接続先とモデルは変更されません。"
+  },
+  "填写当前服务商的 API 密钥后会自动更新模型列表。": {
+    "en": "Enter this provider’s API key to update the model list automatically.",
+    "ja": "サービスの API キーを入力するとモデル一覧が自動更新されます。"
+  },
+  "API 密钥格式无效。": {
+    "en": "Invalid API key format.",
+    "ja": "API キーの形式が無効です。"
+  },
+  "Anthropic 工作区 ID 格式无效，应以 wrkspc_ 开头。": {
+    "en": "Invalid Anthropic workspace ID. It must start with wrkspc_.",
+    "ja": "Anthropic ワークスペース ID は wrkspc_ で始まる必要があります。"
+  },
+  "模型列表分页游标无效。": {
+    "en": "Invalid model-list pagination cursor.",
+    "ja": "モデル一覧のページカーソルが無効です。"
+  },
+  "此服务商不支持该分页游标。": {
+    "en": "This provider does not support that pagination cursor.",
+    "ja": "このサービスは指定のページカーソルに対応していません。"
+  },
+  "服务商返回的模型列表无效。": {
+    "en": "The provider returned an invalid model list.",
+    "ja": "サービスが無効なモデル一覧を返しました。"
+  },
+  "服务商返回的模型列表格式或大小不符合要求。": {
+    "en": "The provider’s model list has an unsupported format or size.",
+    "ja": "モデル一覧の形式またはサイズが要件を満たしていません。"
+  },
+  "服务商返回了无效的分页游标。": {
+    "en": "The provider returned an invalid pagination cursor.",
+    "ja": "サービスが無効なページカーソルを返しました。"
+  },
+  "Claude 拒绝了模型列表请求；如果密钥未绑定工作区，请在高级连接设置填写 Anthropic 工作区 ID（wrkspc_…）。": {
+    "en": "Claude rejected the model-list request. If your key is not bound to a workspace, enter an Anthropic workspace ID (wrkspc_…) in Advanced connection settings.",
+    "ja": "Claude がモデル一覧のリクエストを拒否しました。キーがワークスペース未連携の場合、詳細接続設定に Anthropic ワークスペース ID（wrkspc_…）を入力してください。"
+  },
+  "密钥无效或已过期，请检查当前服务商和地域。": {
+    "en": "The key is invalid or expired. Check the selected provider and region.",
+    "ja": "キーが無効または期限切れです。サービスと地域を確認してください。"
+  },
+  "当前密钥没有模型列表权限，请检查账号授权和地域。": {
+    "en": "This key cannot list models. Check account permissions and region.",
+    "ja": "このキーにモデル一覧の権限がありません。アカウント権限と地域を確認してください。"
+  },
+  "此服务商端点暂不支持模型列表，仍可手动填写模型。": {
+    "en": "This endpoint does not support model listing. You can still enter a model manually.",
+    "ja": "この接続先はモデル一覧に対応していません。モデルを手動入力できます。"
+  },
+  "服务商请求限流，请稍后手动刷新。": {
+    "en": "The provider rate-limited the request. Refresh manually later.",
+    "ja": "サービスのリクエスト制限に達しました。後ほど手動更新してください。"
+  },
+  "模型列表服务暂不可用（HTTP {0}），请稍后重试。": {
+    "en": "Model listing is temporarily unavailable (HTTP {0}). Try again later.",
+    "ja": "モデル一覧は一時的に利用できません（HTTP {0}）。後ほどお試しください。"
+  },
+  "内容不能为空，请填写后再提交。": {
+    "en": "Content cannot be empty. Write something before submitting.",
+    "ja": "内容を入力してから送信してください。"
+  },
+  "内容格式无效，请使用纯文本提交。": {
+    "en": "Invalid content format. Submit plain text.",
+    "ja": "内容の形式が無効です。プレーンテキストで送信してください。"
+  },
+  "内容超过长度限制（2000 个字符或 8000 字节），请缩短后重试。": {
+    "en": "Content exceeds the limit of 2,000 characters or 8,000 bytes. Shorten it and try again.",
+    "ja": "2,000 文字または 8,000 バイトの制限を超えています。短くして再送信してください。"
+  },
+  "内容包含 HTML 标签、事件属性或可执行代码，请移除后重试。": {
+    "en": "Content contains HTML tags, event attributes or executable code. Remove them and try again.",
+    "ja": "HTML タグ・イベント属性・実行可能コードを削除して再送信してください。"
+  },
+  "内容包含 javascript:、data:、file: 等不允许发布的链接协议，请移除后重试。": {
+    "en": "Content contains a prohibited link scheme such as javascript:, data: or file:. Remove it and try again.",
+    "ja": "javascript:・data:・file: などの禁止リンクを削除して再送信してください。"
+  },
+  "内容无效，请修改后重试。": {
+    "en": "Invalid content. Edit it and try again.",
+    "ja": "内容が無効です。修正して再送信してください。"
+  },
+  "需要人工确认": {
+    "en": "Human review required",
+    "ja": "確認が必要です"
+  },
+  "今日任务已完成，+{0} 经验": {
+    "en": "Daily task completed, +{0} XP",
+    "ja": "今日のタスク完了、経験値 +{0}"
+  },
+  "打开任意文章，点击点赞或收藏即可完成。": {
+    "en": "Open any article and like or bookmark it to complete this task.",
+    "ja": "記事を開き、いいねまたはブックマークすると完了します。"
+  },
+  "月读空间 Google Play 测试申请": {
+    "en": "Tsukuyomi Space Google Play test application",
+    "ja": "月読空間 Google Play テスト参加申請"
+  },
+  "申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。": {
+    "en": "Apply for the Tsukuyomi Space Android closed test and learn how to join through Google Play, install the app and send feedback.",
+    "ja": "月読空間 Android クローズドテストへの申請と、Google Play での参加・インストール・フィードバックの手順。"
+  },
+  "Google Play 测试申请管理": {
+    "en": "Google Play test applications",
+    "ja": "Google Play テスト申請管理"
+  },
+  "正在测试连接": {
+    "en": "Testing connection",
+    "ja": "接続をテスト中"
+  },
+  "连接测试通过": {
+    "en": "Connection test passed",
+    "ja": "接続テスト成功"
+  },
+  "已响应，未返回文本": {
+    "en": "Connected, but no text returned",
+    "ja": "応答しましたがテキストがありません"
+  },
+  "连接测试失败": {
+    "en": "Connection test failed",
+    "ja": "接続テスト失敗"
+  },
+  "在线": {
+    "en": "Online",
+    "ja": "オンライン"
+  },
+  "较慢": {
+    "en": "Slow",
+    "ja": "応答が遅い"
+  },
+  "受限": {
+    "en": "Restricted",
+    "ja": "アクセス制限"
+  },
+  "离线": {
+    "en": "Offline",
+    "ja": "オフライン"
+  },
+  "未检测": {
+    "en": "Not checked",
+    "ja": "未確認"
+  },
+  "核验日期：{0}": {
+    "en": "Checked: {0}",
+    "ja": "確認日：{0}"
+  },
+  "{0} 点赞了你的评论": {
+    "en": "{0} liked your comment",
+    "ja": "{0} があなたのコメントにいいねしました"
+  },
+  "{0} 点赞了你的留言": {
+    "en": "{0} liked your message",
+    "ja": "{0} があなたのメッセージにいいねしました"
+  },
+  "{0} 点赞了你的图库图片《{1}》": {
+    "en": "{0} liked your gallery image “{1}”",
+    "ja": "{0} があなたのギャラリー画像「{1}」にいいねしました"
+  },
+  "{0} 点赞了你的像素画": {
+    "en": "{0} liked your pixel art",
+    "ja": "{0} があなたのピクセルアートにいいねしました"
+  },
+  "新的访客正在关注你的创作动态。": {
+    "en": "A new visitor is following your creative updates.",
+    "ja": "新しい訪問者があなたの創作活動をフォローしています。"
+  },
+  "你的图库图片收到了一个赞。": {
+    "en": "Your gallery image received a like.",
+    "ja": "あなたのギャラリー画像にいいねが届きました。"
+  },
+  "以及其他项": {
+    "en": ", and others",
+    "ja": "ほか"
   },
   "上次日记已确认保存，原会话已结束。当前聊天已保留，可单独写入下一篇日记。": {
     "en": "Your previous diary is saved and its conversation has ended. Your current chat is preserved for the next diary.",

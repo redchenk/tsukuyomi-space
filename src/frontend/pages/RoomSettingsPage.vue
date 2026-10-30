@@ -4,7 +4,7 @@ import { readJson, writeJson } from '../services/room/roomStorage';
 import { memorySearchOptions } from '../services/room/roomMemoryRequest.mjs';
 import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../services/room/gptSovitsControl.mjs';
 import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
-import { uiText } from '../i18n/runtime';
+import { uiText, translateFeedback } from '../i18n/runtime';
 import llmRuntime from '../../../shared/model-runtime.cjs';
 import llmProtocol from '../../../shared/llm-protocol.cjs';
 import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
@@ -406,7 +406,7 @@ const recommendedModelText = computed(() => {
   const option = recommendedModelOption.value;
   if (!option) return '暂无可用推荐；请先同步模型列表，或使用供应商预设。';
   const value = syncedModelSelectValue(option);
-  return `${value}（${option.source === 'provider' ? '来自当前服务商目录；请测试可用性' : '本地预设示例'}）`;
+  return `${value}（${uiText(option.source === 'provider' ? '来自当前服务商目录；请测试可用性' : '本地预设示例')}）`;
 });
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryVectorLabel = computed(() => {
@@ -539,7 +539,7 @@ async function syncModelCatalog(force = true) {
     if (force) showToast('模型列表已更新');
   } catch (error) {
     if (revision !== modelCatalogRevision || controller.signal.aborted) return;
-    modelCatalog.error = `模型列表更新失败：${error.message} 已有模型与手动输入仍可使用。`;
+    modelCatalog.error = `模型列表更新失败：${translateFeedback(error.message)} 已有模型与手动输入仍可使用。`;
     modelCatalog.message = modelCatalog.models.length ? `保留 ${modelCatalog.models.length} 个缓存模型。` : '';
     if (force) showToast('模型列表更新失败，请查看提示', 'error');
   } finally {
@@ -662,7 +662,7 @@ function memoryAuthHeaders(extra = {}) {
 }
 
 function memoryTypeLabel(type) {
-  return memoryTypeOptions.find((item) => item.value === type)?.label || type || '未分类';
+  return memoryTypeOptions.find((item) => item.value === type)?.label || type || uiText('未分类');
 }
 
 function syncLive2DDebugState(state = readRoomLive2DDebugState()) {
@@ -2783,9 +2783,9 @@ onBeforeUnmount(() => {
                   : '选择服务商提供的模型，或粘贴完整模型名称。'
               }}
             </p>
-            <p v-if="modelCatalog.message" class="field-hint" role="status">{{ modelCatalog.message }}</p>
+            <p v-if="modelCatalog.message" class="field-hint" role="status">{{ translateFeedback(modelCatalog.message) }}</p>
             <p v-if="modelCatalog.error" class="field-hint error" role="alert">
-              {{ modelCatalog.error }}
+              {{ translateFeedback(modelCatalog.error) }}
             </p>
           </div>
           <div v-if="setupLlmMode === 'ollama'" class="settings-note">
@@ -2903,7 +2903,7 @@ onBeforeUnmount(() => {
                     testedConnectionStatus === 'success' ? 'check' : 'info'
                   "
                   :size="16"
-                />{{ connectionStatusText }}</span
+                />{{ $ui(connectionStatusText) }}</span
               ><small>使用当前表单测试，修改后记得保存。</small>
             </div>
             <button
@@ -3129,7 +3129,7 @@ onBeforeUnmount(() => {
           <div class="settings-note">
             <TsIcon name="shield" :size="18" />
             <div>
-              <strong>{{ roomIdentityLabel }} · {{ memoryModeLabel }}</strong>
+              <strong>{{ roomUser?.nickname || roomUser?.username || $ui('访客身份') }} · {{ memoryModeLabel }}</strong>
               <p>{{ memoryLocationText }}</p>
             </div>
           </div>
@@ -4057,7 +4057,7 @@ onBeforeUnmount(() => {
           <div class="settings-context-item">
             <TsIcon name="message" :size="18" />
             <div>
-              <span>聊天模型</span><small>{{ llmConnectionLabel }}</small>
+              <span>聊天模型</span><small>{{ llm.model || $ui('待配置') }}</small>
             </div>
             <span class="settings-badge" :class="testedConnectionStatus">{{
               {
@@ -4074,7 +4074,7 @@ onBeforeUnmount(() => {
             <div>
               <span>语音朗读</span
               ><small>{{
-                tts.enabled ? ttsConnectionLabel : '先用文字，也很好'
+                tts.enabled ? (tts.voice || tts.provider || $ui('已启用')) : '先用文字，也很好'
               }}</small>
             </div>
             <span class="settings-badge">{{
@@ -4116,7 +4116,7 @@ onBeforeUnmount(() => {
       </aside>
     </div>
     <footer v-if="guidedSetup" class="settings-savebar"><div class="settings-savebar-inner">
-      <p role="status">第 {{ setupStep }} / 3 步 · {{ setupStep === 3 ? connectionStatusText : setupStep === 2 ? (llmSetupReady ? '信息已填写，可以继续' : '请填写当前服务所需的信息') : '选择适合你的连接方式' }}</p>
+      <p role="status">{{ $ui('第 {0} 步，共 {1} 步', [setupStep, 3]) }} · {{ setupStep === 3 ? $ui(connectionStatusText) : setupStep === 2 ? (llmSetupReady ? '信息已填写，可以继续' : '请填写当前服务所需的信息') : '选择适合你的连接方式' }}</p>
       <div class="button-row"><button v-if="setupStep > 1" type="button" class="ghost-btn" :disabled="connectionCheck.status === 'loading'" @click="moveSetupStep(setupStep - 1)">上一步</button>
         <button v-if="setupStep < 3" type="button" class="primary-btn" :disabled="setupStep === 2 && !llmSetupReady" @click="moveSetupStep(setupStep + 1)">下一步</button>
         <button v-else type="button" class="primary-btn" :disabled="!llmSetupReady || connectionCheck.status === 'loading'" @click="finishGuidedSetup">{{ testedConnectionStatus === 'success' ? '保存，去说第一句话' : '跳过测试并保存' }}</button>

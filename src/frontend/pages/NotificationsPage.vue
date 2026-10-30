@@ -5,6 +5,7 @@ import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client
 import { formatDateTime } from '../utils/time';
 import TsIcon from '../components/TsIcon.vue';
 import { publishNotificationBadge } from '../services/notificationBadge';
+import { notificationTitle, notificationContent } from '../services/systemText';
 
 const props = defineProps({
   lang: { type: String, default: 'zh' }
@@ -212,10 +213,10 @@ onMounted(loadNotifications);
           </div>
           <div class="notification-main">
             <div class="notification-head">
-              <strong><span class="notification-type-icon" aria-hidden="true"><TsIcon :name="notificationIcon(item.type)" :size="16" /></span> {{ item.title }}</strong>
+              <strong><span class="notification-type-icon" aria-hidden="true"><TsIcon :name="notificationIcon(item.type)" :size="16" /></span> {{ notificationTitle(item) }}</strong>
               <time>{{ formatDate(item.created_at) }}</time>
             </div>
-            <p>{{ item.content }}</p>
+            <p>{{ notificationContent(item) }}</p>
             <div class="notification-tools">
               <button v-if="item.link" class="primary-btn compact" type="button" @click="openNotification(item)">查看</button>
               <button v-if="item.unread" class="ghost-btn compact" type="button" @click="markRead(item)">标为已读</button>

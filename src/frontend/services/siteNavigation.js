@@ -11,13 +11,13 @@ const copy = {
   },
   en: {
     search: 'Search Tsukuyomi', searchHint: 'Search pages and articles…', account: 'Account menu', enterRoom: 'Enter room',
-    explore: 'Explore', exploreTitle: 'A little more to discover', discover: 'Read & discover', create: 'Create & play', spaces: 'More spaces', friendLinks: 'Friend links',
+    explore: 'Explore', exploreTitle: 'A little more to discover', discover: 'Read & discover', create: 'Create & play', spaces: 'More spaces', friendLinks: 'Partner Sites',
     rss: 'RSS feed', download: 'App download', downloadCta: 'Get App', menuLabels: { discover: 'Discover', create: 'Create', spaces: 'Spaces' },
     shortcuts: 'Pages', articles: 'Public articles', searchTitle: 'What are you looking for?', close: 'Close search',
     loading: 'Searching articles…', empty: 'No matches. Try another keyword.', failed: 'Articles could not be loaded. Page shortcuts are still available.',
     allArticles: 'View all article results', retry: 'Retry', searchHelp: 'Find public articles or jump to a page',
     shortLabels: { hub: 'Hub', room: 'Room', plaza: 'Plaza', stage: 'Stage' },
-    descriptions: { drift: 'Send a thought, meet a stranger', download: 'Native apps for phone and desktop', stage: 'Stories, articles and creative journals', plaza: 'Conversations and community moments', growth: 'Check-ins, tasks and your progress', rss: 'Follow public updates in your RSS reader', wiki: 'Characters, music and worlds', gallery: 'Discover and share artwork', pixel: 'Turn ideas into tiny pixels', game: 'Share a little play with Yachiyo', agentOs: 'Your intelligent workspace', reality: 'About this site and its sources', friendLinks: 'Visit neighboring spaces' }
+    descriptions: { drift: 'Send a thought, meet a stranger', download: 'Native apps for phone and desktop', stage: 'Stories, articles and creative journals', plaza: 'Conversations and community moments', growth: 'Check-ins, tasks and your progress', rss: 'Follow public updates in your RSS reader', wiki: 'Characters, music and worlds', gallery: 'Discover and share artwork', pixel: 'Turn ideas into tiny pixels', game: 'Play a game with Yachiyo', agentOs: 'Your intelligent workspace', reality: 'About this site and its sources', friendLinks: 'Visit neighboring spaces' }
   },
   ja: {
     search: '月読空間を検索', searchHint: 'ページ・記事を検索…', account: 'アカウント', enterRoom: '部屋に入る',

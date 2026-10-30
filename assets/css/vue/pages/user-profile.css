@@ -1468,9 +1468,8 @@ body .page.user-profile-page .profile-empty {
 
     body .page.user-profile-page .profile-icon-action span {
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     body .page.user-profile-page .profile-presence,
