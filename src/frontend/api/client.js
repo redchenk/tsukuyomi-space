@@ -34,17 +34,17 @@ export function apiUrl(url) {
 }
 
 export async function oauthStartUrl(provider, redirect = '/hub', action = 'login') {
-  if (!['qq', 'github'].includes(provider)) throw new Error('不支持的登录方式');
+  if (!['qq', 'github', 'google'].includes(provider)) throw new Error('不支持的登录方式');
   const query = new URLSearchParams({ redirect, ...(action === 'bind' ? { action } : {}) });
   const pathname = `/api/auth/oauth/${provider}/start?${query}`;
   if (['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)) return apiUrl(pathname);
   // OAuth must start on its registered callback origin so the browser-binding
   // cookie survives the provider round trip, including from the overseas site.
   const settings = await loadPublicSettings();
-  const preferred = provider === 'github' && Array.isArray(settings.githubOAuthStartUrls)
-    ? settings.githubOAuthStartUrls.find(value => { try { return new URL(value).origin === window.location.origin; } catch (_) { return false; } }) : '';
+  const preferred = provider !== 'qq' && Array.isArray(settings[`${provider}OAuthStartUrls`])
+    ? settings[`${provider}OAuthStartUrls`].find(value => { try { return new URL(value).origin === window.location.origin; } catch (_) { return false; } }) : '';
   const endpoint = new URL(preferred || settings[`${provider}OAuthStartUrl`]);
-  if (provider === 'github') query.set('site', endpoint.origin);
+  if (provider !== 'qq') query.set('site', endpoint.origin);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password
       || endpoint.pathname !== `/api/auth/oauth/${provider}/start`) throw new Error('登录入口配置无效');
   endpoint.search = query.toString();
@@ -58,6 +58,10 @@ export function qqOAuthStartUrl(redirect = '/hub') {
 
 export function githubOAuthStartUrl(redirect = '/hub', action = 'login') {
   return oauthStartUrl('github', redirect, action);
+}
+
+export function googleOAuthStartUrl(redirect = '/hub', action = 'login') {
+  return oauthStartUrl('google', redirect, action);
 }
 
 export function getAuthToken() {

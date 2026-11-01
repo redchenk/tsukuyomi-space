@@ -78,6 +78,12 @@ module.exports = {
     oauth: {
         stateTtlMs: Number(process.env.OAUTH_STATE_TTL_MS || 10 * 60 * 1000),
         pendingTtlMs: Number(process.env.OAUTH_PENDING_TTL_MS || 15 * 60 * 1000),
+        google: {
+            clientId: process.env.GOOGLE_CLIENT_ID || '',
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+            additionalRedirectUris: (process.env.GOOGLE_ADDITIONAL_REDIRECT_URIS || '').split(',').map(value => value.trim()).filter(Boolean),
+            redirectUri: process.env.GOOGLE_REDIRECT_URI || `${oauthRedirectBaseUrl}/api/auth/oauth/google/callback`
+        },
         github: {
             clientId: process.env.GITHUB_CLIENT_ID || '',
             clientSecret: process.env.GITHUB_CLIENT_SECRET || '',

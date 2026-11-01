@@ -2,7 +2,10 @@
 import { computed, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
-import { apiFetch, qqOAuthStartUrl, githubOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import googleIconUrl from '../../../assets/icons/google-login.png';
+import { useGoogleOAuthEnabled } from '../services/googleOAuth';
+const googleOAuthEnabled = useGoogleOAuthEnabled();
+import { apiFetch, qqOAuthStartUrl, githubOAuthStartUrl, googleOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 import { captureReferralCode } from '../services/userGrowth';
 import { getAuthRedirectFromLocation, withAuthRedirect } from '../utils/authRedirect';
 
@@ -103,6 +106,11 @@ async function submitRegister() {
 async function startGitHubLogin() {
   try { window.location.href = await githubOAuthStartUrl(authRedirect.value); }
   catch (_) { showMessage('error', isEnglish.value ? 'GitHub sign-in is unavailable. Please try again.' : 'GitHub 登录暂时无法连接，请稍后重试'); }
+}
+
+async function startGoogleLogin() {
+  try { window.location.href = await googleOAuthStartUrl(authRedirect.value); }
+  catch (_) { showMessage('error', isEnglish.value ? 'Google sign-in is unavailable. Please try again.' : 'Google 登录暂时无法连接，请稍后重试'); }
 }
 
 function go(path) {
@@ -209,6 +217,10 @@ async function startQQLogin() {
               <button class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
                 <TsIcon name="github" :size="22" />
                 <span>{{ isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录' }}</span>
+              </button>
+              <button v-if="googleOAuthEnabled" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
+                <img :src="googleIconUrl" alt="" width="20" height="20">
+                <span>{{ isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录' }}</span>
               </button>
             </div>
           </div>

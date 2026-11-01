@@ -156,7 +156,7 @@ function compactOAuthProfile(profile) {
         providerUserId: profile.providerUserId,
         unionId: profile.unionId || '',
         email: normalizeEmail(profile.email || ''),
-        nickname: String(profile.nickname || '').trim() || (profile.provider === 'github' ? 'GitHub 用户' : 'QQ 用户'),
+        nickname: String(profile.nickname || '').trim() || ({ github: 'GitHub 用户', google: 'Google 用户' }[profile.provider] || 'QQ 用户'),
         avatar: profile.avatar || '',
         raw: profile.raw || {}
     };
@@ -214,7 +214,7 @@ function oauthPlaceholderEmail(provider, providerUserId) {
 function createUserFromOAuthProfile(profile, preferredUsername = '', initialPassword = '') {
     const userId = crypto.randomUUID();
     const username = uniqueUsername(preferredUsername || profile.nickname, profile.providerUserId);
-    const email = profile.provider === 'github'
+    const email = ['github', 'google'].includes(profile.provider)
         ? profile.email // A concurrent email registration must fail, never create a placeholder account.
         : (profile.email && !authRepository.findUserByEmail(profile.email)
             ? profile.email : oauthPlaceholderEmail(profile.provider, profile.providerUserId));
@@ -740,6 +740,10 @@ router.post('/oauth/qq/unlink', authenticateToken, (req, res) => {
 });
 
 require('./github-oauth')(router, { httpError, siteUrl, safeRedirectPath, compactOAuthProfile,
+    oauthAccountFromProfile, pendingOAuthResponse, createUserFromOAuthProfile, validatedNewPassword,
+    setUserLoginSession, userResponse, isUserMissingPublicEmail });
+
+require('./google-oauth')(router, { httpError, siteUrl, safeRedirectPath, compactOAuthProfile,
     oauthAccountFromProfile, pendingOAuthResponse, createUserFromOAuthProfile, validatedNewPassword,
     setUserLoginSession, userResponse, isUserMissingPublicEmail });
 

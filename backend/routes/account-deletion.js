@@ -4,11 +4,11 @@ const db = require('../db');
 const { authenticateToken, authenticateAdminToken, requireSuperAdmin } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const policy = require('../../shared/privacy-policy.json');
-// The 23/24 October updates only add Play recruitment and QQ SDK disclosures.
+// The 23/24 October and 1 November updates add Play, QQ SDK and Google disclosures.
 // Their deletion terms match the policy bundled in released native apps.
 // Reassess this explicit compatibility list when the policy changes again.
-const deletionPolicyVersions = new Set(policy.version === '2026-10-24'
-    ? ['2026-10-22', '2026-10-23', policy.version] : [policy.version]);
+const deletionPolicyVersions = new Set(['2026-10-24', '2026-11-01'].includes(policy.version)
+    ? ['2026-10-22', '2026-10-23', '2026-10-24', policy.version] : [policy.version]);
 
 const router = express.Router();
 const adminRouter = express.Router();

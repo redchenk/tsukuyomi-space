@@ -6,9 +6,12 @@ import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
 import PaymentEntry from '../components/PaymentEntry.vue';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { apiUrl, authFetch, authHeaders, githubOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { apiUrl, authFetch, authHeaders, githubOAuthStartUrl, googleOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
+import googleIconUrl from '../../../assets/icons/google-login.png';
+import { useGoogleOAuthEnabled } from '../services/googleOAuth';
+const googleOAuthEnabled = useGoogleOAuthEnabled();
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { loadGrowth } from '../services/userGrowth';
 import { uploadJson } from '../api/upload-json.mjs';
@@ -54,6 +57,12 @@ const uc = reactive({
   githubMsg: '',
   githubMsgType: 'error',
   githubStarting: false,
+  googleUnlinking: false,
+  googleUnlinkOpen: false,
+  googlePassword: '',
+  googleMsg: '',
+  googleMsgType: 'error',
+  googleStarting: false,
   qqUnlinking: false,
   qqUnlinkOpen: false,
   qqPassword: '',
@@ -234,6 +243,38 @@ async function ucUnlinkGitHub() {
     ucShowToast(result.message);
   } catch (error) { ucShowMessage('github', error.message); }
   finally { uc.githubUnlinking = false; }
+}
+const ucGoogleAccount = computed(() => ucOAuthAccounts.value.find(account => account?.provider === 'google') || null);
+const ucGoogleCopy = computed(() => props.lang === 'en' ? { title: 'Google login', bind: 'Link Google', unlink: 'Unlink Google', hint: 'Link your Google account to sign in to this account.', linked: 'Google and email sign in to the same account.', password: 'Current password', confirm: 'Confirm unlink', cancel: 'Cancel', unavailable: 'Unable to connect to Google. Please try again.' } : props.lang === 'ja' ? { title: 'Google ログイン', bind: 'Google を連携', unlink: 'Google の連携を解除', hint: 'Google を連携すると、このアカウントにログインできます。', linked: 'Google とメールで同じアカウントにログインできます。', password: '現在のパスワード', confirm: '連携解除を確認', cancel: 'キャンセル', unavailable: 'Google に接続できません。再試行してください。' } : { title: 'Google 登录', bind: '绑定 Google', unlink: '解绑 Google', hint: '手动连接 Google，之后可一键登录当前账号。', linked: '已连接 Google，可使用 Google 或邮箱登录同一账号。', password: '当前密码', confirm: '确认解绑', cancel: '取消', unavailable: 'Google 暂时无法连接，请稍后重试' });
+async function ucBindGoogle() {
+  uc.googleStarting = true;
+  uc.googleMsg = '';
+  try { window.location.href = await googleOAuthStartUrl('/user-center', 'bind'); }
+  catch (_) { ucShowMessage('google', ucGoogleCopy.value.unavailable); uc.googleStarting = false; }
+}
+function ucToggleGoogleUnlink() {
+  uc.googleUnlinkOpen = !uc.googleUnlinkOpen;
+  uc.googlePassword = '';
+  uc.googleMsg = '';
+}
+async function ucUnlinkGoogle() {
+  uc.googleUnlinking = true;
+  uc.googleMsg = '';
+  try {
+    const response = await authFetch('/api/auth/oauth/google/unlink', {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ currentPassword: uc.googlePassword })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || ucGoogleCopy.value.unavailable);
+    ucUser.value = result.data.user;
+    updateStoredUser(result.data.user);
+    uc.googlePassword = '';
+    uc.googleUnlinkOpen = false;
+    emit('auth-changed');
+    ucShowToast(result.message);
+  } catch (error) { ucShowMessage('google', error.message); }
+  finally { uc.googleUnlinking = false; }
 }
 const ucFilteredArticles = computed(() => {
   if (!uc.articleQuery) return uc.articles;
@@ -831,6 +872,11 @@ onMounted(async () => {
     if (oauthParams.has('oauth_error')) ucShowMessage('github', oauthParams.get('oauth_error') === 'github_already_bound' ? (props.lang === 'en' ? 'This GitHub is already linked to another account.' : '该 GitHub 或当前账号已有其他绑定，请检查后重试') : ucGitHubCopy.value.unavailable);
     else ucShowToast(props.lang === 'en' ? 'GitHub linked' : props.lang === 'ja' ? 'GitHub を連携しました' : 'GitHub 已绑定');
   }
+  if (oauthParams.get('oauth_linked') === 'google' || oauthParams.get('oauth_error')?.startsWith('google_')) {
+    uc.tab = 'security';
+    if (oauthParams.has('oauth_error')) ucShowMessage('google', oauthParams.get('oauth_error') === 'google_already_bound' ? (props.lang === 'en' ? 'This Google is already linked to another account.' : '该 Google 或当前账号已有其他绑定，请检查后重试') : ucGoogleCopy.value.unavailable);
+    else ucShowToast(props.lang === 'en' ? 'Google linked' : props.lang === 'ja' ? 'Google を連携しました' : 'Google 已绑定');
+  }
 
   window.addEventListener('focus', ucReloadVisibleArticles);
   window.addEventListener('pageshow', ucReloadVisibleArticles);
@@ -1295,6 +1341,28 @@ onUnmounted(() => {
                       </form>
                     </div>
                     <div v-if="uc.githubMsg" class="form-message" :class="uc.githubMsgType" role="status">{{ uc.githubMsg }}</div>
+                  </div>
+                </div>
+                <div v-if="googleOAuthEnabled || ucGoogleAccount" class="uc-oauth-status uc-google-status" :class="{ bound: ucGoogleAccount }">
+                  <div class="uc-oauth-icon"><img :src="googleIconUrl" alt="" width="20" height="20"></div>
+                  <div class="uc-oauth-main">
+                    <div class="uc-oauth-title"><span>{{ ucGoogleCopy.title }}</span><strong>{{ ucGoogleAccount ? ucCopy.linked : ucCopy.unlinked }}</strong></div>
+                    <p>{{ ucGoogleAccount ? ucGoogleCopy.linked : ucGoogleCopy.hint }}</p>
+                    <small v-if="ucGoogleAccount?.nickname">{{ ucGoogleAccount.nickname }}</small>
+                    <div class="uc-oauth-actions">
+                      <button v-if="!ucGoogleAccount" class="icon-btn uc-icon-action" type="button" :disabled="uc.googleStarting || uc.profileLoading" @click="ucBindGoogle"><TsIcon name="link" :size="16" /><span>{{ ucGoogleCopy.bind }}</span></button>
+                      <button v-else-if="!uc.googleUnlinkOpen" class="danger-btn uc-icon-action" type="button" @click="ucToggleGoogleUnlink"><TsIcon name="x" :size="16" /><span>{{ ucGoogleCopy.unlink }}</span></button>
+                      <form v-else class="uc-oauth-unlink-form" :aria-busy="uc.googleUnlinking" @submit.prevent="ucUnlinkGoogle">
+                        <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
+                        <label for="ucGoogleUnlinkPassword">{{ ucGoogleCopy.password }}</label>
+                        <input id="ucGoogleUnlinkPassword" v-model="uc.googlePassword" name="current-password" type="password" required maxlength="128" autocomplete="current-password">
+                        <div class="uc-oauth-unlink-buttons">
+                          <button class="danger-btn" type="submit" :disabled="uc.googleUnlinking">{{ ucGoogleCopy.confirm }}</button>
+                          <button class="icon-btn" type="button" :disabled="uc.googleUnlinking" @click="ucToggleGoogleUnlink">{{ ucGoogleCopy.cancel }}</button>
+                        </div>
+                      </form>
+                    </div>
+                    <div v-if="uc.googleMsg" class="form-message" :class="uc.googleMsgType" role="status">{{ uc.googleMsg }}</div>
                   </div>
                 </div>
                 <h3>{{ t.ucSecurityTip }}</h3>

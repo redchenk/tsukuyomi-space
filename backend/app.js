@@ -101,7 +101,10 @@ function createApp() {
         '/api/auth/oauth/qq/unlink',
         '/api/auth/oauth/github/start',
         '/api/auth/oauth/github/email',
-        '/api/auth/oauth/github/unlink'
+        '/api/auth/oauth/github/unlink',
+        '/api/auth/oauth/google/start',
+        '/api/auth/oauth/google/email',
+        '/api/auth/oauth/google/unlink'
     ], sensitiveAuthLimiter);
     app.use('/api/auth/email-code', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'email-code' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
