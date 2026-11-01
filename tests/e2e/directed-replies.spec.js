@@ -6,6 +6,9 @@ for (const location of ['plaza', 'article']) {
         // mobile WebKit; keep the per-assertion limits while allowing the flow to finish.
         test.setTimeout(45_000);
         await page.setViewportSize({ width: 390, height: 844 });
+        // This journey verifies recipient navigation, not animation. Keep the
+        // link stationary while the browser clicks it after scrolling the card.
+        await page.emulateMedia({ reducedMotion: 'reduce' });
         const headers = { Origin: new URL(baseURL).origin, 'Sec-Fetch-Site': 'same-origin', 'X-Requested-With': 'XMLHttpRequest' };
         const login = async username => {
             const response = await page.request.post('/api/auth/login', { headers, data: { username, password: 'mem0-test-password' } });
@@ -68,6 +71,7 @@ for (const location of ['plaza', 'article']) {
         await thread.scrollIntoViewIfNeeded();
         await expect(result.locator('.message-reply-recipient a')).toBeVisible();
         await result.locator('.message-reply-recipient a').click();
+        await expect(page).toHaveURL(new RegExp(`#${prefix}-${reader.id}$`));
         await expect(target).toBeInViewport();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });
