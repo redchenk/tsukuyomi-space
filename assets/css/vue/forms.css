@@ -1886,3 +1886,24 @@ body .page.auth-page .oauth-back-btn {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* Keep the Google brand asset legible within the site's existing provider row. */
+body .page.auth-page .oauth-icon-btn.google,
+body .page.auth-page .oauth-icon-btn.google:hover {
+    background: #fff;
+    color: #1f1f1f;
+    border: 1px solid #747775;
+    font-family: 'Google Sans', Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 10px;
+    padding-inline: 12px;
+}
+body .page.auth-page .oauth-icon-btn.google img {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    object-fit: contain;
+    filter: none;
+}
+.uc-google-status .uc-oauth-icon { background: #fff; }

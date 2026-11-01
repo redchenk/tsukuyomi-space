@@ -41,6 +41,13 @@ router.get('/settings', (req, res) => {
             publicAssetBaseUrl,
             qqOAuthStartUrl: new URL('/api/auth/oauth/qq/start', config.oauth.qq.redirectUri).toString(),
             qqNativeAppId: config.oauth.qq.nativeAppId,
+            googleOAuthEnabled: Boolean(config.oauth.google.clientId && config.oauth.google.clientSecret),
+            googleOAuthStartUrl: new URL('/api/auth/oauth/google/start', config.oauth.google.redirectUri).toString(),
+            googleOAuthStartUrls: require('../services/google-oauth').redirectUris().map(uri => {
+                const url = new URL('/api/auth/oauth/google/start', uri);
+                url.searchParams.set('site', new URL(uri).origin);
+                return url.toString();
+            }),
             githubOAuthStartUrl: new URL('/api/auth/oauth/github/start', config.oauth.github.redirectUri).toString(),
             githubOAuthStartUrls: require('../services/github-oauth').redirectUris().map(uri => {
                 const url = new URL('/api/auth/oauth/github/start', uri);

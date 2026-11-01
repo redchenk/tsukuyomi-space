@@ -53,10 +53,16 @@ function trustedOrigins() {
     const oauthOrigin = normalizedOrigin(config.oauthRedirectBaseUrl);
     const qqCallbackOrigin = normalizedOrigin(config.oauth.qq.redirectUri);
     const githubCallbackOrigin = normalizedOrigin(config.oauth.github.redirectUri);
+    const googleCallbackOrigin = normalizedOrigin(config.oauth.google.redirectUri);
     if (publicOrigin) origins.add(publicOrigin);
     if (oauthOrigin) origins.add(oauthOrigin);
     if (qqCallbackOrigin) origins.add(qqCallbackOrigin);
     if (githubCallbackOrigin) origins.add(githubCallbackOrigin);
+    if (googleCallbackOrigin) origins.add(googleCallbackOrigin);
+    for (const uri of config.oauth.google.additionalRedirectUris) {
+        const origin = normalizedOrigin(uri);
+        if (origin) origins.add(origin);
+    }
     for (const uri of config.oauth.github.additionalRedirectUris) {
         const origin = normalizedOrigin(uri);
         if (origin) origins.add(origin);

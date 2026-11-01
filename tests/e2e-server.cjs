@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuyomi-e2e-'));
 
 process.env.NODE_ENV = 'test';
+process.env.GOOGLE_CLIENT_ID = 'e2e-google-client';
+process.env.GOOGLE_CLIENT_SECRET = 'e2e-google-secret';
 process.env.HOST = '127.0.0.1';
 process.env.PORT = process.env.PORT || '4174';
 process.env.DATA_DIR = dataDir;
