@@ -1,5 +1,8 @@
 const { fetchPinnedUrl, resolvePublicUrl } = require('./outbound-url-security');
 
+const { fetchFishAudio } = require('./fish-audio-transport');
+const fishAudio = require('../../shared/fish-audio.cjs');
+
 const TTS_API_KEY = process.env.TTS_API_KEY || '';
 const TTS_API_URL = process.env.TTS_API_URL || '';
 const TTS_VOICE = process.env.TTS_VOICE || '';
@@ -335,7 +338,7 @@ async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath, re
     }
 }
 
-async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath }) {
+async function synthesizeSpeech({ text, emotion, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath }) {
     const normalizedText = String(text || '').trim();
     if (!normalizedText || normalizedText.length > 8000) {
         const error = new Error('朗读文本长度必须在 1 到 8000 字之间');
@@ -343,6 +346,19 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
         throw error;
     }
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
+    if (useProvider === 'fish-audio') {
+        if (apiUrl && apiUrl !== fishAudio.endpoint) throw Object.assign(new Error('Fish Audio 仅支持官方语音端点'), { status: 400 });
+        // Personal synthesis must never borrow an operator key.
+        const options = fishAudio.request(normalizedText, { apiKey, voice, model, emotion });
+        const response = await fetchFishAudio(fishAudio.endpoint, { ...options, signal: AbortSignal.timeout(60000), protocols: ['https:'], timeoutMs: 60000, redirect: 'error' });
+        if (!response.ok) {
+            await response.body?.cancel();
+            throw Object.assign(new Error('Fish Audio 语音请求失败（HTTP ' + response.status + '），请检查密钥、额度和音色权限'), { status: response.status });
+        }
+        const audioBuffer = await readAudioBuffer(response);
+        if (!fishAudio.isMp3(audioBuffer)) throw Object.assign(new Error('Fish Audio 未返回有效的 MP3 音频'), { status: 502 });
+        return { audioBuffer, contentType: 'audio/mpeg' };
+    }
     const useApiKey = apiKey || TTS_API_KEY;
     const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
     const rawApiUrl = apiUrl || (useProvider === 'gpt-sovits' ? GPT_SOVITS_API_URL : TTS_API_URL) || (useProvider === 'openai' || useProvider === 'openai-compatible'

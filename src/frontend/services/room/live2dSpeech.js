@@ -262,7 +262,7 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
     }
     setState({ status: 'loading', error: '' });
     try {
-      const audio = await makeAudio(speechText, settings);
+      const audio = await makeAudio(speechText, { ...settings, replyEmotion: options.live2d?.emotion || options.emotion || options.expression });
       if (token !== queueToken) {
         releaseAudio(audio);
         throw makeStopError();

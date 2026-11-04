@@ -5,6 +5,7 @@ import { memorySearchOptions } from '../services/room/roomMemoryRequest.mjs';
 import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../services/room/gptSovitsControl.mjs';
 import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
 import { uiText, translateFeedback } from '../i18n/runtime';
+import fishAudio from '../../../shared/fish-audio.cjs';
 import llmRuntime from '../../../shared/model-runtime.cjs';
 import llmProtocol from '../../../shared/llm-protocol.cjs';
 import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
@@ -105,6 +106,8 @@ const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
 const LEGACY_MINIMAX_DEFAULT_VOICE_IDS = ['yachiyo_jp_prompt_20260525c', 'English_expressive_narrator'];
 const TTS_PRESETS = {
   official: { label: '官方直供 · ¥0.05 / 条', provider: 'official', apiUrl: '', model: '', voice: '', textLang: 'ja', useProxy: true },
+  officialFish: { label: '官方直供 · Fish Audio · ¥0.05 / 条', provider: 'official', officialEngine: 'fish-audio', apiUrl: '', model: '', voice: '', textLang: 'auto', useProxy: true },
+  fishAudio: { label: 'Fish Audio', provider: 'fish-audio', apiUrl: fishAudio.endpoint, model: 's2.1-pro', voice: fishAudio.yachiyoVoice, textLang: 'ja', useProxy: true },
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
@@ -252,6 +255,11 @@ const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visio
 const selectedModelDeclaration = computed(() => modelCatalog.models.find(item => item.nativeId === llm.model)?.capabilities);
 const tts = reactive({ ...ONECLICK_TTS_DEFAULTS });
 const officialTtsStatus = ref({ online: false });
+function capacityFor(engine) {
+  return engine === 'fish-audio' ? officialTtsStatus.value?.fishAudio || { online: false } : officialTtsStatus.value;
+}
+const selectedOfficialTts = computed(() => capacityFor(tts.officialEngine));
+const fishControls = computed(() => tts.provider === 'fish-audio' || (tts.provider === 'official' && (tts.officialEngine === 'fish-audio' || selectedOfficialTts.value.supportsEmotion)));
 const officialTtsTesting = ref(false);
 const initialTtsSettings = { ...tts };
 const memory = reactive({ enabled: true, retrievalLimit: DEFAULT_MEMORY_RETRIEVAL_LIMIT, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
@@ -388,7 +396,7 @@ const roomIdentityLabel = computed(() => roomUser.value?.nickname || roomUser.va
 const llmConnectionLabel = computed(() => llm.model || '待配置');
 const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
 const llmSetupReady = computed(() => Boolean(llm.apiUrl && llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));
-const ttsSetupReady = computed(() => !tts.enabled || (tts.provider === 'official' ? officialTtsStatus.value.online && Boolean(props.user?.id) : Boolean(tts.apiUrl) && (tts.provider === 'gpt-sovits' || Boolean(tts.apiKey))));
+const ttsSetupReady = computed(() => !tts.enabled || (tts.provider === 'official' ? selectedOfficialTts.value.online && Boolean(props.user?.id) : Boolean(tts.apiUrl) && (tts.provider === 'gpt-sovits' || Boolean(tts.apiKey))));
 const visitorKey = computed(() => {
   if (roomUser.value?.id) return memorySourceMode.value === 'local' ? accountLocalMemoryKey(roomUser.value.id) : `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
@@ -1603,7 +1611,7 @@ function applyAdvancedLlmPreset(value) {
 }
 
 function applySetupTtsProvider(provider) {
-  if (provider === 'official' && (!officialTtsStatus.value.online || !props.user?.id)) return;
+  if (TTS_PRESETS[provider]?.provider === 'official' && (!capacityFor(TTS_PRESETS[provider].officialEngine).online || !props.user?.id)) return;
   applyTtsPreset(provider);
   tts.enabled = true;
 }
@@ -1658,6 +1666,10 @@ function applyTtsPreset(name) {
   const preset = TTS_PRESETS[name];
   if (!preset) return;
   const connectedUrl = preset.provider === 'gpt-sovits' && isOneclickApiUrl(tts.apiUrl) ? tts.apiUrl : '';
+  if (tts.provider !== preset.provider && [tts.provider, preset.provider].includes('fish-audio')) tts.apiKey = '';
+  tts.officialEngine = preset.officialEngine || '';
+  tts.officialFishModel = preset.provider === 'official' ? capacityFor(tts.officialEngine).defaultModel || '' : '';
+  if (preset.provider === 'fish-audio' || preset.provider === 'official') tts.fishStyle ||= 'auto';
   tts.provider = preset.provider;
   tts.apiUrl = connectedUrl || preset.apiUrl;
   tts.model = preset.model;
@@ -1808,10 +1820,12 @@ function saveTTS(showDialog = true) {
   if (tts.provider === 'official') {
     if (tts.enabled && !props.user?.id) { showToast('请登录后使用官方语音', 'error'); return false; }
     const settings = { enabled: Boolean(tts.enabled), provider: 'official', useProxy: true,
-      officialAccount: props.user?.id || '', textLang: officialTtsStatus.value.language || 'ja' };
+      officialAccount: props.user?.id || '', officialEngine: tts.officialEngine || '', supportsEmotion: Boolean(selectedOfficialTts.value.supportsEmotion),
+      officialFishModel: tts.officialFishModel || selectedOfficialTts.value.defaultModel || '',
+      fishStyle: tts.fishStyle, textLang: selectedOfficialTts.value.language || 'auto' };
     if (!persistSettings('roomTTSSettings', settings, '官方语音设置')) return false;
     rememberSaved('tts');
-    showToast(settings.enabled && !officialTtsStatus.value.online ? '设置已保存，算力恢复在线后可继续使用' : '官方语音设置已保存');
+    showToast(settings.enabled && !selectedOfficialTts.value.online ? '设置已保存，算力恢复在线后可继续使用' : '官方语音设置已保存');
     return true;
   }
   if (tts.enabled) {
@@ -1833,6 +1847,12 @@ function saveTTS(showDialog = true) {
     tts.sovitsWeightPath = String(tts.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT).trim();
     tts.useProxy = ttsUsesProxy(tts);
   }
+  if (tts.enabled && tts.provider === 'fish-audio') {
+    try {
+      if (tts.apiUrl !== fishAudio.endpoint) throw new Error('Fish Audio 仅支持官方语音端点');
+      fishAudio.validate(tts.model, String(tts.voice || '').trim());
+    } catch (error) { showToast(error.message, 'error'); return false; }
+  }
   if (tts.provider === 'minimax') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || 'ja', 'ja');
     tts.model = String(tts.model || 'speech-2.8-hd').trim();
@@ -1842,6 +1862,7 @@ function saveTTS(showDialog = true) {
   const settings = {
     enabled: Boolean(tts.enabled),
     provider: tts.provider || 'mimo',
+    ...(tts.provider === 'fish-audio' ? { fishStyle: tts.fishStyle } : {}),
     apiUrl: String(tts.apiUrl || '').trim(),
     apiKey: String(tts.apiKey || '').trim(),
     model: String(tts.model || '').trim(),
@@ -1881,7 +1902,7 @@ function saveTTS(showDialog = true) {
 
 async function testTTS() {
   if (officialTtsTesting.value) return;
-  if (tts.provider === 'official' && (!officialTtsStatus.value.online || !props.user?.id)) {
+  if (tts.provider === 'official' && (!selectedOfficialTts.value.online || !props.user?.id)) {
     showToast('请登录并等待官方算力上线后再试听', 'error'); return;
   }
   if (!saveTTS()) return;
@@ -1894,7 +1915,8 @@ async function testTTS() {
   const audioPlayback = primeAsyncAudioPlayback();
   ttsTestPlayback = audioPlayback;
   let objectUrl = '';
-  const testText = tts.provider === 'official' ? 'こんにちは。今夜も、月がきれいですね。' : tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
+  const japaneseSample = (tts.provider === 'official' && selectedOfficialTts.value.language === 'ja') || (tts.provider === 'fish-audio' && tts.textLang === 'ja');
+  const testText = japaneseSample ? 'こんにちは。今夜も、月がきれいですね。' : tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
   if (tts.provider === 'official') openTestDialog('tts', 'loading', '官方语音试听', '正在合成八千代语音…', '成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。');
@@ -1912,6 +1934,7 @@ async function testTTS() {
     }
     const blob = await requestTtsAudioBlob(testText, {
       ...tts,
+      replyEmotion: 'happy', supportsEmotion: Boolean(selectedOfficialTts.value.supportsEmotion),
       officialAccount: props.user?.id || '',
       textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
       promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja')
@@ -2941,7 +2964,7 @@ onBeforeUnmount(() => {
               type="checkbox"
               role="switch"
               aria-label="开启语音合成"
-              :disabled="tts.provider === 'official' && !tts.enabled && (!officialTtsStatus.online || !user?.id)"
+              :disabled="tts.provider === 'official' && !tts.enabled && (!selectedOfficialTts.online || !user?.id)"
           /></label>
           <div class="settings-note">
             <TsIcon name="info" :size="18" />
@@ -2954,7 +2977,7 @@ onBeforeUnmount(() => {
             </p>
           </div>
           <OfficialTtsStatus v-if="activeSection === 'tts'" @status="officialTtsStatus = $event" />
-          <p v-if="tts.provider === 'official'" class="field-hint">官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。</p>
+          <p v-if="tts.provider === 'official' && selectedOfficialTts.language === 'ja'" class="field-hint">官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。</p>
           <p v-if="!user?.id" class="field-hint">官方语音需要登录账号。<a href="/login?redirect=/room/settings?section=tts">前往登录</a></p>
           <div class="settings-section-fields">
             <label
@@ -2962,7 +2985,7 @@ onBeforeUnmount(() => {
                 aria-label="语音服务"
                 :value="
                   Object.keys(TTS_PRESETS).find(
-                    (key) => TTS_PRESETS[key].provider === tts.provider,
+                    (key) => TTS_PRESETS[key].provider === tts.provider && (TTS_PRESETS[key].officialEngine || '') === (tts.officialEngine || ''),
                   ) || 'custom'
                 "
                 @change="applySetupTtsProvider($event.target.value)"
@@ -2971,12 +2994,21 @@ onBeforeUnmount(() => {
                   v-for="(preset, name) in TTS_PRESETS"
                   :key="name"
                   :value="name"
-                  :disabled="name === 'official' && (!officialTtsStatus.online || !user?.id)"
+                  :disabled="preset.provider === 'official' && (!capacityFor(preset.officialEngine).online || !user?.id)"
                 >
                   {{ preset.label }}
                 </option>
               </select></label
             >
+            <label v-if="tts.enabled && fishControls && tts.provider === 'official'">Fish Audio 模型<select name="room-setting-official-fish-model" :value="tts.officialFishModel || selectedOfficialTts.defaultModel" @change="tts.officialFishModel = $event.target.value">
+              <option v-if="tts.officialFishModel && !selectedOfficialTts.models?.includes(tts.officialFishModel)" :value="tts.officialFishModel" disabled>{{ tts.officialFishModel }}</option>
+              <option v-for="id in selectedOfficialTts.models" :key="id" :value="id">{{ id }}</option>
+            </select></label>
+            <label v-if="tts.enabled && fishControls">朗读语气<select v-model="tts.fishStyle" name="room-setting-fish-style">
+              <option value="auto">跟随八千代表情</option><option value="none">不加情感提示</option>
+              <option v-for="(label, value) in fishAudio.styles" :key="value" :value="value">{{ $ui(label) }}</option>
+            </select></label>
+            <p v-if="tts.enabled && fishControls" class="field-hint">语气只用于朗读，不会写进聊天正文。</p>
             <template v-if="tts.enabled && tts.provider !== 'official'">
             <label v-if="tts.provider !== 'gpt-sovits'"
               >API 密钥<input name="room-setting-tts-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
@@ -2990,6 +3022,13 @@ onBeforeUnmount(() => {
                 type="text"
                 placeholder="音色名称或 Voice ID"
             /></label>
+            <label v-if="tts.provider === 'fish-audio'">朗读语言<select v-model="tts.textLang" name="room-setting-fish-language">
+              <option value="ja">日语</option><option value="auto">聊天原文</option>
+            </select></label>
+            <p v-if="tts.provider === 'fish-audio' && tts.textLang === 'ja'" class="field-hint">回复由当前聊天模型翻译成日语后朗读，翻译按该模型的规则计费。</p>
+            <label v-if="tts.provider === 'fish-audio'">Fish Audio 模型<select v-model="tts.model" name="room-setting-tts-model">
+              <option v-for="id in fishAudio.models" :key="id" :value="id">{{ id }}</option>
+            </select></label>
             <details class="settings-disclosure">
               <summary>
                 <TsIcon name="sliders" :size="18" /><span
@@ -2999,12 +3038,12 @@ onBeforeUnmount(() => {
               </summary>
               <div class="settings-disclosure-body form-grid">
                 <label
-                  >API 端点<input autocomplete="off" name="room-setting-tts-apiurl"
+                  >API 端点<input :readonly="tts.provider === 'fish-audio'" autocomplete="off" name="room-setting-tts-apiurl"
                     v-model="tts.apiUrl"
                     type="url"
                     spellcheck="false"
                     placeholder="https://…/audio/speech" /></label
-                ><label
+                ><label v-if="tts.provider !== 'fish-audio'"
                   >模型名称<input autocomplete="off" name="room-setting-tts-model"
                     v-model="tts.model"
                     type="text"
@@ -3087,7 +3126,7 @@ onBeforeUnmount(() => {
             </details>
             </template>
             <div class="button-row">
-              <button class="ghost-btn" type="button" @click="testTTS" :disabled="!tts.enabled || officialTtsTesting || (tts.provider === 'official' && (!officialTtsStatus.online || !user?.id))">
+              <button class="ghost-btn" type="button" @click="testTTS" :disabled="!tts.enabled || officialTtsTesting || (tts.provider === 'official' && (!selectedOfficialTts.online || !user?.id))">
                 <TsIcon name="play" :size="16" />{{ officialTtsTesting ? '正在合成…' : tts.provider === 'official' ? '保存并试听 · ¥0.05' : '保存并试听' }}
               </button>
               <button v-if="tts.provider === 'official'" class="ghost-btn" type="button" @click="saveTTS()">仅保存设置</button>

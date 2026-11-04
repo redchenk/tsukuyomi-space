@@ -12,6 +12,7 @@ function source(relativePath) {
 
 function loadTtsTransport() {
     const context = {
+        fishAudio: require('../shared/fish-audio.cjs'),
         Blob,
         Error,
         JSON,
@@ -22,6 +23,7 @@ function loadTtsTransport() {
         atob
     };
     const code = source('src/frontend/services/room/ttsTransport.js')
+        .replace(/^import fishAudio .*;$/m, '')
         .replace(/export async function /g, 'async function ')
         .replace(/export function /g, 'function ')
         .concat('\nglobalThis.__transport = { buildDirectTtsRequest, requestTtsAudioBlob, ttsUsesProxy };\n');
@@ -139,4 +141,23 @@ describe('Room TTS transport selection', () => {
         assert.equal(JSON.parse(calls[0].options.body).useProxy, true);
         assert.equal(audio, expected);
     });
+});
+
+it('Fish Audio sends the same voice and resolved emotion in both transports', async () => {
+    const { requestTtsAudioBlob } = loadTtsTransport();
+    const settings = { provider: 'fish-audio', model: 's2.1-pro', voice: 'a'.repeat(32), apiKey: 'personal',
+        fishStyle: 'auto', replyEmotion: 'shy' };
+    const mp3 = new Blob(['ID3', 'sound'], { type: 'audio/mpeg' });
+    await requestTtsAudioBlob('你好', settings, { fetchDirect: async (url, opts) => {
+        assert.equal(url, 'https://api.fish.audio/v1/tts');
+        assert.equal(opts.headers.Authorization, 'Bearer personal');assert.equal(opts.headers.model, 's2.1-pro');
+        assert.deepEqual(JSON.parse(opts.body), {text:'[embarrassed] 你好',reference_id:settings.voice,format:'mp3'});
+        return response({ blob: mp3 });
+    }});
+    await requestTtsAudioBlob('你好', {...settings, useProxy:true, fishStyle:'calm'}, { fetchProxy: async (url, opts) => {
+        assert.equal(url,'/api/tts');const body=JSON.parse(opts.body);assert.equal(body.emotion,'calm');assert.equal(body.text,'你好');assert.equal(body.apiKey,'personal');
+        return response({ blob: mp3 });
+    }});
+    await assert.rejects(requestTtsAudioBlob('你好',{...settings,apiUrl:'https://example.com/tts'}), /仅支持官方/);
+    await assert.rejects(requestTtsAudioBlob('你好',settings,{fetchDirect:async()=>response({blob:new Blob(['oops'])})}),/有效的 MP3/);
 });

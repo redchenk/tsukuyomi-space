@@ -1,10 +1,16 @@
+import fishAudio from '../../../../shared/fish-audio.cjs';
 const active = new Map();
 const keys = new Map();
 const PREFIX = 'official-voice-v1:';
 export async function requestOfficialTts(text, settings, request, prepareText) {
   if (!settings.officialAccount || typeof request !== 'function') throw new Error('请登录后重新保存官方语音设置。');
   const account = settings.officialAccount;
-  const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${account}\n${text}`))), b => b.toString(16).padStart(2, '0')).join('');
+  const engine = settings.officialEngine === 'fish-audio' ? 'fish-audio' : '';
+  const fish = Boolean(engine || settings.supportsEmotion);
+  const emotion = fish ? fishAudio.resolveStyle(settings.fishStyle, settings.replyEmotion) : '';
+  const model = fish ? settings.officialFishModel || '' : '';
+  const cacheText = fish ? JSON.stringify([account, text, engine, emotion, model, settings.textLang || 'auto']) : `${account}\n${text}`;
+  const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheText))), b => b.toString(16).padStart(2, '0')).join('');
   if (active.has(fingerprint)) return active.get(fingerprint);
   const run = async () => {
     let saved = keys.get(fingerprint);
@@ -24,11 +30,12 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
     let job;
     if (saved.jobId) job = await json(`/api/tts/official/jobs/${saved.jobId}`);
     else {
-      const status = await json('/api/tts/official/status');
+      const status = await json('/api/tts/official/status' + (engine ? '?engine=fish-audio' : ''));
       if (!status.online) throw new Error('官方语音算力离线，未发起翻译或合成，请稍后重试。');
-      const prepared = prepareText ? await prepareText(text) : text;
+      if (model && !status.models?.includes(model)) throw new Error('此官方 Fish Audio 模型暂不可用，请重新选择');
+      const prepared = prepareText ? await prepareText(text, status.language) : text;
       if (!prepared?.trim()) throw new Error('语音文本为空，未发起合成。');
-      job = await json('/api/tts/official/jobs', { method: 'POST', body: JSON.stringify({ text: prepared, requestKey: saved.key }) });
+      job = await json('/api/tts/official/jobs', { method: 'POST', body: JSON.stringify({ text: prepared, requestKey: saved.key, ...(engine ? {engine} : {}), ...(model ? {fishModel:model} : {}), ...(emotion && status.supportsEmotion ? {emotion} : {}) }) });
       saved.jobId = job.id;
       try { sessionStorage.setItem(PREFIX + fingerprint, JSON.stringify(saved)); } catch (_) {}
     }
