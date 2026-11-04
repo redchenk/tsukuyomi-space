@@ -1,4 +1,6 @@
 {
+  "Fish Audio 模型": {"en":"Fish Audio model","ja":"Fish Audio モデル"},
+  "此官方 Fish Audio 模型暂不可用，请重新选择": {"en":"This official Fish Audio model is unavailable. Please choose another.","ja":"この公式 Fish Audio モデルは現在利用できません。別のモデルを選んでください。"},
   "Fish Audio 未返回有效的 MP3 音频": {"en":"Fish Audio did not return a valid MP3.","ja":"Fish Audio から有効な MP3 音声が返されませんでした。"},
   "请选择支持情感提示的 Fish Audio 模型": {"en":"Choose a Fish Audio model that supports emotion cues.","ja":"感情指定に対応する Fish Audio モデルを選択してください。"},
   "Fish Audio 音色 ID 应为 32 位十六进制字符": {"en":"The Fish Audio voice ID must contain 32 hexadecimal characters.","ja":"Fish Audio の音声 ID は32桁の16進数で入力してください。"},

@@ -41,3 +41,18 @@ test('Fish official playback isolates its engine and style cache and sends only 
         ['fish-audio','你好','embarrassed'],['fish-audio','你好','calm'],['fish-audio','你好',undefined]]);
     assert.equal(new Set(posts.map(p=>p.requestKey)).size,3);
 });
+
+test('replaying one Fish model reuses its audio; changing models requests distinct audio', async () => {
+    const settings={provider:'official',officialEngine:'fish-audio',officialAccount:'models-fixture'};
+    const posts=[];
+    async function request(url,opts) {
+        if(url.includes('/status'))return Response.json({success:true,data:{online:true,supportsEmotion:true,models:['s2.1-pro','drama-3']}});
+        if(url.endsWith('/audio'))return new Response('audio');
+        if(opts.method==='POST')posts.push(JSON.parse(opts.body));
+        return Response.json({success:true,data:{state:'ready',id:'job-'+posts.length}});
+    }
+    for(const id of ['drama-3','s2.1-pro','drama-3'])await requestOfficialTts('你好',{...settings,officialFishModel:id},request);
+    assert.deepEqual(posts.map(p=>p.fishModel),['drama-3','s2.1-pro']);
+    assert.notEqual(posts[0].requestKey,posts[1].requestKey);
+    await assert.rejects(requestOfficialTts('你好',{...settings,officialFishModel:'s1'},request),/暂不可用/);
+});

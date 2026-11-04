@@ -1919,9 +1919,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
         ? await translateForJapaneseTts(text)
         : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
+      // Synced history only stores dialogue. Recover the cue for older replies
+      // using the same text inference as the stage uses for a new reply.
+      const fishVoice = settings.provider === 'fish-audio' || settings.officialEngine === 'fish-audio' || settings.supportsEmotion;
+      const speechIntent = messageLive2D || (fishVoice ? inferLive2DIntentFromText(ttsText) : null);
       const audioBlob = await requestTtsAudioBlob(ttsText, {
         ...settings,
-        replyEmotion: messageLive2D?.emotion || messageLive2D?.expression,
+        replyEmotion: speechIntent?.emotion || speechIntent?.expression,
         textLang: settings.provider === 'gpt-sovits' ? 'ja' : (settings.textLang || 'auto')
       }, {
         fetchDirect: fetch,

@@ -52,7 +52,7 @@ GPT-SoVITS [api_v2 协议](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/api_
 
 ### Fish Audio 情感语音
 
-Room 设置 → 语音与朗读中，选择「Fish Audio」可使用自己的 Fish API 密钥，默认使用八千代音色 `a746d80afdb5451ca44c63401c001c9b`。高级设置可选 S2.1 Pro、S2 Pro 或 S2.1 Pro Free。可跟随回复的 Live2D 表情、指定某种语气，或关闭情感提示。选择受限代理时只有 Fish 合成所需字段经过网站，直连时由浏览器访问 Fish。两种方式都只允许 Fish 官方 HTTPS 端点。语气在发送合成请求时加入，不进入聊天记录。
+Room 设置 → 语音与朗读中，选择「Fish Audio」可使用自己的 Fish API 密钥，默认使用八千代音色 `a746d80afdb5451ca44c63401c001c9b`。模型选择器支持 Drama 3、S2.1 Pro、S2 Pro、S2.1 Pro Free 和旧版 S1。S1 使用圆括号语气提示，其余模型使用方括号。可跟随回复的 Live2D 表情、指定某种语气，或关闭情感提示。选择受限代理时只有 Fish 合成所需字段经过网站，直连时由浏览器访问 Fish。两种方式都只允许 Fish 官方 HTTPS 端点。语气在发送合成请求时加入，不进入聊天记录。
 
 在原有私有 `official-tts.json` **增加**以下键，即可与现有官方语音并列开放。请由运维私下填写密钥：
 
@@ -65,6 +65,8 @@ Room 设置 → 语音与朗读中，选择「Fish Audio」可使用自己的 Fi
   "OFFICIAL_TTS_FISH_LANGUAGE": "auto"
 }
 ```
+
+网站超级管理员登录后可以在官方 Fish 下选择全部可用模型。普通账户默认仅可选择运维配置的默认模型；如需开放其他型号，可在私有配置中增加 `OFFICIAL_TTS_FISH_MODELS`（逗号分隔的模型 ID）。无付费额度时只列出已允许的免费型号。后端逐次验证账号与模型，模型或语气不同的语音单独缓存。官方 Drama 3 暂未向普通账户开放，本改动未调整网站售价。
 
 官方 Fish 通过免费读取账号额度和已配置音色的元数据检测可用性，实际合成仍按既有钱包流程结算；检查状态不生成语音。不同音源和情感分别缓存，重复播放同一条有效缓存不再次计费。语言 `auto` 直接朗读原文，`ja` 的 Room 聊天沿用先翻译再朗读。若只需以 Fish 作为默认官方音源，可将 `OFFICIAL_TTS_PROTOCOL` 设为 `fish-audio` 并使用对应的无 `FISH_` 前缀配置。
 

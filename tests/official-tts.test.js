@@ -13,7 +13,7 @@ wav.writeUInt16LE(1,20); wav.writeUInt16LE(1,22); wav.writeUInt32LE(32000,24); w
 outbound.fetchPinnedUrl = async (url, options) => {
     calls.push({ url, options });
     if (new URL(url).hostname === 'api.fish.audio') {
-        if (new URL(url).pathname.startsWith('/wallet/')) return Response.json({user_id:'voice-test',credit:'1'});
+        if (new URL(url).pathname.startsWith('/wallet/')) return Response.json({user_id:'voice-test',credit:mode==='no-credit'?'0':'1'});
         if (new URL(url).pathname.startsWith('/model/')) return Response.json({_id:'a'.repeat(32),type:'tts'});
         if (mode === 'bad') return Response.json({error:'upstream'});
         return new Response(Buffer.concat([Buffer.from('ID3'), Buffer.alloc(90)]), {headers:{'Content-Type':'audio/mpeg'}});
@@ -176,4 +176,32 @@ test('personal Fish proxy uses only the supplied key and cannot select another d
     assert.equal(res.status,200);assert.equal(res.headers.get('content-type'),'audio/mpeg');
     assert.equal(calls.at(-1).options.headers.Authorization,'Bearer personal-test');
     assert.equal(JSON.parse(calls.at(-1).options.body).text,'[happy] 你好');
+});
+
+test('Fish model choices follow the authenticated account, engine and available upstream credit', async () => {
+    const all = require('../shared/fish-audio.cjs').models;
+    configure({OFFICIAL_TTS_FISH_ENABLED:true, OFFICIAL_TTS_FISH_API_KEY:'model-test', OFFICIAL_TTS_FISH_VOICE:'a'.repeat(32),
+        OFFICIAL_TTS_FISH_MODELS:'s2.1-pro-free,s2-pro'});
+    const statusPath='/status?engine=fish-audio';
+    assert.deepEqual((await call(statusPath,{user:'guest'})).data.data.models,['s2.1-pro','s2.1-pro-free','s2-pro']);
+    const req={engine:'fish-audio',emotion:'happy',fishModel:'drama-3',requestKey:crypto.randomUUID()};
+    assert.equal((await submit(req,'two')).status,403);
+    db.prepare("UPDATE users SET role='super_admin' WHERE id='one'").run();
+    try {
+        assert.deepEqual((await call(statusPath)).data.data.models,all);
+        for (const model of all) {
+            const requestKey=crypto.randomUUID();
+            const result=await submit({...req,fishModel:model,requestKey});assert.equal(result.status,202,JSON.stringify(result.data));
+            const job=await done(result.data.data.id,'one');assert.equal(job.state,'ready');assert.equal(job.chargedAtoms,'0');
+            const last=calls.findLast(c=>c.url==='https://api.fish.audio/v1/tts');
+            assert.equal(last.options.headers.model,model);
+            assert.equal(JSON.parse(last.options.body).text,model==='s1'?'(happy) こんにちは。':'[happy] こんにちは。');
+            assert.equal((await submit({...req,fishModel:model==='s1'?'s2-pro':'s1',requestKey})).status,409);
+        }
+        mode='no-credit';
+        assert.deepEqual((await call(statusPath)).data.data.models,['s2.1-pro-free']);
+        assert.equal((await submit(req)).status,403);
+    } finally {
+        mode='ready';db.prepare("UPDATE users SET role='user' WHERE id='one'").run();
+    }
 });

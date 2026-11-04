@@ -7,7 +7,8 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
   const account = settings.officialAccount;
   const engine = settings.officialEngine === 'fish-audio' ? 'fish-audio' : '';
   const emotion = engine || settings.supportsEmotion ? fishAudio.resolveStyle(settings.fishStyle, settings.replyEmotion) : '';
-  const cacheText = engine || emotion ? JSON.stringify([account, text, engine, emotion]) : `${account}\n${text}`;
+  const model = engine || settings.supportsEmotion ? settings.officialFishModel || '' : '';
+  const cacheText = engine || emotion || model ? JSON.stringify(model ? [account, text, engine, emotion, model] : [account, text, engine, emotion]) : `${account}\n${text}`;
   const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheText))), b => b.toString(16).padStart(2, '0')).join('');
   if (active.has(fingerprint)) return active.get(fingerprint);
   const run = async () => {
@@ -30,9 +31,10 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
     else {
       const status = await json('/api/tts/official/status' + (engine ? '?engine=fish-audio' : ''));
       if (!status.online) throw new Error('官方语音算力离线，未发起翻译或合成，请稍后重试。');
+      if (model && !status.models?.includes(model)) throw new Error('此官方 Fish Audio 模型暂不可用，请重新选择');
       const prepared = prepareText ? await prepareText(text, status.language) : text;
       if (!prepared?.trim()) throw new Error('语音文本为空，未发起合成。');
-      job = await json('/api/tts/official/jobs', { method: 'POST', body: JSON.stringify({ text: prepared, requestKey: saved.key, ...(engine ? {engine} : {}), ...(emotion && status.supportsEmotion ? {emotion} : {}) }) });
+      job = await json('/api/tts/official/jobs', { method: 'POST', body: JSON.stringify({ text: prepared, requestKey: saved.key, ...(engine ? {engine} : {}), ...(model ? {fishModel:model} : {}), ...(emotion && status.supportsEmotion ? {emotion} : {}) }) });
       saved.jobId = job.id;
       try { sessionStorage.setItem(PREFIX + fingerprint, JSON.stringify(saved)); } catch (_) {}
     }

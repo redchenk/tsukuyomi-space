@@ -2,7 +2,7 @@
 
 const endpoint = 'https://api.fish.audio/v1/tts';
 const yachiyoVoice = 'a746d80afdb5451ca44c63401c001c9b';
-const models = ['s2.1-pro', 's2-pro', 's2.1-pro-free'];
+const models = ['s2.1-pro', 'drama-3', 's2-pro', 's2.1-pro-free', 's1'];
 const styles = {
     happy: '开心', calm: '平静', excited: '兴奋', sad: '难过', angry: '生气', surprised: '惊讶',
     embarrassed: '害羞', proud: '得意', curious: '好奇', empathetic: '体贴', whispering: '轻声'
@@ -23,10 +23,11 @@ function validate(model, voice) {
 function request(text, { apiKey, model = models[0], voice = '', emotion = '' }) {
     validate(model, voice);
     if (!apiKey?.trim()) throw Object.assign(new Error('请填写 Fish Audio API 密钥'), { status: 400 });
+    const cue = validStyle(emotion) ? (model === 's1' ? '(' + emotion + ') ' : '[' + emotion + '] ') : '';
     return {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey.trim(), model },
-        body: JSON.stringify({ text: validStyle(emotion) ? '[' + emotion + '] ' + text : text,
+        body: JSON.stringify({ text: cue + text,
             ...(voice ? { reference_id: voice } : {}), format: 'mp3' })
     };
 }

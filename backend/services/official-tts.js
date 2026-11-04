@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const db = require('../db');
 const config = require('../config');
 const wallet = require('./site-wallet');
+const auth = require('../repositories/auth-repository');
 const { fetchFishAudio } = require('./fish-audio-transport');
 const fishAudio = require('../../shared/fish-audio.cjs');
 const { fetchPinnedUrl } = require('./outbound-url-security');
@@ -18,8 +19,7 @@ const fail = (status, code, message) => { throw Object.assign(new Error(message)
 const probes = new Map();
 let lastSweep = 0;
 
-// Operator-only environment configuration. No endpoint, key, model or reference
-// path is ever accepted from a synthesis request or returned by the status API.
+// The operator owns endpoints, credentials, voices and public model availability.
 function settings(engine = 'default') {
     const env = { ...process.env };
     const file = path.join(config.dataDir, 'official-tts.json');
@@ -39,7 +39,9 @@ function settings(engine = 'default') {
         const language = env[prefix + 'LANGUAGE'] || 'auto';
         if (!key || !voice || !['auto','zh','ja','en','ko','yue'].includes(language)) throw new Error('Missing Fish Audio configuration');
         fishAudio.validate(model, voice);
-        return { engine, protocol: 'fish-audio', endpoint: fishAudio.endpoint, key, voice, model, language };
+        const publicModels = Array.from(new Set([model, ...(env[prefix + 'MODELS'] || '').split(',').map(id => id.trim()).filter(Boolean)]));
+        for (const id of publicModels) fishAudio.validate(id, voice);
+        return { engine, protocol: 'fish-audio', endpoint: fishAudio.endpoint, key, voice, model, publicModels, language };
     }
     const endpoint = new URL(env.OFFICIAL_TTS_URL);
     const protocol = env.OFFICIAL_TTS_PROTOCOL || 'gpt-sovits';
@@ -89,34 +91,32 @@ async function boundedBody(response, max) {
 async function fishReady(cfg) {
     // Read-only probes do not synthesize speech or consume TTS credit.
     const [walletInfo, voice] = await Promise.all(['/wallet/self/api-credit', '/model/' + cfg.voice].map(async path => {
-        const response = await request('https://api.fish.audio' + path, { method: 'GET', signal: AbortSignal.timeout(3500), timeoutMs: 3500 }, cfg);
+        const response = await request('https://api.fish.audio' + path, { method: 'GET', signal: AbortSignal.timeout(8000), timeoutMs: 8000 }, cfg);
         if (!response.ok) { await response.body?.cancel(); throw new Error('Fish Audio unavailable'); }
         return JSON.parse((await boundedBody(response, 128 * 1024)).toString());
     }));
-    return Boolean(walletInfo.user_id && (cfg.model === 's2.1-pro-free' || Number(walletInfo.credit) > 0)
-        && voice._id === cfg.voice && voice.type === 'tts');
+    return { online: Boolean(walletInfo.user_id && voice._id === cfg.voice && voice.type === 'tts'),
+        paid: Number(walletInfo.credit) > 0 };
 }
 function rememberHealth(cfg, online) {
+    if (cfg.protocol === 'fish-audio') { probes.delete(cfg.engine); return; }
     probes.set(cfg.engine, { key: hash(JSON.stringify(cfg)), checkedAt: Date.now(), value: { online, reason: online ? 'ready' : 'offline' } });
 }
-async function status(engine = 'default') {
-    let cfg;
-    try { cfg = settings(engine); } catch (_) { cfg = null; }
-    const base = { price: '0.05', priceAtoms: PRICE, maxCharacters: MAX_TEXT, retentionHours: 24, language: cfg?.language || 'auto', supportsEmotion: cfg?.protocol === 'fish-audio' };
-    if (!cfg) return { ...base, online: false, reason: 'unconfigured', checkedAt: Date.now() };
+async function checkHealth(cfg) {
+    const engine = cfg.engine;
     const key = hash(JSON.stringify(cfg));
     const health = probes.get(engine);
     // Native GPT-SoVITS has no readiness endpoint. A small fixed Japanese phrase
     // validates the configured model/reference, at most once per minute globally.
     // Probes never touch user wallets. Successful real jobs also refresh readiness.
     if (health?.key === key && health.value && (Date.now() - health.checkedAt < (health.value.online ? 60000 : 10000)
-        || db.prepare("SELECT id FROM official_tts_jobs WHERE state='processing'").get())) return { ...base, ...health.value, checkedAt: health.checkedAt };
+        || db.prepare("SELECT id FROM official_tts_jobs WHERE state='processing'").get())) return { ...health.value, checkedAt: health.checkedAt };
     if (health?.key === key && health.promise) return health.promise;
     const promise = (async () => {
-        let online = false;
+        let online = false, paid = false;
         try {
             if (cfg.protocol === 'fish-audio') {
-                online = await fishReady(cfg);
+                ({ online, paid } = await fishReady(cfg));
             } else if (cfg.nativeProbe) {
                 await synthesize('こんにちは。', cfg, 10000);
                 online = true;
@@ -126,13 +126,29 @@ async function status(engine = 'default') {
                 online = response.ok && data.ready === true;
             }
         } catch (_) { /* Fail closed; never expose credentials or upstream diagnostics. */ }
-        const value = { online, reason: online ? 'ready' : 'offline' };
+        const value = { online, paid, reason: online ? 'ready' : 'offline' };
         const checkedAt = Date.now();
         if (probes.get(engine)?.key === key) probes.set(engine, { key, value, checkedAt });
-        return { ...base, ...value, checkedAt };
+        return { ...value, checkedAt };
     })();
     probes.set(engine, { key, promise });
     return promise;
+}
+async function status(engine = 'default', userId) {
+    let cfg;
+    try { cfg = settings(engine); } catch { cfg = null; }
+    return statusFor(cfg, userId);
+}
+async function statusFor(cfg, userId) {
+    const base = { price: '0.05', priceAtoms: PRICE, maxCharacters: MAX_TEXT, retentionHours: 24,
+        language: cfg?.language || 'auto', supportsEmotion: cfg?.protocol === 'fish-audio' };
+    if (!cfg) return { ...base, online: false, reason: 'unconfigured', checkedAt: Date.now() };
+    const { online, paid, reason, checkedAt } = await checkHealth(cfg);
+    if (!base.supportsEmotion) return { ...base, online, reason, checkedAt };
+    const permitted = userId && auth.hasOfficialApiUnlimited(userId) ? fishAudio.models : cfg.publicModels;
+    const models = online ? permitted.filter(id => paid || id === 's2.1-pro-free') : [];
+    const defaultModel = models.includes(cfg.model) ? cfg.model : models[0];
+    return { ...base, online: models.length > 0, reason: models.length ? 'ready' : 'offline', checkedAt, models, defaultModel };
 }
 function audioPath(id) { return path.join(cacheDir, `${id}.audio`); }
 function releaseJob(row) {
@@ -239,12 +255,13 @@ async function synthesize(text, cfg, timeout, emotion = '') {
         return { buffer, contentType };
 }
 async function create(userId, input) {
-    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !['text','requestKey','engine','emotion'].includes(k))) fail(400, 'INVALID_REQUEST', '语音参数无效');
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !['text','requestKey','engine','emotion','fishModel'].includes(k))) fail(400, 'INVALID_REQUEST', '语音参数无效');
     if (typeof input.text !== 'string' || !input.text.trim() || [...input.text].length > MAX_TEXT || !/^[a-zA-Z0-9_-]{16,100}$/.test(input.requestKey || '')) fail(400, 'INVALID_REQUEST', `每条语音最多 ${MAX_TEXT} 字，请提供有效请求编号`);
+    if (input.fishModel !== undefined && !fishAudio.models.includes(input.fishModel)) fail(400, 'INVALID_REQUEST', '不支持的 Fish Audio 模型');
     if ((input.engine !== undefined && input.engine !== 'fish-audio')
         || (input.emotion !== undefined && !fishAudio.validStyle(input.emotion))) fail(400, 'INVALID_REQUEST', '语音音源或情感无效');
     sweep();
-    const text = input.text.trim(), id = `req_voice_${hash(`${userId}:${input.requestKey}`)}`, fingerprint = hash(JSON.stringify({ userId, text, engine: input.engine, emotion: input.emotion }));
+    const text = input.text.trim(), id = `req_voice_${hash(`${userId}:${input.requestKey}`)}`, fingerprint = hash(JSON.stringify({ userId, text, engine: input.engine, emotion: input.emotion, fishModel: input.fishModel }));
     function existing() {
         const row = db.prepare('SELECT * FROM official_tts_jobs WHERE id=? AND user_id=?').get(id, userId);
         if (row && row.fingerprint !== fingerprint) fail(409, 'IDEMPOTENCY_CONFLICT', '请求编号已用于其他语音');
@@ -252,10 +269,17 @@ async function create(userId, input) {
     }
     const old = existing();
     if (old) return view(old);
-    if (!(await status(input.engine)).online) fail(503, 'TTS_OFFLINE', '官方语音算力离线，暂不可使用，未扣费');
-    const cfg = settings(input.engine);
-    if (!cfg) fail(503, 'TTS_OFFLINE', '官方语音暂不可使用，未扣费');
-    if (input.emotion && cfg.protocol !== 'fish-audio') fail(400, 'INVALID_REQUEST', '此音源不支持情感控制');
+    let cfg;
+    try { cfg = settings(input.engine); } catch { cfg = null; }
+    const capacity = await statusFor(cfg, userId);
+    if (!capacity.online) fail(503, 'TTS_OFFLINE', '官方语音算力离线，暂不可使用，未扣费');
+    if (cfg.protocol === 'fish-audio') {
+        const model = input.fishModel || capacity.defaultModel;
+        if (!capacity.models.includes(model)) fail(403, 'MODEL_UNAVAILABLE', '此官方 Fish Audio 模型暂不可用，请重新选择');
+        cfg.model = model;
+    } else if (input.emotion || input.fishModel) {
+        fail(400, 'INVALID_REQUEST', '此音源不支持 Fish Audio 参数');
+    }
     const result = db.transaction(() => {
         const repeated = existing();
         if (repeated) return { row: repeated, fresh: false };

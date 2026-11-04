@@ -1668,6 +1668,7 @@ function applyTtsPreset(name) {
   const connectedUrl = preset.provider === 'gpt-sovits' && isOneclickApiUrl(tts.apiUrl) ? tts.apiUrl : '';
   if (tts.provider !== preset.provider && [tts.provider, preset.provider].includes('fish-audio')) tts.apiKey = '';
   tts.officialEngine = preset.officialEngine || '';
+  tts.officialFishModel = preset.provider === 'official' ? capacityFor(tts.officialEngine).defaultModel || '' : '';
   if (preset.provider === 'fish-audio' || preset.provider === 'official') tts.fishStyle ||= 'auto';
   tts.provider = preset.provider;
   tts.apiUrl = connectedUrl || preset.apiUrl;
@@ -1820,6 +1821,7 @@ function saveTTS(showDialog = true) {
     if (tts.enabled && !props.user?.id) { showToast('请登录后使用官方语音', 'error'); return false; }
     const settings = { enabled: Boolean(tts.enabled), provider: 'official', useProxy: true,
       officialAccount: props.user?.id || '', officialEngine: tts.officialEngine || '', supportsEmotion: Boolean(selectedOfficialTts.value.supportsEmotion),
+      officialFishModel: tts.officialFishModel || selectedOfficialTts.value.defaultModel || '',
       fishStyle: tts.fishStyle, textLang: selectedOfficialTts.value.language || 'auto' };
     if (!persistSettings('roomTTSSettings', settings, '官方语音设置')) return false;
     rememberSaved('tts');
@@ -2997,6 +2999,10 @@ onBeforeUnmount(() => {
                 </option>
               </select></label
             >
+            <label v-if="tts.enabled && fishControls && tts.provider === 'official'">Fish Audio 模型<select name="room-setting-official-fish-model" :value="tts.officialFishModel || selectedOfficialTts.defaultModel" @change="tts.officialFishModel = $event.target.value">
+              <option v-if="tts.officialFishModel && !selectedOfficialTts.models?.includes(tts.officialFishModel)" :value="tts.officialFishModel" disabled>{{ tts.officialFishModel }}</option>
+              <option v-for="id in selectedOfficialTts.models" :key="id" :value="id">{{ id }}</option>
+            </select></label>
             <label v-if="tts.enabled && fishControls">朗读语气<select v-model="tts.fishStyle" name="room-setting-fish-style">
               <option value="auto">跟随八千代表情</option><option value="none">不加情感提示</option>
               <option v-for="(label, value) in fishAudio.styles" :key="value" :value="value">{{ $ui(label) }}</option>
@@ -3015,6 +3021,9 @@ onBeforeUnmount(() => {
                 type="text"
                 placeholder="音色名称或 Voice ID"
             /></label>
+            <label v-if="tts.provider === 'fish-audio'">Fish Audio 模型<select v-model="tts.model" name="room-setting-tts-model">
+              <option v-for="id in fishAudio.models" :key="id" :value="id">{{ id }}</option>
+            </select></label>
             <details class="settings-disclosure">
               <summary>
                 <TsIcon name="sliders" :size="18" /><span
@@ -3029,8 +3038,8 @@ onBeforeUnmount(() => {
                     type="url"
                     spellcheck="false"
                     placeholder="https://…/audio/speech" /></label
-                ><label
-                  >模型名称<select v-if="tts.provider === 'fish-audio'" v-model="tts.model" name="room-setting-tts-model"><option v-for="modelName in fishAudio.models" :key="modelName" :value="modelName">{{ modelName }}</option></select><input v-else autocomplete="off" name="room-setting-tts-model"
+                ><label v-if="tts.provider !== 'fish-audio'"
+                  >模型名称<input autocomplete="off" name="room-setting-tts-model"
                     v-model="tts.model"
                     type="text"
                     placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"
