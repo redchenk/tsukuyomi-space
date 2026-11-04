@@ -1,2 +1,7 @@
 @import url("../../../../assets/css/vue/pages/terminal.css") layer(ts-page);
 @import url("../../../../assets/css/vue/pages/terminal-workspace.css");
+
+.terminal-panel .manager-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin: .25rem 0 1rem; }
+.terminal-panel .manager-tabs button { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .9rem; min-height: 40px; border: 1px solid var(--ts-border); border-radius: 10px; background: transparent; color: var(--ts-text); font: inherit; cursor: pointer; }
+.terminal-panel .manager-tabs button[aria-pressed="true"] { color: var(--ts-accent); border-color: var(--ts-accent); background: var(--ts-surface-soft); font-weight: 600; }
+.terminal-panel .manager-tabs button span { font-size: .78rem; font-variant-numeric: tabular-nums; }
