@@ -92,8 +92,7 @@ jobs:
   check-webkit:
     # Native WebKit provides the closest-to-Safari rendering and media behavior.
     # Keep both existing WebKit projects mandatory alongside Chromium coverage.
-    # Allow a PR to use the standard Intel pool when ARM runners are at capacity.
-    runs-on: "${{ contains(github.event.pull_request.labels.*.name, 'ci: webkit-intel') && 'macos-15-intel' || 'macos-15' }}"
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
