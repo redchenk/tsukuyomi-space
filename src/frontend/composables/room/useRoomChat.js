@@ -528,7 +528,7 @@ async function translateForJapaneseTts(text) {
   const settings = readJson('roomLLMSettings', {});
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
   const useLocalOllama = isOllamaApi(apiUrl);
-  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
+  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama && !isOfficialRoomApi(settings.apiUrl))) {
     throw new Error('请先在 Room 设置中配置 LLM，用于把回复翻译成日文后再播放语音。');
   }
   const systemPrompt = [
@@ -1915,14 +1915,14 @@ export function useRoomChat({ live2d, world, diary = null }) {
         await audio.play().then(playbackBinding.watchPlaybackStart);
         return;
       }
-      const ttsText = settings.provider === 'gpt-sovits' || (settings.provider === 'minimax' && wantsJapaneseTts(settings))
+      const ttsText = settings.provider === 'gpt-sovits' || (['minimax', 'fish-audio'].includes(settings.provider) && wantsJapaneseTts(settings))
         ? await translateForJapaneseTts(text)
         : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
       // Synced history only stores dialogue. Recover the cue for older replies
       // using the same text inference as the stage uses for a new reply.
       const fishVoice = settings.provider === 'fish-audio' || settings.officialEngine === 'fish-audio' || settings.supportsEmotion;
-      const speechIntent = messageLive2D || (fishVoice ? inferLive2DIntentFromText(ttsText) : null);
+      const speechIntent = messageLive2D || (fishVoice ? inferLive2DIntentFromText(text) : null);
       const audioBlob = await requestTtsAudioBlob(ttsText, {
         ...settings,
         replyEmotion: speechIntent?.emotion || speechIntent?.expression,

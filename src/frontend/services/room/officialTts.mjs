@@ -6,9 +6,10 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
   if (!settings.officialAccount || typeof request !== 'function') throw new Error('请登录后重新保存官方语音设置。');
   const account = settings.officialAccount;
   const engine = settings.officialEngine === 'fish-audio' ? 'fish-audio' : '';
-  const emotion = engine || settings.supportsEmotion ? fishAudio.resolveStyle(settings.fishStyle, settings.replyEmotion) : '';
-  const model = engine || settings.supportsEmotion ? settings.officialFishModel || '' : '';
-  const cacheText = engine || emotion || model ? JSON.stringify(model ? [account, text, engine, emotion, model] : [account, text, engine, emotion]) : `${account}\n${text}`;
+  const fish = Boolean(engine || settings.supportsEmotion);
+  const emotion = fish ? fishAudio.resolveStyle(settings.fishStyle, settings.replyEmotion) : '';
+  const model = fish ? settings.officialFishModel || '' : '';
+  const cacheText = fish ? JSON.stringify([account, text, engine, emotion, model, settings.textLang || 'auto']) : `${account}\n${text}`;
   const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheText))), b => b.toString(16).padStart(2, '0')).join('');
   if (active.has(fingerprint)) return active.get(fingerprint);
   const run = async () => {

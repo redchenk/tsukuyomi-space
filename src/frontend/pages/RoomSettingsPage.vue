@@ -107,7 +107,7 @@ const LEGACY_MINIMAX_DEFAULT_VOICE_IDS = ['yachiyo_jp_prompt_20260525c', 'Englis
 const TTS_PRESETS = {
   official: { label: '官方直供 · ¥0.05 / 条', provider: 'official', apiUrl: '', model: '', voice: '', textLang: 'ja', useProxy: true },
   officialFish: { label: '官方直供 · Fish Audio · ¥0.05 / 条', provider: 'official', officialEngine: 'fish-audio', apiUrl: '', model: '', voice: '', textLang: 'auto', useProxy: true },
-  fishAudio: { label: 'Fish Audio', provider: 'fish-audio', apiUrl: fishAudio.endpoint, model: 's2.1-pro', voice: fishAudio.yachiyoVoice, textLang: 'auto', useProxy: true },
+  fishAudio: { label: 'Fish Audio', provider: 'fish-audio', apiUrl: fishAudio.endpoint, model: 's2.1-pro', voice: fishAudio.yachiyoVoice, textLang: 'ja', useProxy: true },
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
@@ -1915,7 +1915,8 @@ async function testTTS() {
   const audioPlayback = primeAsyncAudioPlayback();
   ttsTestPlayback = audioPlayback;
   let objectUrl = '';
-  const testText = tts.provider === 'official' && selectedOfficialTts.value.language === 'ja' ? 'こんにちは。今夜も、月がきれいですね。' : tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
+  const japaneseSample = (tts.provider === 'official' && selectedOfficialTts.value.language === 'ja') || (tts.provider === 'fish-audio' && tts.textLang === 'ja');
+  const testText = japaneseSample ? 'こんにちは。今夜も、月がきれいですね。' : tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
   if (tts.provider === 'official') openTestDialog('tts', 'loading', '官方语音试听', '正在合成八千代语音…', '成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。');
@@ -3021,6 +3022,10 @@ onBeforeUnmount(() => {
                 type="text"
                 placeholder="音色名称或 Voice ID"
             /></label>
+            <label v-if="tts.provider === 'fish-audio'">朗读语言<select v-model="tts.textLang" name="room-setting-fish-language">
+              <option value="ja">日语</option><option value="auto">聊天原文</option>
+            </select></label>
+            <p v-if="tts.provider === 'fish-audio' && tts.textLang === 'ja'" class="field-hint">回复由当前聊天模型翻译成日语后朗读，翻译按该模型的规则计费。</p>
             <label v-if="tts.provider === 'fish-audio'">Fish Audio 模型<select v-model="tts.model" name="room-setting-tts-model">
               <option v-for="id in fishAudio.models" :key="id" :value="id">{{ id }}</option>
             </select></label>

@@ -56,3 +56,18 @@ test('replaying one Fish model reuses its audio; changing models requests distin
     assert.notEqual(posts[0].requestKey,posts[1].requestKey);
     await assert.rejects(requestOfficialTts('你好',{...settings,officialFishModel:'s1'},request),/暂不可用/);
 });
+
+test('Japanese Fish replays its translation and never reuses original-language audio', async () => {
+    const settings={officialAccount:'ja-replay',officialEngine:'fish-audio',officialFishModel:'s2.1-pro-free'};
+    let lang='auto', translations=0;
+    const posts=[];
+    async function request(url, opts) {
+        if(url.includes('/status'))return Response.json({success:true,data:{online:true,language:lang,supportsEmotion:true,models:[settings.officialFishModel]}});
+        if(url.endsWith('/audio'))return new Response('audio');
+        if(opts.method==='POST')posts.push(JSON.parse(opts.body).text);
+        return Response.json({success:true,data:{state:'ready',id:'job-'+posts.length}});
+    }
+    const prepare = (text, target) => { if(target!=='ja')return text; translations++; return 'おかえり。'; };
+    for(lang of ['auto','ja','ja'])await requestOfficialTts('欢迎回来',{...settings,textLang:lang},request,prepare);
+    assert.deepEqual(posts,['欢迎回来','おかえり。']);assert.equal(translations,1);
+});

@@ -64,6 +64,7 @@ test('Fish settings keep a personal voice distinct from official Fish', async ({
     await page.getByRole('navigation',{name:'设置分类'}).getByRole('button',{name:'语音与朗读 可选',exact:true}).click();
     await providers.selectOption('fishAudio');
     await expect(card.locator('[name="room-setting-tts-voice"]')).toHaveValue('a746d80afdb5451ca44c63401c001c9b');
+    await expect(card.locator('[name="room-setting-fish-language"]')).toHaveValue('ja');
     const fishModels=card.locator('[name="room-setting-tts-model"]');
     await expect(fishModels.locator('option')).toHaveCount(5);
     await fishModels.selectOption('drama-3');
@@ -73,7 +74,7 @@ test('Fish settings keep a personal voice distinct from official Fish', async ({
     await page.route('**/api/tts',route=>{ sent=route.request().postDataJSON(); return route.fulfill({status:401,json:{message:'测试密钥'}}); });
     await card.getByRole('button',{name:'保存并试听',exact:true}).click();
     await expect.poll(()=>sent?.emotion).toBe('calm');
-    expect(sent).toMatchObject({provider:'fish-audio',apiKey:'personal-fixture',model:'drama-3'});
+    expect(sent).toMatchObject({provider:'fish-audio',apiKey:'personal-fixture',model:'drama-3',text:'こんにちは。今夜も、月がきれいですね。'});
     await page.getByRole('dialog').getByRole('button',{name:'关闭',exact:true}).click();
     await providers.selectOption('officialFish');
     await card.locator('[name="room-setting-official-fish-model"]').selectOption('drama-3');
@@ -89,7 +90,7 @@ test('Room play sends the saved Fish model and expression, without changing the 
     await configureRoomFixture(page);
     await page.addInitScript(() => {
         localStorage.setItem('roomTTSSettings', JSON.stringify({enabled:true,provider:'fish-audio',apiKey:'personal-fixture',
-            model:'drama-3',voice:'a746d80afdb5451ca44c63401c001c9b',fishStyle:'auto',useProxy:false}));
+            model:'drama-3',voice:'a746d80afdb5451ca44c63401c001c9b',fishStyle:'auto',textLang:'ja',useProxy:false}));
         localStorage.setItem('roomChatHistory:guest', JSON.stringify([
             {id:'fish-room',role:'assistant',content:'这场演出真开心！'}
         ]));
@@ -98,7 +99,11 @@ test('Room play sends the saved Fish model and expression, without changing the 
             return Promise.resolve();
         };
     });
-    let sent, model;
+    let sent, model, source;
+    await page.route('**/api/chat', route => {
+        source=route.request().postDataJSON().message;
+        return route.fulfill({json:{success:true,data:{reply:'この舞台、本当に楽しいね！'}}});
+    });
     await page.route('https://api.fish.audio/v1/tts', route => {
         sent=route.request().postDataJSON();model=route.request().headers().model;
         return route.fulfill({status:200,contentType:'audio/mpeg',body:Buffer.from('ID3fixture-audio')});
@@ -108,7 +113,8 @@ test('Room play sends the saved Fish model and expression, without changing the 
     const actions=reply.locator('details');
     if (!await actions.evaluate(el => el.open)) await actions.locator('summary').click();
     await reply.getByRole('button',{name:'播放语音',exact:true}).click();
-    await expect.poll(()=>sent?.text).toBe('[happy] 这场演出真开心！');
+    await expect.poll(()=>sent?.text).toBe('[happy] この舞台、本当に楽しいね！');
+    expect(source).toBe('这场演出真开心！');
     expect(model).toBe('drama-3');expect(sent.reference_id).toBe('a746d80afdb5451ca44c63401c001c9b');
     await expect.poll(()=>page.evaluate(()=>Boolean(window.__fishPlayed))).toBe(true);
     await expect(reply).not.toContainText('[happy]');
