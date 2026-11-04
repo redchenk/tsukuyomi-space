@@ -7,6 +7,7 @@ import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
 import PaymentManager from '../components/terminal/PaymentManager.vue';
 import MailCampaignManager from '../components/terminal/MailCampaignManager.vue';
+import OfficialServicesManager from '../components/terminal/OfficialServicesManager.vue';
 import OfficialUsagePanel from '../components/terminal/OfficialUsagePanel.vue';
 import { formatDateTime } from '../utils/time';
 import { uiText } from '../i18n/runtime';
@@ -24,6 +25,7 @@ const panels = [
   { id: 'account', label: '账号安全', icon: 'shield', code: '07', group: '系统', desc: '当前管理员安全设置' },
   { id: 'notifications', label: '通知设置', icon: 'bell', code: '08', group: '系统', desc: '审核提醒与邮件通知偏好' },
   { id: 'settings', label: '设置', icon: 'settings', code: '09', group: '系统', desc: '站点、备案和对象存储' },
+  { id: 'official-services', label: '官方 AI 服务', icon: 'audioLines', code: '12', group: '系统', desc: '管理站内语言模型、语音合成和调用记录' },
   { id: 'payments', label: '支付与订单', icon: 'shield', code: '10', group: '系统', desc: '收款开关、商品和支付宝订单' },
   { id: 'mail', label: '发送邮件', icon: 'send', code: '11', group: '系统', desc: '自定义邮件、筛选收件人和查看群发进度' }
 ];
@@ -40,6 +42,7 @@ const terminal = reactive({
   loadError: '',
   notificationSaving: false,
   paymentsRevision: 0,
+  servicesRevision: 0,
   mailRevision: 0,
   analyticsRevision: 0,
   mailConfigured: false,
@@ -165,7 +168,7 @@ const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin' && !terminal.siteSession);
 const visiblePanels = computed(() => terminal.siteSession
   ? panels.filter((panel) => ['articles', 'messages', 'notifications'].includes(panel.id))
-  : panels.filter(panel => !['payments', 'mail'].includes(panel.id) || canManageAccounts.value));
+  : panels.filter(panel => !['payments', 'mail', 'official-services'].includes(panel.id) || canManageAccounts.value));
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
   .map((group) => ({ group, items: visiblePanels.value.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
@@ -398,7 +401,7 @@ async function logout() {
 
 function initialPanel(fallback) {
   const panel = new URLSearchParams(window.location.search).get('panel');
-  return ['messages', 'notifications', 'analytics', ...(canManageAccounts.value ? ['mail'] : [])].includes(panel) ? panel : fallback;
+  return ['messages', 'notifications', 'analytics', ...(canManageAccounts.value ? ['mail','payments','official-services'] : [])].includes(panel) ? panel : fallback;
 }
 
 async function loadPanel(panel = terminal.activePanel) {
@@ -415,6 +418,7 @@ async function loadPanel(panel = terminal.activePanel) {
     return data;
   };
   terminal.activePanel = panel;
+  if (panel === 'official-services') terminal.servicesRevision += 1;
   if (panel === 'payments') terminal.paymentsRevision += 1;
   if (panel === 'mail') terminal.mailRevision += 1;
   if (panel === 'analytics') terminal.analyticsRevision += 1;
@@ -1022,6 +1026,7 @@ onUnmounted(() => {
               <button v-if="terminal.activePanel === 'notifications'" class="primary-btn" type="button" :disabled="terminal.notificationSaving" @click="saveNotificationSettings"><TsIcon name="bookmark" :size="16" />{{ terminal.notificationSaving ? '保存中' : '保存通知设置' }}</button>
             </div>
           </div>
+          <OfficialServicesManager v-if="terminal.activePanel === 'official-services' && canManageAccounts" :request="adminApi" :revision="terminal.servicesRevision" />
           <PaymentManager v-if="terminal.activePanel === 'payments' && canManageAccounts" :key="terminal.paymentsRevision" />
           <p v-if="terminal.activePanel === 'mail' && canManageAccounts"><RouterLink to="/admin/play-testing">Google Play 测试申请 · 查看名单与导出</RouterLink> · <RouterLink to="/apply">报名页 /apply（可用于邮件按钮）</RouterLink></p>
           <MailCampaignManager v-if="terminal.activePanel === 'mail' && canManageAccounts" :request="adminApi" :revision="terminal.mailRevision" />

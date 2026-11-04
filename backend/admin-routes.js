@@ -252,6 +252,7 @@ router.use(authenticateToken);
 router.use(requireAdmin);
 router.use('/play-testing', require('./routes/play-testing').adminRouter);
 router.use('/mail-campaigns', require('./routes/mail-campaigns'));
+router.use('/official-services', require('./routes/official-services-admin'));
 router.use('/payments', require('./routes/payments').adminRouter);
 router.use('/notification-preferences', require('./routes/moderation-notification-settings'));
 router.use('/article-categories', require('./routes/article-categories').managementRouter);

@@ -121,6 +121,7 @@ function createApp() {
     app.use('/api/knowledge', strictJson('4kb'));
     app.use('/api/payments', strictJson('8kb'));
     app.use('/api/admin/payments', strictJson('32kb'));
+    app.use('/api/admin/official-services', strictJson('32kb'));
     app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
     app.use('/api/room/models', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 24, keyPrefix: 'room-models' }));
     app.use('/api/growth', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 120, keyPrefix: 'growth' }));

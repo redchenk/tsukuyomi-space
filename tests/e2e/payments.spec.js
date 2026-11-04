@@ -64,6 +64,8 @@ test('Terminal configures the toggle and products without accepting credentials'
   await authenticate(page, true);
   await page.goto('/terminal');
   await page.getByRole('button', { name: '支付与订单', exact: true }).click();
+  await expect(page.getByRole('heading', { name:'支付订单', exact:true })).toBeVisible();
+  await page.getByRole('button', { name:/商品与收款/ }).click();
   await expect(page.getByText('服务器支付配置已就绪', { exact: false })).toBeVisible();
   await expect(page.getByLabel('开启在线收款', { exact: true })).not.toBeChecked();
   await page.getByRole('button', { name: '添加商品', exact: true }).click();

@@ -3,7 +3,6 @@ import { translateFeedback } from '../i18n/runtime';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { assertDashboardAccount, moneyAtoms, officialRequest, usageStatus } from '../services/official-service.mjs';
 import { formatDateTime } from '../utils/time';
-import OfficialServiceSettings from './OfficialServiceSettings.vue';
 
 const props = defineProps({ siteUserId: { type: String, required: true } });
 const emit = defineEmits(['wallet-updated']);
@@ -99,5 +98,5 @@ defineExpose({ reload: load });
     </ol>
     <button v-if="usage?.next_cursor" type="button" class="ghost-btn" :disabled="moreBusy" @click="more">{{ moreBusy ? '读取中…' : '加载更多记录' }}</button>
   </section>
-  <OfficialServiceSettings v-if="dashboard?.me.operator" :key="account" :account="account" @updated="load" />
+  <RouterLink v-if="dashboard?.me.operator" class="ghost-btn" to="/terminal?panel=official-services">管理站内 LLM 与 TTS</RouterLink>
 </template>

@@ -3,6 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const db = require('../db');
 const config = require('../config');
+const { settings } = require('./official-tts-settings');
 const wallet = require('./site-wallet');
 const auth = require('../repositories/auth-repository');
 const { fetchFishAudio } = require('./fish-audio-transport');
@@ -19,51 +20,6 @@ const fail = (status, code, message) => { throw Object.assign(new Error(message)
 const probes = new Map();
 let lastSweep = 0;
 
-// The operator owns endpoints, credentials, voices and public model availability.
-function settings(engine = 'default') {
-    const env = { ...process.env };
-    const file = path.join(config.dataDir, 'official-tts.json');
-    if (fs.existsSync(file)) {
-        const stat = fs.lstatSync(file);
-        if (!stat.isFile() || stat.isSymbolicLink() || stat.mode & 0o077 || stat.size > 16384) throw new Error('Unsafe configuration');
-        const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
-        for (const [key,value] of Object.entries(stored)) if (key.startsWith('OFFICIAL_TTS_')) env[key] = String(value);
-    }
-    const alternate = engine === 'fish-audio';
-    const prefix = alternate ? 'OFFICIAL_TTS_FISH_' : 'OFFICIAL_TTS_';
-    if (env[prefix + 'ENABLED'] !== 'true') return null;
-    if (alternate || env.OFFICIAL_TTS_PROTOCOL === 'fish-audio') {
-        const voice = (env[prefix + 'VOICE'] || fishAudio.yachiyoVoice).trim();
-        const model = env[prefix + 'MODEL'] || fishAudio.models[0];
-        const key = (env[prefix + 'API_KEY'] || '').trim();
-        const language = env[prefix + 'LANGUAGE'] || 'auto';
-        if (!key || !voice || !['auto','zh','ja','en','ko','yue'].includes(language)) throw new Error('Missing Fish Audio configuration');
-        fishAudio.validate(model, voice);
-        const publicModels = Array.from(new Set([model, ...(env[prefix + 'MODELS'] || '').split(',').map(id => id.trim()).filter(Boolean)]));
-        for (const id of publicModels) fishAudio.validate(id, voice);
-        return { engine, protocol: 'fish-audio', endpoint: fishAudio.endpoint, key, voice, model, publicModels, language };
-    }
-    const endpoint = new URL(env.OFFICIAL_TTS_URL);
-    const protocol = env.OFFICIAL_TTS_PROTOCOL || 'gpt-sovits';
-    const healthUrl = new URL(env.OFFICIAL_TTS_HEALTH_URL || endpoint.href);
-    for (const url of [endpoint, healthUrl]) {
-        if (url.username || url.password || url.search || url.hash || !['https:', 'http:'].includes(url.protocol)) throw new Error('Invalid TTS configuration');
-        // Plain HTTP is only for a deliberately provisioned local tunnel.
-        if (url.protocol === 'http:' && !['127.0.0.1', '[::1]'].includes(url.hostname) && env.OFFICIAL_TTS_ALLOW_HTTP !== 'true') throw new Error('HTTPS required');
-    }
-    if (healthUrl.origin !== endpoint.origin || !['gpt-sovits', 'openai'].includes(protocol)) throw new Error('Invalid TTS configuration');
-    const key = env.OFFICIAL_TTS_API_KEY || '';
-    if (endpoint.protocol === 'http:' && key && !['127.0.0.1','[::1]'].includes(endpoint.hostname)) throw new Error('Do not send keys over public HTTP');
-    const language = env.OFFICIAL_TTS_LANGUAGE || 'auto';
-    if (!['auto','zh','ja','en','ko','yue'].includes(language)) throw new Error('Invalid language');
-    const reference = env.OFFICIAL_TTS_REF_AUDIO_PATH || '';
-    if (protocol === 'gpt-sovits' && !reference) throw new Error('Missing reference audio');
-    return { engine, endpoint: endpoint.href, healthUrl: healthUrl.href, protocol, key, language, reference,
-        nativeProbe: protocol === 'gpt-sovits' && !env.OFFICIAL_TTS_HEALTH_URL,
-        gptWeight: env.OFFICIAL_TTS_GPT_WEIGHT_PATH || '', sovitsWeight: env.OFFICIAL_TTS_SOVITS_WEIGHT_PATH || '',
-        promptText: env.OFFICIAL_TTS_PROMPT_TEXT || '', promptLang: env.OFFICIAL_TTS_PROMPT_LANG || 'ja',
-        model: env.OFFICIAL_TTS_MODEL || 'tts-1', voice: env.OFFICIAL_TTS_VOICE || 'alloy' };
-}
 
 async function request(url, options, cfg) {
     const opts = { ...options, redirect: 'error', headers: { ...options.headers, ...(cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {}) } };
