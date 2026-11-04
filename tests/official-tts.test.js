@@ -12,6 +12,12 @@ wav.write('RIFF'); wav.writeUInt32LE(92,4); wav.write('WAVE',8); wav.write('fmt 
 wav.writeUInt16LE(1,20); wav.writeUInt16LE(1,22); wav.writeUInt32LE(32000,24); wav.writeUInt32LE(64000,28); wav.writeUInt16LE(2,32); wav.writeUInt16LE(16,34); wav.write('data',36); wav.writeUInt32LE(56,40);
 outbound.fetchPinnedUrl = async (url, options) => {
     calls.push({ url, options });
+    if (new URL(url).hostname === 'api.fish.audio') {
+        if (new URL(url).pathname.startsWith('/wallet/')) return Response.json({user_id:'voice-test',credit:'1'});
+        if (new URL(url).pathname.startsWith('/model/')) return Response.json({_id:'a'.repeat(32),type:'tts'});
+        if (mode === 'bad') return Response.json({error:'upstream'});
+        return new Response(Buffer.concat([Buffer.from('ID3'), Buffer.alloc(90)]), {headers:{'Content-Type':'audio/mpeg'}});
+    }
     if (new URL(url).pathname === '/health') return new Response(JSON.stringify({ ready: mode !== 'offline' }), { headers: { 'Content-Type': 'application/json' } });
     if (new URL(url).pathname.startsWith('/set_')) return new Response('{"message":"success"}');
     if (mode === 'pending') await new Promise(resolve => { releaseResponse = resolve; });
@@ -137,4 +143,37 @@ test('voice failure policy cannot release token-billed requests', () => {
     assert.throws(() => wallet.ledger.releaseWithNoConsumptionProof({ request_id, request_fingerprint,
         verified_no_consumption:true, reason:'voice_not_deliverable',proof_ref:'test' }), /only to fixed-price voice/);
     wallet.release({ request_id, request_fingerprint, reason:'cancelled_before_dispatch',proof_ref:'test' });
+});
+
+test('optional official Fish uses server credentials, emotion-aware idempotency and the existing wallet', async () => {
+    configure({OFFICIAL_TTS_FISH_ENABLED:true, OFFICIAL_TTS_FISH_API_KEY:'server-test-key', OFFICIAL_TTS_FISH_VOICE:'a'.repeat(32)});
+    const begin=calls.length; const fish=await call('/status?engine=fish-audio');
+    assert.equal(fish.data.data.online,true);assert.equal(fish.data.data.supportsEmotion,true);
+    assert.ok(calls.slice(begin).every(c=>c.options.method==='GET'));assert.ok(!JSON.stringify(fish.data.data).includes('server-test-key'));
+    const balance=BigInt(wallet.wallet('two').balance_atoms);const requestKey=crypto.randomUUID();
+    const args={engine:'fish-audio',emotion:'happy',requestKey};
+    const job=await submit(args,'two');assert.equal(job.status,202,JSON.stringify(job.data));assert.equal((await done(job.data.data.id,'two')).state,'ready');
+    const posted=calls.findLast(c=>c.url==='https://api.fish.audio/v1/tts');assert.equal(posted.options.headers.Authorization,'Bearer server-test-key');
+    assert.equal(posted.options.headers.model,'s2.1-pro');assert.equal(JSON.parse(posted.options.body).text,'[happy] こんにちは。');
+    assert.equal((await submit(args,'two')).data.data.id,job.data.data.id);
+    assert.equal((await submit({...args,emotion:'sad'},'two')).status,409);
+    assert.equal((await submit({...args,engine:'evil'},'two')).status,400);
+    assert.equal((await submit({...args,emotion:'happy] bad'},'two')).status,400);
+    assert.equal(BigInt(wallet.wallet('two').balance_atoms),balance - 50000000n);
+    mode='bad'; const failed=await submit({...args,requestKey:crypto.randomUUID()},'two');
+    assert.equal((await done(failed.data.data.id,'two')).state,'failed');assert.equal(BigInt(wallet.wallet('two').balance_atoms),balance - 50000000n);
+    mode='ready';
+});
+
+test('personal Fish proxy uses only the supplied key and cannot select another destination', async () => {
+    const post = body => fetch(base + '/api/tts', {method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest',Origin:base},body:JSON.stringify(body)});
+    const input = {provider:'fish-audio',text:'你好',model:'s2-pro',voice:'a'.repeat(32),emotion:'happy'};
+    const before=calls.length;
+    assert.equal((await post(input)).status,400);
+    assert.equal((await post({...input,apiKey:'personal-test',apiUrl:'https://example.com/tts'})).status,400);
+    assert.equal(calls.length,before);
+    const res=await post({...input,apiKey:'personal-test'});
+    assert.equal(res.status,200);assert.equal(res.headers.get('content-type'),'audio/mpeg');
+    assert.equal(calls.at(-1).options.headers.Authorization,'Bearer personal-test');
+    assert.equal(JSON.parse(calls.at(-1).options.body).text,'[happy] 你好');
 });

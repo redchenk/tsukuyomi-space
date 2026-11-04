@@ -1,6 +1,8 @@
+import fishAudio from '../../../../shared/fish-audio.cjs';
 const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
 
 function defaultTtsUrl(provider) {
+  if (provider === 'fish-audio') return fishAudio.endpoint;
   if (provider === 'gpt-sovits') return 'http://localhost:9880/tts';
   if (provider === 'openai' || provider === 'openai-compatible' || provider === 'custom') {
     return 'https://api.openai.com/v1/audio/speech';
@@ -86,6 +88,11 @@ function makeAudioBlobFromEncoded(value, type) {
 export function buildDirectTtsRequest(text, settings = {}) {
   const provider = settings.provider || 'mimo';
   const apiUrl = String(settings.apiUrl || defaultTtsUrl(provider)).trim();
+  if (provider === 'fish-audio') {
+    if (apiUrl !== fishAudio.endpoint) throw new Error('Fish Audio 仅支持官方语音端点');
+    return { apiUrl, options: fishAudio.request(String(text), { ...settings,
+      emotion: fishAudio.resolveStyle(settings.fishStyle, settings.replyEmotion) }) };
+  }
   const voice = settings.voice || (provider === 'minimax'
     ? MINIMAX_DEFAULT_VOICE_ID
     : provider === 'openai' || provider === 'openai-compatible' || provider === 'custom'
@@ -199,7 +206,10 @@ export async function requestTtsAudioBlob(text, settings = {}, transports = {}) 
     response = await fetchProxy('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...settings, text })
+      body: JSON.stringify(settings.provider === 'fish-audio'
+        ? { provider: 'fish-audio', apiKey: settings.apiKey, model: settings.model, voice: settings.voice, text,
+            emotion: fishAudio.resolveStyle(settings.fishStyle, settings.replyEmotion) }
+        : { ...settings, text })
     });
   } else {
     if (typeof fetchDirect !== 'function') throw new Error('Direct TTS transport is unavailable');
@@ -207,5 +217,10 @@ export async function requestTtsAudioBlob(text, settings = {}, transports = {}) 
   }
 
   if (!response.ok) throw new Error(await responseError(response));
+  if (settings.provider === 'fish-audio') {
+    const blob = await response.blob();
+    if (!fishAudio.isMp3(new Uint8Array(await blob.slice(0, 4).arrayBuffer()))) throw new Error('Fish Audio 未返回有效的 MP3 音频');
+    return blob.slice(0, blob.size, 'audio/mpeg');
+  }
   return responseToAudioBlob(response, useProxy ? '' : directRequest.jsonAudioType);
 }

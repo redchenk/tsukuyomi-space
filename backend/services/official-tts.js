@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 const db = require('../db');
 const config = require('../config');
 const wallet = require('./site-wallet');
+const { fetchFishAudio } = require('./fish-audio-transport');
+const fishAudio = require('../../shared/fish-audio.cjs');
 const { fetchPinnedUrl } = require('./outbound-url-security');
 
 const PRICE = '50000000'; // CNY 0.05, in the site's existing 10^-9 yuan units.
@@ -13,11 +15,12 @@ const TIMEOUT = 90000, LEASE = 150000;
 const cacheDir = path.join(config.dataDir, 'private-official-tts');
 const hash = text => crypto.createHash('sha256').update(text).digest('hex');
 const fail = (status, code, message) => { throw Object.assign(new Error(message), { status, code }); };
-let health = null, healthPending = null, lastSweep = 0;
+const probes = new Map();
+let lastSweep = 0;
 
 // Operator-only environment configuration. No endpoint, key, model or reference
 // path is ever accepted from a synthesis request or returned by the status API.
-function settings() {
+function settings(engine = 'default') {
     const env = { ...process.env };
     const file = path.join(config.dataDir, 'official-tts.json');
     if (fs.existsSync(file)) {
@@ -26,7 +29,18 @@ function settings() {
         const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
         for (const [key,value] of Object.entries(stored)) if (key.startsWith('OFFICIAL_TTS_')) env[key] = String(value);
     }
-    if (env.OFFICIAL_TTS_ENABLED !== 'true') return null;
+    const alternate = engine === 'fish-audio';
+    const prefix = alternate ? 'OFFICIAL_TTS_FISH_' : 'OFFICIAL_TTS_';
+    if (env[prefix + 'ENABLED'] !== 'true') return null;
+    if (alternate || env.OFFICIAL_TTS_PROTOCOL === 'fish-audio') {
+        const voice = (env[prefix + 'VOICE'] || fishAudio.yachiyoVoice).trim();
+        const model = env[prefix + 'MODEL'] || fishAudio.models[0];
+        const key = (env[prefix + 'API_KEY'] || '').trim();
+        const language = env[prefix + 'LANGUAGE'] || 'auto';
+        if (!key || !voice || !['auto','zh','ja','en','ko','yue'].includes(language)) throw new Error('Missing Fish Audio configuration');
+        fishAudio.validate(model, voice);
+        return { engine, protocol: 'fish-audio', endpoint: fishAudio.endpoint, key, voice, model, language };
+    }
     const endpoint = new URL(env.OFFICIAL_TTS_URL);
     const protocol = env.OFFICIAL_TTS_PROTOCOL || 'gpt-sovits';
     const healthUrl = new URL(env.OFFICIAL_TTS_HEALTH_URL || endpoint.href);
@@ -42,7 +56,7 @@ function settings() {
     if (!['auto','zh','ja','en','ko','yue'].includes(language)) throw new Error('Invalid language');
     const reference = env.OFFICIAL_TTS_REF_AUDIO_PATH || '';
     if (protocol === 'gpt-sovits' && !reference) throw new Error('Missing reference audio');
-    return { endpoint: endpoint.href, healthUrl: healthUrl.href, protocol, key, language, reference,
+    return { engine, endpoint: endpoint.href, healthUrl: healthUrl.href, protocol, key, language, reference,
         nativeProbe: protocol === 'gpt-sovits' && !env.OFFICIAL_TTS_HEALTH_URL,
         gptWeight: env.OFFICIAL_TTS_GPT_WEIGHT_PATH || '', sovitsWeight: env.OFFICIAL_TTS_SOVITS_WEIGHT_PATH || '',
         promptText: env.OFFICIAL_TTS_PROMPT_TEXT || '', promptLang: env.OFFICIAL_TTS_PROMPT_LANG || 'ja',
@@ -51,6 +65,7 @@ function settings() {
 
 async function request(url, options, cfg) {
     const opts = { ...options, redirect: 'error', headers: { ...options.headers, ...(cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {}) } };
+    if (cfg.protocol === 'fish-audio') return fetchFishAudio(url, opts);
     // Only the operator-configured loopback tunnel bypasses public DNS pinning.
     if (['127.0.0.1','[::1]'].includes(new URL(url).hostname)) return fetch(url, opts);
     return fetchPinnedUrl(url, { ...opts, protocols: ['https:', 'http:'], timeoutMs: options.timeoutMs || TIMEOUT });
@@ -71,38 +86,53 @@ async function boundedBody(response, max) {
     } finally { await reader.cancel().catch(() => {}); }
     return Buffer.concat(chunks, size);
 }
-async function status() {
+async function fishReady(cfg) {
+    // Read-only probes do not synthesize speech or consume TTS credit.
+    const [walletInfo, voice] = await Promise.all(['/wallet/self/api-credit', '/model/' + cfg.voice].map(async path => {
+        const response = await request('https://api.fish.audio' + path, { method: 'GET', signal: AbortSignal.timeout(3500), timeoutMs: 3500 }, cfg);
+        if (!response.ok) { await response.body?.cancel(); throw new Error('Fish Audio unavailable'); }
+        return JSON.parse((await boundedBody(response, 128 * 1024)).toString());
+    }));
+    return Boolean(walletInfo.user_id && (cfg.model === 's2.1-pro-free' || Number(walletInfo.credit) > 0)
+        && voice._id === cfg.voice && voice.type === 'tts');
+}
+function rememberHealth(cfg, online) {
+    probes.set(cfg.engine, { key: hash(JSON.stringify(cfg)), checkedAt: Date.now(), value: { online, reason: online ? 'ready' : 'offline' } });
+}
+async function status(engine = 'default') {
     let cfg;
-    try { cfg = settings(); } catch (_) { cfg = null; }
-    const base = { price: '0.05', priceAtoms: PRICE, maxCharacters: MAX_TEXT, retentionHours: 24, language: cfg?.language || 'auto' };
+    try { cfg = settings(engine); } catch (_) { cfg = null; }
+    const base = { price: '0.05', priceAtoms: PRICE, maxCharacters: MAX_TEXT, retentionHours: 24, language: cfg?.language || 'auto', supportsEmotion: cfg?.protocol === 'fish-audio' };
     if (!cfg) return { ...base, online: false, reason: 'unconfigured', checkedAt: Date.now() };
     const key = hash(JSON.stringify(cfg));
+    const health = probes.get(engine);
     // Native GPT-SoVITS has no readiness endpoint. A small fixed Japanese phrase
     // validates the configured model/reference, at most once per minute globally.
     // Probes never touch user wallets. Successful real jobs also refresh readiness.
-    if (health?.key === key && (Date.now() - health.checkedAt < (health.value.online ? 60000 : 10000)
+    if (health?.key === key && health.value && (Date.now() - health.checkedAt < (health.value.online ? 60000 : 10000)
         || db.prepare("SELECT id FROM official_tts_jobs WHERE state='processing'").get())) return { ...base, ...health.value, checkedAt: health.checkedAt };
-    if (!healthPending || healthPending.key !== key) {
-        const promise = (async () => {
-            let online = false;
-            try {
-                if (cfg.nativeProbe) {
-                    await synthesize('こんにちは。', cfg, 10000);
-                    online = true;
-                } else {
-                    const response = await request(cfg.healthUrl, { method: 'GET', signal: AbortSignal.timeout(3000), timeoutMs: 3000 }, cfg);
-                    const data = JSON.parse((await boundedBody(response, 4096)).toString());
-                    online = response.ok && data.ready === true;
-                }
-            } catch (_) { /* Fail closed; never expose credentials or upstream diagnostics. */ }
-            const value = { online, reason: online ? 'ready' : 'offline' };
-            health = { key, value, checkedAt: Date.now() };
-            return { ...base, ...value, checkedAt: health.checkedAt };
-        })();
-        healthPending = { key, promise };
-        promise.finally(() => { if (healthPending?.promise === promise) healthPending = null; });
-    }
-    return healthPending.promise;
+    if (health?.key === key && health.promise) return health.promise;
+    const promise = (async () => {
+        let online = false;
+        try {
+            if (cfg.protocol === 'fish-audio') {
+                online = await fishReady(cfg);
+            } else if (cfg.nativeProbe) {
+                await synthesize('こんにちは。', cfg, 10000);
+                online = true;
+            } else {
+                const response = await request(cfg.healthUrl, { method: 'GET', signal: AbortSignal.timeout(3000), timeoutMs: 3000 }, cfg);
+                const data = JSON.parse((await boundedBody(response, 4096)).toString());
+                online = response.ok && data.ready === true;
+            }
+        } catch (_) { /* Fail closed; never expose credentials or upstream diagnostics. */ }
+        const value = { online, reason: online ? 'ready' : 'offline' };
+        const checkedAt = Date.now();
+        if (probes.get(engine)?.key === key) probes.set(engine, { key, value, checkedAt });
+        return { ...base, ...value, checkedAt };
+    })();
+    probes.set(engine, { key, promise });
+    return promise;
 }
 function audioPath(id) { return path.join(cacheDir, `${id}.audio`); }
 function releaseJob(row) {
@@ -154,9 +184,9 @@ function audioType(buffer) {
     if (buffer.toString('ascii', 0, 4) === 'OggS') return 'audio/ogg';
     throw new Error('Invalid audio');
 }
-async function perform(row, text, cfg) {
+async function perform(row, text, cfg, emotion) {
     try {
-        const { buffer, contentType } = await synthesize(text, cfg, TIMEOUT);
+        const { buffer, contentType } = await synthesize(text, cfg, TIMEOUT, emotion);
         fs.mkdirSync(cacheDir, { recursive: true, mode: 0o700 });
         const fd = fs.openSync(audioPath(row.id), 'wx', 0o600);
         try { fs.writeFileSync(fd, buffer); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
@@ -172,14 +202,22 @@ async function perform(row, text, cfg) {
             db.prepare("UPDATE official_tts_jobs SET state='ready',content_type=?,audio_bytes=?,updated_at=? WHERE id=?")
                 .run(contentType, buffer.length, Date.now(), row.id);
         }).immediate();
-        health = { key: hash(JSON.stringify(cfg)), value: { online: true, reason: 'ready' }, checkedAt: Date.now() };
+        rememberHealth(cfg, true);
     } catch (_) {
-        health = { key: hash(JSON.stringify(cfg)), value: { online: false, reason: 'offline' }, checkedAt: Date.now() };
+        rememberHealth(cfg, false);
         try { releaseJob(row); } catch (_) { console.error('Official TTS recovery required:', row.id); }
     }
 }
-async function synthesize(text, cfg, timeout) {
+async function synthesize(text, cfg, timeout, emotion = '') {
         const signal = AbortSignal.timeout(timeout);
+        if (cfg.protocol === 'fish-audio') {
+            const options = fishAudio.request(text, { apiKey: cfg.key, model: cfg.model, voice: cfg.voice, emotion });
+            const response = await request(cfg.endpoint, { ...options, signal, timeoutMs: timeout }, cfg);
+            if (!response.ok) { await response.body?.cancel(); throw new Error('Provider unavailable'); }
+            const buffer = await boundedBody(response, MAX_AUDIO);
+            if (!fishAudio.isMp3(buffer)) throw new Error('Invalid Fish Audio response');
+            return { buffer, contentType: 'audio/mpeg' };
+        }
         if (cfg.protocol === 'gpt-sovits') {
             for (const [route, weights] of [['set_gpt_weights', cfg.gptWeight], ['set_sovits_weights', cfg.sovitsWeight]]) {
                 if (!weights) continue;
@@ -201,10 +239,12 @@ async function synthesize(text, cfg, timeout) {
         return { buffer, contentType };
 }
 async function create(userId, input) {
-    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !['text','requestKey'].includes(k))) fail(400, 'INVALID_REQUEST', '语音参数无效');
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !['text','requestKey','engine','emotion'].includes(k))) fail(400, 'INVALID_REQUEST', '语音参数无效');
     if (typeof input.text !== 'string' || !input.text.trim() || [...input.text].length > MAX_TEXT || !/^[a-zA-Z0-9_-]{16,100}$/.test(input.requestKey || '')) fail(400, 'INVALID_REQUEST', `每条语音最多 ${MAX_TEXT} 字，请提供有效请求编号`);
+    if ((input.engine !== undefined && input.engine !== 'fish-audio')
+        || (input.emotion !== undefined && !fishAudio.validStyle(input.emotion))) fail(400, 'INVALID_REQUEST', '语音音源或情感无效');
     sweep();
-    const text = input.text.trim(), id = `req_voice_${hash(`${userId}:${input.requestKey}`)}`, fingerprint = hash(JSON.stringify({ userId, text }));
+    const text = input.text.trim(), id = `req_voice_${hash(`${userId}:${input.requestKey}`)}`, fingerprint = hash(JSON.stringify({ userId, text, engine: input.engine, emotion: input.emotion }));
     function existing() {
         const row = db.prepare('SELECT * FROM official_tts_jobs WHERE id=? AND user_id=?').get(id, userId);
         if (row && row.fingerprint !== fingerprint) fail(409, 'IDEMPOTENCY_CONFLICT', '请求编号已用于其他语音');
@@ -212,9 +252,10 @@ async function create(userId, input) {
     }
     const old = existing();
     if (old) return view(old);
-    if (!(await status()).online) fail(503, 'TTS_OFFLINE', '官方语音算力离线，暂不可使用，未扣费');
-    const cfg = settings();
+    if (!(await status(input.engine)).online) fail(503, 'TTS_OFFLINE', '官方语音算力离线，暂不可使用，未扣费');
+    const cfg = settings(input.engine);
     if (!cfg) fail(503, 'TTS_OFFLINE', '官方语音暂不可使用，未扣费');
+    if (input.emotion && cfg.protocol !== 'fish-audio') fail(400, 'INVALID_REQUEST', '此音源不支持情感控制');
     const result = db.transaction(() => {
         const repeated = existing();
         if (repeated) return { row: repeated, fresh: false };
@@ -227,7 +268,7 @@ async function create(userId, input) {
         db.prepare("INSERT INTO official_tts_jobs(id,user_id,fingerprint,state,created_at,updated_at) VALUES(?,?,?,'processing',?,?)").run(id,userId,fingerprint,now,now);
         return { row: owned(userId, id), fresh: true };
     }).immediate();
-    if (result.fresh) void perform(result.row, text, cfg);
+    if (result.fresh) void perform(result.row, text, cfg, input.emotion);
     return view(result.row);
 }
 function protectedEndpoint() { try { return settings()?.endpoint || ''; } catch (_) { return ''; } }

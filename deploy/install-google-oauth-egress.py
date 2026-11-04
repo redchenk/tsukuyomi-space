@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provision an isolated, forced-command Google identity relay on the overseas host."""
+"""Provision an isolated, forced-command provider relay on the overseas host."""
 import argparse
 import base64
 import ipaddress
@@ -10,7 +10,8 @@ import pwd
 import re
 import subprocess
 
-def install(public_key_file, source_ip):
+def install(public_key_file, source_ip, service="google-oauth"):
+    hosts = {"google-oauth": ["oauth2.googleapis.com", "www.googleapis.com"], "fish-audio": ["api.fish.audio"]}[service]
     if os.geteuid() != 0:
         raise RuntimeError('Run as root on the overseas relay host')
     address = ipaddress.ip_address(source_ip)
@@ -22,15 +23,22 @@ def install(public_key_file, source_ip):
     base64.b64decode(public_key.split()[1], validate=True)
     template = pathlib.Path(__file__).with_name('fushi-egress-worker.py').read_text()
     old = '/etc/tsukuyomi-fushi-egress/hosts.json'
-    new = '/etc/tsukuyomi-google-oauth-egress/hosts.json'
+    new = f'/etc/tsukuyomi-{service}-egress/hosts.json'
     assert template.count(old) == 1
     worker = template.replace(old, new)
-    user = 'google-oauth-egress'
-    home = pathlib.Path('/var/lib/google-oauth-egress')
+    if service == 'fish-audio':
+        # Audio responses and synthesis need larger, still bounded budgets.
+        for before, after in [('counts[index] > 786432', 'counts[index] > (1048576 if index == 0 else 34603008)'), ('signal.alarm(12)', 'signal.alarm(105)')]:
+            if worker.count(before) != 1:
+                raise ValueError('Unexpected relay worker budget')
+            worker = worker.replace(before, after)
+    user = service + '-egress'
+    home = pathlib.Path('/var/lib') / user
+    worker_path = pathlib.Path(f'/opt/tsukuyomi-{user}/worker.py')
     files = {
-        pathlib.Path('/opt/tsukuyomi-google-oauth-egress/worker.py'): worker,
-        pathlib.Path(new): json.dumps(['oauth2.googleapis.com', 'www.googleapis.com']) + '\n',
-        home / '.ssh/authorized_keys': f'restrict,from="{address}",command="/usr/bin/python3 /opt/tsukuyomi-google-oauth-egress/worker.py" {public_key}\n',
+        worker_path: worker,
+        pathlib.Path(new): json.dumps(hosts) + '\n',
+        home / '.ssh/authorized_keys': f'restrict,from="{address}",command="/usr/bin/python3 {worker_path}" {public_key}\n',
     }
     # Refuse to replace another deployment or credential; repeated identical runs
     # are safe. The existing Fushi relay and SSH daemon configuration are untouched.
@@ -53,11 +61,12 @@ def install(public_key_file, source_ip):
     os.chown(home, 0, 0)
     os.chmod(home, 0o755)
     subprocess.run(['/usr/sbin/sshd', '-t'], check=True)
-    print(json.dumps({'installed': True, 'user': user, 'allowed_hosts': ['oauth2.googleapis.com', 'www.googleapis.com'], 'source_ip': str(address)}))
+    print(json.dumps({'installed': True, 'user': user, 'allowed_hosts': hosts, 'source_ip': str(address)}))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--public-key', required=True)
     parser.add_argument('--source-ip', required=True)
+    parser.add_argument('--service', choices=['google-oauth', 'fish-audio'], default='google-oauth')
     args = parser.parse_args()
-    install(args.public_key, args.source_ip)
+    install(args.public_key, args.source_ip, args.service)

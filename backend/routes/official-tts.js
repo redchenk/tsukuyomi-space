@@ -14,7 +14,11 @@ const handler = fn => async (req, res) => {
         res.status(status).json({ success: false, code: error.code || 'TTS_ERROR', message: status === 402 ? '余额不足，请前往支付中心充值，未扣费' : status === 500 ? '语音服务暂不可用，请稍后查看合成状态' : error.message });
     }
 };
-router.get('/status', handler(async (req, res) => res.json({ success: true, data: await service.status() })));
+router.get('/status', handler(async (req, res) => {
+    const engine = req.query.engine;
+    if (engine !== undefined && engine !== 'fish-audio') return res.status(400).json({ success: false, message: '未知官方音源' });
+    res.json({ success: true, data: await service.status(engine) });
+}));
 router.use(authenticateToken);
 router.use((req, res, next) => {
     if (req.get('X-TTS-Account') !== req.user.id) return res.status(409).json({ success: false, message: '登录账号已变化，请重新保存语音设置' });

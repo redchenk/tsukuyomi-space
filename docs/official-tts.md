@@ -49,3 +49,25 @@ GPT-SoVITS [api_v2 协议](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/api_
 `node node_modules/@playwright/test/cli.js test tests/e2e/official-tts.spec.js --project=chromium --project=webkit-iphone11`
 
 数据库测试使用隔离 SQLite 和模拟上游，覆盖准确扣费、并发重放、越权、失败退款、原有支付、恢复和真实音频形状检测；浏览器使用模拟音频验证交互。模拟通过不等于实际 GPU、支付或物理手机验收。
+
+### Fish Audio 情感语音
+
+Room 设置 → 语音与朗读中，选择「Fish Audio」可使用自己的 Fish API 密钥，默认使用八千代音色 `a746d80afdb5451ca44c63401c001c9b`。高级设置可选 S2.1 Pro、S2 Pro 或 S2.1 Pro Free。可跟随回复的 Live2D 表情、指定某种语气，或关闭情感提示。选择受限代理时只有 Fish 合成所需字段经过网站，直连时由浏览器访问 Fish。两种方式都只允许 Fish 官方 HTTPS 端点。语气在发送合成请求时加入，不进入聊天记录。
+
+在原有私有 `official-tts.json` **增加**以下键，即可与现有官方语音并列开放。请由运维私下填写密钥：
+
+```json
+{
+  "OFFICIAL_TTS_FISH_ENABLED": true,
+  "OFFICIAL_TTS_FISH_API_KEY": "<Fish API 密钥>",
+  "OFFICIAL_TTS_FISH_VOICE": "a746d80afdb5451ca44c63401c001c9b",
+  "OFFICIAL_TTS_FISH_MODEL": "s2.1-pro",
+  "OFFICIAL_TTS_FISH_LANGUAGE": "auto"
+}
+```
+
+官方 Fish 通过免费读取账号额度和已配置音色的元数据检测可用性，实际合成仍按既有钱包流程结算；检查状态不生成语音。不同音源和情感分别缓存，重复播放同一条有效缓存不再次计费。语言 `auto` 直接朗读原文，`ja` 的 Room 聊天沿用先翻译再朗读。若只需以 Fish 作为默认官方音源，可将 `OFFICIAL_TTS_PROTOCOL` 设为 `fish-audio` 并使用对应的无 `FISH_` 前缀配置。
+
+生产服务器如无法直达 Fish，可配置独立受限 SSH 出口：用 `deploy/install-google-oauth-egress.py --service fish-audio --public-key <专用公钥文件> --source-ip <主站公网地址>` 安装只允许 `api.fish.audio:443` 的中继。在主站设置 `FISH_AUDIO_EGRESS_MODE=ssh`、`FISH_AUDIO_EGRESS_SSH_HOST`、`FISH_AUDIO_EGRESS_SSH_PORT`、`FISH_AUDIO_EGRESS_SSH_USER=fish-audio-egress`、`FISH_AUDIO_EGRESS_SSH_IDENTITY` 和 `FISH_AUDIO_EGRESS_SSH_KNOWN_HOSTS`，使用独立密钥并严格核对中继指纹。TLS 和 Fish API 密钥只在网站与 Fish 之间使用。
+
+[Fish Audio 合成接口](https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech) · [情感控制](https://docs.fish.audio/developer-guide/core-features/emotions)

@@ -24,3 +24,20 @@ test('repeated playback shares a job and never translates or charges twice', asy
     const b=await requestOfficialTts('你好',{officialAccount:'replay-fixture'},request,translate);
     assert.equal(await a.text(),'audio');assert.equal(await b.text(),'audio');assert.equal(prepared,1);assert.equal(posts,1);
 });
+test('Fish official playback isolates its engine and style cache and sends only a voice cue', async () => {
+    const settings = { provider:'official', officialAccount:'fish-fixture', officialEngine:'fish-audio', fishStyle:'auto', replyEmotion:'shy' };
+    const posts=[];
+    async function request(url, options) {
+        if (url.includes('/status')) {
+            assert.equal(url,'/api/tts/official/status?engine=fish-audio');
+            return Response.json({success:true,data:{online:true,language:'auto',supportsEmotion:true}});
+        }
+        if (url.endsWith('/audio')) return new Response('audio');
+        if (options.method==='POST') posts.push(JSON.parse(options.body));
+        return Response.json({success:true,data:{id:'job-'+posts.length,state:'ready'}});
+    }
+    for (const style of ['auto','auto','calm','none']) await requestOfficialTts('你好',{...settings,fishStyle:style},request);
+    assert.deepEqual(posts.map(p=>[p.engine,p.text,p.emotion]),[
+        ['fish-audio','你好','embarrassed'],['fish-audio','你好','calm'],['fish-audio','你好',undefined]]);
+    assert.equal(new Set(posts.map(p=>p.requestKey)).size,3);
+});

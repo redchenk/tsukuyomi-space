@@ -1921,11 +1921,12 @@ export function useRoomChat({ live2d, world, diary = null }) {
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
       const audioBlob = await requestTtsAudioBlob(ttsText, {
         ...settings,
+        replyEmotion: messageLive2D?.emotion || messageLive2D?.expression,
         textLang: settings.provider === 'gpt-sovits' ? 'ja' : (settings.textLang || 'auto')
       }, {
         fetchDirect: fetch,
         fetchProxy: apiFetch,
-        prepareText: settings.provider === 'official' && settings.textLang === 'ja' ? translateForJapaneseTts : undefined
+        prepareText: settings.provider === 'official' ? (value, language) => (language || settings.textLang) === 'ja' ? translateForJapaneseTts(value) : value : undefined
       });
       if (requestId !== ttsRequestId) return;
       if (ttsUrl) URL.revokeObjectURL(ttsUrl);

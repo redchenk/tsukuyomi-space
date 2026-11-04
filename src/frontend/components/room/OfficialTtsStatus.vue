@@ -7,15 +7,20 @@ let timer, disposed = false;
 async function refresh() {
   if (checking.value) return;
   checking.value = true;
-  try {
-    const response = await apiFetch('/api/tts/official/status', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error();
-    if (!disposed) state.value = result.data;
-  } catch (_) { if (!disposed) state.value = { online: false, reason: 'offline' }; }
-  finally {
-    if (!disposed) { checking.value = false; emit('status', state.value); }
+  async function check(engine) {
+    let value;
+    try {
+      const response = await apiFetch('/api/tts/official/status' + (engine ? '?engine=fish-audio' : ''), { cache: 'no-store', signal: AbortSignal.timeout(12000) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error();
+      value = result.data;
+    } catch (_) { value = { online: false, reason: 'offline' }; }
+    if (disposed) return;
+    state.value = engine ? { ...state.value, fishAudio: value } : { ...value, fishAudio: state.value?.fishAudio };
+    emit('status', state.value);
   }
+  try { await Promise.all([check(false), check(true)]); }
+  finally { checking.value = false; }
 }
 function visible() { if (!document.hidden) void refresh(); }
 onMounted(() => { void refresh(); timer = setInterval(visible, 15000); document.addEventListener('visibilitychange', visible); });
@@ -27,6 +32,8 @@ onBeforeUnmount(() => { disposed = true; clearInterval(timer); document.removeEv
       <strong>官方直供 · 八千代语音</strong>
       <span :class="['official-tts-badge', { online: state?.online }]">{{ state?.online ? '算力在线' : !state ? '检测中' : '算力离线' }}</span>
     </div>
+    <p v-if="state?.fishAudio?.online" class="field-hint">官方 Fish Audio 音源在线，可选择跟随八千代表情朗读。</p>
+    <p v-else-if="state?.fishAudio" class="field-hint">{{ state.fishAudio.reason === 'unconfigured' ? '官方 Fish Audio 尚未配置，可使用个人 Fish Audio。' : '官方 Fish Audio 暂不可用。' }}</p>
     <p>¥0.05 / 条 · 使用网站余额，无需填写 API 密钥。成功合成后扣费，失败不收费。超级管理员沿用无限额度。</p>
     <p class="field-hint">{{ state?.online ? '可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。' : '当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。' }} 每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。</p>
     <div class="button-row">
