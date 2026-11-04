@@ -88,7 +88,8 @@ for(const lang of ['en','ja']) test(`terminal panels keep localized controls (${
  await page.locator('input[autocomplete="username"]').fill('admin');
  await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
  await page.locator('.terminal-login-card button[type="submit"]').click();
- const tabs=page.locator('.terminal-nav-btn');await expect(tabs).toHaveCount(11);
+ const tabs=page.locator('.terminal-nav-btn');await expect(tabs).toHaveCount(12);
+ await expect(page.getByRole('button',{name:lang==='en'?'Official AI services':'公式 AI サービス', exact:true})).toBeVisible();
  for(let i=0;i<await tabs.count();i++) { await tabs.nth(i).click();await expect(page.locator('.terminal-panel')).toBeVisible(); }
  expect(await page.locator('.terminal-nav-group-label').allTextContents()).toEqual(lang==='en'?['Inspection','Content','System']:['点検','内容','システム']);
 });
