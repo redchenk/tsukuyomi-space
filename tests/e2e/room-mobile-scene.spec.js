@@ -68,6 +68,30 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 390, height: 667 }
     });
 }
 
+test('a full diary keeps its sync and close buttons above the mobile scene controls', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+        localStorage.setItem('roomDiaryArchive:guest', JSON.stringify({ data: { diary: [{
+            diaryId: 'long-entry', date: '2026/11/01', time: '04:08', content: '一段测试日记。'.repeat(800)
+        }] } }));
+    });
+    await page.goto('/room'); await waitForRoom(page);
+    await page.locator('.room-tools-disclosure > summary').click();
+    await page.getByRole('button', { name: '日记', exact: true }).click();
+    const diary = page.locator('#diaryPanel');
+    const sync = diary.getByRole('button', { name: '同步', exact: true });
+    const update = page.evaluate(() => new Promise(resolve => {
+        window.addEventListener('tsukuyomi:room-diary-sync-updated', e => resolve(e.detail.status), { once: true });
+    }));
+    await sync.click();
+    expect(await update).toBe('local');
+    await expect(diary).toContainText('登录后可跨设备同步');
+    await diary.getByRole('button', { name: 'Close panel' }).click();
+    await expect(diary).toHaveCount(0);
+    await page.locator('.room-scene-trigger').click();
+    await expect(page.locator('.room-scene-info')).toBeVisible();
+});
+
 for (const timezoneId of ['Asia/Shanghai', 'America/Los_Angeles']) {
     test.describe(`Room bubble times on a ${timezoneId} device`, () => {
         test.use({ timezoneId });

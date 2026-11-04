@@ -23,8 +23,8 @@ export function useRoomPanels() {
     notePanel: false
   });
   const panelPositions = reactive(readJson('roomPanelPositions', {}));
-  const panelZ = reactive({});
-  const topZ = ref(30);
+  // Mobile stage controls sit at 65–75. Keep utility panels together below dialogs.
+  const panelOrder = ref(Object.keys(panelDefaults));
   let draggingPanel = null;
   let dragFrameId = 0;
   let pendingDragPoint = null;
@@ -33,7 +33,7 @@ export function useRoomPanels() {
     return {
       ...panelDefaults[panelId],
       ...(panelPositions[panelId] || {}),
-      zIndex: panelZ[panelId] || undefined
+      zIndex: 90 + panelOrder.value.indexOf(panelId)
     };
   }
 
@@ -42,7 +42,9 @@ export function useRoomPanels() {
   }
 
   function bringPanelForward(panelId) {
-    panelZ[panelId] = ++topZ.value;
+    if (panelOrder.value.at(-1) !== panelId) {
+      panelOrder.value = [...panelOrder.value.filter(id => id !== panelId), panelId];
+    }
   }
 
   function togglePanel(panelId) {
