@@ -164,7 +164,7 @@ test('user can start a clean Room conversation without deleting long-term memory
 test('Room knowledge entries open a visible editor and persist user changes', async ({ page }) => {
     await page.goto('/room/settings?section=llm');
 
-    await page.getByRole('button', { name: '角色知识库', exact: true }).click();
+    await settingsCategory(page, '角色与对话');
 
     const manager = page.locator('#room-knowledge-settings');
     const target = manager.locator('.knowledge-item').last();
