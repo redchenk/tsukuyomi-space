@@ -1,6 +1,9 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { apiFetch } from '../../api/client';
+const props = defineProps({ compact: Boolean, engine: { type: String, default: '' } });
+const detailsOpen = ref(false);
+const selected = computed(() => props.engine === 'fish-audio' ? state.value?.fishAudio : state.value);
 const emit = defineEmits(['status']);
 const state = ref(null), checking = ref(false);
 let timer, disposed = false;
@@ -27,18 +30,20 @@ onMounted(() => { void refresh(); timer = setInterval(visible, 15000); document.
 onBeforeUnmount(() => { disposed = true; clearInterval(timer); document.removeEventListener('visibilitychange', visible); });
 </script>
 <template>
-  <div class="official-tts-status" aria-live="polite">
+  <div class="official-tts-status" :class="{ compact }" aria-live="polite">
     <div class="official-tts-heading">
-      <strong>官方直供 · 八千代语音</strong>
-      <span :class="['official-tts-badge', { online: state?.online }]">{{ state?.online ? '算力在线' : !state ? '检测中' : '算力离线' }}</span>
+      <strong>{{ engine === 'fish-audio' ? '官方 Fish Audio' : '官方直供 · 八千代语音' }}</strong><button v-if="compact" class="text-btn" type="button" :aria-expanded="detailsOpen" @click="detailsOpen = !detailsOpen">服务详情</button>
+      <span :class="['official-tts-badge', { online: selected?.online }]">{{ selected?.online ? '算力在线' : !selected ? '检测中' : '算力离线' }}</span>
     </div>
+    <div v-show="!compact || detailsOpen">
     <p v-if="state?.fishAudio?.online" class="field-hint">官方 Fish Audio 音源在线，可选择跟随八千代表情朗读。</p>
     <p v-else-if="state?.fishAudio" class="field-hint">{{ state.fishAudio.reason === 'unconfigured' ? '官方 Fish Audio 尚未配置，可使用个人 Fish Audio。' : '官方 Fish Audio 暂不可用。' }}</p>
     <p>¥0.05 / 条 · 使用网站余额，无需填写 API 密钥。成功合成后扣费，失败不收费。超级管理员沿用无限额度。</p>
-    <p class="field-hint">{{ state?.online ? '可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。' : '当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。' }} 每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。</p>
+    <p class="field-hint">{{ selected?.online ? '可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。' : '当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。' }} 每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。</p>
     <div class="button-row">
       <button class="ghost-btn" type="button" :disabled="checking" @click="refresh">{{ checking ? '正在检测…' : '检测算力' }}</button>
       <a class="text-btn" href="/payments">余额与充值</a>
+    </div>
     </div>
   </div>
 </template>
@@ -50,4 +55,7 @@ onBeforeUnmount(() => { disposed = true; clearInterval(timer); document.removeEv
 .official-tts-status p { line-height: 1.8; overflow-wrap: anywhere; margin: 10px 0; }
 .official-tts-status .button-row { flex-wrap: wrap; align-items: center; gap: 16px; }
 .official-tts-status a { color: var(--ts-accent); text-underline-offset: 4px; }
+.official-tts-status.compact { padding: 10px 12px; margin: 12px 0; }
+.compact .official-tts-heading { gap: 8px; font-size: 12px; }
+.compact .official-tts-heading button { margin-left: auto; padding: 4px; min-height: 32px; font-size: 12px; }
 </style>

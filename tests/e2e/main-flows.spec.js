@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function loginAsUser(page, username = 'e2e-user') {
@@ -161,9 +162,9 @@ test('user can start a clean Room conversation without deleting long-term memory
 });
 
 test('Room knowledge entries open a visible editor and persist user changes', async ({ page }) => {
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
 
-    await page.getByRole('button', { name: '角色知识库', exact: true }).click();
+    await settingsCategory(page, '角色与对话');
 
     const manager = page.locator('#room-knowledge-settings');
     const target = manager.locator('.knowledge-item').last();
@@ -251,17 +252,18 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
 
 test('mobile Room settings saves voice configuration across categories', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/room/settings');
-    await page.locator('.settings-mobile-menu').click();
-    await page.getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+    await page.goto('/room/settings?section=llm');
+
+    await settingsCategory(page, '语音与朗读');
     await page.getByRole('switch', { name: '开启语音合成' }).check();
     const voice = page.locator('#room-tts-settings');
+    await page.locator('#room-tts-settings').getByRole('button', { name: '个人 API', exact: true }).click();
     await voice.getByLabel('语音服务', { exact: true }).selectOption('openai');
     await voice.getByLabel('API 密钥', { exact: true }).fill('mobile-save-test-key');
-    await page.locator('.settings-mobile-menu').click();
-    await page.getByRole('button', { name: '长期记忆', exact: true }).click();
+
+    await settingsCategory(page, '长期记忆');
     await expect(page.locator('#room-memory-settings')).toBeVisible();
-    await page.locator('.settings-savebar .primary-btn').click();
+    await saveSettingsAndReturn(page);
     await expect(page).toHaveURL(/\/room$/);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('roomTTSSettings') || 'null'));
     expect(saved).toMatchObject({ enabled: true, provider: 'openai', apiKey: 'mobile-save-test-key', useProxy: false });

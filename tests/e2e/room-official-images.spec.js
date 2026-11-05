@@ -22,7 +22,7 @@ test('official image chat uploads, forwards and renders its reply on the current
       { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 500, completion_tokens: 20, total_tokens: 520 } }, '[DONE]'
     ].map(v => `data: ${typeof v === 'string' ? v : JSON.stringify(v)}\n\n`).join('') });
   });
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await expect(page.locator('#boot-splash')).toBeHidden();
   await expect(page.getByText('支持文字、图片与工具调用。', { exact: false })).toBeVisible();
   await page.goto('/room');

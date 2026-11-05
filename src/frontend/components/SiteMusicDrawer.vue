@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import TsIcon from './TsIcon.vue';
 import SiteMusicLibrary from './SiteMusicLibrary.vue';
 
@@ -13,6 +13,10 @@ const visualOpen = ref(props.music.drawer.open);
 const morphing = ref(false);
 const drawerElement = ref(null);
 const panelElement = ref(null);
+let musicTrigger = null;
+function openFromSettings() { musicTrigger = document.activeElement; if (!props.music.drawer.open) props.music.toggleShell(); }
+onMounted(() => window.addEventListener('tsukuyomi:music-open', openFromSettings));
+onBeforeUnmount(() => window.removeEventListener('tsukuyomi:music-open', openFromSettings));
 let epoch = 0;
 let animations = [];
 function cancelMorph() {
@@ -28,6 +32,7 @@ watch(() => props.music.drawer.open, async open => {
   const from = element?.getBoundingClientRect();
   cancelMorph();
   visualOpen.value = open;
+  if (!open && musicTrigger?.isConnected) { musicTrigger.focus(); musicTrigger = null; }
   await nextTick();
   if (id !== epoch || !element || !from) return;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) return;

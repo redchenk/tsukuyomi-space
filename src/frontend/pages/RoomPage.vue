@@ -238,7 +238,7 @@ watch(() => props.shareId, loadSharedConversation);
           <button type="button" :aria-pressed="!room.panels.activePanels.chatPanel" @click="closeMobileTools(); room.panels.togglePanel('chatPanel')"><TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" /><span>{{ room.panels.activePanels.chatPanel ? '安静陪伴' : '返回聊天' }}</span></button>
         </nav>
       </details>
-      <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="23" /></a>
+      <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="20" /><span>设置</span></a>
     </header>
     <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" :scene="backdrop.scene.value" @settings="emit('go', '/room/settings')" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
@@ -263,7 +263,7 @@ watch(() => props.shareId, loadSharedConversation);
         </button>
         <button v-if="!shareId" type="button" aria-label="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
         <button v-if="!shareId" class="room-relationship-trigger" type="button" :aria-label="relationshipTitle" :title="relationshipTitle" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /></button>
-        <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /></a>
+        <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /><span>设置</span></a>
       </nav>
       <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">
         <RoomChatPanel

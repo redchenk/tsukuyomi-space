@@ -13,7 +13,7 @@ for (const viewport of [{ name: 'desktop', width: 1440, height: 960 }, { name: '
       requests++;
       return route.fulfill({ status: denied ? 403 : 200, contentType: 'application/json', body: JSON.stringify(denied ? { error: { message: 'not-visible-provider-body' } } : list) });
     });
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#settings-llm-model')).toHaveValue(settings.model);
     await expect(page.locator('#llmSyncedModels option')).toHaveCount(2);
@@ -37,7 +37,7 @@ for (const viewport of [{ name: 'desktop', width: 1440, height: 960 }, { name: '
     await page.addInitScript(value => localStorage.setItem('roomLLMSettings', JSON.stringify(value)), settings);
     let requests = 0;
     await page.route('https://api.siliconflow.cn/v1/models?*', route => { requests++; return route.fulfill({ contentType: 'application/json', body: JSON.stringify(list) }); });
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#llmSyncedModels option')).toHaveCount(2);
     const key = page.locator('#settings-llm-key');

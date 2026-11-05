@@ -5,7 +5,7 @@ const { test } = require('node:test');
 const strip = s => s.replace(/^import [\s\S]*?from '[^']*';$/gm, '').replace(/^export /gm, '');
 const source = path => fs.readFileSync(path, 'utf8');
 const knowledgeCode = strip(source('src/frontend/constants/room/knowledgeEntries.js')) + '\n' + strip(source('src/frontend/services/room/roomKnowledge.js'));
-const pageCode = strip(source('src/frontend/services/room/roomStorage.js')) + '\n' + strip(source('src/frontend/services/room/localOllamaTransport.js')) + '\n' + strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
+const pageCode = strip(source('src/frontend/constants/room/settingsNavigation.js')) + '\n' + strip(source('src/frontend/services/room/roomStorage.js')) + '\n' + strip(source('src/frontend/services/room/localOllamaTransport.js')) + '\n' + strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
 const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room/ttsTransport.js')) + '\nttsUsesProxy;', { URL });
 let validateMcpEndpoint;
 let catalog;
@@ -39,6 +39,7 @@ function setup(options = {}) {
     authFetch: async () => { memoryWrites++; throw new Error('Unexpected memory mutation'); },
     roomLive2DManifest: { expressions: [], motions: [] },
     localStorage: { getItem: k => store.get(k) || null, setItem(k, value) { if (failWrites) throw new Error('QuotaExceededError'); store.set(k, value); } },
+    document: { activeElement: null },
     window: { confirm: () => false, location: { origin: 'https://example.test' } },
     readDiaryArchive: () => ({ data: { diary: [], gameData: { characterStats: {} } } }),
     activePersonaPrompt: () => ({ data: { name: '日记作者' } }),
@@ -48,7 +49,7 @@ function setup(options = {}) {
   vm.runInNewContext(knowledgeCode + '\n' + pageCode + `
     loadMemoryCount = () => {};
     globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings, storedUser, memorySourceMode, clearMemory,
-      saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom, chooseSetupLlmMode, setupLlmMode, officialSupply,
+      saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom, finishLeave, chooseSetupLlmMode, setupLlmMode, officialSupply,
       onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries, applyPreset, applyTtsPreset, modelCatalog, syncModelCatalog };
   `, ctx);
   ctx.api.loadSettings();
@@ -195,7 +196,9 @@ test('invalid or failed saves retain drafts and prevent return navigation', asyn
   assert.equal(h.knowledge.draft.content, '完整内容');
   assert.match(h.toast.text, /保存失败/);
   assert.equal(h.hasUnsavedSettings.value, true);
-  assert.equal(h.leave(), false);
+  const leaving = h.leave();
+  await h.finishLeave('stay');
+  assert.equal(await leaving, false);
 });
 
 test('LLM and model saves preserve existing instructions and extra runtime settings', async () => {

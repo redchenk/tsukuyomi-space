@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
@@ -128,11 +129,8 @@ test('relationship UI explains older points, zero-point reasons and can page thr
   const relationship = { enabled: true, score: 2, stage: '初次相识', pending: 0, totalRecords: 13, totalDelta: 2, recentDelta: 0, earlierDelta: 2, todayDelta: 0, records: records.slice(0, 12), nextCursor: 'ledger-11' };
   await page.route('**/api/room/memory/status?*', route => route.fulfill({ json: { success: true, data: { count: 2525, localIntelligence: { enabled: true, indexed: 2525, analysisFailed: 0, relationship } } } }));
   await page.route('**/api/room/relationship?*', route => route.fulfill({ json: { success: true, data: { ...relationship, records: records.slice(12), nextCursor: null } } }));
-  await page.goto('/room/settings');
-  const menu = page.locator('.settings-mobile-menu');
-  await expect(menu).toBeAttached();
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '长期记忆' }).click();
+  await page.goto('/room/settings?section=llm');
+  await settingsCategory(page, '长期记忆' );
   const status = page.locator('.local-memory-status');
   await expect(status).toContainText('更早记录 +2');
   await expect(status).toContainText('完成并保存一轮新对话 +1');

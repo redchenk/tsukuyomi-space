@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
 test.beforeEach(async ({ page }) => configureRoomFixture(page));
@@ -98,13 +99,13 @@ test('mobile content, settings controls and empty states stay compact and usable
     await expect(page.locator('.plaza-wall')).toBeVisible();
     expect((await page.locator('.plaza-wall').boundingBox()).y).toBeLessThan(550);
     await expect(page.locator('.ts-empty-title').first()).toHaveCSS('border-top-width', '0px');
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     await expect(page.locator('.site-brand small')).toHaveText('房间设置');
     await expect(page.locator('#settings-llm-model')).toHaveCSS('font-size', '16px');
-    await page.locator('.settings-mobile-menu').click();
-    await page.getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+
+    await settingsCategory(page, '语音与朗读');
     await expect(page.locator('#room-tts-settings')).toBeVisible();
-    await expect(page.locator('.settings-mobile-menu')).toContainText('语音与朗读');
+    await expect(page.locator('.settings-detail-toolbar').getByRole('button', { name: '全部设置' })).toBeVisible();
 });
 
 test('Room tools stay collapsed in the mobile companion header', async ({ page }) => {

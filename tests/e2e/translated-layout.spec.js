@@ -79,7 +79,7 @@ test('translated Wiki metadata labels do not overlap their values', async ({ pag
 });
 
 test('translated provider buttons and runtime scope remain usable on narrow screens', async ({ page }) => {
-  await open(page, '/room/settings');
+  await open(page, '/room/settings?section=llm');
   await expect(page.getByRole('button', { name: 'Alibaba Cloud Model Studio', exact: true })).toBeVisible();
   await page.locator('.runtime-panel > summary').click();
   for (const width of widths) {

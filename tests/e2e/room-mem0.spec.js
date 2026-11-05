@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
@@ -166,11 +167,11 @@ for (const local of [true, false]) test(`configured memory limit reaches the mod
     expect(promptRows()).toHaveLength(12);
     await expect(page.locator('.room-memory-trace')).toContainText('已参考 12 条长期记忆');
 
-    await page.goto('/room/settings');
-    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '长期记忆' }).click();
+    await page.goto('/room/settings?section=llm');
+    await settingsCategory(page, '长期记忆' );
     await expect(page.locator('#room-memory-retrieval-limit')).toHaveValue('12');
     await page.locator('#room-memory-retrieval-limit').fill('20');
-    await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+    await saveSettingsAndReturn(page);
     await expect(page).toHaveURL(/\/room$/);
     await page.reload();
     await send(page, '请参考观测站记录');

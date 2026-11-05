@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const source = { id: 'guide:voice:0', documentId: 'guide:voice', title: '语音连接教程', content: '先启动语音服务，再在房间设置填写实际服务地址。', url: '/room/settings', revision: 'a'.repeat(64) };
@@ -49,19 +50,17 @@ test('site guide grounds instructions and shows source links on desktop and mobi
 });
 
 test('the public knowledge switch saves when it is the only setting changed', async ({ page }) => {
-  await setup(page); await page.goto('/room/settings');
+  await setup(page); await page.goto('/room/settings?section=llm');
   const selectKnowledge = async () => {
-    const menu = page.locator('.settings-mobile-menu'); await expect(menu).toBeAttached();
-    if (await menu.isVisible()) await menu.click();
-    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '角色知识库', exact: true }).click();
+    await settingsCategory(page, '角色知识库');
   };
   await selectKnowledge();
   const toggle = page.getByRole('switch', { name: '参考站内资料', exact: true });
   await expect(toggle).toBeChecked(); await toggle.uncheck();
-  await expect(page.getByRole('status').filter({ hasText: '有尚未保存的修改' })).toBeVisible();
-  await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '未保存' })).toBeVisible();
+  await saveSettingsAndReturn(page);
   await expect(page).toHaveURL(/\/room$/);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('roomKnowledgeSettings')).siteEnabled)).toBe(false);
-  await page.goto('/room/settings'); await page.reload(); await selectKnowledge();
+  await page.goto('/room/settings?section=llm'); await page.reload(); await selectKnowledge();
   await expect(toggle).not.toBeChecked();
 });

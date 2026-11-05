@@ -1,11 +1,10 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 async function openMemoryManager(page) {
-  const menu = page.locator('.settings-mobile-menu');
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name: '长期记忆', exact: true }).click();
+  await settingsCategory(page, '长期记忆');
   const manager = page.locator('.room-memory-manager');
   return manager;
 }
@@ -54,7 +53,7 @@ for (const width of [1280, 390]) {
       ? route.fulfill({ status: 400, contentType: 'text/html', body: '' })
       : route.continue());
 
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     const manager = await openMemoryManager(page);
     const item = manager.locator('.memory-item').filter({ hasText: initialSummary });
     await expect(item).toBeVisible();
@@ -104,7 +103,7 @@ for (const width of [1280, 390]) {
       await reopenedEditor.locator('input[type="text"]').first().fill(savedAllSummary);
       const savedAll = page.waitForResponse((response) => response.request().method() === 'PUT'
         && response.url().includes(`/api/room/memory/${memoryId}`));
-      await page.locator('.settings-savebar .primary-btn').click();
+      await saveSettingsAndReturn(page);
       expect((await savedAll).status()).toBe(200);
       await expect(reopenedEditor).toHaveCount(0);
       const afterSaveAll = await page.request.get(`/api/room/memory/${memoryId}`);
@@ -124,7 +123,7 @@ test('failed detail fetch and validation preserve the existing server memory', a
   expect(created.status()).toBe(201);
   const memoryId = (await created.json()).data.id;
 
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   const manager = await openMemoryManager(page);
   const item = manager.locator('.memory-item').filter({ hasText: marker });
   await expect(item).toBeVisible();
@@ -158,7 +157,7 @@ test('guest Room memory edit persists in IndexedDB', async ({ page }) => {
   const guestId = `e2e-guest-${Date.now()}`;
   const memoryId = `e2e-local-memory-${Date.now()}`;
   await page.addInitScript((id) => localStorage.setItem('roomMemoryGuestId', id), guestId);
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await page.evaluate(({ guestId, memoryId }) => new Promise((resolve, reject) => {
     const request = indexedDB.open('tsukuyomi-room-memory', 1);
     request.onupgradeneeded = () => {

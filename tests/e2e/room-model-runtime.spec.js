@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const fs = require('node:fs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const settings = { apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'fixture-runtime-key', model: 'deepseek-chat', useProxy: false };
@@ -19,7 +20,7 @@ async function setup(page, handler, overrides = {}) {
       body: JSON.stringify({ data: [{ id: settings.model, capabilities: { vision: false, function_calling: true, streaming: true } }] }) });
     return handler(route, request.postDataJSON());
   });
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await expect(page.getByText('已更新 1 个聊天模型', { exact: false })).toBeVisible();
 }
 async function openRuntime(page) { await page.locator('.runtime-panel > summary').click(); }
@@ -41,7 +42,7 @@ test('layered settings persist, declarations retain manual overrides, and actual
   await page.locator('[name="room-runtime-capability-image"]').selectOption('true');
   await page.getByRole('button', { name: '刷新模型', exact: true }).click();
   await expect(imageRow).toContainText('支持 · 人工覆盖');
-  await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await saveSettingsAndReturn(page);
   await expect(page).toHaveURL(/\/room$/);
   await expect(page.locator('#chatInput')).toBeVisible();
   await expect(page.locator('#loadingOverlay')).toHaveCount(0);
@@ -50,7 +51,7 @@ test('layered settings persist, declarations retain manual overrides, and actual
   await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toContainText('参数配置已生效');
   expect(requests[0]).toMatchObject({ temperature: 0.3, max_completion_tokens: 256 });
   expect(requests[0].max_tokens).toBeUndefined();
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await page.getByRole('button', { name: '刷新模型', exact: true }).click();
   await expect(page.getByText('已更新 1 个聊天模型', { exact: false })).toBeVisible();
   await openRuntime(page);
