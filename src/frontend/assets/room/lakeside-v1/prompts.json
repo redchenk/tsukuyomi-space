@@ -1,6 +1,12 @@
 {
   "mode": "built-in imagegen",
   "status": "approved and integrated locally",
+  "historical_references": {
+    "src/frontend/assets/seasons/autumn-v1/background-light.webp": {
+      "git_commit": "e21b3a3424cbd40759581a454b163d41d9077d05",
+      "note": "Generation reference only, not a runtime dependency. The autumn-v1 website pack was removed after the v2 refresh; the Room scenes are unchanged."
+    }
+  },
   "assets": [
     {
       "file": "spring-day.png",

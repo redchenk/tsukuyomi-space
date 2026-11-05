@@ -65,7 +65,8 @@ test('malformed, missing, hostile and disabled storage never break theme selecti
 
 test('season packs contain intact deployable artwork for every declared role', () => {
   for (const season of AVAILABLE_SEASONS.filter(season => season !== 'spring')) {
-    const directory = new URL(`../src/frontend/assets/seasons/${season}-v1/`, import.meta.url);
+    const pack = season === 'autumn' ? 'autumn-v2' : `${season}-v1`;
+    const directory = new URL(`../src/frontend/assets/seasons/${pack}/`, import.meta.url);
     const manifest = JSON.parse(readFileSync(new URL('manifest.json', directory)));
     assert.equal(manifest.theme, season);
     for (const role of ['backgroundLight', 'backgroundDark', 'hero', 'articleFallback', 'galleryFallback', 'pixelFallback']) {

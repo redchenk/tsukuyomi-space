@@ -30,16 +30,18 @@ Room 背景现已另行接入获确认的湖畔小屋四季昼夜素材，复用
 | --- | --- | --- |
 | 春日樱花 | `src/frontend/assets/sakura/` | 沿用既有资源 |
 | 夏夜花火 | `src/frontend/assets/seasons/summer-v1/` | 2,047,544 字节 |
-| 红叶月夜 | `src/frontend/assets/seasons/autumn-v1/` | 2,098,326 字节 |
+| 红叶月夜 | `src/frontend/assets/seasons/autumn-v2/` | 1,559,606 字节 |
 | 雪夜灯语 | `src/frontend/assets/seasons/winter-v1/` | 2,287,344 字节 |
 
-夏、秋、冬各保留六张素材：浅色背景、同构图暗色背景、Hero 场景、真实透明 Hero、文章封面和像素风封面。由内置 imagegen 根据用户参考生成，不使用 CLI 或新增 API 凭证。季节服饰属于本次美术设计，不声明为原作服装设定。
+夏、冬的 v1 各保留六张素材：浅色背景、同构图暗色背景、Hero 场景、真实透明 Hero、文章封面和像素风封面。2026-11-05 秋季更新为 v2 的五张实际使用素材，移除不再使用的秋季 v1 整套素材和本地旧 PNG 副本，旧 WebP 可从 Git 历史恢复。导航花饰和 Room 背景继续使用各自独立素材。由内置 imagegen 根据参考生成，不使用 CLI 或新增 API 凭证。季节服饰属于美术设计，不声明为原作服装设定。
 
-不透明素材使用 WebP quality=90，透明素材用无损 WebP，保持原尺寸和原始 Alpha。透明 Hero 为备用素材，没有引入应用，避免与已使用的 Hero 场景重复下载。原始 PNG 保存在 `output/imagegen/<season>-v1/`。完整提示词、输入角色、尺寸、用途、SHA-256 见各目录 `prompts.json` 与 `manifest.json`。
+不透明素材使用 WebP quality=90，透明素材用无损 WebP，保持原尺寸和原始 Alpha。夏、冬透明 Hero 为备用素材，没有引入应用，避免与已使用的 Hero 场景重复下载。夏、冬原始 PNG 保存在 `output/imagegen/<season>-v1/`，秋季原图在 `output/imagegen/autumn-v2/`。完整提示词、输入角色、尺寸、用途、SHA-256 见各目录 `prompts.json` 与 `manifest.json`。
 
 应用资源由 Vite 生成内容哈希。图片 URL 的导入不等于下载；只在实际显示或既有导航预览需要时请求图片，没有四季素材全量预载。无需增加服务器进程、内存限制或数据库存储。
 
 ## 本地验收
+
+2026-11-05 秋季 v2：主题及切换测试 12 项通过，前端生产构建通过。使用空 API 测试样本，在 Chromium 的 1440、390、320px 宽度下检查浅色与深色共 6 组；新素材加载正常、无横向溢出，启动画面退出后已目视检查裁切。截图和记录见 `output/autumn-theme-v2-preview/`。本次仅接入本地项目，未部署生产环境。以下为此前四季主题的历史验收记录。
 
 - 前端回归：306 项通过，失败 0；`npm run test:theme` 的 7 项测试包含南北半球全部月份、各季边界、本地时区／UTC 差异、四种手动覆盖、偏好保存／无效与禁用存储、夏令时午夜、素材文件完整性，以及八套配色的正文、次要文字、链接、选中项、按钮和状态文字对比度（至少 4.5:1）。
 - 国内与 overseas 两种 Vite 构建成功。
