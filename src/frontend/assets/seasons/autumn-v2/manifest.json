@@ -1,0 +1,73 @@
+{
+  "theme": "autumn",
+  "version": 2,
+  "display_name": "红叶月夜",
+  "created": "2026-11-05",
+  "status": "locally-validated",
+  "generator": "built-in imagegen",
+  "assets": [
+    {
+      "name": "hero-scene",
+      "webp": "hero-scene.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 407764,
+      "png_bytes": 2762592,
+      "sha256": "a4f0242af20afae048741e41d50b6304a3102e9ac137bc39414235612c50f5d0",
+      "source": "output/imagegen/autumn-v2/hero-scene.png"
+    },
+    {
+      "name": "background-light",
+      "webp": "background-light.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 304736,
+      "png_bytes": 2327137,
+      "sha256": "b719ebd868a7800098917c3fb7b8495747fd8a34f5d1ce5c240a33d835de45c6",
+      "source": "output/imagegen/autumn-v2/background-light.png"
+    },
+    {
+      "name": "background-dark",
+      "webp": "background-dark.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 177184,
+      "png_bytes": 1916793,
+      "sha256": "f673c429e7d2ab7f63386e6c1ea816f9de869bbfe0fbf102ee0be06d6dd0b79d",
+      "source": "output/imagegen/autumn-v2/background-dark.png"
+    },
+    {
+      "name": "article-cover",
+      "webp": "article-cover.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 360196,
+      "png_bytes": 2587586,
+      "sha256": "a16c0a24e0396bfb9849dead9996f8fc4c7e255fdeef231626618e6ce3530933",
+      "source": "output/imagegen/autumn-v2/article-cover.png"
+    },
+    {
+      "name": "pixel-workshop",
+      "webp": "pixel-workshop.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 309726,
+      "png_bytes": 2175211,
+      "sha256": "d954f05dadc14dda6380fad427dec170938ab84e845bd5ff8fbde9c51b1348cb",
+      "source": "output/imagegen/autumn-v2/pixel-workshop.png"
+    }
+  ],
+  "roles": {
+    "backgroundLight": "background-light.webp",
+    "backgroundDark": "background-dark.webp",
+    "hero": "hero-scene.webp",
+    "articleFallback": "article-cover.webp",
+    "galleryFallback": "background-light.webp",
+    "pixelFallback": "pixel-workshop.webp"
+  }
+}

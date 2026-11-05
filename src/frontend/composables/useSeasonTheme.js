@@ -9,8 +9,8 @@ import autumnOrnament from '../assets/navigation/seasons-v1/autumn-ornament.webp
 import winterOrnament from '../assets/navigation/seasons-v1/winter-ornament.webp';
 import summerLight from '../assets/seasons/summer-v1/background-light.webp';
 import summerDark from '../assets/seasons/summer-v1/background-dark.webp';
-import autumnLight from '../assets/seasons/autumn-v1/background-light.webp';
-import autumnDark from '../assets/seasons/autumn-v1/background-dark.webp';
+import autumnLight from '../assets/seasons/autumn-v2/background-light.webp';
+import autumnDark from '../assets/seasons/autumn-v2/background-dark.webp';
 import winterLight from '../assets/seasons/winter-v1/background-light.webp';
 import winterDark from '../assets/seasons/winter-v1/background-dark.webp';
 
