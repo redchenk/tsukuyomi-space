@@ -102,7 +102,7 @@ test('mobile content, settings controls and empty states stay compact and usable
     await page.goto('/room/settings?section=llm');
     await expect(page.locator('.site-brand small')).toHaveText('房间设置');
     await expect(page.locator('#settings-llm-model')).toHaveCSS('font-size', '16px');
-    
+
     await settingsCategory(page, '语音与朗读');
     await expect(page.locator('#room-tts-settings')).toBeVisible();
     await expect(page.locator('.settings-detail-toolbar').getByRole('button', { name: '全部设置' })).toBeVisible();

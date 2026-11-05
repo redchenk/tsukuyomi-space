@@ -80,7 +80,7 @@ test('long Chinese memory reads use short POST URLs through a URI-limited proxy'
     await page.screenshot({ path: testInfo.outputPath('memory-long-query.png') });
 
     await page.goto('/room/settings?section=llm');
-    
+
     await settingsCategory(page, '长期记忆' );
     await page.getByRole('searchbox', { name: '搜索记忆', exact: true }).fill(question);
     const searched = page.waitForResponse(response => response.url().endsWith('/api/room/memory/search')

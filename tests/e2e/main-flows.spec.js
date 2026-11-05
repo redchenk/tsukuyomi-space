@@ -253,14 +253,14 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
 test('mobile Room settings saves voice configuration across categories', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/room/settings?section=llm');
-    
+
     await settingsCategory(page, '语音与朗读');
     await page.getByRole('switch', { name: '开启语音合成' }).check();
     const voice = page.locator('#room-tts-settings');
     await page.locator('#room-tts-settings').getByRole('button', { name: '个人 API', exact: true }).click();
     await voice.getByLabel('语音服务', { exact: true }).selectOption('openai');
     await voice.getByLabel('API 密钥', { exact: true }).fill('mobile-save-test-key');
-    
+
     await settingsCategory(page, '长期记忆');
     await expect(page.locator('#room-memory-settings')).toBeVisible();
     await saveSettingsAndReturn(page);
