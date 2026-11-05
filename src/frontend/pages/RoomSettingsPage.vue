@@ -2572,7 +2572,7 @@ onBeforeUnmount(() => {
     <div class="settings-workspace" :class="{ 'settings-guided': guidedSetup }">
       <div v-if="!guidedSetup" class="settings-detail-toolbar">
         <button type="button" class="ghost-btn" :aria-current="activeSection === 'overview' ? 'page' : undefined" @click="selectSettingsSection('overview')"><TsIcon name="arrowLeft" :size="16" />全部设置</button>
-        <form class="settings-search" role="search" @submit.prevent><TsIcon name="search" :size="17" /><input v-model="settingsSearch" type="search" autocomplete="off" aria-label="搜索设置" placeholder="搜索设置，例如 Fish、世界书" /></form>
+        <form class="settings-search" role="search" @submit.prevent><TsIcon name="search" :size="17" /><input v-model="settingsSearch" type="search" autocomplete="off" aria-label="搜索设置" placeholder="搜索设置" /></form>
       </div>
       <aside
         v-if="!guidedSetup" id="settings-navigation"
