@@ -1420,3 +1420,75 @@
   .runtime-parameter-row, .runtime-capability-row { grid-template-columns: minmax(0, 1fr); }
   .diagnostic-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* The settings hub keeps every category visible before entering a form. */
+.content-shell .room-settings-page { padding-bottom: 96px; }
+.settings-workspace { grid-template-columns: 204px minmax(0, 1fr); }
+.settings-context { display: none; }
+.settings-detail-toolbar { grid-column: 2; display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+.settings-detail-toolbar .settings-search { flex: 1; margin: 0; }
+.settings-detail-toolbar .settings-search input { width: 100%; min-width: 0; }
+.settings-navigation { grid-column: 1; grid-row: 1 / span 2; }
+.settings-main { grid-column: 2; }
+.settings-home { padding: 8px 0; }
+.settings-eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--muted); }
+.settings-home-intro h2 { margin: 10px 0 8px; font-size: 26px; }
+.settings-home-intro p { color: var(--muted); font-size: 13px; }
+.settings-category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 24px 0; }
+.settings-category-card { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 22px 18px; border: 1px solid var(--settings-line); background: var(--settings-surface); color: var(--text); text-align: start; border-radius: 18px !important; cursor: pointer; }
+.settings-category-card:hover { border-color: var(--ts-accent); background: var(--settings-soft); }
+.settings-category-card > span:nth-child(2) { flex: 1; min-width: 0; }
+.settings-category-card strong, .settings-category-card small { display: block; }
+.settings-category-card strong { font-size: 15px; font-weight: 650; }
+.settings-category-card small { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+.settings-category-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: var(--settings-soft); color: var(--ts-accent); flex-shrink: 0; }
+.settings-home-help { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; color: var(--muted); font-size: 13px; }
+.settings-home-help button { margin-left: auto; }
+.settings-results { margin-bottom: 18px; }
+.settings-results button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 64px; padding: 12px; background: transparent; color: var(--text); border: 0; border-bottom: 1px solid var(--settings-line); text-align: start; cursor: pointer; }
+.settings-results strong, .settings-results small { display: block; }
+.settings-results small { margin-top: 6px; color: var(--muted); }
+.settings-search-target { outline: 2px solid var(--ts-accent) !important; outline-offset: 6px; scroll-margin-top: 100px; }
+.tts-source-tabs { display: flex; gap: 5px; padding: 4px; border-radius: 14px; background: var(--settings-soft); margin-top: 16px; }
+.tts-source-tabs button { flex: 1; min-width: 0; min-height: 42px; padding: 8px 5px; font-size: 13px; color: var(--muted); border: 1px solid transparent; background: transparent; cursor: pointer; }
+.tts-source-tabs button[aria-pressed=true] { background: var(--settings-surface); border-color: var(--settings-line); color: var(--text); }
+.settings-compact-savebar .settings-savebar-inner { min-height: 64px; padding-top: 8px; padding-bottom: 8px; display: flex; flex-direction: row; justify-content: space-between; gap: 8px; }
+.settings-compact-savebar .settings-save-state { display: flex; gap: 7px; font-size: 12px; white-space: nowrap; }
+.settings-compact-savebar .button-row { display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; width: auto; }
+.settings-compact-savebar button { min-height: 40px; padding: 8px 14px; }
+@media (max-width: 900px) {
+  .settings-workspace { display: block; }
+  .settings-navigation { display: none; }
+  .settings-detail-toolbar { gap: 8px; position: sticky; top: 66px; z-index: 12; padding: 8px 0; background: var(--settings-surface); border-radius: 12px; }
+  .settings-detail-toolbar > button { padding: 8px 10px; }
+  .settings-page-heading { margin: 4px 0 12px; gap: 10px; }
+  .settings-page-heading h1 { font-size: 24px; }
+  .settings-page-heading p, .settings-breadcrumb { display: none; }
+  .settings-home-intro { display: none; }
+  .settings-category-grid { gap: 10px; margin: 10px 0 18px; }
+  .settings-category-card { position: relative; display: block; padding: 14px 12px; min-height: 122px; }
+  .settings-category-icon { width: 32px; height: 32px; margin-bottom: 10px; border-radius: 10px; }
+  .settings-category-card strong { font-size: 14px; }
+  .settings-category-card small { font-size: 11px; margin-top: 4px; }
+  .settings-category-card > .ts-icon, .settings-category-card > .settings-unsaved-mark { position: absolute; top: 23px; right: 12px; }
+  .settings-overview:not(.has-savebar) { padding-bottom: 24px; }
+  .settings-compact-savebar { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .settings-compact-savebar .settings-savebar-inner { width: 100%; padding-left: 16px; padding-right: 16px; }
+  .settings-compact-savebar .button-row button { flex: initial; width: auto; }
+  .room-settings-page .room-card-head { margin-bottom: 18px; }
+}
+@media (max-width: 350px) {
+  .settings-category-card { padding: 12px 10px; min-height: 116px; }
+  .settings-category-card strong { font-size: 13px; }
+  .settings-detail-toolbar .settings-search input { font-size: 12px; }
+}
+.settings-context { display: block; grid-column: 2; position: static; margin-top: 20px; }
+.settings-context > summary { cursor:pointer; font-size:12px; color:var(--muted); padding:12px 0; }
+.settings-context:not([open]) > :not(summary) { display:none; }
+.settings-heading-actions { display: flex; align-items: center; gap: 8px; }
+.settings-heading-actions > button { width: 42px; padding-inline: 8px !important; }
+.app-shell:has(.room-settings-page) .site-music-drawer:not(.is-open) { display: none; }
+.app-shell:has(.room-settings-page) .site-music-drawer.is-open { bottom: calc(72px + env(safe-area-inset-bottom)); }
+.room-settings-page .settings-compact-savebar { padding: 0 0 env(safe-area-inset-bottom); }
+.room-settings-page .settings-compact-savebar .button-row { display: flex; flex-wrap: nowrap; width: auto; }
+.room-settings-page .settings-compact-savebar .button-row button { min-height: 40px; flex: initial; width: auto; white-space: nowrap; padding: 8px 14px; }

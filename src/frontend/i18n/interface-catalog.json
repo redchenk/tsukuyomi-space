@@ -1,4 +1,229 @@
 {
+  "编辑参考角色卡": {
+    "en": "Edit reference card",
+    "ja": "参考カードを編集"
+  },
+  "启用此条目": {
+    "en": "Enable this entry",
+    "ja": "この項目を有効化"
+  },
+  "世界书内容": {
+    "en": "World book content",
+    "ja": "ワールドブックの内容"
+  },
+  "角色卡已启用": {
+    "en": "Character card enabled",
+    "ja": "キャラクターカードは有効です"
+  },
+  "角色卡未启用": {
+    "en": "Character card disabled",
+    "ja": "キャラクターカードは無効です"
+  },
+  "世界书已启用": {
+    "en": "World book enabled",
+    "ja": "ワールドブックは有効です"
+  },
+  "世界书未启用": {
+    "en": "World book disabled",
+    "ja": "ワールドブックは無効です"
+  },
+  "部分条目因篇幅限制省略": {
+    "en": "Some entries exceed the context budget",
+    "ja": "一部の項目は文字数制限のため省略されました"
+  },
+  "只保存在当前账号的这台设备中。保存后用于下一轮聊天。": {
+    "en": "Stored on this device for the current account. Changes apply to the next turn after saving.",
+    "ja": "現在のアカウント用に、この端末に保存します。保存後の次の会話から反映されます。"
+  },
+  "使用服务默认模型": {
+    "en": "Use the service default",
+    "ja": "サービスの既定モデルを使用"
+  },
+  "借鉴表达与场景，不替换八千代身份。不会执行扩展脚本，也不会把示例当作经历过的对话。": {
+    "en": "Use expression and scene references without replacing Yachiyo’s identity. Extension scripts never run; examples are not treated as real conversations.",
+    "ja": "表現や場面を参考にし、八千代の人物像は変更しません。拡張スクリプトは実行せず、例文を実際の会話として扱いません。"
+  },
+  "无法导入角色卡，请检查 JSON 文件": {
+    "en": "Cannot import this card. Check the JSON file.",
+    "ja": "カードを読み込めません。JSON ファイルを確認してください。"
+  },
+  "清除搜索": {
+    "en": "Clear search",
+    "ja": "検索をクリア"
+  },
+  "打开音乐": {"en":"Open music","ja":"音楽を開く"},
+  "让房间更合你的心意。": {
+    "en": "Make the room feel like yours.",
+    "ja": "あなたらしいお部屋に。"
+  },
+  "搜索设置，例如 Fish、世界书": {
+    "en": "Search settings, e.g. Fish, world book",
+    "ja": "設定を検索（Fish・ワールドブックなど）"
+  },
+  "设置总览": {
+    "en": "Settings overview",
+    "ja": "設定一覧"
+  },
+  "从这里开始": {
+    "en": "Start here",
+    "ja": "ここから始めよう"
+  },
+  "八类设置，随时找到你想调整的地方。": {
+    "en": "Eight categories to find what you want to adjust.",
+    "ja": "8 つのカテゴリから、変更したい設定へ。"
+  },
+  "密钥和接口保存在当前设备；记忆与日记按所选账号和来源管理。": {
+    "en": "Keys and endpoints stay on this device. Memories and diaries follow the selected account and source.",
+    "ja": "キーと接続先はこの端末に保存されます。記憶と日記は選択したアカウントと保存先で管理します。"
+  },
+  "语音来源": {
+    "en": "Voice source",
+    "ja": "音声の接続先"
+  },
+  "选择音源": {
+    "en": "Choose a voice service",
+    "ja": "音声サービスを選択"
+  },
+  "选择音源后切换；当前配置仍保留。": {
+    "en": "Select a service to switch. Your current configuration is retained.",
+    "ja": "サービスを選択すると切り替わります。現在の設定は保持されます。"
+  },
+  "外观与布局": {
+    "en": "Appearance and layout",
+    "ja": "外観とレイアウト"
+  },
+  "当前配置与数据存储": {
+    "en": "Configuration and data storage",
+    "ja": "現在の設定とデータ保存先"
+  },
+  "未保存": {
+    "en": "Unsaved",
+    "ja": "未保存"
+  },
+  "撤销": {
+    "en": "Revert",
+    "ja": "元に戻す"
+  },
+  "保存修改": {
+    "en": "Save changes",
+    "ja": "変更を保存"
+  },
+  "保存修改后离开？": {
+    "en": "Save changes before leaving?",
+    "ja": "変更を保存して移動しますか？"
+  },
+  "所有分类的未保存修改会一起处理。": {
+    "en": "This applies to unsaved changes in all categories.",
+    "ja": "すべてのカテゴリの未保存の変更に適用されます。"
+  },
+  "继续编辑": {
+    "en": "Keep editing",
+    "ja": "編集を続ける"
+  },
+  "放弃并离开": {
+    "en": "Discard and leave",
+    "ja": "破棄して移動"
+  },
+  "保存并离开": {
+    "en": "Save and leave",
+    "ja": "保存して移動"
+  },
+  "官方 Fish Audio": {
+    "en": "Official Fish Audio",
+    "ja": "公式 Fish Audio"
+  },
+  "服务详情": {
+    "en": "Service details",
+    "ja": "サービスの詳細"
+  },
+  "API 密钥与服务": {
+    "en": "API key and service",
+    "ja": "API キーとサービス"
+  },
+  "模型能力与参数": {
+    "en": "Model capabilities and parameters",
+    "ja": "モデルの機能とパラメータ"
+  },
+  "语音服务与 Fish Audio": {
+    "en": "Voice services and Fish Audio",
+    "ja": "音声サービスと Fish Audio"
+  },
+  "音色与朗读语言": {
+    "en": "Voice and spoken language",
+    "ja": "声と読み上げ言語"
+  },
+  "语音高级设置": {
+    "en": "Advanced voice settings",
+    "ja": "音声の詳細設定"
+  },
+  "角色卡与世界书": {
+    "en": "Character cards and world books",
+    "ja": "キャラクターカードとワールドブック"
+  },
+  "知识条目与站内资料": {
+    "en": "Knowledge entries and site references",
+    "ja": "知識項目とサイト内資料"
+  },
+  "记忆检索与管理": {
+    "en": "Memory search and management",
+    "ja": "記憶の検索と管理"
+  },
+  "角色大小与位置": {
+    "en": "Character size and position",
+    "ja": "キャラクターの大きさと位置"
+  },
+  "日记同步与存档": {
+    "en": "Diary sync and archives",
+    "ja": "日記の同期とアーカイブ"
+  },
+  "MCP 工具与权限": {
+    "en": "MCP tools and permissions",
+    "ja": "MCP ツールと権限"
+  },
+  "Live2D 表情与动作": {
+    "en": "Live2D expressions and motions",
+    "ja": "Live2D の表情と動作"
+  },
+  "服务、模型与连接": {
+    "en": "Services, models and connections",
+    "ja": "サービス・モデル・接続"
+  },
+  "音源、音色与情感": {
+    "en": "Services, voices and emotion",
+    "ja": "音源・声・感情"
+  },
+  "角色卡、世界书与设定": {
+    "en": "Cards, world books and persona",
+    "ja": "カード・ワールドブック・設定"
+  },
+  "检索、编辑与同步": {
+    "en": "Search, edit and sync",
+    "ja": "検索・編集・同期"
+  },
+  "角色大小与房间布局": {
+    "en": "Character size and room layout",
+    "ja": "キャラクターの大きさと部屋の配置"
+  },
+  "日记同步与备份": {
+    "en": "Diary sync and backups",
+    "ja": "日記の同期とバックアップ"
+  },
+  "MCP 与外部工具": {
+    "en": "MCP and external tools",
+    "ja": "MCP と外部ツール"
+  },
+  "表情、动作与诊断": {
+    "en": "Expressions, motions and diagnostics",
+    "ja": "表情・動作・診断"
+  },
+  "个人 API": {
+    "en": "Personal API",
+    "ja": "個人 API"
+  },
+  "本机语音": {
+    "en": "Local voice",
+    "ja": "ローカル音声"
+  },
   "官方服务视图": {"en": "Service management views", "ja": "公式サービス管理ビュー"},
   "语言模型": {"en": "Language models", "ja": "言語モデル"},
   "语音合成": {"en": "Speech synthesis", "ja": "音声合成"},

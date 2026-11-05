@@ -4,6 +4,7 @@ import runtime from '../../../../shared/room-chat-runtime.cjs';
 import RoomPromptSources from './RoomPromptSources.vue';
 import { readRoomDialogueSettings, roomDialogueSettingsKey, saveRoomDialogueSettings } from '../../services/room/roomDialogueSettings';
 
+defineProps({ expanded: Boolean });
 const ownerKey = roomDialogueSettingsKey();
 const draft = ref(readRoomDialogueSettings());
 const feedback = ref('');
@@ -52,7 +53,7 @@ function exportCard() {
 </script>
 
 <template>
-<details class="room-dialogue-settings" data-testid="room-dialogue-settings">
+<details class="room-dialogue-settings" data-testid="room-dialogue-settings" :open="expanded">
   <summary><strong>角色与对话</strong><span>结局后的日常 · 剧透偏好 · 角色卡与世界书</span></summary>
   <div class="dialogue-body">
     <p>八千代默认生活在电影结局之后：期待日常、创作与相聚，保留原作身份和关系。你的称呼和明确约定来自当前账号的记忆。</p>

@@ -269,3 +269,4 @@
 @media (prefers-reduced-motion: reduce) {
   .room-music-switch span { transition: none; }
 }
+@media(min-width:901px){.room-desktop-settings { display:flex; width:auto; flex-basis:auto; padding:0 10px; gap:6px; font-size:12px; }}

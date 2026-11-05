@@ -1,4 +1,5 @@
 <script setup>
+import { roomSettingsNavigation, roomSettingsSearch } from '../constants/room/settingsNavigation';
 import RoomDialogueSettings from '../components/room/RoomDialogueSettings.vue';
 import { readJson, writeJson } from '../services/room/roomStorage';
 import { memorySearchOptions } from '../services/room/roomMemoryRequest.mjs';
@@ -167,12 +168,14 @@ const setupLlmMode = ref('ollama');
 const officialSupply = reactive({ dashboard: null });
 const llmModeDrafts = new Map();
 const officialSelectedModel = computed(() => officialSupply.dashboard?.models.find(item => item.id === llm.model));
+function openSettingsMusic() { window.dispatchEvent(new CustomEvent('tsukuyomi:music-open')); }
 function officialMoney(atoms) { return Number(atoms || 0) / 1e9; }
 const setupCloudProvider = ref('openaiChat');
-const activeSection = ref('llm');
+const route = useRoute();
+const activeSection = ref(route.query.setup === '1' ? 'llm' : roomSettingsNavigation.some(item => item.id === route.query.section) ? route.query.section : 'overview');
 const mobileSectionsOpen = ref(false);
 const settingsSearch = ref('');
-const setupGuideVisible = ref(true);
+const setupGuideVisible = ref(false);
 const guidedSetup = ref(useRoute().query.setup === '1');
 const setupStep = ref(1);
 async function startGuidedSetup() {
@@ -199,26 +202,37 @@ const knowledgeExpanded = reactive({});
 const settingsPanel = ref(null);
 const dialoguePanel = ref(null);
 const connectionCheck = reactive({ status: 'idle', snapshot: '' });
-const settingsNavigation = [
-  { id: 'llm', label: '聊天模型', icon: 'message', group: '基础与陪伴', badge: '必需', keywords: 'API 密钥 模型 端点 代理 图片 补充指令 Ollama' },
-  { id: 'tts', label: '语音与朗读', icon: 'audioLines', group: '基础与陪伴', badge: '可选', keywords: 'TTS 音色 GPT SoVITS 语言 权重' },
-  { id: 'memory', label: '长期记忆', icon: 'bookmark', group: '基础与陪伴', keywords: 'Mem0 检索 同步 偏好' },
-  { id: 'knowledge', label: '角色知识库', icon: 'book', group: '基础与陪伴', keywords: '八千代 人格 条目 注入' },
-  { id: 'model', label: '角色与布局', icon: 'layers', group: '房间个性化', keywords: '大小 位置 浮窗' },
-  { id: 'diary', label: '日记与存档', icon: 'fileText', group: '房间个性化', keywords: '人设 导入 导出 备份 好感度' },
-  { id: 'mcp', label: '工具与扩展', icon: 'grid', group: '进阶功能', badge: 'MCP', keywords: '搜索 白名单 鉴权 MiniMax' },
-  { id: 'debug', label: 'Live2D 调试', icon: 'code', group: '进阶功能', keywords: '表情 动作 队列 JSON' }
-];
+const settingsNavigation = roomSettingsNavigation;
 const filteredSettingsGroups = computed(() => ['基础与陪伴', '房间个性化', '进阶功能'].map(groupId => ({
   label: uiText(groupId),
   items: settingsNavigation.filter(item => item.group === groupId && `${item.label} ${item.keywords}`.toLowerCase().includes(settingsSearch.value.trim().toLowerCase()))
 })).filter(group => group.items.length));
-const currentSection = computed(() => settingsNavigation.find(item => item.id === activeSection.value));
+const currentSection = computed(() => settingsNavigation.find(item => item.id === activeSection.value) || { label: uiText('全部设置'), icon: 'grid' });
+const searchResults = computed(() => {
+  const query = settingsSearch.value.trim().toLowerCase();
+  return query ? roomSettingsSearch.filter(item => `${uiText(item.label)} ${item.words} ${uiText(settingsNavigation.find(section => section.id === item.section).label)}`.toLowerCase().includes(query)) : [];
+});
+function sectionDirty(id) { return pendingSections.value.includes(id) || (id === 'knowledge' && (hasKnowledgeDraft.value || dialoguePanel.value?.dirty)) || (id === 'memory' && hasMemoryDraft.value); }
+async function openSearchResult(item) {
+  settingsSearch.value = '';
+  await selectSettingsSection(item.section);
+  const article = settingsPanel.value?.querySelector(`#room-${item.section === 'debug' ? 'live2d-debug' : item.section + '-settings'}`);
+  const target = article?.querySelector(item.selector) || article;
+  for (let node = target; node && node !== article; node = node.parentElement) if (node.tagName === 'DETAILS') node.open = true;
+  await nextTick();
+  target?.scrollIntoView({ block: 'center', behavior: 'auto' });
+  target?.setAttribute('tabindex', '-1');
+  target?.focus({ preventScroll: true });
+  target?.classList.add('settings-search-target');
+  setTimeout(() => target?.classList.remove('settings-search-target'), 1800);
+}
+watch(() => route.query.section, id => { if (id !== undefined) void selectSettingsSection(id); });
 const testedConnectionStatus = computed(() => connectionCheck.snapshot === sectionSnapshot('llm') ? connectionCheck.status : 'idle');
 const connectionStatusText = computed(() => ({ idle: llmSetupReady.value ? '尚未测试连接' : '待完成配置', loading: '正在测试连接', success: '连接测试通过', warning: '已响应，未返回文本', error: '连接测试失败' })[testedConnectionStatus.value]);
 
 async function selectSettingsSection(id) {
-  if (!settingsNavigation.some(item => item.id === id)) return;
+  if (id !== 'overview' && !settingsNavigation.some(item => item.id === id)) return;
+  if (id === 'overview') guidedSetup.value = false;
   activeSection.value = id;
   mobileSectionsOpen.value = false;
   if (id === 'memory' && !memory.managerOpen) {
@@ -237,6 +251,7 @@ function discardSettings() {
   dialoguePanel.value?.cancel();
   loadSettings();
   knowledgeDraftOpen.value = false;
+  ttsDrafts.clear();
   showToast('已恢复到上次保存的设置');
 }
 const ollamaRepairCommand = computed(() => localOllamaWindowsCommand(
@@ -261,6 +276,12 @@ function capacityFor(engine) {
 const selectedOfficialTts = computed(() => capacityFor(tts.officialEngine));
 const fishControls = computed(() => tts.provider === 'fish-audio' || (tts.provider === 'official' && (tts.officialEngine === 'fish-audio' || selectedOfficialTts.value.supportsEmotion)));
 const officialTtsTesting = ref(false);
+const ttsSourceGroup = ref('local');
+const ttsDrafts = new Map();
+const ttsPresetKey = computed(() => Object.keys(TTS_PRESETS).find(key => TTS_PRESETS[key].provider === tts.provider && (TTS_PRESETS[key].officialEngine || '') === (tts.officialEngine || '')) || 'custom');
+function presetGroup(preset) { return preset.provider === 'official' ? 'official' : preset.provider === 'gpt-sovits' ? 'local' : 'personal'; }
+const visibleTtsPresets = computed(() => Object.entries(TTS_PRESETS).filter(([, preset]) => presetGroup(preset) === ttsSourceGroup.value));
+watch(ttsPresetKey, key => { ttsSourceGroup.value = presetGroup(TTS_PRESETS[key]); }, { immediate: true });
 const initialTtsSettings = { ...tts };
 const memory = reactive({ enabled: true, retrievalLimit: DEFAULT_MEMORY_RETRIEVAL_LIMIT, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
 const memoryEditor = ref(null);
@@ -389,7 +410,33 @@ function warnBeforeUnload(event) {
   event.preventDefault();
   event.returnValue = '';
 }
-onBeforeRouteLeave(() => !memoryChoice.pending && (!hasUnsavedSettings.value || window.confirm('设置尚未保存，离开会丢失这些修改。确定离开吗？')));
+const leaveDialog = ref(false);
+const leaveCard = ref(null);
+let resolveLeave = null;
+let leaveTrigger = null;
+async function finishLeave(action) {
+  if (action === 'save' && !(await saveAllSettings())) { finishLeave('stay'); return; }
+  leaveDialog.value = false;
+  resolveLeave?.(action !== 'stay');
+  resolveLeave = null;
+  leaveTrigger?.focus?.();
+}
+function handleLeaveKey(event) {
+  if (event.key === 'Escape') { event.preventDefault(); void finishLeave('stay'); }
+  if (event.key !== 'Tab') return;
+  const buttons = [...leaveCard.value.querySelectorAll('button:not(:disabled)')];
+  if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons.at(-1)?.focus(); }
+  else if (!event.shiftKey && document.activeElement === buttons.at(-1)) { event.preventDefault(); buttons[0]?.focus(); }
+}
+onBeforeRouteLeave(() => {
+  if (memoryChoice.pending || savingSettings.value || memorySavePending.value) return false;
+  if (!hasUnsavedSettings.value) return true;
+  if (resolveLeave) return false;
+  leaveTrigger = document.activeElement;
+  leaveDialog.value = true;
+  nextTick(() => leaveCard.value?.querySelector('button')?.focus());
+  return new Promise(resolve => { resolveLeave = resolve; });
+});
 
 const roomUser = computed(() => storedUser.value);
 const roomIdentityLabel = computed(() => roomUser.value?.nickname || roomUser.value?.username || '访客身份');
@@ -1612,7 +1659,9 @@ function applyAdvancedLlmPreset(value) {
 
 function applySetupTtsProvider(provider) {
   if (TTS_PRESETS[provider]?.provider === 'official' && (!capacityFor(TTS_PRESETS[provider].officialEngine).online || !props.user?.id)) return;
-  applyTtsPreset(provider);
+  ttsDrafts.set(ttsPresetKey.value, JSON.parse(JSON.stringify(tts)));
+  if (ttsDrafts.has(provider)) Object.assign(tts, ttsDrafts.get(provider));
+  else applyTtsPreset(provider);
   tts.enabled = true;
 }
 
@@ -2446,7 +2495,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="page room-settings-page">
+  <main class="page room-settings-page" :class="{ 'settings-overview': activeSection === 'overview', 'has-savebar': activeSection !== 'overview' || hasUnsavedSettings }">
     <header class="settings-page-heading">
       <div>
         <nav class="settings-breadcrumb" aria-label="当前位置">
@@ -2454,13 +2503,15 @@ onBeforeUnmount(() => {
           ><TsIcon name="chevronRight" :size="14" /><span>房间设置</span>
         </nav>
         <h1>房间设置</h1>
-        <p>先连接聊天模型，其他功能可以稍后设置。</p>
+        <p>让房间更合你的心意。</p>
       </div>
+      <div class="settings-heading-actions"><button class="ghost-btn" type="button" aria-label="打开音乐" @click="openSettingsMusic"><TsIcon name="audioLines" :size="18" /></button>
       <a class="ghost-btn" href="/room" @click.prevent="emit('go', '/room')"
         ><TsIcon name="arrowLeft" :size="17" />返回房间</a
       >
+      </div>
     </header>
-    <section v-if="roomUser?.id" class="memory-source-status settings-note" role="status">
+    <section v-if="roomUser?.id && activeSection === 'memory'" class="memory-source-status settings-note" role="status">
       <TsIcon name="shield" :size="18" />
       <div>
         <strong>当前记忆来源：{{ memorySourceMode === 'local' ? '本地数据' : '云端数据' }}</strong>
@@ -2494,7 +2545,7 @@ onBeforeUnmount(() => {
       <div><strong>第一次聊天，跟着这三步就好</strong><p>语音、记忆和外观可以稍后设置。当前填写的内容会保留到你离开页面。</p>
         <ol class="settings-flow"><li v-for="(label, index) in ['选择服务', '填写连接信息', '测试并保存']" :key="label" :aria-current="setupStep === index + 1 ? 'step' : undefined"><b>{{ index + 1 }}</b>{{ label }}</li></ol>
       </div>
-      <button type="button" class="ghost-btn" @click="guidedSetup = false">查看全部设置</button>
+      <button type="button" class="ghost-btn" @click="selectSettingsSection('overview')">查看全部设置</button>
     </section>
     <section v-else-if="setupGuideVisible" class="settings-welcome">
       <span class="settings-welcome-icon"
@@ -2519,30 +2570,16 @@ onBeforeUnmount(() => {
       </button>
     </section>
     <div class="settings-workspace" :class="{ 'settings-guided': guidedSetup }">
-      <button
-        v-if="!guidedSetup" class="ghost-btn settings-mobile-menu"
-        type="button"
-        :aria-expanded="mobileSectionsOpen"
-        aria-controls="settings-navigation"
-        @click="mobileSectionsOpen = !mobileSectionsOpen"
-      >
-        <TsIcon :name="currentSection.icon" :size="20" /><strong>{{
-          currentSection.label
-        }}</strong
-        ><span>全部设置</span><TsIcon name="chevronDown" :size="18" />
-      </button>
+      <div v-if="!guidedSetup" class="settings-detail-toolbar">
+        <button type="button" class="ghost-btn" :aria-current="activeSection === 'overview' ? 'page' : undefined" @click="selectSettingsSection('overview')"><TsIcon name="arrowLeft" :size="16" />全部设置</button>
+        <form class="settings-search" role="search" @submit.prevent><TsIcon name="search" :size="17" /><input v-model="settingsSearch" type="search" autocomplete="off" aria-label="搜索设置" placeholder="搜索设置，例如 Fish、世界书" /></form>
+      </div>
       <aside
         v-if="!guidedSetup" id="settings-navigation"
         class="settings-navigation"
         :class="{ 'is-open': mobileSectionsOpen }"
       >
-        <form id="room-settings-search-form" class="settings-search" role="search" autocomplete="off" @submit.prevent
-          ><TsIcon name="search" :size="17" /><input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="room-settings-page-settingssearch-query"
-            v-model="settingsSearch"
-            type="search"
-            aria-label="搜索设置"
-            placeholder="搜索设置"
-        /></form>
+        <button class="settings-nav-button" :class="{ active: activeSection === 'overview' }" type="button" @click="selectSettingsSection('overview')"><TsIcon name="grid" :size="18" />全部设置</button>
         <nav aria-label="设置分类">
           <section v-for="group in filteredSettingsGroups" :key="group.label">
             <h2>{{ group.label }}</h2>
@@ -2556,11 +2593,11 @@ onBeforeUnmount(() => {
               @click="selectSettingsSection(item.id)"
             >
               <TsIcon :name="item.icon" :size="18" /><span>{{
-                item.label
+                $ui(item.label)
               }}</span
               ><small v-if="item.badge">{{ item.badge }}</small
               ><span
-                v-if="pendingSections.includes(item.id)"
+                v-if="sectionDirty(item.id)"
                 class="settings-unsaved-mark"
                 aria-label="有未保存修改"
               ></span>
@@ -2592,6 +2629,22 @@ onBeforeUnmount(() => {
         tabindex="-1"
         :aria-label="currentSection.label"
       >
+        <section v-if="settingsSearch.trim()" class="settings-results room-settings-card" aria-label="搜索结果">
+          <p v-if="!searchResults.length">没有匹配的设置，试试“语音”或“密钥”。</p>
+          <button v-for="item in searchResults" :key="item.label" type="button" @click="openSearchResult(item)"><span><strong>{{ $ui(item.label) }}</strong><small>{{ $ui(settingsNavigation.find(section => section.id === item.section).label) }}</small></span><TsIcon name="arrowRight" :size="18" /></button>
+        </section>
+        <section v-show="activeSection === 'overview' && !settingsSearch.trim()" class="settings-home" aria-label="设置总览">
+          <div class="settings-home-intro"><span class="settings-eyebrow">YOUR ROOM</span><h2>从这里开始</h2><p>八类设置，随时找到你想调整的地方。</p></div>
+          <div class="settings-category-grid">
+            <button v-for="item in settingsNavigation" :key="item.id" class="settings-category-card" type="button" :aria-label="$ui(item.label)" @click="selectSettingsSection(item.id)">
+              <span class="settings-category-icon"><TsIcon :name="item.icon" :size="22" /></span>
+              <span><strong>{{ $ui(item.label) }}</strong><small>{{ $ui(item.summary) }}</small></span>
+              <span v-if="sectionDirty(item.id)" class="settings-unsaved-mark" aria-label="有未保存修改"></span><TsIcon v-else name="chevronRight" :size="16" />
+            </button>
+          </div>
+          <div class="settings-home-help"><TsIcon name="sparkles" :size="19" /><span>第一次配置？</span><button type="button" class="ghost-btn" @click="startGuidedSetup">查看配置指引</button></div>
+          <p class="field-hint">密钥和接口保存在当前设备；记忆与日记按所选账号和来源管理。</p>
+        </section>
         <article
           v-show="activeSection === 'llm'"
           id="room-llm-settings"
@@ -2966,40 +3019,19 @@ onBeforeUnmount(() => {
               aria-label="开启语音合成"
               :disabled="tts.provider === 'official' && !tts.enabled && (!selectedOfficialTts.online || !user?.id)"
           /></label>
-          <div class="settings-note">
-            <TsIcon name="info" :size="18" />
-            <p>
-              {{
-                tts.enabled
-                  ? (tts.provider === 'official' ? '官方语音使用网站余额，每条成功合成的语音收费 0.05 元。' : isOneclickApiUrl(tts.apiUrl) ? '八千代一键包已自动连接，可以直接朗读。请保持启动器运行。' : '语音服务独立配置，保存后生效。')
-                  : '先用文字聊天也很好，需要时再开启声音。'
-              }}
-            </p>
+          <p v-if="tts.enabled && isOneclickApiUrl(tts.apiUrl)" class="field-hint">八千代一键包已自动连接，可以直接朗读。请保持启动器运行。</p>
+          <div class="tts-source-tabs" role="group" aria-label="语音来源">
+            <button v-for="source in [{ id: 'official', label: '站内直供' }, { id: 'personal', label: '个人 API' }, { id: 'local', label: '本机语音' }]" :key="source.id" type="button" :aria-pressed="ttsSourceGroup === source.id" @click="ttsSourceGroup = source.id">{{ $ui(source.label) }}</button>
           </div>
-          <OfficialTtsStatus v-if="activeSection === 'tts'" @status="officialTtsStatus = $event" />
-          <p v-if="tts.provider === 'official' && selectedOfficialTts.language === 'ja'" class="field-hint">官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。</p>
-          <p v-if="!user?.id" class="field-hint">官方语音需要登录账号。<a href="/login?redirect=/room/settings?section=tts">前往登录</a></p>
+          <OfficialTtsStatus v-if="activeSection === 'tts'" :compact="true" :engine="tts.officialEngine" @status="officialTtsStatus = $event" />
           <div class="settings-section-fields">
-            <label
-              >语音服务<select
-                aria-label="语音服务"
-                :value="
-                  Object.keys(TTS_PRESETS).find(
-                    (key) => TTS_PRESETS[key].provider === tts.provider && (TTS_PRESETS[key].officialEngine || '') === (tts.officialEngine || ''),
-                  ) || 'custom'
-                "
-                @change="applySetupTtsProvider($event.target.value)"
-              >
-                <option
-                  v-for="(preset, name) in TTS_PRESETS"
-                  :key="name"
-                  :value="name"
-                  :disabled="preset.provider === 'official' && (!capacityFor(preset.officialEngine).online || !user?.id)"
-                >
-                  {{ preset.label }}
-                </option>
-              </select></label
-            >
+            <label>语音服务<select name="room-setting-tts-provider" aria-label="语音服务" :value="presetGroup(TTS_PRESETS[ttsPresetKey]) === ttsSourceGroup ? ttsPresetKey : ''" @change="applySetupTtsProvider($event.target.value)">
+              <option value="" disabled>选择音源</option>
+              <option v-for="[name, preset] in visibleTtsPresets" :key="name" :value="name" :disabled="preset.provider === 'official' && (!capacityFor(preset.officialEngine).online || !user?.id)">{{ $ui(preset.label) }}</option>
+            </select></label>
+            <p v-if="ttsSourceGroup === 'official' && !user?.id" class="field-hint">官方语音需要登录账号。<a href="/login?redirect=/room/settings?section=tts">前往登录</a></p>
+            <p v-if="presetGroup(TTS_PRESETS[ttsPresetKey]) !== ttsSourceGroup" class="field-hint">选择音源后切换；当前配置仍保留。</p>
+            <p v-if="tts.provider === 'official' && selectedOfficialTts.language === 'ja'" class="field-hint">官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。</p>
             <label v-if="tts.enabled && fishControls && tts.provider === 'official'">Fish Audio 模型<select name="room-setting-official-fish-model" :value="tts.officialFishModel || selectedOfficialTts.defaultModel" @change="tts.officialFishModel = $event.target.value">
               <option v-if="tts.officialFishModel && !selectedOfficialTts.models?.includes(tts.officialFishModel)" :value="tts.officialFishModel" disabled>{{ tts.officialFishModel }}</option>
               <option v-for="id in selectedOfficialTts.models" :key="id" :value="id">{{ id }}</option>
@@ -3474,11 +3506,11 @@ onBeforeUnmount(() => {
               ><TsIcon name="book" :size="23"
             /></span>
             <div>
-              <h2>角色知识库</h2>
+              <h2>角色与对话</h2>
               <p>角色设定与长期记忆分开管理，避免相互覆盖。</p>
             </div>
           </div>
-          <RoomDialogueSettings ref="dialoguePanel" :key="roomUser?.id || 'guest'" />
+          <RoomDialogueSettings expanded ref="dialoguePanel" :key="roomUser?.id || 'guest'" />
           <label class="settings-toggle-row"
             ><span
               ><strong>启用角色知识库注入</strong
@@ -3487,7 +3519,7 @@ onBeforeUnmount(() => {
               v-model="knowledge.enabled"
               type="checkbox"
               role="switch"
-              aria-label="启用角色知识库注入"
+              data-settings-target="knowledge-enabled" aria-label="启用角色知识库注入"
           /></label>
           <label class="settings-toggle-row"><span><strong>参考站内资料</strong><small>提问涉及教程、百科或文章时检索公开资料，并显示来源链接；普通闲聊跳过。</small></span><input v-model="knowledge.siteEnabled" type="checkbox" role="switch" aria-label="参考站内资料" /></label>
           <div class="settings-note">
@@ -3639,7 +3671,7 @@ onBeforeUnmount(() => {
               ><TsIcon name="layers" :size="23"
             /></span>
             <div>
-              <h2>角色与布局</h2>
+              <h2>外观与布局</h2>
               <p>只调整模型和浮窗的位置，不影响聊天或记忆。</p>
             </div>
           </div>
@@ -4085,7 +4117,7 @@ onBeforeUnmount(() => {
         </article>
         <p class="settings-caption">TSUKUYOMI SPACE · ROOM SETTINGS</p>
       </div>
-      <aside v-if="!guidedSetup" class="settings-context">
+      <details v-if="!guidedSetup" class="settings-context"><summary>当前配置与数据存储</summary>
         <section class="settings-context-card">
           <h2>
             当前房间
@@ -4152,7 +4184,7 @@ onBeforeUnmount(() => {
           </p>
           <small>记忆和条目的单独保存会立即生效。</small>
         </section>
-      </aside>
+      </details>
     </div>
     <footer v-if="guidedSetup" class="settings-savebar"><div class="settings-savebar-inner">
       <p role="status">{{ $ui('第 {0} 步，共 {1} 步', [setupStep, 3]) }} · {{ setupStep === 3 ? $ui(connectionStatusText) : setupStep === 2 ? (llmSetupReady ? '信息已填写，可以继续' : '请填写当前服务所需的信息') : '选择适合你的连接方式' }}</p>
@@ -4161,47 +4193,14 @@ onBeforeUnmount(() => {
         <button v-else type="button" class="primary-btn" :disabled="!llmSetupReady || connectionCheck.status === 'loading'" @click="finishGuidedSetup">{{ testedConnectionStatus === 'success' ? '保存，去说第一句话' : '跳过测试并保存' }}</button>
       </div>
     </div></footer>
-    <footer v-else class="settings-savebar">
+    <footer v-else-if="activeSection !== 'overview' || hasUnsavedSettings" class="settings-savebar settings-compact-savebar">
       <div class="settings-savebar-inner">
-        <div class="settings-save-state" role="status">
-          <TsIcon :name="hasUnsavedSettings ? 'penLine' : 'check'" :size="16" />
-          <div>
-            <span>{{
-              hasUnsavedSettings ? '有尚未保存的修改' : '所有修改已保存'
-            }}</span
-            ><small>{{
-              hasUnsavedSettings ? '修改后记得保存' : '可以安心返回房间'
-            }}</small>
-          </div>
-        </div>
-        <div class="button-row">
-          <button
-            class="ghost-btn settings-discard"
-            type="button"
-            :disabled="
-              !hasUnsavedSettings || savingSettings || memorySavePending
-            "
-            @click="discardSettings"
-          >
-            放弃修改</button
-          ><button
-            class="primary-btn"
-            type="button"
-            :disabled="savingSettings || memorySavePending"
-            @click="enterRoom"
-          >
-            <TsIcon name="arrowRight" :size="17" />{{
-              savingSettings
-                ? '保存中…'
-                : hasUnsavedSettings
-                  ? '保存并返回房间'
-                  : '返回房间'
-            }}
-          </button>
-        </div>
+        <span class="settings-save-state" role="status"><TsIcon :name="hasUnsavedSettings ? 'penLine' : 'check'" :size="16" />{{ hasUnsavedSettings ? '未保存' : '已保存' }}</span>
+        <div class="button-row"><button class="ghost-btn settings-discard" type="button" :disabled="!hasUnsavedSettings || savingSettings || memorySavePending" @click="discardSettings">撤销</button><button class="primary-btn" type="button" :disabled="!hasUnsavedSettings || savingSettings || memorySavePending || memoryChoice.pending" @click="saveAllSettings">{{ savingSettings ? '保存中…' : '保存修改' }}</button></div>
       </div>
     </footer>
     <Teleport to="body">
+      <div v-if="leaveDialog" class="room-test-modal" role="dialog" aria-modal="true" aria-label="保存修改后离开？" @keydown="handleLeaveKey" @click.self="finishLeave('stay')"><section ref="leaveCard" class="room-test-modal-card"><h2>保存修改后离开？</h2><p>所有分类的未保存修改会一起处理。</p><div class="button-row"><button class="ghost-btn" type="button" :disabled="savingSettings" @click="finishLeave('stay')">继续编辑</button><button class="ghost-btn" type="button" :disabled="savingSettings" @click="finishLeave('discard')">放弃并离开</button><button class="primary-btn" type="button" :disabled="savingSettings" @click="finishLeave('save')">保存并离开</button></div></section></div>
       <div
         v-if="testDialog.visible"
         class="room-test-modal"

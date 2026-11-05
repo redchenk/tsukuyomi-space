@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 test('long Chinese memory reads use short POST URLs through a URI-limited proxy', async ({ page }, testInfo) => {
@@ -78,9 +79,9 @@ test('long Chinese memory reads use short POST URLs through a URI-limited proxy'
     expect(responses.every(response => [200, 503].includes(response.status()))).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('memory-long-query.png') });
 
-    await page.goto('/room/settings');
-    if (testInfo.project.use.isMobile) await page.getByRole('button', { name: '聊天模型 全部设置', exact: true }).click();
-    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '长期记忆' }).click();
+    await page.goto('/room/settings?section=llm');
+    
+    await settingsCategory(page, '长期记忆' );
     await page.getByRole('searchbox', { name: '搜索记忆', exact: true }).fill(question);
     const searched = page.waitForResponse(response => response.url().endsWith('/api/room/memory/search')
         && response.request().postDataJSON().q === question);

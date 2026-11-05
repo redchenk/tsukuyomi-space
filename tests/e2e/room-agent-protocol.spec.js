@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { waitForRoom } = require('../e2e-room-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
@@ -14,8 +15,8 @@ test('Room settings tests and persists a Streamable HTTP handshake in the browse
         const result = request.method === 'initialize' ? { protocolVersion: '2025-11-25', capabilities: {} } : { tools: [{ name: 'web_search' }] };
         return route.fulfill({ contentType: 'application/json', headers: { ...headers, 'MCP-Session-Id': 'browser-session' }, body: JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) });
     });
-    await page.goto('/room/settings');
-    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '工具与扩展' }).click();
+    await page.goto('/room/settings?section=llm');
+    await settingsCategory(page, '工具与扩展' );
     const card = page.locator('#room-mcp-settings');
     await card.getByRole('switch', { name: '允许模型调用 MCP 工具' }).check();
     await card.getByLabel('连接协议').selectOption('streamable-http');

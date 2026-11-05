@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const defaults = require('../fixtures/oneclick-tts-defaults.json');
 
@@ -39,10 +40,7 @@ async function useOfficialOriginFixture(page, baseURL) {
 }
 
 async function openTtsSection(page) {
-    const menu = page.locator('.settings-mobile-menu');
-    await expect(menu).toBeAttached();
-    if (await menu.isVisible()) await menu.click();
-    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+    await settingsCategory(page, '语音与朗读 可选');
     const card = page.locator('#room-tts-settings');
     await expect(card).toBeVisible();
     return card;

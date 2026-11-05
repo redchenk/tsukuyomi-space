@@ -1,12 +1,8 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function category(page, label) {
-  const menu = page.locator('.settings-mobile-menu');
-  // isVisible() does not wait for the lazy-loaded settings page to mount.
-  // Otherwise a cold page can skip opening the mobile category drawer.
-  await expect(menu).toBeAttached();
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: label }).click();
+  await settingsCategory(page, label );
 }
 
 for (const width of [1280, 390]) test(`memory retrieval limit saves, reloads and respects the off switch at ${width}px`, async ({ page }, testInfo) => {
@@ -14,19 +10,19 @@ for (const width of [1280, 390]) test(`memory retrieval limit saves, reloads and
   await page.addInitScript(() => {
     if (!localStorage.getItem('roomMemorySettings')) localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
   });
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await category(page, '长期记忆');
   const limit = page.locator('#room-memory-retrieval-limit');
   await expect(limit).toHaveValue('12');
   await expect(limit).toBeDisabled();
   await page.getByRole('switch', { name: '开启长期记忆' }).check();
   await limit.fill('30');
-  await expect(page.getByRole('status').filter({ hasText: '有尚未保存的修改' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: '未保存' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('memory-limit-settings.png') });
-  await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await saveSettingsAndReturn(page);
   await expect(page).toHaveURL(/\/room$/);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('roomMemorySettings')))).toEqual({ enabled: true, retrievalLimit: 30 });
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await page.reload();
   await category(page, '长期记忆');
   await expect(limit).toHaveValue('30');
@@ -37,7 +33,7 @@ for (const width of [1280, 390]) test(`memory retrieval limit saves, reloads and
 for (const width of [1280, 390]) {
   test(`Room settings tests the draft and saves across categories at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     await page.getByRole('button', { name: 'DeepSeek', exact: true }).click();
     await page.locator('#settings-llm-key').fill('settings-test-placeholder');
     await page.locator('#settings-llm-model').fill('deepseek-v4-flash');
@@ -57,13 +53,13 @@ for (const width of [1280, 390]) {
     await category(page, '聊天模型');
     await expect(page.locator('#settings-llm-key')).toHaveValue('settings-test-placeholder');
     await expect(page.locator('#settings-llm-model')).toHaveValue('deepseek-chat');
-    await page.locator('.settings-savebar .primary-btn').click();
+    await saveSettingsAndReturn(page);
     await expect(page).toHaveURL(/\/room$/);
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     await expect(page.locator('#settings-llm-model')).toHaveValue('deepseek-chat');
     await category(page, '长期记忆');
     await expect(page.getByRole('switch', { name: '开启长期记忆' })).not.toBeChecked();
-    await expect(page.locator('.settings-save-state')).toContainText('所有修改已保存');
+    await expect(page.locator('.settings-save-state')).toContainText('已保存');
   });
 }
 
@@ -72,7 +68,7 @@ for (const width of [1280, 390]) {
 for (const theme of ['light', 'dark']) {
 test(`all Room settings categories fit the mobile ${theme} layout`, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   const sections = [
     ['聊天模型', '#room-llm-settings'], ['语音与朗读', '#room-tts-settings'],
     ['长期记忆', '#room-memory-settings'], ['角色知识库', '#room-knowledge-settings'],
@@ -90,10 +86,10 @@ test(`all Room settings categories fit the mobile ${theme} layout`, async ({ pag
     }
     const save = await page.locator('.settings-savebar').boundingBox();
     await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
-    const music = await page.locator('.site-music-panel').boundingBox();
+    await expect(page.locator('.site-music-drawer')).not.toBeVisible();
     expect(save.y + save.height).toBeCloseTo(844, 0);
-    expect(music.y + music.height).toBeLessThan(save.y);
-    await page.getByRole('button', { name: 'Expand music drawer', exact: true }).click();
+    expect(save.height).toBeLessThanOrEqual(65);
+    await page.getByRole('button', { name: '打开音乐', exact: true }).click();
     // The drawer morphs its position/height; assert its settled layout.
     await expect.poll(async () => {
       const player = await page.locator('.site-music-panel').boundingBox();
@@ -116,7 +112,7 @@ for (const width of [1280, 390]) test(`existing Room knowledge upgrades with edi
     // Seed just once: a reload must inspect the actual saved migration.
     if (!localStorage.getItem('roomKnowledgeSettings')) localStorage.setItem('roomKnowledgeSettings', JSON.stringify({ enabled: true, entries }));
   }, entries);
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await category(page, '角色知识库');
   const panel = page.locator('#room-knowledge-settings');
   await expect(panel.locator('.knowledge-item')).toHaveCount(101);
@@ -150,7 +146,7 @@ test('the previous 81-card library gains film sources while a deleted new card s
   await page.addInitScript(old => {
     if (!localStorage.getItem('roomKnowledgeSettings')) localStorage.setItem('roomKnowledgeSettings', JSON.stringify({ enabled: true, builtinVersion: old.version, entries: old.entries }));
   }, old);
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await category(page, '角色知识库');
   const panel = page.locator('#room-knowledge-settings');
   await expect(panel.locator('.knowledge-item')).toHaveCount(101);

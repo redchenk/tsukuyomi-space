@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const { waitForRoom } = require('../e2e-room-helpers.cjs');
 
@@ -107,9 +108,7 @@ async function expectChooser(page) {
 }
 
 async function openMemoryManager(page) {
-  const menu = page.locator('.settings-mobile-menu');
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name: '长期记忆', exact: true }).click();
+  await settingsCategory(page, '长期记忆');
   return page.locator('.room-memory-manager');
 }
 
@@ -147,7 +146,7 @@ for (const width of [1280, 390]) {
     const cloud = await seedCloud(page);
     const originalCloud = await cloudRows(page);
 
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=memory');
     const chooser = await expectChooser(page);
     await page.screenshot({ path: testInfo.outputPath(`source-choice-${width}.png`), fullPage: true, animations: 'disabled' });
     await chooser.getByRole('button', { name: '使用本地数据', exact: true }).click();
@@ -202,7 +201,7 @@ for (const width of [1280, 390]) {
     for (const turn of turns) expect(turn).toMatchObject({ memorySource: 'local', memoryEnabled: false });
     expect(await cloudRows(page)).toEqual(originalCloud);
 
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=memory');
     await page.getByRole('button', { name: '重新选择', exact: true }).click();
     await expectChooser(page);
     const imported = page.waitForResponse((response) => response.url().endsWith('/api/room/memory/import') && response.request().method() === 'POST');
@@ -245,7 +244,7 @@ test('choosing cloud leaves guest records intact and performs no import', async 
   const before = await cloudRows(page);
   let importCalls = 0;
   page.on('request', (request) => { if (request.method() === 'POST' && request.url().endsWith('/api/room/memory/import')) importCalls += 1; });
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=memory');
   const chooser = await expectChooser(page);
   await chooser.getByRole('button', { name: '使用云端数据', exact: true }).click();
   await expect(chooser).toBeHidden();
@@ -273,7 +272,7 @@ test('failed memory import remains unresolved and can retry the real backend', a
   const before = await cloudRows(page);
   const failImport = (route) => route.fulfill({ status: 503, json: { success: false, message: '导入暂时失败，请重试' } });
   await page.route('**/api/room/memory/import', failImport);
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=memory');
   const chooser = await expectChooser(page);
   await chooser.getByRole('button', { name: '合并本地与云端数据', exact: true }).click();
   await expect(chooser).toContainText('导入暂时失败，请重试');

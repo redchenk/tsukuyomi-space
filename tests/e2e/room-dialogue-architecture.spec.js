@@ -1,12 +1,10 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const fs = require('node:fs');
 const { waitForRoom } = require('../e2e-room-helpers.cjs');
 
 async function category(page, label) {
-  const menu = page.locator('.settings-mobile-menu');
-  await expect(menu).toBeAttached();
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: label, exact: true }).click();
+  await settingsCategory(page, label);
 }
 
 for (const width of [390, 1440]) test(`character reference and continuity reach the real request at ${width}px`, async ({ page }, testInfo) => {
@@ -27,10 +25,10 @@ for (const width of [390, 1440]) test(`character reference and continuity reach 
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: '收到，我们接着聊。' } }] }) });
   });
   page.on('dialog', dialog => dialog.accept());
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await category(page, '角色知识库');
   const panel = page.getByTestId('room-dialogue-settings');
-  await panel.locator(':scope > summary').click();
+  if (await panel.getAttribute('open') === null) await panel.locator(':scope > summary').click();
   await expect(panel.getByLabel('在聊天中参考这张卡', { exact: true })).toBeChecked();
   await expect(panel.getByLabel('启用卡片世界书', { exact: false })).toBeChecked();
   await panel.getByText('检查世界书条目', { exact: true }).click();
@@ -44,7 +42,7 @@ for (const width of [390, 1440]) test(`character reference and continuity reach 
   await panel.getByText('检查世界书条目', { exact: true }).click();
   await expect(panel.getByLabel('剧透偏好', { exact: true })).toHaveValue('allow');
   await panel.getByLabel('希望八千代怎样认识你', { exact: true }).fill('我喜欢简短直接的交流。');
-  await expect(page.locator('.settings-savebar')).toContainText('有尚未保存的修改');
+  await expect(page.locator('.settings-savebar')).toContainText('未保存');
   const card = { spec: 'chara_card_v2', data: { name: '参考卡', personality: 'REFERENCE_STYLE', mes_example: 'NEVER_OCCURRED', system_prompt: 'NEVER_SYSTEM', character_book: { entries: [{ id: 1, constant: true, content: 'WORLD_FACT' }] } } };
   await panel.locator('input[type=file]').setInputFiles({ name: 'reference.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(card)) });
   await expect(panel).toContainText('已载入预览');
@@ -90,11 +88,11 @@ for (const width of [390, 1440]) test(`character reference and continuity reach 
   await page.locator('.room-prompt-trace > summary').click();
   await expect(page.locator('.room-prompt-trace')).toContainText('称呼与明确约定：2');
   // Removing a card is effective on the next request, without deleting memories.
-  await page.goto('/room/settings');
+  await page.goto('/room/settings?section=llm');
   await category(page, '角色知识库');
-  await panel.locator(':scope > summary').click();
+  if (await panel.getAttribute('open') === null) await panel.locator(':scope > summary').click();
   await panel.getByRole('button', { name: '移除参考卡', exact: true }).click();
-  await page.locator('.settings-savebar').getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await saveSettingsAndReturn(page);
   await expect(page).toHaveURL(/\/room$/);
   await send('今天想唱什么？');
   expect(requests.at(-1).messages[0].content).not.toContain('REFERENCE_STYLE');
@@ -129,9 +127,9 @@ for (const useProxy of [false, true]) test(`independent card and world book acti
   });
   const panel = page.getByTestId('room-dialogue-settings');
   async function settings() {
-    await page.goto('/room/settings');
+    await page.goto('/room/settings?section=llm');
     await category(page, '角色知识库');
-    await panel.locator(':scope > summary').click();
+    if (await panel.getAttribute('open') === null) await panel.locator(':scope > summary').click();
   }
   async function send(message) {
     await waitForRoom(page);
@@ -147,7 +145,7 @@ for (const useProxy of [false, true]) test(`independent card and world book acti
   }
   await settings();
   await panel.getByLabel('在聊天中参考这张卡', { exact: true }).uncheck();
-  await page.locator('.settings-savebar').getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await saveSettingsAndReturn(page);
   let prompt = await send('聊聊星灯');
   expect(prompt).toContain('WORLD_ACTIVATION_MARKER');
   expect(prompt).not.toMatch(/CARD_ACTIVATION_MARKER|DISABLED_WORLD_MARKER/);

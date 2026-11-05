@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -22,10 +23,11 @@ test('official voice disables offline, enables online, binds account and replays
     await page.locator('#loginAccount').fill('e2e-user');await page.locator('#loginPassword').fill('e2e-password');await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/hub$/);
     await page.goto('/room/settings?section=tts');
-    const menu=page.locator('.settings-mobile-menu');if(await menu.isVisible())await menu.click();
-    await page.getByRole('navigation',{name:'设置分类'}).getByRole('button',{name:'语音与朗读 可选',exact:true}).click();
+    await settingsCategory(page, '语音与朗读 可选');
     const card=page.locator('#room-tts-settings');
     await expect(card.getByText('算力离线',{exact:true})).toBeVisible();
+    await card.getByRole('button', { name: '站内直供', exact: true }).click();
+    await card.getByRole('button', { name: '服务详情', exact: true }).click();
     await expect(card.locator('option[value="official"]')).toHaveAttribute('disabled','');
     online=true;await card.getByRole('button',{name:'检测算力',exact:true}).click();
     await expect(card.getByText('算力在线',{exact:true})).toBeVisible();
@@ -60,8 +62,8 @@ test('Fish settings keep a personal voice distinct from official Fish', async ({
     await expect(page).toHaveURL(/\/hub$/);
     await page.goto('/room/settings?section=tts');
     const card=page.locator('#room-tts-settings'), providers=card.getByLabel('语音服务',{exact:true});
-    const menu=page.locator('.settings-mobile-menu');if(await menu.isVisible())await menu.click();
-    await page.getByRole('navigation',{name:'设置分类'}).getByRole('button',{name:'语音与朗读 可选',exact:true}).click();
+    await settingsCategory(page, '语音与朗读 可选');
+    await page.locator('#room-tts-settings').getByRole('button', { name: '个人 API', exact: true }).click();
     await providers.selectOption('fishAudio');
     await expect(card.locator('[name="room-setting-tts-voice"]')).toHaveValue('a746d80afdb5451ca44c63401c001c9b');
     await expect(card.locator('[name="room-setting-fish-language"]')).toHaveValue('ja');
@@ -76,6 +78,7 @@ test('Fish settings keep a personal voice distinct from official Fish', async ({
     await expect.poll(()=>sent?.emotion).toBe('calm');
     expect(sent).toMatchObject({provider:'fish-audio',apiKey:'personal-fixture',model:'drama-3',text:'こんにちは。今夜も、月がきれいですね。'});
     await page.getByRole('dialog').getByRole('button',{name:'关闭',exact:true}).click();
+    await page.locator('#room-tts-settings').getByRole('button', { name: '站内直供', exact: true }).click();
     await providers.selectOption('officialFish');
     await card.locator('[name="room-setting-official-fish-model"]').selectOption('drama-3');
     await expect(card.locator('input[type="password"]')).toHaveCount(0);

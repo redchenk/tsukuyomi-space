@@ -215,3 +215,4 @@
     .room-shell .room-conversation-layout .room-chat-panel .chat-content { color: CanvasText; background: Canvas; border-color: CanvasText; }
   }
 }
+@media(max-width:900px){.room-mobile-settings { display:flex; width:auto; padding:0 12px; gap:6px; font-size:12px; }}

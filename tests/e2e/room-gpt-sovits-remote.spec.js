@@ -1,3 +1,4 @@
+const { settingsCategory, saveSettingsAndReturn } = require('../e2e-settings-helpers.cjs');
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 function silentWave() {
@@ -33,11 +34,8 @@ test('remote GPT-SoVITS settings use the same-origin bridge for preview and pers
     await page.locator('#loginPassword').fill('e2e-password');
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/hub$/);
-    await page.goto('/room/settings');
-    const menu = page.locator('.settings-mobile-menu');
-    await expect(menu).toBeAttached();
-    if (await menu.isVisible()) await menu.click();
-    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+    await page.goto('/room/settings?section=llm');
+    await settingsCategory(page, '语音与朗读 可选');
     const card = page.locator('#room-tts-settings');
     await expect(card).toBeVisible();
     await card.locator('summary').click();

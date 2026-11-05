@@ -8,8 +8,7 @@ async function language(page, lang) {
  },lang);
 }
 async function openSettingsNavigation(page) {
- const button=page.locator('.settings-mobile-menu');
- if(await button.isVisible()) await button.click();
+ await page.locator('.settings-detail-toolbar').getByRole('button').click();
 }
 for (const size of [{width:390,height:844},{width:320,height:568},{width:844,height:390}]) {
  test(`access entry is visible before any gesture at ${size.width}x${size.height}`, async({page})=>{
@@ -45,8 +44,8 @@ for(const lang of ['en','ja'])test(`all public destinations render localized con
   if(selector==='access-enter')await expect(page.locator('.access-enter')).toContainText(label);else await expect(page.locator(selector)).toBeVisible();
   if(url==='/wiki')await expect(page.locator('.wiki-filter-bar').first()).toContainText(lang==='en'?'Main characters':'主人公');
  }
- await page.goto('/room/settings');await expect(page.locator('.settings-main > .room-settings-card').first()).toContainText(lang==='en'?'Chat model':'チャットモデル');
- const tabs=page.locator('.settings-navigation .settings-nav-button');
+ await page.goto('/room/settings?section=llm');await expect(page.locator('.settings-main > .room-settings-card').first()).toContainText(lang==='en'?'Chat model':'チャットモデル');
+ const tabs=page.locator('.settings-category-grid .settings-category-card');
  for(let i=0;i<await tabs.count();i++){await openSettingsNavigation(page);await tabs.nth(i).click();await expect(page.locator('.settings-main > .room-settings-card:visible').first()).toBeVisible();}
  expect(remoteTranslation).toEqual([]);expect(errors).toEqual([]);
 });
@@ -62,7 +61,7 @@ for(const lang of ['en','ja'])test(`signed-in destinations retain translations a
  expect(errors).toEqual([]);
 });
 test('switching language preserves room settings drafts, keys and user-owned knowledge',async({page})=>{
- await page.goto('/room/settings');await expect(page.locator('#settings-llm-key')).toBeAttached();
+ await page.goto('/room/settings?section=llm');await expect(page.locator('#settings-llm-key')).toBeAttached();
 
  // Values are data, including words that also happen to be interface keys.
  await page.evaluate(()=>{localStorage.setItem('roomKnowledgeSettings',JSON.stringify({enabled:true,entries:[{id:'owned',title:'保存设置',content:'删除 你好 搜索',tags:['保存'],enabled:true}]}));});
@@ -72,7 +71,7 @@ test('switching language preserves room settings drafts, keys and user-owned kno
  await expect(page.locator('html')).toHaveAttribute('lang','ja');await expect(input).toHaveValue('fixture-only-key-not-a-real-secret');
  await page.keyboard.press('Escape');
  await openSettingsNavigation(page);
- await page.locator('.settings-navigation .settings-nav-button').filter({hasText:'キャラクター知識庫'}).click();
+ await page.locator('.settings-category-grid .settings-category-card').filter({hasText:'キャラクターと会話'}).click();
  await expect(page.locator('.knowledge-item').filter({hasText:'保存设置'})).toContainText('删除 你好 搜索');
  await page.screenshot({path:'.codex_tmp/access-i18n-20261008/settings-ja.png',fullPage:true});
 });
