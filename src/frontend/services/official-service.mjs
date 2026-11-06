@@ -33,6 +33,7 @@ export function assertDashboardAccount(data, siteUserId) {
   return data;
 }
 
-export function usageStatus(status) {
-  return ({ reserved: '处理中', settled: '已结算', released: '未消费，已释放', unknown: '待核对', needs_review: '待人工核对' })[status] || '待核对';
+export function usageStatus(status, errorCode) {
+  if (status === 'released' && errorCode === 'OPERATOR_WAIVED') return '费用已免除';
+  return ({ reserved: '处理中', settled: '已结算', released: '已释放', unknown: '待核对', needs_review: '待人工核对' })[status] || '待核对';
 }

@@ -11768,5 +11768,8 @@
   "已恢复上次保存结果，没有重复生成日记。": {
     "en": "The previous save has been recovered without generating a duplicate diary.",
     "ja": "前回の保存結果を復元しました。日記は重複して生成されていません。"
-  }
+  },
+  "费用已免除": {"en": "Charge waived", "ja": "料金免除"},
+  "费用由网站承担，冻结已释放": {"en": "Cost covered by the site; hold released", "ja": "サイト負担で料金免除。保留を解除しました"},
+  "冻结已释放，未扣费": {"en": "Hold released; no charge", "ja": "保留解除済み。課金なし"}
 }
