@@ -92,7 +92,7 @@ defineExpose({ reload: load });
     <ol v-else-if="usage?.items.length" class="payment-usage-list">
       <li v-for="item in usage.items" :key="item.request_id" class="payment-usage-row">
         <div><h4>{{ item.model }}</h4><time>{{ formatDateTime(item.created_at, 'zh-CN') }}</time><code>{{ item.request_id }}</code></div>
-        <div><span class="payment-badge" :class="{ 'is-muted': item.status !== 'settled' }">{{ $ui(usageStatus(item.status)) }}</span><p v-if="item.usage" class="payment-fine">输入 {{ item.usage.input_uncached }} · 缓存 {{ item.usage.input_cached }} · 输出 {{ item.usage.output }}</p><p v-else class="payment-fine">{{ item.status === 'released' ? '未产生消费，冻结已释放' : '最终用量待核对' }}</p></div>
+        <div><span class="payment-badge" :class="{ 'is-muted': item.status !== 'settled' }">{{ $ui(usageStatus(item.status, item.error_code)) }}</span><p v-if="item.usage" class="payment-fine">输入 {{ item.usage.input_uncached }} · 缓存 {{ item.usage.input_cached }} · 输出 {{ item.usage.output }}</p><p v-else class="payment-fine">{{ $ui(item.status === 'released' ? (item.error_code === 'OPERATOR_WAIVED' ? '费用由网站承担，冻结已释放' : '冻结已释放，未扣费') : '最终用量待核对') }}</p></div>
         <strong v-if="item.status === 'released'">未扣费</strong><strong v-else-if="item.billing_mode === 'sponsored'">免扣费</strong><strong v-else-if="item.charged_atoms !== null && item.charged_atoms !== undefined">¥{{ moneyAtoms(item.charged_atoms) }}</strong><span v-else class="payment-muted">尚未结算</span>
       </li>
     </ol>

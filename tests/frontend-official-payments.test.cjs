@@ -42,3 +42,9 @@ test('refreshing usage updates the visible site balance only for the same verifi
     vm.createContext(context);vm.runInContext(code,context);await mounted[0]();assert.equal(events.length,count);if(count){assert.equal(events[0][0],'wallet-updated');assert.equal(events[0][1],wallet);}
   }
 });
+test('waived unknown usage is presented as a waived charge, never proof of no consumption',async()=>{
+  const {usageStatus}=await load();
+  assert.equal(usageStatus('released','OPERATOR_WAIVED'),'费用已免除');
+  assert.equal(usageStatus('released'),'已释放');
+  assert.equal(usageStatus('unknown','OPERATOR_WAIVED'),'待核对');
+});
