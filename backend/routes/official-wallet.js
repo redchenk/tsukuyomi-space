@@ -50,6 +50,7 @@ function router() {
             } else if (b.action === 'reserve') data = wallet.admission(b);
             else if (b.action === 'settle') data = wallet.settle(b);
             else if (b.action === 'release') data = wallet.release(b);
+            else if (b.action === 'pending_review') data = wallet.pendingReview(b);
             else if (b.action === 'request') data = { request: wallet.request(b.request_id) };
             else return res.sendStatus(404);
             res.json({ success: true, data });
