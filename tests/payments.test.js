@@ -247,6 +247,21 @@ test('private wallet bridge rejects forgery, replay, stale timestamps and cross-
     assert.equal(empty.status, 402);
     assert.equal(db.prepare("SELECT count(*) n FROM billing_requests WHERE request_id='req_no_funds'").get().n, 0);
     assert.equal((await fetch(base + endpoint, { method: 'POST', headers: headers(owner), body: JSON.stringify(overview) })).status, 403, 'browser origin and bearer tokens never authorize the private bridge');
+    const review = { action: 'pending_review', user_id: input.user_id, request_id: input.request_id, request_fingerprint: input.request_fingerprint };
+    assert.equal((await rpc(review, { token: '' })).data.data.request.state, 'settled', 'lost settlement acknowledgement cannot downgrade a final result');
+    const pending = { ...input, request_id: 'req_review' };
+    assert.equal((await rpc(pending)).status, 200);
+    const nextReview = { ...review, request_id: pending.request_id };
+    assert.equal((await rpc({ ...nextReview, user_id: 'other' }, { token: '' })).status, 409);
+    assert.equal((await rpc({ ...nextReview, request_fingerprint: 'c'.repeat(64) }, { token: '' })).status, 409);
+    for (let n = 0; n < 2; n++) assert.equal((await rpc(nextReview, { token: '' })).data.data.request.state, 'unknown');
+    const wallet = require('../backend/services/site-wallet');
+    assert.equal(wallet.wallet('owner').held_atoms, '100000000');
+    assert.equal(wallet.wallet('owner').balance_atoms, '1229934000', 'review neither charges nor releases the retained hold');
+    const settleReview = { ...settle, request_id: pending.request_id };
+    for (let n = 0; n < 2; n++) assert.equal((await rpc(settleReview, { token: '' })).data.data.request.state, 'settled');
+    assert.equal(wallet.wallet('owner').held_atoms, '0');
+    assert.equal(wallet.wallet('owner').balance_atoms, '1229868000', 'final usage settles a reviewed request exactly once');
 });
 
 test('main-site sponsored mode survives demotion for admitted requests and is denied for new ones', () => {
@@ -259,4 +274,24 @@ test('main-site sponsored mode survives demotion for admitted requests and is de
     assert.equal(wallet.settle({ request_id: input.request_id, request_fingerprint: input.request_fingerprint, usage: { input_uncached: '20', input_cached: '0', output: '50' } }).request.money_atoms, '0');
     assert.equal(wallet.wallet('other').balance_atoms, '0');
     assert.throws(() => wallet.admission({ ...input, request_id: 'req_demoted' }), /权限已变化/);
+});
+
+test('review holds retain balance protection without occupying the central active-request cap', () => {
+    const wallet = require('../backend/services/site-wallet');
+    const user_id = 'review-admission';
+    db.prepare('INSERT INTO users(id,username,email,password_hash) VALUES (?,?,?,?)').run(user_id, user_id, `${user_id}@example.test`, 'fixture-hash');
+    wallet.wallet(user_id);
+    wallet.ledger.creditVerifiedEvent({ verified: true, source_id: 'fixture', event_id: user_id, order_id: user_id, user_id, currency: 'CNY', money_atoms: '1000000000' });
+    const input = { user_id, request_fingerprint: 'd'.repeat(64), hold_atoms: '10000000', sponsored: false,
+        pricing_snapshot: { id: 'review-fixture', currency: 'CNY', rates_per_million_money_atoms: { input_uncached: '2200000000', input_cached: '44000000', output: '8800000000' } } };
+    for (let i = 0; i < 8; i++) {
+        const item = { ...input, request_id: `req_review_${i}` };
+        wallet.admission(item); wallet.pendingReview(item);
+    }
+    assert.equal(wallet.wallet(user_id).held_atoms, '80000000');
+    assert.throws(() => wallet.admission({ ...input, request_id: 'req_review_overdraw', hold_atoms: '950000000' }), e => e.code === 'INSUFFICIENT_AVAILABLE');
+    for (let i = 0; i < 8; i++) wallet.admission({ ...input, request_id: `req_running_${i}` });
+    assert.throws(() => wallet.admission({ ...input, request_id: 'req_running_ninth' }), e => e.code === 'ACCOUNT_REQUEST_LIMIT');
+    assert.equal(wallet.wallet(user_id).held_atoms, '160000000');
+    assert.equal(wallet.wallet(user_id).balance_atoms, '1000000000');
 });

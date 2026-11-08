@@ -46,7 +46,9 @@ function admission(input) {
         if (typeof input.hold_atoms !== 'string' || !/^\d{1,12}$/.test(input.hold_atoms) || BigInt(input.hold_atoms) > 10000000000n || input.sponsored && input.hold_atoms !== '0') fail('INVALID_HOLD', '预留金额超出限制');
         const old = db.prepare('SELECT sponsored FROM site_wallet_admissions WHERE request_id=?').get(input.request_id);
         if (old && Boolean(old.sponsored) !== input.sponsored) fail('IDEMPOTENCY_CONFLICT', '请求扣费方式冲突', 409);
-        if (!old && db.prepare("SELECT count(*) n FROM billing_requests WHERE user_id=? AND state IN ('reserved','unknown','needs_review')").get(input.user_id).n >= 8) fail('ACCOUNT_REQUEST_LIMIT', '账号仍有待处理请求', 429);
+        // Review is a billing state, not a running generation. Its hold still
+        // reduces available balance, but must not occupy a concurrency slot.
+        if (!old && db.prepare("SELECT count(*) n FROM billing_requests WHERE user_id=? AND state='reserved'").get(input.user_id).n >= 8) fail('ACCOUNT_REQUEST_LIMIT', '当前请求较多，请等待正在生成的回复完成。', 429);
         const result = ledger.reserve({ request_id: input.request_id, user_id: input.user_id, request_fingerprint: input.request_fingerprint, hold_atoms: input.hold_atoms, pricing_snapshot: input.pricing_snapshot });
         db.prepare('INSERT OR IGNORE INTO site_wallet_admissions(request_id,sponsored) VALUES(?,?)').run(input.request_id, input.sponsored ? 1 : 0);
         return result;
@@ -65,4 +67,14 @@ function release(input) {
     return ledger.releaseWithNoConsumptionProof({ request_id: current.request_id, request_fingerprint: input.request_fingerprint,
         verified_no_consumption: true, reason: input.reason, proof_ref: input.proof_ref });
 }
-module.exports = { ledger, wallet, creditOrder, creditedOrder, statement, admission, settle, release, request };
+function pendingReview(input) {
+    const current = request(input.request_id);
+    if (current.user_id !== input.user_id || current.request_fingerprint !== input.request_fingerprint
+        || !db.prepare('SELECT 1 FROM site_wallet_admissions WHERE request_id=?').get(input.request_id)) fail('IDEMPOTENCY_CONFLICT', '请求核对身份不匹配', 409);
+    // An acknowledgement may have been lost after settlement. Never downgrade
+    // an existing result, debit, release funds, or fabricate zero consumption.
+    if (current.state !== 'reserved') return { request: current };
+    return ledger.markUnknown({ request_id: current.request_id, request_fingerprint: current.request_fingerprint,
+        reason: 'upstream_result_uncertain', evidence_ref: `official-review:${current.request_id}` });
+}
+module.exports = { ledger, wallet, creditOrder, creditedOrder, statement, admission, settle, release, request, pendingReview };
