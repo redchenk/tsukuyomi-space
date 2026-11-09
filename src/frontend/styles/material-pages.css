@@ -10,7 +10,7 @@
     .settings-context-card) {
     border: 1px solid var(--ts-editorial-line);
     border-radius: var(--ts-radius-card);
-    background: var(--ts-editorial-surface);
+    background: var(--ts-panel-finish);
     box-shadow: var(--ts-elevation-rest);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -36,7 +36,7 @@
     .profile-side-card, .profile-latest-card, .profile-empty) { transform: none; }
   body .page :is(.profile-stat strong, .profile-meta span, .profile-side-title,
     .profile-presence-grid b) { color: var(--ts-editorial-ink); }
-  .notification-card.unread {
+  body .page .notification-card.unread {
     background: var(--ts-state-hover);
     border-color: color-mix(in srgb, var(--ts-accent) 40%, var(--ts-editorial-line));
   }
@@ -140,7 +140,7 @@
     --ts-material-filter-thin: none;
   }
   body .page.auth-page .auth-form-stage { background: transparent; border-color: var(--ts-editorial-line); }
-  body .page.auth-page .auth-card { animation: none; opacity: 1; transform: none; border-radius: var(--ts-radius-card); background: var(--ts-editorial-surface); box-shadow: var(--ts-elevation-raised); }
+  body .page.auth-page .auth-card { animation: none; opacity: 1; transform: none; border-radius: var(--ts-radius-card); background: var(--ts-panel-finish); box-shadow: var(--ts-elevation-raised); }
   body .page.auth-page .auth-card-head,
   body .page.auth-page .auth-card :is(.form-message, .oauth-profile, .oauth-loading,
     .mode-row, .form-group, .primary-btn, .oauth-login-section, .auth-card-footer,

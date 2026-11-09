@@ -151,3 +151,32 @@ test('returning an unopened bottle restores the pool without leaking any corresp
     assert.equal((await call(`/api/drift/${bottle}/return`,'return-other','POST')).status,409);
     assert.equal((await call('/api/drift/pick','return-reader','POST')).body.data,null);
 });
+
+test('bottle pages count and filter the full private collection before slicing', async () => {
+    const add = db.prepare("INSERT INTO drift_bottles(user_id,recipient_id,content,status,review) VALUES(?,?,?,?,'{}')");
+    for (let index = 1; index <= 26; index++) {
+        add.run('return-owner', null, `寄出的第 ${index} 封`, 'approved');
+    }
+    const received = add.run('sender', 'return-owner', '捡到的瓶子', 'approved').lastInsertRowid;
+    add.run('sender', 'return-owner', '未通过审核的来信', 'pending');
+    const newest = await call('/api/drift?page=1&filter=sent', 'return-owner');
+    assert.equal(newest.status, 200);
+    assert.equal(newest.body.data.items.length, 12);
+    assert.equal(newest.body.data.items[0].content, '寄出的第 26 封');
+    assert.equal(newest.body.data.totalPages, 3);
+
+    const last = (await call('/api/drift?page=99&filter=sent', 'return-owner')).body.data;
+    assert.equal(last.page, 3);
+    assert.equal(last.total, newest.body.data.total);
+    assert.equal(last.items[0].content, '寄出的第 2 封');
+    assert.ok(last.items.every(item => item.user_id === 'return-owner'));
+
+    const incoming = (await call('/api/drift?page=1&filter=received', 'return-owner')).body.data;
+    assert.deepEqual(incoming.items.map(item => item.id), [received]);
+    assert.equal(incoming.total, 1);
+    const someoneElse = (await call('/api/drift?page=1&filter=received', 'return-other')).body.data;
+    assert.ok(someoneElse.items.every(item => item.id !== received));
+    const combined = (await call('/api/drift?page=1', 'return-owner')).body.data;
+    assert.equal(combined.total, last.total + incoming.total);
+    assert.ok(Array.isArray((await call('/api/drift', 'return-owner')).body.data));
+});

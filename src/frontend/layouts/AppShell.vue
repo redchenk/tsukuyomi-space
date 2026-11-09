@@ -292,7 +292,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell unified-navigation" :class="{ 'room-shell': isRoom, 'site-background-shell': hasGlobalBackground, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
+  <div class="app-shell unified-navigation" :class="{ 'room-shell': isRoom, 'site-background-shell': hasGlobalBackground, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'drift-scene-shell': routeName === 'drift', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && !isRoom && !['game', 'gomoku', 'kaguyaRun'].includes(routeName)" class="moon" aria-hidden="true"></div>
 

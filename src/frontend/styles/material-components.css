@@ -1,10 +1,11 @@
-/* Material 3-inspired component geometry, adapted to Tsukuyomi's existing
-   moon-white/dusty-rose tokens. Keep route layouts and native controls intact. */
+/* Shared panel geometry and finishes draw their colors from the active theme. */
 @layer ts-components {
   :root {
-    --ts-radius-card: 24px;
-    --ts-radius-control: 16px;
+    --ts-radius-card: 16px;
+    --ts-radius-control: 10px;
     --ts-shape-dialog: 28px;
+    --ts-panel-finish: linear-gradient(155deg, var(--ts-editorial-surface), var(--ts-editorial-low) 108%);
+    --ts-panel-serif: 'Songti SC', 'Noto Serif SC', 'Yu Mincho', var(--ts-font-serif);
     --ts-control-height: 44px;
     --ts-control-height-small: 36px;
     --ts-control-shadow: none;
@@ -16,8 +17,7 @@
     --ts-state-pressed: color-mix(in srgb, var(--ts-accent) 12%, var(--ts-editorial-surface));
   }
 
-  /* Text actions have one optical center; icon-only and canvas controls retain
-     their dedicated sizing. Pills remain the site's button signature. */
+  /* The fixed navigation and drawing tools have their own sizing. */
   :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
     .code-btn, .mode-btn):not(.music-icon-btn):not(.room-chat-send) {
     display: inline-flex;
@@ -26,7 +26,7 @@
     gap: 8px;
     min-height: var(--ts-control-height);
     padding: 10px 20px;
-    border-radius: var(--ts-radius-button);
+    border-radius: var(--ts-radius-control);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -125,15 +125,25 @@
   .room-settings-page :where(.settings-secret, .settings-search) input { border-radius: 0; }
   .page :where(.plaza-search, .gallery-view-options select) { border-radius: var(--ts-radius-button); }
 
-  /* A larger outer shape and smaller inner shape make nesting legible while
-     preserving covers, thumbnails, the transparent Room and all current art. */
+  /* Give content panels an outer frame and a smaller inset shape. */
   .page :where(.panel, .uc-hero, .uc-security-card, .uc-support-card,
     .plaza-compose-panel, .plaza-msg-card, .gallery-card, .gallery-toolbar,
     .room-settings-card, .settings-navigation, .settings-guide, .stage-card,
     .notification-card, .attachment-card, .terminal-card, .terminal-panel,
-    .article-reader, .scene-card) {
+    .article-reader, .scene-card, .wiki-panel, .wiki-side-card, .uc-card, .profile-card,
+    .hub-hero-panel) {
     border-radius: var(--ts-radius-card);
     box-shadow: var(--ts-elevation-rest);
+  }
+  .page :is(.plaza-compose-panel, .plaza-msg-card, .gallery-discovery, .gallery-empty, .room-settings-card,
+    .settings-navigation, .settings-guide, .stage-card, .uc-security-card,
+    .uc-support-card, .terminal-card, .terminal-panel, .article-reader,
+    .wiki-panel, .wiki-side-card, .uc-card, .profile-card, .hub-hero-panel) {
+    border-color: var(--ts-editorial-line);
+    background: var(--ts-panel-finish);
+  }
+  .page :is(.page-header, .gallery-heading, .plaza-hero, .notifications-hero, .room-settings-head) h1 {
+    font-family: var(--ts-panel-serif);
   }
   .page :where(.plaza-msg-card, .gallery-card, .stage-card, .notification-card,
     .attachment-card, .scene-card):hover {

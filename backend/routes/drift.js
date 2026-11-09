@@ -53,12 +53,37 @@ function saveRequest(req, create) {
 }
 router.use(authenticateToken);
 router.get('/daily-prompt', (req,res) => ok(res,getDailyPrompt(userGrowth.hongKongDate())));
-router.get('/', (req,res) => {
-    const before = id(req.query.before) || Number.MAX_SAFE_INTEGER;
-    ok(res, db.prepare(`SELECT b.id,b.content,b.language,b.status,b.closed,b.created_at,b.recipient_id,
-        b.user_id,b.daily_prompt_date,b.daily_prompt_id,b.daily_prompt_json,u.username,COALESCE(NULLIF(u.nickname,''),u.username) AS nickname
+const bottleColumns = `b.id,b.content,b.language,b.status,b.closed,b.created_at,b.recipient_id,
+    b.user_id,b.daily_prompt_date,b.daily_prompt_id,b.daily_prompt_json,u.username,
+    COALESCE(NULLIF(u.nickname,''),u.username) AS nickname`;
+const bottleScope = {
+    all: "(b.user_id=@userId OR (b.recipient_id=@userId AND b.status='approved'))",
+    sent: 'b.user_id=@userId',
+    received: "b.recipient_id=@userId AND b.user_id<>@userId AND b.status='approved'"
+};
+const bottlePageSize = 12;
+const readBottlePage = db.transaction((userId, requestedPage, filter) => {
+    const where = bottleScope[filter];
+    const total = db.prepare(`SELECT COUNT(*) AS total FROM drift_bottles b WHERE ${where}`).get({ userId }).total;
+    const totalPages = Math.max(1, Math.ceil(total / bottlePageSize));
+    const page = Math.min(requestedPage, totalPages);
+    const items = db.prepare(`SELECT ${bottleColumns}
         FROM drift_bottles b JOIN users u ON u.id=b.user_id
-        WHERE b.id < ? AND (b.user_id=? OR (b.recipient_id=? AND b.status='approved')) ORDER BY b.id DESC LIMIT 30`).all(before,req.user.id,req.user.id).map(bottleWithPrompt));
+        WHERE ${where} ORDER BY b.id DESC LIMIT @limit OFFSET @offset`)
+        .all({ userId, limit: bottlePageSize, offset: (page - 1) * bottlePageSize })
+        .map(bottleWithPrompt);
+    return { items, page, totalPages, total };
+});
+router.get('/', (req,res) => {
+    if (req.query.page !== undefined) {
+        const filter = ['sent', 'received'].includes(req.query.filter) ? req.query.filter : 'all';
+        return ok(res, readBottlePage(req.user.id, id(req.query.page) || 1, filter));
+    }
+    const before = id(req.query.before) || Number.MAX_SAFE_INTEGER;
+    ok(res, db.prepare(`SELECT ${bottleColumns}
+        FROM drift_bottles b JOIN users u ON u.id=b.user_id
+        WHERE b.id < @before AND ${bottleScope.all} ORDER BY b.id DESC LIMIT 30`)
+        .all({ before, userId: req.user.id }).map(bottleWithPrompt));
 });
 router.post('/daily', submissionContext('daily-bottle'), writeLimiter, (req,res) => {
     const review = reviewMessageContent(req.body?.content);

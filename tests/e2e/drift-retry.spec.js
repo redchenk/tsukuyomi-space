@@ -1,5 +1,7 @@
 const { test, expect } = require('../e2e-drift-fixtures.cjs');
 
+test.use({ reducedMotion: 'reduce' });
+
 const unknown = '暂时无法确认是否已保存。内容可能已经保存，请先查看我的瓶子或收取回信；保留原文重试不会重复发送。';
 async function login(request, baseURL, username) {
     const response = await request.post('/api/auth/login', { headers:{ Origin:new URL(baseURL).origin, 'X-Requested-With':'XMLHttpRequest' }, data:{ username,password:'mem0-test-password' } });
@@ -23,9 +25,8 @@ test('saved bottle with a lost response retries once after reload and keeps its 
         }
         return route.continue();
     });
-    await page.getByRole('button',{ name:'扔一个',exact:true }).click();
     await page.locator('#drift-draft').fill(content);
-    await page.getByRole('button',{ name:'交给潮汐',exact:true }).click();
+    await page.getByRole('button',{ name:'发送',exact:true }).click();
     await expect(page.getByRole('status')).toHaveText(unknown);
     await expect(page.locator('#drift-draft')).toHaveValue(content);
     await page.screenshot({ path:info.outputPath('saved-response-lost.png') });
@@ -35,10 +36,9 @@ test('saved bottle with a lost response retries once after reload and keeps its 
     try {
         await page.reload();
         await expect(page.locator('#boot-splash')).toHaveCount(0);
-        await page.getByRole('button',{ name:'扔一个',exact:true }).click();
         await page.locator('#drift-draft').fill(content);
-        await page.getByRole('button',{ name:'交给潮汐',exact:true }).click();
-        await expect(page.getByRole('dialog')).toBeHidden();
+        await page.getByRole('button',{ name:'发送',exact:true }).click();
+        await expect(page.locator('#drift-panel-bottles')).toBeVisible();
         await expect(page.getByRole('button').filter({ hasText:content })).toHaveCount(1);
         expect(requests).toHaveLength(2);
         expect(requests[1].requestId).toBe(requests[0].requestId);
@@ -127,10 +127,9 @@ test('confirmed save followed by a failed refresh says not to resend', async ({ 
         return route.continue();
     });
     try {
-        await page.getByRole('button',{ name:'扔一个',exact:true }).click();
         await page.locator('#drift-draft').fill(content);
-        await page.getByRole('button',{ name:'交给潮汐',exact:true }).click();
-        await expect(page.getByRole('dialog')).toBeHidden();
+        await page.getByRole('button',{ name:'发送',exact:true }).click();
+        await expect(page.locator('#drift-panel-bottles')).toBeVisible();
         await expect(page.getByRole('status')).toHaveText('已保存，但暂时无法刷新内容。请稍后刷新列表或收取回信，无需重新发送。');
         const rows = (await (await page.request.get('/api/drift')).json()).data;
         expect(rows.filter(row=>row.content === content)).toHaveLength(1);

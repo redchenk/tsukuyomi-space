@@ -25,7 +25,7 @@ async function contrast(foreground, background, pseudo) {
     }, { selector: background, pseudo });
 }
 
-test('light and dark shores, letters and drafts follow the selected theme', async ({ page, browser, baseURL }, info) => {
+test('lake artwork and drafts survive while the letter controls follow the site theme', async ({ page, browser, baseURL }, info) => {
     test.setTimeout(45_000);
     const headers = { Origin: new URL(baseURL).origin, 'X-Requested-With': 'XMLHttpRequest' };
     const sender = await browser.newContext({ baseURL });
@@ -47,20 +47,16 @@ test('light and dark shores, letters and drafts follow the selected theme', asyn
         await page.goto('/drift');
         await expect(page.locator('#boot-splash')).toHaveCount(0);
         const draft = '还没寄出的心事，切换主题以后继续写。';
-        let dayImage;
+        let dayImage, lightPaper;
         for (const mode of ['light', 'dark', 'light']) {
             if (await page.locator('html').getAttribute('data-theme') !== mode) await switchTheme(page, mode);
-            const artwork = await page.locator('.drift-ocean').evaluate(async node => {
-                const style = getComputedStyle(node);
-                const url = style.backgroundImage.match(/url\(["']?([^"')]+)/)[1];
-                const image = new Image(); image.src = url; await image.decode();
-                return { url, width: image.naturalWidth };
+            const artwork = await page.locator('.drift-lake-picture img').evaluate(async image => {
+                await image.decode();
+                return { url: image.currentSrc, width: image.naturalWidth };
             });
-            expect(artwork.width).toBeGreaterThan(1000);
-            if (mode === 'light') {
-                if (!dayImage) dayImage = artwork.url;
-                expect(artwork.url).toBe(dayImage);
-            } else expect(artwork.url).not.toBe(dayImage);
+            expect(artwork.width).toBeGreaterThanOrEqual(760);
+            dayImage ||= artwork.url;
+            expect(artwork.url).toBe(dayImage);
             await page.getByRole('tab', { name: '我的瓶子', exact: true }).click();
             await page.locator('.drift-list-item').filter({ hasText: content }).click();
             await expect(page.locator('.drift-original-paper')).toHaveText(content);
@@ -84,12 +80,16 @@ test('light and dark shores, letters and drafts follow the selected theme', asyn
             await page.getByRole('button', { name: '关闭纸条', exact: true }).click();
             await page.getByRole('tab', { name: '海边', exact: true }).click();
             await page.screenshot({ path: info.outputPath(`shore-${mode}.png`) });
-            await page.getByRole('button', { name: '扔一个', exact: true }).click();
+            await page.getByRole('button', { name: '再发一封', exact: true }).click();
             if (!await page.locator('#drift-draft').inputValue()) await page.locator('#drift-draft').fill(draft);
             await expect(page.locator('#drift-draft')).toHaveValue(draft);
-            expect(await contrast(page.locator('#drift-draft'), '.drift-writing-paper')).toBeGreaterThanOrEqual(4.5);
-            expect(await contrast(page.locator('#drift-draft'), '.drift-writing-paper', '::placeholder')).toBeGreaterThanOrEqual(4.5);
-            await page.getByRole('button', { name: '取消', exact: true }).click();
+            const paper = await page.locator('#drift-draft').evaluate(el => getComputedStyle(el).backgroundColor);
+            if (mode === 'light') {
+                lightPaper ||= paper;
+                expect(paper).toBe(lightPaper);
+            } else expect(paper).not.toBe(lightPaper);
+            expect(await contrast(page.locator('#drift-draft'), '#drift-draft')).toBeGreaterThanOrEqual(4.5);
+            expect(await contrast(page.locator('#drift-draft'), '#drift-draft', '::placeholder')).toBeGreaterThanOrEqual(4.5);
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     } finally {
