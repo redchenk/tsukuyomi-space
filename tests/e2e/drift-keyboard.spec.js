@@ -37,7 +37,9 @@ async function verifyKeyboardCycle(page, input, draft, info) {
         }, size);
         await expect(page.locator('.app-shell')).toHaveClass(/is-keyboard-open/);
         await expect(input).toHaveValue(draft);
-        const controls = [input, ...await page.locator('.drift-letter-actions button').all(), page.getByRole('button', { name: '关闭纸条', exact: true })];
+        const reply = await input.getAttribute('id') === 'drift-reply';
+        const controls = [input, ...await page.locator(reply ? '.drift-letter-actions button' : '.drift-compose-actions button').all()];
+        if (reply) controls.push(page.getByRole('button', { name: '关闭纸条', exact: true }));
         for (const control of controls) {
             await expect.poll(async () => {
                 const box = await control.boundingBox();
@@ -64,12 +66,11 @@ test('bottle draft and actions remain reachable through portrait and wide touch 
     await login(page.request, baseURL, `drift-keyboard-owner-${info.project.name}`);
     await page.goto('/drift');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
-    await page.getByRole('button', { name: '扔一个', exact: true }).click();
     const input = page.locator('#drift-draft');
     const draft = '转动手机时，长纸条与发送按钮都应该留在可见区域。\n'.repeat(30);
     await verifyKeyboardCycle(page, input, draft, info);
-    await page.getByRole('button', { name: '关闭纸条', exact: true }).click();
-    await page.getByRole('button', { name: '扔一个', exact: true }).click();
+    await page.getByRole('tab', { name: '海边', exact: true }).click();
+    await page.getByRole('button', { name: '再发一封', exact: true }).click();
     await expect(input).toHaveValue(draft);
 });
 

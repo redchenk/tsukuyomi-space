@@ -1,0 +1,171 @@
+.drift-film {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    isolation: isolate;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    touch-action: none;
+    color: #fae9cd;
+}
+
+.drift-film-backdrop,
+.drift-film-light,
+.drift-film-veil {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* The site assigns an 80ms default transition in reduced performance mode.
+   These layers already share one animation clock, so they must never lag it. */
+.drift-film :is(.drift-film-backdrop, .drift-film-world, .drift-film-moon, .drift-film-moon-detail, .drift-film-lamp, .drift-film-reflection, .drift-film-veil) {
+    transition-property: none;
+}
+
+.drift-film-backdrop {
+    overflow: hidden;
+    opacity: 0;
+    background: radial-gradient(ellipse at 50% 42%, #25364d, #142436);
+}
+
+.drift-film-world {
+    position: absolute;
+    display: block;
+    max-width: none;
+    object-fit: fill;
+    transform-origin: left top;
+    mask-image: linear-gradient(to bottom, transparent, #000 5%, #000 96%, transparent);
+    will-change: transform;
+}
+
+.drift-film-moon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    border-radius: 50%;
+    background-repeat: no-repeat;
+    mask-image: radial-gradient(circle, #000 63%, #000 66%, transparent 73%);
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.drift-film-moon-detail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 1254px;
+    height: 1254px;
+    max-width: none;
+    opacity: 0;
+    visibility: hidden;
+    filter: brightness(1.08) sepia(.07) drop-shadow(0 0 29px #ffd89473);
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.drift-film[data-act="zoom"] .drift-film-moon-detail { visibility: visible; }
+
+.drift-film-lamp,
+.drift-film-reflection {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    height: auto;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.drift-film-lamp { transform-origin: center bottom; }
+
+.drift-film-reflection {
+    transform-origin: center top;
+    filter: blur(3px) saturate(1.12);
+    mask-image: repeating-linear-gradient(to top, #000 0 3%, #0003 4% 6%, #0008 7% 9%), linear-gradient(to top, #000, transparent 84%);
+    mask-composite: intersect;
+}
+
+.drift-film-veil {
+    opacity: 0;
+    background: radial-gradient(ellipse at center, #fffdf4 16%, #fff7e3 59%, #ffe9c2);
+    mask-image: radial-gradient(ellipse, #000 calc(var(--film-glare-edge, 40%) - 35%), transparent var(--film-glare-edge, 40%));
+    will-change: opacity;
+}
+
+.drift-film-status {
+    position: absolute;
+    left: 50%;
+    bottom: max(var(--film-caption-bottom), calc(28px + env(safe-area-inset-bottom)));
+    width: max-content;
+    max-width: calc(100% - 36px);
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.drift-film .drift-film-reply {
+    margin: 0;
+    padding: 7px 18px 9px;
+    border-radius: 10px;
+    background: #0b172a83;
+    color: #fff4e3;
+    font: 500 clamp(15px, 1.25vw, 20px)/1.6 'Songti SC', 'Noto Serif SC', 'Yu Mincho', serif;
+    letter-spacing: .05em;
+    text-shadow: 0 1px 6px #0a1524;
+}
+
+.drift-film-reply span {
+    margin-inline-end: .7em;
+    color: #f5d599;
+    font-size: .86em;
+}
+
+.drift-film-caption-enter-active,
+.drift-film-caption-leave-active {
+    transition: opacity 300ms ease, translate 300ms ease;
+}
+.drift-film-caption-enter-from,
+.drift-film-caption-leave-to {
+    opacity: 0;
+    translate: 0 4px;
+}
+
+.drift-film .drift-film-skip {
+    position: absolute;
+    right: max(16px, env(safe-area-inset-right));
+    top: calc(6px + env(safe-area-inset-top));
+    min-height: 44px;
+    padding: 0 15px;
+    border: 1px solid #ffdfa369;
+    border-radius: 100px;
+    background: #101c2de8;
+    color: #fae9cd;
+    font: 500 13px/1.2 var(--ts-font-sans, system-ui);
+    animation: drift-film-controls-in 320ms ease-out both;
+}
+
+.drift-film .drift-film-skip:focus-visible {
+    animation: none;
+    outline: 2px solid #ffda9a;
+    outline-offset: 3px;
+}
+
+.drift-film[data-act="reveal"] :is(.drift-film-backdrop, .drift-film-world, .drift-film-moon, .drift-film-moon-detail, .drift-film-light, .drift-film-lamp, .drift-film-reflection, .drift-film-status, .drift-film-skip) {
+    visibility: hidden;
+}
+
+@keyframes drift-film-controls-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.drift-scene-shell:has(.drift-page[data-playing]) :is(.site-music-drawer, .site-beian-footer, .site-commandbar) {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 460ms ease;
+}

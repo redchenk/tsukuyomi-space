@@ -1,4 +1,6 @@
 const { test, expect } = require('../e2e-drift-fixtures.cjs');
+
+test.use({ reducedMotion: 'reduce' });
 const prompts = require('../../shared/drift-prompts.json');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -28,18 +30,22 @@ for (const lang of ['zh','en','ja']) {
         const prompt = (await (await page.request.get('/api/drift/daily-prompt')).json()).data;
         await expect(task).toContainText(prompt.text[lang]);
         await task.click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(dialog.locator('.drift-prompt-context')).toContainText(prompt.text[lang]);
-        await expect(dialog.getByRole('button',{ name:text.inspire,exact:true })).toHaveCount(0);
+        const writer = page.locator('#drift-panel-write');
+        const dialog = page.locator('.drift-bottle-dialog');
+        await expect(writer).toBeVisible();
+        await expect(writer.locator('.drift-prompt-context')).toContainText(prompt.text[lang]);
+        await expect(writer.getByRole('button',{ name:text.inspire,exact:true })).toHaveCount(0);
         await expect(page.locator('.drift-daily-entry small')).toHaveCount(0);
-        await expect(dialog.locator('.drift-prompt-context small')).toHaveCount(0);
+        await expect(writer.locator('.drift-prompt-context small')).toHaveCount(0);
         const content = `A quiet day ${lang} ${info.project.name}`;
         await page.locator('#drift-draft').fill(content);
-        await expect(dialog.getByRole('button',{ name:text.send,exact:true })).toBeInViewport();
+        const send = writer.locator('button[type=submit]');
+        // A long localized prompt can put the send button below the mobile fold.
+        await send.scrollIntoViewIfNeeded();
+        await expect(send).toBeInViewport();
         await page.screenshot({ path:info.outputPath('daily-writer.png'), scale:'css' });
-        await dialog.getByRole('button',{ name:text.send,exact:true }).click();
-        await expect(dialog).toBeHidden();
+        await send.click();
+        await expect(page.locator('#drift-panel-bottles')).toBeVisible();
         await expect(page.locator('.drift-notice')).toHaveText(text.questCompleted.replace('{xp}','20'));
         await expect(page.locator('.drift-notice')).toBeInViewport();
         await page.screenshot({ path:info.outputPath('daily-completed.png'), scale:'css' });
@@ -71,15 +77,14 @@ for (const lang of ['zh','en','ja']) {
             await expect(receivedLetter.locator('.drift-prompt-context')).toHaveCount(0);
             await expect(receivedLetter).not.toContainText(prompt.text[lang]);
             await received.close();
-            await page.getByRole('tab',{ name:text.sea,exact:true }).click();
-            await page.getByRole('button',{ name:text.throw,exact:true }).click();
+            await page.locator('#drift-tab-write').click();
             const input = page.locator('#drift-draft');
             await input.fill('Keep my own words');
-            const inspire = dialog.getByRole('button',{ name:text.inspire,exact:true });
+            const inspire = writer.getByRole('button',{ name:text.inspire,exact:true });
             await expect(inspire).toHaveCount(1);
             await inspire.click();
-            const suggestion = dialog.locator('.drift-inspiration .drift-prompt-context p');
-            await expect(dialog.locator('.drift-inspiration strong, .drift-inspiration small')).toHaveCount(0);
+            const suggestion = writer.locator('.drift-prompt-context p');
+            await expect(writer.locator('.drift-prompt-context strong, .drift-prompt-context small')).toHaveCount(0);
             const first = await suggestion.textContent();
             expect(prompts.some(prompt => prompt.text[lang] === first)).toBe(true);
             await inspire.click();
@@ -89,24 +94,24 @@ for (const lang of ['zh','en','ja']) {
             const suggested = prompts.find(prompt => prompt.text[lang] === latestText);
             await page.screenshot({ path:info.outputPath('inspiration.png'), scale:'css' });
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-            await dialog.getByRole('button',{ name:text.closeWindow,exact:true }).click();
+            await page.locator('#drift-tab-sea').click();
             if (lang === 'zh') {
                 await page.getByRole('button',{ name:text.dailyWrite,exact:true }).click();
                 await input.fill('A separate daily draft');
-                await dialog.getByRole('button',{ name:text.closeWindow,exact:true }).click();
+                await page.locator('#drift-tab-sea').click();
                 await page.getByRole('button',{ name:'账号菜单',exact:true }).click();
                 await page.getByRole('button',{ name:'日本語',exact:true }).click();
                 await expect(page.locator('html')).toHaveAttribute('lang','ja');
                 await page.keyboard.press('Escape');
-                await page.getByRole('button',{ name:copy.ja.throw,exact:true }).click();
+                await page.locator('#drift-tab-write').click();
                 await expect(input).toHaveValue('Keep my own words');
                 await expect(suggestion).toHaveText(suggested.text.ja);
-                await expect(dialog.getByRole('button',{ name:copy.ja.inspire,exact:true })).toHaveCount(1);
-                await dialog.getByRole('button',{ name:copy.ja.closeWindow,exact:true }).click();
+                await expect(writer.getByRole('button',{ name:copy.ja.inspire,exact:true })).toHaveCount(1);
+                await page.locator('#drift-tab-sea').click();
                 await page.getByRole('button',{ name:copy.ja.dailyWrite,exact:true }).click();
                 await expect(input).toHaveValue('A separate daily draft');
-                await expect(dialog.locator('.drift-prompt-context')).toContainText(prompt.text.ja);
-                await dialog.getByRole('button',{ name:copy.ja.closeWindow,exact:true }).click();
+                await expect(writer.locator('.drift-prompt-context')).toContainText(prompt.text.ja);
+                await page.locator('#drift-tab-sea').click();
             }
             await page.goto('/growth');
             await expect(task).toBeDisabled();
@@ -125,19 +130,21 @@ test('stale question review preserves the draft and lost-response retries save o
     const old = { ...prompt,date:'2000-01-01' };
     await page.route('**/api/drift/daily-prompt',route => route.fulfill({ json:{ success:true,data:old } }));
     await page.goto('/drift?daily=1');
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const writer = page.locator('#drift-panel-write');
+    await expect(page.locator('#boot-splash')).toBeHidden();
+    await expect(writer.locator('.drift-prompt-context')).toBeVisible();
     await page.unroute('**/api/drift/daily-prompt');
     const input = page.locator('#drift-draft');
     const content = `Preserved across midnight and retries ${info.project.name}`;
     await input.fill(content);
-    const send = dialog.getByRole('button',{ name:copy.en.send,exact:true });
+    await expect(input).toHaveValue(content);
+    const send = writer.locator('button[type=submit]');
     await send.click();
-    await expect(dialog.getByRole('status')).toHaveText(copy.en.promptChanged);
+    await expect(writer.getByRole('status')).toHaveText(copy.en.promptChanged);
     await expect(input).toHaveValue(content);
     await expect(send).toBeDisabled();
-    await dialog.getByRole('button',{ name:copy.en.useTodayPrompt,exact:true }).click();
-    await expect(dialog.locator('.drift-prompt-context time')).toHaveText(prompt.date);
+    await writer.getByRole('button',{ name:copy.en.useTodayPrompt,exact:true }).click();
+    await expect(writer.locator('.drift-prompt-context time')).toHaveText(prompt.date);
     const attempts = [];
     let id;
     await page.route('**/api/drift/daily',async route => {
@@ -152,10 +159,10 @@ test('stale question review preserves the draft and lost-response retries save o
     });
     try {
         await send.click();
-        await expect(dialog.getByRole('status')).toHaveText(copy.en.submissionUnknown);
+        await expect(writer.getByRole('status')).toHaveText(copy.en.submissionUnknown);
         await expect(input).toHaveValue(content);
-        await dialog.getByRole('button',{ name:copy.en.confirmSubmission,exact:true }).click();
-        await expect(dialog).toBeHidden();
+        await writer.getByRole('button',{ name:copy.en.confirmSubmission,exact:true }).click();
+        await expect(page.locator('#drift-panel-bottles')).toBeVisible();
         expect(attempts[0].requestId).toBe(attempts[1].requestId);
         const rows = (await (await page.request.get('/api/drift')).json()).data;
         expect(rows.filter(row => row.content === content)).toHaveLength(1);
@@ -171,7 +178,7 @@ test('an unconfirmed daily submission keeps its original receipt after midnight 
     const prompt = (await (await page.request.get('/api/drift/daily-prompt')).json()).data;
     await page.goto('/drift?daily=1');
     await expect(page.locator('#boot-splash')).toBeHidden();
-    const dialog = page.getByRole('dialog');
+    const writer = page.locator('#drift-panel-write');
     const input = page.locator('#drift-draft');
     const content = `Receipt across midnight ${info.project.name}`;
     await input.fill(content);
@@ -186,9 +193,9 @@ test('an unconfirmed daily submission keeps its original receipt after midnight 
         return route.abort('connectionclosed');
     });
     try {
-        const send = dialog.locator('.drift-letter-actions .drift-primary');
+        const send = writer.locator('button[type=submit]');
         await send.click();
-        await expect(dialog.getByRole('status')).toHaveText(copy.en.submissionUnknown);
+        await expect(writer.getByRole('status')).toHaveText(copy.en.submissionUnknown);
         // The API suite covers a real server-date rollover. Here the shared
         // prompt refresh advances while a real saved receipt remains unread.
         const next = { ...prompts.find(p => p.id !== prompt.id),
@@ -198,14 +205,14 @@ test('an unconfirmed daily submission keeps its original receipt after midnight 
         await page.evaluate(() => window.dispatchEvent(new Event('focus')));
         await refreshed;
         await expect(send).toBeEnabled();
-        await expect(dialog.getByRole('button',{ name:copy.en.useTodayPrompt,exact:true })).toHaveCount(0);
-        await dialog.getByRole('button',{ name:copy.en.closeWindow,exact:true }).click();
+        await expect(writer.getByRole('button',{ name:copy.en.useTodayPrompt,exact:true })).toHaveCount(0);
+        await page.locator('#drift-tab-sea').click();
         await page.getByRole('button',{ name:copy.en.dailyWrite,exact:true }).click();
-        await expect(dialog.locator('.drift-prompt-context time')).toHaveText(prompt.date);
+        await expect(writer.locator('.drift-prompt-context time')).toHaveText(prompt.date);
         await expect(input).toHaveValue(content);
         await expect(input).toHaveAttribute('readonly','');
         await send.click();
-        await expect(dialog).toBeHidden();
+        await expect(page.locator('#drift-panel-bottles')).toBeVisible();
         expect(attempts).toHaveLength(2);
         expect(attempts[1]).toEqual(attempts[0]);
         const rows = (await (await page.request.get('/api/drift')).json()).data;

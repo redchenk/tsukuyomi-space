@@ -1,0 +1,126 @@
+.drift-scene-shell {
+    --drift-nav-clearance: 92px;
+}
+
+.drift-scene-shell > :is(.site-global-bg, .moon),
+.drift-scene-shell ~ .site-pet-route-drift {
+    display: none;
+}
+
+.drift-lake-scene {
+    --lantern-x: 52%;
+    --lantern-y: 60%;
+    position: absolute;
+    inset: var(--drift-nav-clearance) 0 auto;
+    height: var(--drift-scene-height);
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--ts-editorial-bg);
+}
+
+.drift-lake-picture, .drift-lake-picture img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.drift-lake-picture img { object-fit: cover; object-position: center top; }
+
+.drift-lake-scene::before, .drift-lake-scene::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+}
+.drift-lake-scene::before {
+    z-index: 1;
+    background: radial-gradient(ellipse at 3% 10%, #0a1526b3, transparent 44%);
+}
+.drift-lake-scene::after {
+    background: linear-gradient(to bottom, transparent 64%, color-mix(in srgb, var(--ts-editorial-bg) 55%, transparent) 87%, var(--ts-editorial-bg));
+}
+
+.drift-lantern-anchor {
+    position: absolute;
+    z-index: 2;
+    top: var(--lantern-y);
+    left: var(--lantern-x);
+    width: clamp(70px, 7.6vw, 124px);
+    height: 0;
+    transform: translateX(-50%);
+}
+
+.drift-lantern-float { position: relative; height: 0; }
+
+.drift-lantern-art, .drift-lantern-reflection {
+    position: absolute;
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.drift-lantern-art {
+    bottom: 0;
+    filter: brightness(.91) drop-shadow(0 0 19px #f6aa6c7a);
+}
+
+.drift-lantern-reflection {
+    top: 0;
+    transform: scale(.94, -.6) translateY(-100%);
+    transform-origin: center 0;
+    opacity: .57;
+    filter: blur(3px) saturate(1.12);
+    mask-image: repeating-linear-gradient(to top, #000 0 3%, #0003 4% 6%, #0008 7% 9%), linear-gradient(to top, #000, transparent 84%);
+    mask-composite: intersect;
+}
+
+.drift-lantern-ripples {
+    position: absolute;
+    inset: 0;
+    transition: opacity 320ms ease;
+    transition-duration: 320ms !important;
+}
+.drift-lantern-ripples::before, .drift-lantern-ripples::after {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 205%;
+    height: 28px;
+    border: 1px solid #ffce8872;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #f6a54b48;
+    content: '';
+    transform: translate(-50%, -50%);
+}
+.drift-lantern-ripples::after { width: 275%; height: 41px; opacity: .42; }
+.drift-lake-scene[data-playing] .drift-lantern-float { visibility: hidden; }
+.drift-lake-scene[data-playing] .drift-lantern-ripples { opacity: 0; }
+
+@media (max-width: 860px) {
+    .drift-scene-shell {
+        --drift-nav-clearance: calc(max(10px, env(safe-area-inset-top)) + 68px);
+    }
+
+    .drift-scene-shell .site-music-drawer {
+        left: auto;
+        right: max(12px, env(safe-area-inset-right));
+    }
+
+    .drift-scene-shell .site-music-drawer .site-music-panel {
+        left: auto;
+        right: 0;
+    }
+
+    .drift-scene-shell .site-music-drawer:not(.is-open) {
+        bottom: max(9px, env(safe-area-inset-bottom));
+    }
+}
+
+@media (max-width: 720px), (max-width: 950px) and (max-aspect-ratio: 1/1) {
+    .drift-lake-picture img { object-position: right 29%; }
+    .drift-lake-scene { --lantern-x: 67%; --lantern-y: 54%; }
+    .drift-lantern-anchor { width: clamp(58px, 16vw, 82px); }
+    .drift-lantern-ripples::before { height: 19px; }
+    .drift-lantern-ripples::after { height: 28px; }
+}

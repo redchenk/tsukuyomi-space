@@ -18,7 +18,7 @@ for (const viewport of [{ name: 'mobile', width: 390, height: 844 }, { name: 'de
             await login(page.request, 'reply-reader');
             await page.goto('/drift');
             await expect(page.locator('#boot-splash')).toHaveCount(0);
-            await expect(page.getByRole('tab')).toHaveCount(2);
+            await expect(page.getByRole('tab')).toHaveCount(3);
             const mine = page.getByRole('tab', { name: '我的瓶子', exact: true });
             await expect(mine).toBeInViewport();
             await mine.click();
@@ -26,15 +26,11 @@ for (const viewport of [{ name: 'mobile', width: 390, height: 844 }, { name: 'de
             await expect(page.locator('#drift-draft')).toBeHidden();
             expect(await page.evaluate(() => window.scrollY)).toBeLessThan(170);
             await page.getByRole('tab', { name: '海边', exact: true }).click();
-            const backgroundWidth = await page.locator('.site-global-bg').evaluate(async element => {
-                const url = getComputedStyle(element).backgroundImage.match(/url\(["']?([^"')]+)/)?.[1];
-                if (!url) throw new Error('The shore background is missing');
-                const image = new Image();
-                image.src = url;
+            const backgroundWidth = await page.locator('.drift-lake-picture img').evaluate(async image => {
                 await image.decode();
                 return image.naturalWidth;
             });
-            expect(backgroundWidth).toBeGreaterThan(1000);
+            expect(backgroundWidth).toBeGreaterThanOrEqual(760);
             await page.screenshot({ path: `/tmp/drift-shore-${viewport.name}.png`, fullPage: true });
             await page.getByRole('button', { name: '捡一个', exact: true }).click();
             const dialog = page.getByRole('dialog');

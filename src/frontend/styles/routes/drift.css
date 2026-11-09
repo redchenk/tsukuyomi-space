@@ -1,184 +1,425 @@
-.page.drift-page { --drift-surface: var(--ts-editorial-surface,var(--ts-surface-strong)); --drift-soft: var(--ts-editorial-low,var(--ts-bg-soft)); --drift-paper: var(--ts-editorial-surface); --drift-paper-ink: var(--ts-text); box-sizing: border-box; width: 100%; max-width: 1160px; margin: auto; padding: 110px 30px 36px; color: var(--ts-text); }
+@import './drift-lantern.css';
+@import './drift-lantern-film.css';
+
+.drift-scene-shell .page.drift-page {
+    --drift-scene-height: clamp(610px, calc(100svh - var(--drift-nav-clearance)), 940px);
+    position: relative;
+    isolation: isolate;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: var(--drift-nav-clearance) 0 0;
+    color: var(--ts-editorial-ink);
+    transition-property: none;
+}
+
 .drift-page *, .drift-page *::before, .drift-page *::after { box-sizing: border-box; }
-.drift-page :is(h1,h2,h3,p) { margin: 0; }
-.drift-page button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-button); background: var(--drift-surface); color: inherit; font: inherit; font-size: .86rem; cursor: pointer; }
-.drift-page button:hover:not(:disabled) { background: var(--drift-soft); }
-.drift-page button:disabled { opacity: .5; cursor: default; }
-.drift-page .drift-primary { border-color: transparent; background: var(--ts-gradient-brand); color: white; font-weight: 600; }
-.drift-page .drift-primary:hover:not(:disabled) { background: var(--ts-gradient-brand-hover); }
-.drift-page :is(button,a,summary,textarea):focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
-.drift-header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-.drift-brand-mark { display: grid; place-items: center; width: 46px; height: 46px; flex-shrink: 0; border: 1px solid var(--ts-border); border-radius: 15px; background: var(--drift-surface); color: var(--ts-accent); }
-.drift-page .drift-eyebrow { margin-bottom: 5px; color: var(--ts-muted); font-size: .6rem; letter-spacing: .18em; }
-.drift-header h1 { font-family: var(--ts-font-serif); font-size: 1.65rem; font-weight: 600; color: var(--ts-text-strong); }
-.drift-header-intro { margin-left: auto !important; max-width: 360px; color: var(--ts-muted); font-size: .83rem; text-align: right; line-height: 1.8; }
-.drift-tabs { display: inline-grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: min(100%,340px); padding: 4px; gap: 4px; margin-bottom: 20px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-pill); background: var(--drift-surface); scroll-margin-top: 95px; }
-.drift-tabs button { background: transparent; border-color: transparent; border-radius: var(--ts-radius-pill); }
-.drift-tabs button[aria-selected="true"] { border-color: var(--ts-border); background: var(--ts-accent-soft); color: var(--ts-accent); font-weight: 600; }
-.drift-ocean { position: relative; isolation: isolate; min-height: 450px; height: min(610px,calc(100dvh - 270px)); overflow: hidden; border-radius: 24px; border: 1px solid #506c8644; background: #4b7d97; }
-.drift-ocean-sky { position: absolute; inset: 0 0 42%; z-index: -3; background: linear-gradient(#4d5d8b,#929cc1 65%,#e7ced2); }
-.drift-ocean-moon { position: absolute; width: 64px; height: 64px; border-radius: 50%; top: 14%; right: 19%; background: #f9f1dc; box-shadow: 0 0 65px #f6eddd55; }
-.drift-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff8e4; box-shadow: 0 0 8px #fff8e4; }
-.star-one { top: 18%; left: 18%; }.star-two { top: 35%; left: 42%; }.star-three { top: 12%; right: 9%; }
-.drift-ocean-water { position: absolute; inset: 47% 0 10%; z-index: -2; background: linear-gradient(#a1acbf,#637c9d 43%,#90b3bd); border-top: 1px solid #d4dce1; }
-.drift-moonlight { position: absolute; inset: 0 8% 0 55%; background: linear-gradient(transparent,#ece1e36b 40%,#e7e3e23d); clip-path: polygon(50% 0,60% 0,100% 100%,0 100%); filter: blur(10px); }
-.drift-wave { position: absolute; height: 30%; width: 140%; left: -20%; bottom: 4%; border-top: 2px solid #e7eef07d; border-radius: 50%; transform: rotate(-5deg); }
-.wave-two { bottom: 20%; transform: rotate(5deg); opacity: .5; }
-.drift-ocean-beach { position: absolute; inset: 80% 0 0; z-index: -1; background: linear-gradient(#d8cfd100,#d4c7c3 40%,#e6d7cc); }
-.drift-floating-bottle { position: absolute; width: 36px; height: 65px; bottom: 7%; left: 43%; transform: rotate(63deg); color: #779c9e; filter: drop-shadow(0 5px 4px #304b6960); }
-.drift-ocean-copy { position: relative; padding: 40px; color: #fff7e9; text-shadow: 0 2px 18px #24375088; }
-.drift-ocean-copy .drift-eyebrow { color: #f7e9e7b8; font-size: .6rem; }
-.drift-ocean-copy h2 { margin: 10px 0 12px; font-family: var(--ts-font-serif); font-size: clamp(1.6rem,3vw,2.3rem); font-weight: 500; letter-spacing: .03em; }
-.drift-ocean-copy > p:last-child { color: #f9ede4d9; font-size: .87rem; line-height: 1.8; }
-.drift-shore-dock { position: absolute; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: end; gap: 14px; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(510px,calc(100% - 44px)); padding: 12px 20px; border-radius: 24px; background: #f8eededb; border: 1px solid #fff7e8b0; backdrop-filter: blur(12px); box-shadow: 0 6px 24px #24375010; }
-.drift-page .drift-dock-action { display: flex; flex-direction: column; gap: 4px; min-height: 90px; padding: 5px 10px 10px; background: transparent; border-color: transparent; color: #5c6265; border-radius: 18px; }
-.drift-page .drift-dock-action:hover:not(:disabled) { background: #ffffff70; }
-.drift-dock-action strong { font-size: .83rem; font-weight: 500; }
-.drift-dock-icon { display: grid; place-items: center; width: 56px; height: 55px; color: #667f89; }
-.drift-dock-icon > svg:not(.ts-icon) { height: 57px; width: 35px; transform: rotate(-12deg); }
-.drift-dock-pick .drift-dock-icon { color: #a57c45; background: radial-gradient(ellipse,#f4dc9d88,transparent 70%); }
-.drift-panel { border: 1px solid var(--ts-border); border-radius: 22px; background: var(--drift-surface); padding: 26px; }
-.drift-section-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.drift-section-header h2 { font-size: 1.2rem; font-weight: 600; }
-.drift-section-header p { color: var(--ts-muted); font-size: .8rem; margin-top: 7px; }
-.drift-page .drift-icon-button { flex-shrink: 0; width: 40px; min-height: 40px; padding: 0; border: 0; background: transparent; color: inherit; }
-.drift-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.drift-filters button { min-height: 34px; border-radius: 18px; font-size: .78rem; padding: 6px 15px; background: transparent; }
-.drift-filters button[aria-pressed="true"] { color: var(--ts-accent); border-color: var(--ts-accent); }
-.drift-bottle-shelf { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
-.drift-page .drift-list-item { width: 100%; display: flex; gap: 15px; padding: 20px 14px; align-items: center; text-align: left; background: var(--drift-soft); border-radius: 16px; }
-.drift-shelf-bottle { width: 33px; height: 62px; flex-shrink: 0; transform: rotate(-9deg); color: #7e9a9b; }
-.drift-list-copy { display: grid; gap: 10px; min-width: 0; flex: 1; }
-.drift-list-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--ts-muted); }
-.drift-list-meta small, .drift-list-copy time { color: var(--ts-muted); font-size: .66rem; }
-.drift-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--ts-font-serif); font-size: .95rem; line-height: 1.7; overflow-wrap: anywhere; }
-.drift-page .drift-older { display: flex; margin: 24px auto 0; }
-.drift-empty { min-height: 250px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 25px; gap: 12px; text-align: center; color: var(--ts-muted); }
-.drift-empty > svg:not(.ts-icon) { width: 35px; height: 66px; color: #789b9c; opacity: .7; }
-.drift-empty h3 { font-size: 1.05rem; color: var(--ts-text-strong); }
-.drift-empty p { font-size: .85rem; max-width: 320px; line-height: 1.8; }
-.drift-rules { margin: 18px 4px 0; color: var(--ts-muted); font-size: .75rem; line-height: 1.8; }
-.drift-rules summary { cursor: pointer; width: fit-content; }
-.drift-rules p { max-width: 720px; margin-top: 10px; }
-.drift-bottle-dialog { width: min(570px,calc(100vw - 36px)); max-height: min(820px,calc(var(--ts-visual-height,100dvh) - 32px)); padding: 0; border: 1px solid #b9a99266; border-radius: 22px; background: var(--drift-paper); color: var(--drift-paper-ink); box-shadow: 0 25px 100px #18263c40; overflow: hidden; }
+.drift-page :is(h1, h2, h3, p) { margin: 0; }
+
+.drift-stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, .78fr);
+    align-items: end;
+    gap: clamp(24px, 4vw, 66px);
+    width: min(100%, 1440px);
+    min-height: var(--drift-scene-height);
+    margin-inline: auto;
+    padding: clamp(36px, 7svh, 85px) clamp(24px, 6vw, 90px) 34px;
+    transition: opacity 460ms cubic-bezier(.25, .65, .3, 1), translate 460ms ease;
+    transition-duration: 460ms !important;
+}
+
+.drift-page[data-playing] .drift-stage {
+    opacity: 0;
+    translate: 0 8px;
+    pointer-events: none;
+}
+
+.drift-identity {
+    --ts-editorial-ink: #fff2de;
+    --ts-editorial-muted: #f1e6d8;
+    --ts-accent: #ffe1b3;
+    align-self: start;
+    max-width: 455px;
+    text-shadow: 0 2px 18px #071321;
+}
+.drift-page .drift-eyebrow {
+    color: var(--ts-accent);
+    font: 600 .72rem/1.4 var(--ts-font-sans, system-ui);
+    letter-spacing: .19em;
+}
+.drift-eyebrow span { margin: 0 .35em; opacity: .53; }
+.drift-page .drift-identity h1 {
+    margin-top: 10px;
+    color: var(--ts-editorial-ink);
+    font: 600 clamp(2.7rem, 4.7vw, 4.9rem)/1.12 var(--ts-panel-serif);
+    letter-spacing: .08em;
+}
+.drift-identity h1 + p {
+    margin-top: 13px;
+    color: var(--ts-editorial-muted);
+    font: 500 clamp(.95rem, 1.45vw, 1.25rem)/1.65 var(--ts-panel-serif);
+    letter-spacing: .05em;
+}
+
+.drift-workspace { display: grid; gap: 10px; min-width: 0; }
+.drift-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-card);
+    background: var(--ts-editorial-surface);
+}
+.drift-page :is(button, .drift-primary) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 7px 14px;
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-control);
+    background: var(--ts-editorial-soft);
+    color: var(--ts-editorial-ink);
+    font: inherit;
+    font-size: .86rem;
+    line-height: 1.35;
+    text-decoration: none;
+}
+.drift-page button > svg { flex-shrink: 0; }
+.drift-page button:hover:not(:disabled) { background: var(--ts-state-hover); }
+.drift-page button:disabled { opacity: .53; cursor: default; }
+.drift-page :is(button, a, summary, textarea, h2):focus-visible {
+    outline: 2px solid var(--ts-accent);
+    outline-offset: 3px;
+}
+.drift-page .drift-tabs button { padding: 5px 4px; border-color: transparent; background: transparent; }
+.drift-page .drift-tabs button[aria-selected="true"] {
+    border-color: color-mix(in srgb, var(--ts-accent) 50%, var(--ts-editorial-line));
+    background: var(--ts-accent-soft);
+    color: var(--ts-accent);
+}
+
+.drift-panel {
+    display: grid;
+    gap: 14px;
+    padding: clamp(16px, 2.4vw, 26px);
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-card);
+    background: var(--ts-panel-finish) var(--ts-editorial-surface);
+    box-shadow: var(--ts-elevation-raised);
+}
+.drift-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.drift-page :is(.drift-panel-heading h2, .drift-dialog-header h2) {
+    color: var(--ts-editorial-ink);
+    font: 600 clamp(1.35rem, 2.4vw, 1.8rem)/1.25 var(--ts-panel-serif);
+    letter-spacing: .04em;
+}
+.drift-panel-heading h2:focus { outline: 0; }
+.drift-panel-heading p {
+    margin-top: 5px;
+    color: var(--ts-editorial-muted);
+    font-size: .83rem;
+    line-height: 1.6;
+}
+.drift-page :is(.drift-loading, .drift-notice, .drift-dialog-notice) {
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: var(--ts-accent-soft);
+    color: var(--ts-editorial-ink);
+    font-size: .83rem;
+    line-height: 1.55;
+}
+.drift-page .drift-primary {
+    border-color: transparent;
+    background: var(--ts-unified-primary-bg);
+    color: var(--ts-unified-primary-text);
+    font-weight: 680;
+}
+.drift-page .drift-primary:hover:not(:disabled) { background: var(--ts-unified-primary-bg-hover); color: var(--ts-unified-primary-text); }
+.drift-page .drift-login { justify-self: start; }
+.drift-page .drift-quiet { border-color: transparent; background: transparent; color: var(--ts-accent); }
+.drift-page .drift-icon-button { width: 44px; padding: 0; flex-shrink: 0; }
+
+.drift-compose, .drift-letter-form { display: grid; min-width: 0; gap: 12px; }
+.drift-writing-paper {
+    display: grid;
+    gap: 6px;
+    padding: 12px 13px 7px;
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-control);
+    background: var(--ts-editorial-low);
+    color: var(--ts-editorial-ink);
+}
+.drift-writing-paper:focus-within { border-color: var(--ts-accent); }
+.drift-writing-paper label { color: var(--ts-accent); font-size: .77rem; line-height: 1.4; }
+.drift-scene-shell .page.drift-page .drift-writing-paper textarea {
+    --ts-control-shadow: none;
+    display: block;
+    min-height: 78px;
+    width: 100%;
+    padding: 2px 0;
+    border: 0;
+    background: var(--ts-editorial-low);
+    box-shadow: none;
+    color: var(--ts-editorial-ink);
+    font: 500 16px/1.65 var(--ts-panel-serif);
+    resize: vertical;
+}
+.drift-writing-paper textarea:focus-visible { outline: 0; }
+.drift-writing-paper textarea::placeholder { color: var(--ts-editorial-muted); opacity: 1; }
+.drift-writing-paper small { justify-self: end; color: var(--ts-editorial-muted); font-size: .72rem; }
+
+.drift-compose-actions, .drift-letter-actions, .drift-sea-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.drift-compose-actions { justify-content: space-between; }
+.drift-compose-actions .drift-primary { min-width: 110px; margin-inline-start: auto; }
+.drift-sea-actions { justify-content: flex-start; gap: 10px; }
+.drift-sea-actions button { flex: 1; }
+
+.drift-workspace-foot {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+.drift-workspace-foot .drift-daily-link { margin-inline-end: auto; min-height: 36px; padding: 5px 7px; }
+.drift-rules, .drift-letter-options, .drift-translation { color: var(--ts-editorial-muted); font-size: .79rem; line-height: 1.65; }
+.drift-rules summary { min-height: 36px; padding: 7px 6px; cursor: pointer; }
+.drift-rules[open] { width: 100%; }
+.drift-rules p { padding: 8px 9px; background: var(--ts-editorial-low); border-radius: 7px; }
+.drift-prompt-context {
+    padding: 9px 12px;
+    border-left: 2px solid var(--ts-accent);
+    border-radius: 0 7px 7px 0;
+    background: var(--ts-editorial-low);
+    color: var(--ts-editorial-muted);
+    font-size: .83rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+.drift-prompt-context :is(strong, time) { margin-inline-end: 8px; color: var(--ts-accent); font-size: .72rem; }
+.drift-prompt-context p { margin-top: 4px; }
+.drift-prompt-context button { margin-top: 6px; }
+
+.drift-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.drift-page .drift-filters button { min-height: 36px; padding: 5px 9px; font-size: .78rem; }
+.drift-page .drift-filters button[aria-pressed="true"] { background: var(--ts-accent-soft); color: var(--ts-accent); }
+.drift-bottle-shelf { display: grid; gap: 8px; }
+.drift-page .drift-list-item {
+    display: grid;
+    grid-template-columns: 25px minmax(0, 1fr) auto;
+    justify-items: start;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+    text-align: start;
+    background: var(--ts-editorial-low);
+}
+.drift-page .drift-list-item.is-new { border-color: var(--ts-accent); background: var(--ts-accent-soft); }
+.drift-list-copy { display: grid; gap: 3px; width: 100%; min-width: 0; }
+.drift-list-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 3px 7px; }
+.drift-list-meta small { color: var(--ts-accent); font-size: .69rem; }
+.drift-shelf-bottle { width: 24px; height: 36px; }
+.drift-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ts-editorial-ink); font: 500 .98rem/1.4 var(--ts-panel-serif); }
+.drift-list-copy time, .drift-daily-badge { color: var(--ts-editorial-muted); font-size: .68rem; }
+.drift-pagination, .drift-pagination-actions, .drift-page-jump {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.drift-pagination { gap: 8px; color: var(--ts-editorial-muted); font-size: .8rem; }
+.drift-pagination p { flex: 1 0 max-content; }
+.drift-page :is(.drift-pagination-actions, .drift-page-jump) button { padding-inline: 10px; }
+.drift-page .drift-page-jump input {
+    width: 4.4rem;
+    min-height: 44px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 16px;
+    border-radius: var(--ts-radius-control);
+}
+.drift-page[data-tab="bottles"] .drift-workspace {
+    align-self: start;
+    margin-top: clamp(65px, 19svh, 180px);
+}
+.drift-empty { display: grid; gap: 8px; justify-items: start; padding: 9px 0; color: var(--ts-editorial-muted); font-size: .82rem; line-height: 1.6; }
+.drift-empty svg { width: 25px; height: 34px; }
+.drift-empty button svg { width: 16px; height: 16px; }
+.drift-empty h3 { color: var(--ts-editorial-ink); font: 600 1.05rem var(--ts-panel-serif); }
+
+.drift-bottle-dialog {
+    width: min(580px, calc(100% - 24px));
+    max-height: calc(var(--ts-visual-height, 100dvh) - 30px);
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-card);
+    background: var(--ts-panel-finish) var(--ts-editorial-surface);
+    color: var(--ts-editorial-ink);
+    box-shadow: var(--ts-elevation-overlay);
+}
 .drift-bottle-dialog[open] { display: flex; flex-direction: column; }
-.drift-bottle-dialog::backdrop { background: #1c2c3e8c; backdrop-filter: blur(5px); }
-.drift-dialog-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 22px 26px 17px; border-bottom: 1px solid #9c8b711f; }
-.drift-dialog-header h2 { font-family: var(--ts-font-serif); font-weight: 500; font-size: 1.22rem; }
-.drift-dialog-header .drift-eyebrow { color: var(--ts-muted); font-size: .52rem; }
-.drift-bottle-dialog button:not(.drift-primary) { color: var(--ts-text); background: var(--drift-soft); border-color: var(--ts-border); }
-.drift-bottle-dialog button:not(.drift-primary):hover:not(:disabled) { background: var(--ts-accent-soft); }
-.drift-bottle-dialog .drift-icon-button { border: 0; background: transparent; }
-.drift-dialog-notice { padding: 10px 25px; border-bottom: 1px solid #9c8b7126; background: #f3e9d8; color: #7f6845; font-size: .78rem; line-height: 1.6; }
-.drift-found { display: flex; flex-direction: column; align-items: center; gap: 25px; padding: 30px 30px 40px; text-align: center; }
-.drift-found p { font-size: .9rem; line-height: 1.8; color: #8e7d68; }
-.drift-found-glow { display: grid; place-items: center; width: 220px; height: 230px; border-radius: 50%; background: radial-gradient(ellipse,#fffdf6,#e6e0ce99 48%,transparent 70%); }
-.drift-found-glow > svg { width: 92px; height: 165px; transform: rotate(28deg); color: #789a99; filter: drop-shadow(0 10px 8px #89764e20); }
-.drift-letter-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 22px 26px 15px; }
-.drift-letter-byline { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-.drift-letter-byline > svg { width: 24px; height: 44px; color: #88a39e; transform: rotate(-12deg); }
-.drift-letter-byline > div { display: grid; gap: 5px; flex: 1; min-width: 0; }
-.drift-letter-byline span { font-size: .8rem; overflow-wrap: anywhere; }.drift-letter-byline time { font-size: .65rem; color: var(--ts-muted); }
-.drift-paper { min-height: 170px; padding: 22px 22px 25px; background: repeating-linear-gradient(transparent 0,transparent 35px,#b7a38321 35px,#b7a38321 36px),var(--ts-readable-input-bg); border: 1px solid #b7a38336; border-radius: 3px 3px 13px 3px; box-shadow: 2px 4px 0 #cabca21a; }
-.drift-content { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--ts-font-serif); font-size: .98rem; line-height: 2.25; }
-.drift-thread-note { margin: 16px auto 0 !important; max-width: 340px; font-size: .78rem; line-height: 1.8; color: var(--ts-muted); text-align: center; }
-.drift-correspondence { margin-top: 28px; }
-.drift-correspondence > header { padding-bottom: 12px; border-bottom: 1px solid #b7a38336; }
-.drift-correspondence h3 { display: flex; align-items: baseline; gap: 10px; color: var(--ts-muted); font-size: .82rem; font-weight: 500; }
-.drift-correspondence h3 small { font-size: .7rem; opacity: .65; }
-.drift-reply { margin-top: 14px; padding: 17px 18px; border: 1px solid #c7bda83d; border-radius: 3px; background: var(--drift-soft); }
-.drift-reply header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; color: var(--ts-muted); font-size: .73rem; }
-.drift-reply time { font-size: .62rem; }
-.drift-reply .drift-content { font-size: .9rem; line-height: 1.9; }
-.drift-letter-status { display: inline-block; margin-top: 12px; font-size: .7rem; color: var(--ts-status-warning); }
-.drift-reader-footer { flex-shrink: 0; border-top: 1px solid #b7a38326; padding: 16px 26px 8px; }
-.drift-letter-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-shrink: 0; padding: 0 0 8px; }
-.drift-letter-actions > button { min-width: 112px; }
-.drift-privacy { display: block; flex-shrink: 0; text-align: center; font-size: .6rem; color: var(--ts-muted); padding: 5px 15px 14px; }
-.drift-letter-options, .drift-translation { margin-top: 20px; color: var(--ts-muted); font-size: .7rem; line-height: 1.8; }
-.drift-letter-options summary, .drift-translation summary { width: fit-content; cursor: pointer; }
-.drift-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
-.drift-actions button, .drift-actions a { font-size: .75rem; }
-.drift-actions a { align-self: center; color: inherit; }
-.drift-translation > :not(summary) { margin-top: 10px; }
-.drift-page .drift-new-letter { display: flex; margin: 18px auto 0; font-size: .74rem; color: var(--ts-accent); }
-.drift-letter-form { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px 18px; gap: 18px; overflow-y: auto; }
-.drift-writing-paper { display: flex; flex-direction: column; padding: 20px; border: 1px solid #b7a38336; background: var(--ts-readable-input-bg); }
-.drift-writing-paper label { font-family: var(--ts-font-serif); font-size: .87rem; color: var(--ts-muted); margin-bottom: 16px; }
-.drift-writing-paper textarea { display: block; width: 100%; min-height: 170px; max-height: 42dvh; padding: 0; border: 0; border-radius: 0; outline: none; color: var(--drift-paper-ink); font-family: var(--ts-font-serif); font-size: 1rem; line-height: 2.1; resize: vertical; background: repeating-linear-gradient(transparent 0,transparent 32.6px,#b7a38326 32.6px,#b7a38326 33.6px); }
-.drift-writing-paper textarea::placeholder { color: var(--ts-muted); }.drift-writing-paper small { align-self: flex-end; margin-top: 10px; font-size: .65rem; color: var(--ts-muted); }
-.drift-reply-context { flex-shrink: 0; margin: 0; padding: 0 0 0 12px; border-left: 2px solid #b7a38366; color: var(--ts-muted); font-family: var(--ts-font-serif); font-size: .78rem; line-height: 1.8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.drift-notice { padding: 12px 16px; margin-bottom: 14px !important; border: 1px solid var(--ts-border); border-radius: 12px; background: var(--drift-surface); font-size: .8rem; line-height: 1.7; }
-.drift-loading { padding: 35px; text-align: center; color: var(--ts-muted); }.drift-login { display: flex; justify-content: space-between; color: var(--ts-accent); text-decoration: none; }
+.drift-bottle-dialog.is-writing { overflow: hidden; transition-property: none; }
+.drift-bottle-dialog .drift-letter-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+.drift-bottle-dialog .drift-writing-paper {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+.drift-scene-shell .drift-page .drift-bottle-dialog .drift-writing-paper textarea {
+    flex: 1 1 auto;
+    min-height: 24px;
+    resize: none;
+}
+.drift-bottle-dialog .drift-letter-actions { flex: 0 0 auto; }
+.drift-bottle-dialog::backdrop { background: #071320bf; backdrop-filter: blur(3px); }
+.drift-dialog-header {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ts-editorial-line);
+}
+.drift-dialog-header .drift-eyebrow { margin-bottom: 5px; }
+.drift-dialog-notice { margin: 8px 16px; }
+.drift-letter-scroll { min-height: 0; padding: 14px 20px; overflow: auto; }
+.drift-letter-byline, .drift-reply header { display: flex; align-items: center; gap: 9px; color: var(--ts-accent); font-size: .84rem; }
+.drift-letter-byline > svg { width: 22px; height: 33px; }
+.drift-letter-byline div { flex: 1; }
+.drift-letter-byline time { display: block; }
+.drift-bottle-dialog time { color: var(--ts-editorial-muted); font-size: .74rem; }
+.drift-paper, .drift-reply {
+    margin-top: 11px;
+    padding: 13px 14px;
+    border-radius: var(--ts-radius-control);
+    background: var(--ts-editorial-low);
+    border: 1px solid var(--ts-editorial-line);
+}
+.drift-content { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ts-editorial-ink); font: 500 1rem/1.75 var(--ts-panel-serif); }
+.drift-reply header { justify-content: space-between; flex-wrap: wrap; margin-bottom: 5px; }
+.drift-letter-status { color: var(--ts-accent); font-size: .75rem; }
+.drift-page .drift-thread-note { margin-top: 8px; color: var(--ts-editorial-muted); font-size: .8rem; }
+.drift-correspondence { margin-top: 17px; }
+.drift-correspondence h3 { color: var(--ts-editorial-ink); font-size: .92rem; }
+.drift-correspondence h3 small { margin-inline-start: 8px; color: var(--ts-accent); }
+.drift-bottle-dialog details { margin-top: 12px; }
+.drift-bottle-dialog summary { cursor: pointer; padding: 6px 0; }
+.drift-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.drift-actions a { align-self: center; color: var(--ts-accent); }
+.drift-found { display: grid; justify-items: center; padding: 24px 20px; gap: 13px; text-align: center; }
+.drift-found-glow { display: grid; width: 110px; height: 110px; place-items: center; background: radial-gradient(var(--ts-accent-soft), transparent 68%); }
+.drift-found-glow svg { width: 36px; height: 63px; }
+.drift-reader-footer, .drift-letter-form { padding: 9px 20px 13px; }
+.drift-reply-context { margin: 0; padding: 8px 10px; border-inline-start: 2px solid var(--ts-editorial-line); max-height: 80px; overflow: auto; color: var(--ts-editorial-muted); }
+.drift-privacy { padding: 0 20px 13px; color: var(--ts-editorial-muted); font-size: .72rem; }
 body:has(.drift-bottle-dialog[open]) { overflow: hidden; }
-body:has(.drift-bottle-dialog[open]) :is(.site-pet-wrap,.site-music-drawer) { visibility: hidden; pointer-events: none; }
-@media (max-width: 860px) {
-  .page.drift-page { padding: 88px 14px 26px; }
-  .drift-header { margin-bottom: 18px; gap: 10px; }.drift-brand-mark { width: 40px; height: 40px; border-radius: 13px; }.drift-header h1 { font-size: 1.3rem; }.drift-header-intro { display: none; }
-  .drift-tabs { position: sticky; top: 80px; z-index: 5; width: 100%; margin-bottom: 14px; scroll-margin-top: 80px; }.drift-tabs button { font-size: .85rem; }
-  .drift-ocean { min-height: 410px; height: calc(100dvh - 275px); max-height: 620px; border-radius: 20px; }
-  .drift-ocean-copy { padding: 26px 22px; }.drift-ocean-copy h2 { font-size: 1.4rem; line-height: 1.6; }.drift-ocean-copy .drift-eyebrow { font-size: .5rem; }.drift-ocean-copy > p:last-child { font-size: .77rem; max-width: 230px; }
-  .drift-shore-dock { width: calc(100% - 26px); padding: 10px 6px; gap: 3px; bottom: 18px; border-radius: 20px; }.drift-page .drift-dock-action { padding: 5px 3px 8px; }.drift-dock-action strong { font-size: .8rem; }
-  .drift-panel { padding: 20px 16px; border-radius: 18px; }.drift-bottle-shelf { grid-template-columns: 1fr; gap: 12px; }.drift-page .drift-list-item { padding: 18px 12px; }.drift-preview { font-size: .92rem; }.drift-list-meta small { font-size: .63rem; }
-  .drift-bottle-dialog { width: calc(100vw - 24px); max-height: calc(var(--ts-visual-height,100dvh) - 28px); border-radius: 18px; }
-  .drift-dialog-header { padding: 18px 18px 14px; }.drift-dialog-header h2 { font-size: 1.12rem; }.drift-letter-scroll { padding: 18px 18px 14px; }.drift-paper { min-height: 160px; padding: 18px; }.drift-content { font-size: .95rem; }
-  .drift-reader-footer { padding: 14px 18px 6px; }.drift-letter-actions { gap: 10px; }.drift-letter-actions button { flex: 1; min-width: 0; font-size: .83rem; }
-  .drift-letter-form { padding: 18px; gap: 14px; }.drift-writing-paper { padding: 16px; }.drift-writing-paper textarea { min-height: 150px; font-size: 16px; }.drift-found { padding: 24px 20px 32px; gap: 20px; }.drift-found-glow { width: 190px; height: 210px; }
+body:has(.drift-bottle-dialog[open]) .site-music-drawer { visibility: hidden; }
 
+@media (max-width: 900px) {
+    .drift-stage { grid-template-columns: minmax(0, .8fr) minmax(300px, 1fr); padding-inline: 20px; }
 }
 
-/* Touch phones can be wider than the desktop breakpoint in landscape. */
-.is-keyboard-open .drift-bottle-dialog.is-writing { height: calc(var(--ts-visual-height,100dvh) - 16px); max-height: calc(var(--ts-visual-height,100dvh) - 16px); margin-top: calc(var(--ts-visual-offset-top,0px) + 8px); margin-bottom: 8px; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-dialog-header { padding: 6px 14px; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-dialog-header h2 { font-size: 1rem; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-eyebrow,
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper small,
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-privacy { display: none; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-letter-form { flex: 1; gap: 8px; padding: 8px 14px; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper { min-height: 0; flex: 1; padding: 6px 10px; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-writing-paper label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.is-keyboard-open .drift-bottle-dialog.is-writing textarea { flex: 1; min-height: 24px; max-height: none; font-size: 16px; resize: none; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-letter-actions { gap: 10px; padding-bottom: 0; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-reply-context { display: none; }
-
-/* Original fan background: a shore facing the film's rose/lavender mirror sea. */
-.drift-ocean { background: linear-gradient(180deg,#e8eafa14,transparent 50%),url('../../assets/drift/mirror-coast.webp') center / cover no-repeat; }
-.drift-ocean-sky, .drift-ocean-beach, .drift-moonlight, .drift-wave { display: none; }
-.drift-ocean-water { inset: 0; border: 0; background: none; z-index: -1; }
-.drift-floating-bottle { bottom: 12%; left: 85%; width: 26px; height: 46px; }
-.drift-ocean-copy { width: fit-content; max-width: calc(100% - 40px); margin: 20px; padding: 24px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); background: var(--drift-surface); color: var(--ts-text); text-shadow: none; box-shadow: var(--ts-editorial-shadow); }
-.drift-ocean-copy .drift-eyebrow { color: var(--ts-accent); }
-.drift-ocean-copy > p:last-child { color: var(--ts-muted); }
-.drift-shore-dock { background: var(--drift-surface); border-color: var(--ts-border); box-shadow: var(--ts-editorial-shadow); }
-.drift-page .drift-dock-action { color: var(--ts-text); }
-.drift-page .drift-dock-action:hover:not(:disabled) { background: var(--ts-accent-soft); }
-.drift-dock-icon, .drift-dock-pick .drift-dock-icon { color: var(--ts-accent); background: none; }
-
-
-@media (max-width: 860px) {
-  .drift-ocean-copy { max-width: calc(100% - 28px); margin: 14px; padding: 18px; }
+@media (max-width: 720px) {
+    .drift-scene-shell .page.drift-page { --drift-scene-height: clamp(490px, calc(100svh - 142px), 760px); }
+    .drift-stage {
+        grid-template-columns: minmax(0, 1fr);
+        gap: clamp(115px, calc(44svh - 125px), 270px);
+        min-height: auto;
+        padding: 27px 14px 40px;
+    }
+    .drift-page[data-tab="bottles"] .drift-workspace { margin-top: 0; }
+    .drift-page .drift-identity h1 { font-size: clamp(2rem, 8.5vw, 3rem); }
+    .drift-identity h1 + p { margin-top: 6px; font-size: .88rem; max-width: 330px; text-wrap: pretty; }
+    .drift-scene-shell:has(#drift-panel-write) .site-music-drawer:not(.is-open) { visibility: hidden; }
+    .drift-page .drift-tabs button { font-size: clamp(.75rem, 3.6vw, .86rem); gap: 4px; }
+    .drift-page .drift-tabs button svg { width: 15px; height: 15px; }
+    .drift-bottle-dialog :is(.drift-dialog-header, .drift-letter-scroll, .drift-reader-footer, .drift-letter-form) { padding-inline: 14px; }
 }
 
-/* Only the shore artwork changes; the page keeps the shared site theme. */
-html[data-theme="dark"] .drift-ocean { background: url('../../assets/drift/mirror-coast-night.webp') center / cover no-repeat; }
-@media (max-width: 860px) { .drift-floating-bottle { display: none; } }
-
-.drift-daily-entry { display: flex; align-items: center; gap: 24px; margin-top: 18px; }
-.drift-daily-entry > div { flex: 1; min-width: 0; }
-.drift-daily-entry h2 { display: flex; align-items: center; gap: 8px; color: var(--ts-accent); font-size: 1rem; }
-.drift-daily-entry .drift-prompt-text { margin: 12px 0 0; font-family: var(--ts-font-serif); line-height: 1.8; overflow-wrap: anywhere; }
-.drift-daily-entry > button { flex-shrink: 0; }
-.drift-prompt-context { margin: 0; padding: 14px 16px; border-left: 2px solid var(--ts-accent); background: var(--drift-soft); overflow-wrap: anywhere; }
-.drift-prompt-context strong, .drift-daily-badge { color: var(--ts-accent); font-size: .78rem; font-weight: 600; }
-.drift-prompt-context time { display: block; margin-top: 4px; font-size: .72rem; color: var(--ts-muted); }
-.drift-page .drift-prompt-context p { margin: 8px 0; font-family: var(--ts-font-serif); font-size: .95rem; line-height: 1.8; }
-.drift-prompt-context button { margin-top: 10px; }
-.drift-inspiration { display: grid; justify-items: start; gap: 12px; }
-.drift-inspiration .drift-prompt-context { width: 100%; }
-.drift-page .drift-inspiration .drift-prompt-context p { margin: 0; }
-@media (max-width: 600px) {
-  .drift-daily-entry { align-items: stretch; flex-direction: column; gap: 16px; padding: 20px; }
+@media (orientation: landscape) and (max-height: 540px) {
+    .drift-scene-shell .page.drift-page { --drift-scene-height: 490px; }
 }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-prompt-context { max-height: 100px; overflow-y: auto; padding: 6px 10px; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-prompt-context :is(small,time,strong) { display: none; }
-.is-keyboard-open .drift-bottle-dialog.is-writing .drift-inspiration { display: none; }
+
+.is-keyboard-open .drift-bottle-dialog.is-writing {
+    height: calc(var(--ts-visual-height, 100dvh) - 16px);
+    max-height: calc(var(--ts-visual-height, 100dvh) - 16px);
+    margin-top: calc(var(--ts-visual-offset-top, 0px) + 8px);
+    margin-bottom: 8px;
+}
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-dialog-header { padding-block: 6px; }
+.is-keyboard-open .drift-bottle-dialog.is-writing :is(.drift-eyebrow, .drift-privacy, .drift-reply-context, .drift-writing-paper small) { display: none; }
+
+.is-keyboard-open .drift-compose {
+    position: fixed;
+    z-index: 90;
+    inset: calc(var(--ts-visual-offset-top, 0px) + 6px) auto auto 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    width: min(520px, calc(100% - 20px));
+    height: calc(var(--ts-visual-height, 100dvh) - 12px);
+    gap: 7px;
+    padding: 8px;
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: 13px;
+    background: var(--ts-editorial-surface);
+    transition-property: none;
+}
+.is-keyboard-open .drift-compose .drift-prompt-context {
+    max-height: clamp(0px, calc(var(--ts-visual-height) - 135px), 110px);
+    overflow: auto;
+}
+.is-keyboard-open .drift-bottle-dialog.is-writing .drift-letter-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    gap: 7px;
+    padding-block: 7px;
+}
+.is-keyboard-open :is(.drift-compose, .drift-bottle-dialog.is-writing) .drift-writing-paper {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+    padding-block: 6px;
+}
+.drift-scene-shell.is-keyboard-open .page.drift-page :is(.drift-compose, .drift-bottle-dialog.is-writing) .drift-writing-paper textarea {
+    flex: 1;
+    min-height: 24px;
+    height: 0;
+    resize: none;
+}
+.is-keyboard-open :is(.drift-compose, .drift-bottle-dialog.is-writing) .drift-writing-paper label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
