@@ -53,8 +53,8 @@ let stageLoadedRequest = '';
 
 const stagePageCopy = computed(() => props.lang === 'en' ? {
   resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
-  pageSize: '6 per page', prevPage: 'Previous', nextPage: 'Next', jumpToPage: 'Go to page', rangeUnit: 'articles'
-} : props.lang === 'ja' ? { resultUnit: '件', showing: '表示中', page: '', pageSuffix: 'ページ', totalPages: '全', pageSize: '6 件ずつ', prevPage: '前へ', nextPage: '次へ', jumpToPage: 'ページへ', rangeUnit: '件' } : {
+  pageSize: '6 per page', prevPage: 'Previous', nextPage: 'Next', jumpToPage: 'Go to page', pageNumber: 'Page number', jump: 'Go', rangeUnit: 'articles'
+} : props.lang === 'ja' ? { resultUnit: '件', showing: '表示中', page: '', pageSuffix: 'ページ', totalPages: '全', pageSize: '6 件ずつ', prevPage: '前へ', nextPage: '次へ', jumpToPage: 'ページへ', pageNumber: 'ページ番号', jump: '移動', rangeUnit: '件' } : {
   resultUnit: '\u7bc7',
   showing: '\u5f53\u524d',
   page: '\u7b2c',
@@ -64,6 +64,8 @@ const stagePageCopy = computed(() => props.lang === 'en' ? {
   prevPage: '\u4e0a\u4e00\u9875',
   nextPage: '\u4e0b\u4e00\u9875',
   jumpToPage: '\u8df3\u5230\u7b2c',
+  pageNumber: '页码',
+  jump: '跳转',
   rangeUnit: '\u7bc7'
 });
 
@@ -178,6 +180,12 @@ function stageSetPage(page, { scroll = true } = {}) {
   nextTick(() => {
     document.querySelector('.stage-list-region')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
+}
+
+function stageJumpToPage(event) {
+  const form = event.currentTarget;
+  stageSetPage(form.elements.page.valueAsNumber);
+  form.reset();
 }
 
 function isStagePageGap(item) {
@@ -488,6 +496,22 @@ useContentTranslationRefresh(() => loadArticles());
             <TsIcon name="arrowRight" :size="16" />
           </button>
         </div>
+        <form class="stage-page-jump" @submit.prevent="stageJumpToPage">
+          <input
+            class="stage-page-input"
+            type="number"
+            name="page"
+            min="1"
+            :max="stageTotalPages"
+            required
+            inputmode="numeric"
+            enterkeyhint="go"
+            autocomplete="off"
+            :aria-label="stagePageCopy.pageNumber"
+            :placeholder="`1–${stageTotalPages}`"
+          >
+          <button class="stage-page-btn" type="submit">{{ stagePageCopy.jump }}</button>
+        </form>
       </nav>
     </div>
   </main>
