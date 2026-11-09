@@ -1,6 +1,14 @@
 name: Guarded Moonlit Lake rollout
 on:
   workflow_dispatch:
+    inputs:
+      check_run:
+        description: Verified full test run for the candidate
+        required: true
+        type: choice
+        options:
+          - '42653339452'
+          - '42653471728'
 permissions:
   actions: read
   contents: read
@@ -19,17 +27,28 @@ jobs:
           persist-credentials: false
       - name: Verify merged and tested source
         env:
+          CHECK_RUN_ID: ${{ inputs.check_run }}
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'CHECK'
-          import json, subprocess
+          import json, os, subprocess
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', 'repos/redchenk/tsukuyomi-space/' + path]))
-          sha = 'a692267419d6527511f2378a4c2ab0ce389e50ac'
+          sha = 'e7fca3e8ab9f5a3e975a0ce7d2998cb5db6e8d48'
           pr = api('pulls/49')
-          run = api('actions/runs/42646189562')
+          run_id = os.environ['CHECK_RUN_ID']
+          assert run_id in ('42653339452', '42653471728')
+          run = api('actions/runs/' + run_id)
           assert pr['merged'] and pr['head']['sha'] == sha
-          assert run['event'] == 'pull_request' and run['head_sha'] == sha and run['conclusion'] == 'success'
+          assert run['conclusion'] == 'success'
+          if run_id == '42653339452':
+              assert run['event'] == 'pull_request' and run['head_sha'] == sha
+          else:
+              assert run['event'] == 'workflow_dispatch' and run['head_sha'] == '88117b6803caf997c6c014222f0e5c92bde2207b'
+              jobs = api('actions/runs/' + run_id + '/jobs?per_page=100')['jobs']
+              assert len(jobs) == 9 and all(job['conclusion'] == 'success' for job in jobs)
+              assert sum(job['name'].startswith('webkit') for job in jobs) == 4
+              assert sum(job['name'].startswith('chromium') for job in jobs) == 4
           assert api('commits/main')['commit']['tree']['sha'] == api('commits/' + sha)['commit']['tree']['sha']
           CHECK
       - name: Download checked builds
@@ -37,10 +56,16 @@ jobs:
         with:
           name: production-dist
           path: checked-frontend
-          run-id: 42646189562
+          run-id: ${{ inputs.check_run }}
           github-token: ${{ github.token }}
       - name: Prepare deltas from the checked builds
-        run: python3 .drift-release/pack.py checked-frontend
+        env:
+          CHECK_RUN_ID: ${{ inputs.check_run }}
+        run: |
+          if [ "$CHECK_RUN_ID" = 42653471728 ]; then
+            test "$(cat checked-frontend/checked-source.txt)" = 'e7fca3e8ab9f5a3e975a0ce7d2998cb5db6e8d48'
+          fi
+          python3 .drift-release/pack.py checked-frontend
       - name: Upload domestic delta
         uses: appleboy/scp-action@v0.1.7
         with:

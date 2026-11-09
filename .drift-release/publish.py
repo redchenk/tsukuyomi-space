@@ -10,7 +10,7 @@ import subprocess
 import time
 import urllib.request
 
-CANDIDATE = 'a692267419d6527511f2378a4c2ab0ce389e50ac'
+CANDIDATE = 'e7fca3e8ab9f5a3e975a0ce7d2998cb5db6e8d48'
 RELEASE = 'drift-lantern'
 stage = Path(__file__).resolve().parent
 site, action, attempt = sys.argv[1:]
