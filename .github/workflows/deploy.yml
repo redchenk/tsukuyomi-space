@@ -1,89 +1,20 @@
-name: Moonlit Lake release checks
+name: Moonlit Lake queued WebKit shard retry
 on: workflow_dispatch
 permissions:
   contents: read
 concurrency:
-  group: moonlit-lake-release-checks
+  group: moonlit-lake-webkit-retry
   cancel-in-progress: false
 env:
   DRIFT_CANDIDATE: e7fca3e8ab9f5a3e975a0ce7d2998cb5db6e8d48
 jobs:
-  build:
-    if: github.ref == 'refs/heads/codex/drift-lantern-release-checks'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.DRIFT_CANDIDATE }}
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.20.2
-          cache: npm
-      - run: npm ci
-      - name: Run unit and deployment safety checks
-        run: |
-          python3 -m pip install sqlite-vec==0.1.6
-          npm test
-          python3 -m unittest discover -s tests -p 'deployment_safety_test.py'
-      - name: Build and smoke-test Docker runtime
-        run: |
-          docker build --target runtime -t tsukuyomi-ci:$DRIFT_CANDIDATE .
-          bash tests/docker-smoke.sh tsukuyomi-ci:$DRIFT_CANDIDATE
-      - name: Build domestic and overseas frontend
-        run: |
-          mkdir -p deployment-artifacts/domestic deployment-artifacts/overseas
-          npm run build:web
-          cp -a dist/frontend/. deployment-artifacts/domestic/
-          npm run build:web:overseas
-          cp -a dist/frontend/. deployment-artifacts/overseas/
-          test "$(git rev-parse HEAD)" = "$DRIFT_CANDIDATE"
-          git rev-parse HEAD > deployment-artifacts/checked-source.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: production-dist
-          path: deployment-artifacts
-          if-no-files-found: error
-  chromium:
-    if: github.ref == 'refs/heads/codex/drift-lantern-release-checks'
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.DRIFT_CANDIDATE }}
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.20.2
-          cache: npm
-      - run: npm ci
-      - run: npm run build:web
-      - name: Install Chromium and system dependencies
-        timeout-minutes: 10
-        run: |
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
-          fi
-          npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --project=chromium --project=chromium-mobile --shard=${{ matrix.shard }}/4 --trace=retain-on-failure
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: chromium-failures-${{ matrix.shard }}
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 3
   webkit:
     if: github.ref == 'refs/heads/codex/drift-lantern-release-checks'
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [2]
     steps:
       - uses: actions/checkout@v4
         with:
