@@ -388,6 +388,28 @@
     flex-wrap: wrap;
 }
 
+.stage-page-jump {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.stage-page-input {
+    width: 5.5rem;
+    height: 40px;
+    padding: 0 0.55rem;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-sm);
+    background: color-mix(in srgb, var(--ts-surface), transparent 30%);
+    color: var(--ts-text);
+    font: inherit;
+    text-align: center;
+}
+
+.stage-page-jump .stage-page-btn {
+    padding-inline: 0.75rem;
+}
+
 .stage-page-btn,
 .stage-page-gap {
     min-width: 40px;
@@ -537,6 +559,10 @@
     .stage-page-btn,
     .stage-page-gap {
         min-width: 38px;
+        height: 38px;
+    }
+
+    .stage-page-input {
         height: 38px;
     }
 
