@@ -9,9 +9,11 @@ const props = defineProps({
   routeName: { type: String, default: '' },
   reduced: { type: Boolean, default: false },
   entryActive: Boolean,
+  openOnMount: Boolean,
+  floating: { type: Boolean, default: true },
   spriteSrc: { type: String, default: '/assets/pets/yachiyo/spritesheet-perf-r2.webp' }
 });
-const emit = defineEmits(['go']);
+const emit = defineEmits(['go', 'close']);
 const petInteraction = inject('sitePetInteraction', null);
 const gameInteraction = computed(() => props.routeName === 'gomoku' ? unref(petInteraction?.value) : null);
 const petButton = ref(null);
@@ -258,6 +260,7 @@ async function openGuide() {
 
 function closeGuide() {
   dialogOpen.value = false;
+  emit('close');
 }
 
 function navigate(path) {
@@ -324,8 +327,10 @@ watch(dialogOpen, (open) => {
   }
 });
 
-watch(() => props.reduced, (reduced) => {
-  motionReduced = reduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
+watch(() => props.openOnMount, open => { if (open) openGuide(); });
+
+watch(() => [props.reduced, props.floating], ([reduced]) => {
+  motionReduced = !props.floating || reduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
   window.clearTimeout(frameTimerId);
   window.clearTimeout(actionTimerId);
   frameTimerId = 0;
@@ -335,7 +340,8 @@ watch(() => props.reduced, (reduced) => {
 });
 
 onMounted(() => {
-  motionReduced = props.reduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
+  motionReduced = !props.floating || props.reduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
+  if (props.openOnMount) openGuide();
   if (!motionReduced) {
     queueNextFrame();
     scheduleRandomAction();
@@ -353,7 +359,7 @@ onBeforeUnmount(() => {
   <div class="site-pet-wrap" :class="routeName ? `site-pet-route-${routeName}` : ''" :inert="entryActive">
     <SitePetGameBubble v-if="gameInteraction" v-show="gameBubbleVisible" :interaction="gameInteraction" :expanded="gameBubbleExpanded"
       @expand="gameBubbleExpanded = true" @close="closeGameBubble" @go="navigate" />
-    <button ref="petButton" class="site-pet" type="button" :aria-label="gameInteraction ? gameInteraction.copy.petOpen : copy.petLabel"
+    <button v-if="floating" ref="petButton" class="site-pet" type="button" :aria-label="gameInteraction ? gameInteraction.copy.petOpen : copy.petLabel"
       :aria-expanded="gameInteraction ? gameBubbleExpanded : dialogOpen" :aria-controls="gameInteraction && gameBubbleVisible ? 'site-pet-game-bubble' : undefined"
       :style="petStyle" @click="activatePet"></button>
   </div>

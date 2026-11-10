@@ -32,7 +32,7 @@ for (const width of [1280, 390]) for (const theme of ['light', 'dark']) {
         await page.route('https://m801.music.126.net/test.wav', route => route.fulfill({ contentType: 'audio/wav', body: wav() }));
         await page.goto('/hub');
         const before = await page.evaluate(() => window.scrollY);
-        await page.getByRole('button', { name: 'Expand music drawer' }).click();
+        await page.locator('.header-music').click();
         await expect(page.getByRole('combobox', { name: '网站曲目' })).toBeVisible();
         await expect(page.getByRole('combobox', { name: '网站曲目' }).locator('option')).toHaveCount(10);
         await page.getByRole('button', { name: '网易云', exact: true }).click();
@@ -62,8 +62,8 @@ for (const width of [1280, 390]) for (const theme of ['light', 'dark']) {
         const buttonRadius = await page.getByRole('button', { name: '网易云', exact: true }).evaluate(el => getComputedStyle(el).borderRadius);
         expect(parseFloat(buttonRadius)).toBeGreaterThan(15);
         const colors = await page.locator('.site-music-main-control').evaluate(el => {
-            const reference = document.querySelector('.site-room-cta');
-            return { player: getComputedStyle(el).backgroundColor, site: getComputedStyle(reference).backgroundColor };
+            const reference = document.createElement('span'); reference.style.backgroundColor = 'var(--accent)'; el.append(reference);
+            const colors = { player: getComputedStyle(el).backgroundColor, site: getComputedStyle(reference).backgroundColor }; reference.remove(); return colors;
         });
         expect(colors.player).toBe(colors.site);
         await page.screenshot({ path: path.resolve('.codex_tmp/netease-music-20261006', `player-${width}-${theme}.png`) });
@@ -86,7 +86,7 @@ test('QR polling stops when player closes; provider failures preserve local song
         return route.fulfill({ json: { success: true, enabled: true, profile: null } });
     });
     await page.goto('/hub');
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await page.locator('.header-music').click();
     await page.getByRole('button', { name: '网易云', exact: true }).click();
     await page.getByRole('button', { name: '扫码登录网易云' }).click();
     await expect(page.getByRole('img', { name: '网易云音乐登录二维码' })).toBeVisible();
@@ -94,7 +94,7 @@ test('QR polling stops when player closes; provider failures preserve local song
     await page.waitForTimeout(3300);
     expect(checks).toBe(0);
     await page.route('**/api/music/qr', route => route.fulfill({ status: 502, json: { success: false, code: 'MUSIC_NETWORK', message: '网易云连接暂时失败，可以继续听网站曲目' } }));
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await page.locator('.header-music').click();
     await page.getByRole('button', { name: '网易云', exact: true }).click();
     await page.getByRole('button', { name: '刷新二维码' }).click();
     await expect(page.getByText('网易云连接暂时失败，可以继续听网站曲目', { exact: true })).toBeVisible();
@@ -114,7 +114,7 @@ test('a late remote playback response cannot replace the selected fixed tracks',
         throw new Error(`Unexpected music request ${path}`);
     });
     await page.goto('/hub');
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await page.locator('.header-music').click();
     await page.getByRole('button', { name: '网易云', exact: true }).click();
     await expect(page.getByText('月下听歌人', { exact: true })).toBeVisible();
     await page.getByRole('searchbox', { name: '搜索网易云音乐' }).fill('测试');
@@ -168,7 +168,7 @@ async function playbackFixture(page, { local = false, delaySecond = false } = {}
     });
     await page.route('**/assets/music/**', audioResponse);
     await page.goto('/hub');
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await page.locator('.header-music').click();
     if (!local) {
         await page.getByRole('button', { name: '网易云', exact: true }).click();
         await expect(page.getByText('听歌测试', { exact: true })).toBeVisible();
@@ -212,7 +212,7 @@ test('remote automatic continuation uses direct NetEase audio even with the draw
     await finishAudio(page);
     await expect.poll(() => calls.join(',')).toBe('123,124');
     await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => audio.src.endsWith('/124.wav') && !audio.paused && audio.currentTime < 5))).toBe(true);
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await page.locator('.header-music').click();
     await expect(page.locator('.site-music-title-row strong')).toHaveText('第二首');
     expect(media.every(url => new URL(url).hostname === 'm801.music.126.net')).toBe(true);
     expect(media.some(url => url.endsWith('/124.wav'))).toBe(true);
@@ -254,7 +254,7 @@ test('shuffle history works and the selected mode survives reload', async ({ pag
     await expect(page.locator('.site-music-title-row strong')).toHaveText(second);
     await page.evaluate(() => localStorage.setItem('roomMusicPlaybackMode', 'shuffle'));
     await page.goto('/stage');
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await page.locator('.header-music').click();
     await expect(select).toHaveValue('shuffle');
 });
 test('pausing during automatic remote resolution prevents late autoplay', async ({ page }) => {
@@ -284,44 +284,30 @@ test('an unavailable next song stops with a reason and cannot start a retry loop
     await page.waitForTimeout(500);
     expect(failed).toBe(1); expect(calls).toEqual(['123']);
 });
-test('drawer morphs both directions, cancels rapid reversals and respects reduced motion', async ({ page }) => {
+test('music modal restores focus and scrolling, fits resizing and respects reduced motion', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route('**/api/music/status', route => route.fulfill({ json: { success: true, enabled: true, profile: null } }));
     await page.route('**/assets/music/**', route => route.fulfill({ contentType: 'audio/wav', body: wav() }));
     await page.goto('/hub');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
+    const trigger = page.locator('.header-music');
     const drawer = page.locator('.site-music-drawer');
-    await drawer.evaluate(el => {
-        const animate = el.animate.bind(el);
-        el.holdTestMorph = true;
-        el.animate = (...args) => {
-            const animation = animate(...args);
-            if (el.holdTestMorph) { animation.pause(); animation.currentTime = 10; }
-            return animation;
-        };
-    });
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
-    await expect(drawer).toHaveClass(/is-morphing/);
-    await drawer.evaluate(el => el.getAnimations()[0].finish());
-    await expect(drawer).not.toHaveClass(/is-morphing/);
-    await expect(page.getByRole('combobox', { name: '播放顺序' })).toBeVisible();
-    const from = await drawer.boundingBox();
-    await page.getByRole('button', { name: 'Collapse music drawer' }).click();
-    await expect(drawer).toHaveClass(/is-morphing/);
-    await drawer.evaluate(el => el.getAnimations()[0].finish());
-    await expect(drawer).not.toHaveClass(/is-morphing/);
-    const to = await drawer.boundingBox(); expect(to.height).toBeLessThan(from.height); expect(to.width).toBeLessThan(from.width);
-    await expect(page.getByRole('combobox', { name: '播放顺序' })).not.toBeVisible();
-    await drawer.evaluate(el => { el.holdTestMorph = false; });
-    await drawer.locator('.site-music-handle').evaluate(el => { el.click(); setTimeout(() => el.click(), 80); setTimeout(() => el.click(), 120); });
-    await expect(drawer).toHaveClass(/is-open/);
-    await expect(drawer).not.toHaveClass(/is-morphing/);
-    expect(await drawer.evaluate(el => el.style.height || el.style.width)).toBe('');
-    expect(await page.locator('.site-music-panel').evaluate(el => el.scrollWidth > el.clientWidth + 1)).toBe(false);
-    expect(await page.getByRole('combobox', { name: '播放顺序' }).evaluate(el => parseFloat(getComputedStyle(el).borderRadius))).toBeGreaterThan(15);
-    await page.screenshot({ path: path.resolve('.codex_tmp/music-playback-20261006', 'playback-390-light.png') });
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.getByRole('button', { name: 'Collapse music drawer' }).click();
-    await expect(drawer).not.toHaveClass(/is-morphing|is-open/);
-    await page.getByRole('button', { name: 'Expand music drawer' }).click();
-    await expect(drawer).not.toHaveClass(/is-morphing/);
+    for (const reducedMotion of ['no-preference', 'reduce']) {
+      await page.emulateMedia({ reducedMotion });
+      await trigger.focus(); await trigger.press('Enter');
+      await expect(drawer).toBeVisible();
+      expect(await drawer.evaluate(el => el.matches(':modal'))).toBe(true);
+      await expect(page.getByRole('combobox', { name: '播放顺序' })).toBeVisible();
+      await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+      for (let i = 0; i < 18; i++) { await page.keyboard.press('Tab'); expect(await drawer.evaluate(el => el.contains(document.activeElement))).toBe(true); }
+      for (const width of [390, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        const box = await drawer.boundingBox();
+        expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
+        expect(await drawer.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      }
+      await page.keyboard.press('Escape');
+      await expect(drawer).toHaveCount(0); await expect(trigger).toBeFocused();
+      await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    }
 });

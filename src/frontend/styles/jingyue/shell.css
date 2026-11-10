@@ -67,7 +67,7 @@
 .site-search-result > span { flex: 1; display: grid; gap: 4px; }
 .site-search-result small, .site-search-help { color: var(--muted); font-size: 13px; }
 @media (max-width: 1200px) { .site-header { gap: 28px; } .desktop-nav { gap: 20px; } .header-search span, .header-search kbd { display: none; } .header-search { border: 0; padding: 12px; margin: 0; } .header-actions { gap: 0; } .header-room { margin-left: 8px; } }
-@media (max-width: 860px) {
+@media (max-width: 1080px) {
   .desktop-nav, .header-room { display: none; }
   .header-download { display: inline-grid; }
   .site-brand { font-size: 20px; }

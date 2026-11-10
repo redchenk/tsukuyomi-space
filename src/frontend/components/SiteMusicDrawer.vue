@@ -1,17 +1,14 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed } from 'vue';
+import { useModalDialog } from '../composables/useModalDialog';
 import TsIcon from './TsIcon.vue';
 import SiteMusicLibrary from './SiteMusicLibrary.vue';
 import '../styles/jingyue/music.css';
 const props = defineProps({ music: { type: Object, required: true }, lang: { type: String, default: 'zh' } });
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
 const active = computed(() => props.music.playing.value || props.music.playPending.value);
-const dialog = ref(null);
-let trigger;
-let previousOverflow;
+const dialog = useModalDialog(() => props.music.drawer.open);
 function closeBackdrop(event) { if (event.target === dialog.value) props.music.toggleShell(); }
-onMounted(() => { trigger = document.activeElement; previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; dialog.value.showModal(); });
-onBeforeUnmount(() => { document.body.style.overflow = previousOverflow; if (trigger?.isConnected) trigger.focus(); });
 </script>
 
 <template>

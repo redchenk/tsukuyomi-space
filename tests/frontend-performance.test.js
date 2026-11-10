@@ -223,7 +223,7 @@ describe('constrained-device performance policy', () => {
         const pet = source('src/frontend/components/SitePet.vue');
 
         assert.match(app, /defineAsyncComponent\(\(\) => import\('\.\/components\/SitePet\.vue'\)\)/);
-        assert.match(app, /showSitePet = computed\(\(\) => route\.name === 'gomoku'\)/);
+        assert.match(app, /showSitePet = computed\(\(\) => route\.name === 'gomoku' \|\| guideRequested\.value\)/);
         assert.match(app, /:reduced="petReduced"/);
         assert.match(pet, /assets\/pets\/yachiyo\/idle\.webp/);
         assert.match(pet, /if \(motionReduced \|\| props\.reduced\) return/);

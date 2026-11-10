@@ -11,11 +11,12 @@ import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import TsIcon from '../components/TsIcon.vue';
 import BeianLink from '../components/BeianLink.vue';
 import SeasonThemePicker from '../components/SeasonThemePicker.vue';
+import ContentTranslationControl from '../components/ContentTranslationControl.vue';
 import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
 const SiteSearch = defineAsyncComponent(() => import('../components/SiteSearch.vue'));
 const SiteMusicDrawer = defineAsyncComponent(() => import('../components/SiteMusicDrawer.vue'));
 const props = defineProps({ isAuthed: Boolean, lang: { type: String, default: 'zh' }, routeName: String, showChrome: Boolean, music: Object, t: Object, theme: String, user: Object });
-const emit = defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
+const emit = defineEmits(['go', 'logout', 'set-lang', 'toggle-theme', 'open-guide']);
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
 const copy = computed(() => navigationCopy(props.lang));
 const isRoom = computed(() => ['room', 'roomShared'].includes(props.routeName));
@@ -187,7 +188,8 @@ onUnmounted(() => {
         <div class="explore-groups"><section v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
       </template>
       <div v-else class="account-menu"><a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><span v-if="item.key === 'notifications' && unreadNotifications">{{ unreadNotifications }}</span></a><button v-if="isAuthed" class="menu-link" @click="navOpen = false; emit('logout')"><TsIcon name="logOut" :size="20" />{{ t.logout }}</button></div>
-      <footer class="menu-preferences"><button class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /></footer>
+      <button class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
+      <footer class="menu-preferences"><button class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="emit('go', $event)" />
     <SiteMusicDrawer v-if="music?.drawer.open" :music="music" :lang="lang" />

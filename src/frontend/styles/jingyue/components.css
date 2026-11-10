@@ -41,7 +41,8 @@
 .segmented-indicator, .ts-segmented-indicator { position: absolute; top: 0; left: 0; z-index: -1; pointer-events: none; background: var(--soft); border-radius: var(--r-pill); }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
 ::view-transition-group(site-header), ::view-transition-group(mobile-dock) { animation-duration: 0s; }
-@media (max-width: 860px) { .page { padding: 32px 0 56px; } .content-shell { padding-bottom: calc(92px + env(safe-area-inset-bottom)); } }
+@media (max-width: 1080px) { .content-shell { padding-bottom: calc(92px + env(safe-area-inset-bottom)); } }
+@media (max-width: 860px) { .page { padding: 32px 0 56px; } }
 @media (max-width: 600px) { input, textarea, select { font-size: 16px; } .section-title { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { scroll-behavior: auto; } ::view-transition-group(*) { animation-duration: .01ms; } }
 

@@ -64,9 +64,9 @@ for (const location of ['plaza', 'article']) {
         await input.fill(draft);
         for (const translated of [false, true]) {
             const count = reads.length;
-            await page.locator('.site-account-trigger').click();
+            await page.locator('.header-account').click();
             await page.getByRole('switch', { name: 'Translate community content' }).setChecked(translated);
-            await page.locator('.site-nav-drawer-head > button').click();
+            await page.locator('#site-navigation .menu-heading > button').click();
             await expect.poll(() => reads.slice(count).includes(translated)).toBe(true);
             if (location === 'article') await expect(page.locator('#article-comments')).toHaveAttribute('aria-busy', 'false');
             else await expect(page.locator('.plaza-wall')).toHaveAttribute('aria-busy', 'false');

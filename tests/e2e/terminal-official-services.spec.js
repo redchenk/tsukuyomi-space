@@ -1,7 +1,7 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 const ok = data => ({json:{success:true,data}});
 async function signIn(page) {
-    const response=await page.request.post('/api/admin/login',{headers:{Origin:'http://127.0.0.1:4174','X-Requested-With':'XMLHttpRequest'},data:{username:'admin',password:'admin-test-password'}});
+    const response=await page.request.post('/api/admin/login',{headers:{Origin:process.env.E2E_BASE_URL || 'http://127.0.0.1:4174','X-Requested-With':'XMLHttpRequest'},data:{username:'admin',password:'admin-test-password'}});
     expect(response.status()).toBe(200);
     const {data}=await response.json();
     await page.addInitScript(({admin,user}) => {

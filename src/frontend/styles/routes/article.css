@@ -1,6 +1,7 @@
 @import '../markdown.css' layer(pages);
 @layer pages {
 .article-page { max-width: 1120px; }
+#article-comments, .comment-item { scroll-margin-top: calc(var(--header-height) + 28px); }
 .article-shell { width: 100%; }
 .article-back { border: 0; padding-left: 0; color: var(--muted); margin-bottom: 30px; }
 .article-progress { position: fixed; left: 0; right: 0; top: 0; height: 3px; transform-origin: left; background: var(--accent); z-index: 100; }

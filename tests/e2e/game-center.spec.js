@@ -32,20 +32,15 @@ test('game center opens both games; discovery and search use the new name', asyn
   await expect(page).toHaveURL(/\/game\/gomoku$/);
   await expect(page.getByRole('grid', { name: '五子棋棋盘' })).toBeVisible();
   await page.getByRole('link', { name: '返回游戏中心' }).click();
-  if (testInfo.project.name === 'chromium') await page.locator('.header-search').click();
-  else {
-    await page.getByRole('button', { name: '探索', exact: true }).click();
-    await expect(page.locator('#site-navigation').getByRole('link', { name: /游戏中心/ })).toBeVisible();
-    await page.locator('.site-menu-search').click();
-  }
+  await page.locator('.header-search').click();
   const search = page.locator('.site-search-dialog');
   await search.getByRole('combobox').fill('五子棋');
-  await expect(search.getByRole('option', { name: /^游戏中心(?: \/game)?$/ })).toBeVisible();
+  await expect(search.getByRole('option', { name: /^游戏(?: \/game)?$/ })).toBeVisible();
   await search.getByRole('button', { name: '关闭搜索', exact: true }).click();
   await expect(search).not.toBeVisible();
   if (testInfo.project.name === 'chromium') {
-    await page.locator('#site-nav-discover').click();
-    await expect(page.locator('#site-panel-discover').getByRole('link', { name: /游戏中心/ })).toBeVisible();
+    await page.locator('.desktop-nav button').click();
+    await expect(page.locator('#site-navigation a[href="/game"]')).toBeVisible();
   }
 });
 
@@ -153,7 +148,7 @@ test('English and Japanese copies and dark mode keep the board usable', async ({
   await page.getByRole('button', { name: '账号菜单', exact: true }).click();
   await page.locator('#site-navigation').getByRole('button', { name: '切换深色主题', exact: true }).click();
   await page.locator('#site-navigation').getByRole('button', { name: '日本語', exact: true }).click();
-  await page.locator('#site-navigation .site-nav-drawer-head button').click();
+  await page.locator('#site-navigation .menu-heading button').click();
   await expect(page.getByRole('heading', { name: '月下の五目並べ' })).toBeVisible();
   await cell(page, 112).click();
   await expect(stones(page)).toHaveCount(2);
@@ -187,7 +182,7 @@ async function configureModel(page) {
     apiUrl: 'https://fixture.test/v1/chat/completions', model: 'fixture-model', apiKey: 'fixture-key' })));
 }
 
-test('one global pet opens a nonmodal bubble, keeps drafts, and returns to the site guide outside Gomoku', async ({ page }, info) => {
+test('Gomoku companion keeps drafts and releases its bubble when leaving the board', async ({ page }, info) => {
   await configureModel(page);
   await ready(page);
   await openPetChat(page);
@@ -214,9 +209,7 @@ test('one global pet opens a nonmodal bubble, keeps drafts, and returns to the s
   await page.getByRole('link', { name: '返回游戏中心', exact: true }).click();
   await expect(page).toHaveURL(/\/game$/);
   await expect(page.locator('.site-pet-game-bubble')).toHaveCount(0);
-  await page.locator('.site-pet').click();
-  await expect(page.getByRole('dialog', { name: '八千代向导', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '关闭向导', exact: true }).click();
+  await expect(page.locator('.site-pet')).toHaveCount(0);
   await page.getByRole('link', { name: '和八千代下棋', exact: true }).click();
   await expect(page.locator('.site-pet')).toHaveCount(1);
   await expect(page.locator('.site-guide-backdrop')).toHaveCount(0);

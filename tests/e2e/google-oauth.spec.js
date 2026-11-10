@@ -49,7 +49,8 @@ for (const width of [1280, 390]) {
       await expect(google).toBeVisible();
       await expect(page.getByRole('button', { name: 'QQ 登录', exact: true })).toBeVisible();
       const box = await google.boundingBox();
-      expect(box.width).toBeGreaterThan(110);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
     }
   });

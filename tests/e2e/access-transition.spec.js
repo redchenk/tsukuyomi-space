@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 async function entry(page) {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.access-enter')).toBeEnabled();
 }

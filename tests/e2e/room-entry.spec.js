@@ -35,7 +35,7 @@ async function openHub(page) {
   await expect(page.locator('#boot-splash')).toHaveCount(0);
 }
 async function enterRoom(page) {
-  await page.locator('.hub [href="/room"]').first().click();
+  await page.locator('.hero-composer button[type="submit"]').click();
 }
 
 test('SPA entry covers route loading, then reveals the same live room and releases focus', async ({ page }, info) => {
@@ -224,5 +224,5 @@ test('shared room links use the same readiness and reveal flow', async ({ page }
   await expect(page.locator('.room-entry-splash')).toHaveAttribute('data-phase', 'loading');
   await completeRenderer(page);
   await expect(page.locator('.room-entry-splash')).toHaveCount(0);
-  await expect(page.locator('[data-route-name="roomShared"]')).toBeVisible();
+  await expect(page.locator('[data-route-name="roomShared"] .room-conversation-layout')).toBeVisible();
 });

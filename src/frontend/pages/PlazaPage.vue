@@ -773,7 +773,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
           <button v-if="plaza.query || plaza.filter !== 'latest'" class="ghost-btn" type="button" @click="clearPlazaSearch(); plaza.filter = 'latest'">{{ designCopy.allMessages }}</button>
         </div>
         <div v-else class="plaza-messages plaza-message-region">
-          <article v-for="msg in pagedPlazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card">
+          <article v-for="msg in pagedPlazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card" data-scroll-reveal="off">
             <div class="plaza-msg-meta">
               <div class="plaza-msg-author">
                 <button class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">

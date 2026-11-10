@@ -77,7 +77,8 @@ const isAuthRoute = computed(() => route.name === 'login' || route.name === 'reg
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isRoomRoute = computed(() => route.name === 'room' || route.name === 'roomShared');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value || isRoomRoute.value);
-const showSitePet = computed(() => route.name === 'gomoku');
+const guideRequested = ref(false);
+const showSitePet = computed(() => route.name === 'gomoku' || guideRequested.value);
 const performanceProfile = ref(getPerformanceProfile());
 const petReduced = computed(() => performanceProfile.value === 'reduced');
 const isAuthed = computed(() => Boolean(user.value));
@@ -454,6 +455,7 @@ onUnmounted(() => {
     @go="go"
     @logout="logout"
     @set-lang="setLang"
+    @open-guide="guideRequested = true"
     @toggle-theme="toggleTheme"
   >
     <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute }">
@@ -499,6 +501,7 @@ onUnmounted(() => {
   ><span aria-hidden="true"></span></div>
 
   <SitePet v-if="showSitePet && !roomEntryActive"
+    :floating="route.name === 'gomoku'" :open-on-mount="guideRequested" @close="guideRequested = false"
     :lang="lang" :route-name="route.name" :reduced="petReduced" :entry-active="entryActive" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">

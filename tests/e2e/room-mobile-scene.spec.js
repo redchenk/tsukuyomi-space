@@ -144,7 +144,7 @@ test('mobile history stays in place during a reply and returns to the latest bub
     const conversation = await page.locator('.room-conversation-surface').boundingBox();
     expect(conversation.y).toBeGreaterThan(844 * .35);
     expect(conversation.y).toBeLessThan(844 * .51);
-    await expect(page.locator('.room-conversation-surface')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(page.locator('.room-conversation-surface')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await page.locator('#chatInput').fill('最新的一条消息');
     await page.locator('#sendChatBtn').click();
     await expect(page.locator('#stopChatBtn')).toBeVisible();

@@ -3,8 +3,8 @@
 /* Canvas-first atelier. The existing navigation and site tokens own the shell. */
 @layer pages {
 body .page.arena-page.pixel-workspace {
-  display: block; width: 100%; max-width: none; height: 100%; min-height: 0;
-  margin: 0; padding: 104px 24px 16px; overflow: visible; color: var(--pages-ink);
+  display: block; width: 100%; max-width: none; height: calc(100dvh - var(--header-height)); min-height: 0;
+  margin: 0; padding: 16px 24px; overflow: visible; color: var(--pages-ink);
   background: none; --pw-line: var(--pages-line); --pw-surface: var(--pages-surface);
   --pw-soft: var(--pages-soft); --pw-muted: var(--pages-muted);
 }
@@ -60,7 +60,7 @@ body .pixel-workspace .arena-canvas-panel.pw-center { display: flex; flex-direct
 body .pixel-workspace .arena-canvas-viewport { display: block; flex: 1; grid-row: auto; position: relative; height: auto; width: 100%; max-height: none; min-height: 0; padding: 30px 34px 30px 42px; border: 0; background: var(--pw-soft); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .pw-canvas-world { display: flex; align-items: center; justify-content: center; min-width: 100%; min-height: 100%; width: max-content; height: max-content; }
 body .pixel-workspace .pixel-canvas-zoom-surface { position: relative; flex-shrink: 0; margin: 0; overflow: visible; contain: none; }
-body .pixel-workspace .pixel-canvas { display: block; position: absolute; inset: 0 auto auto 0; min-width: 0; min-height: 0; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; transform-origin: top left; box-shadow: 0 8px 26px rgb(15 30 50 / 15%); overflow: hidden; }
+body .page.arena-page.pixel-workspace .pixel-canvas { display: block; position: absolute; inset: 0 auto auto 0; min-width: 0; min-height: 0; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; transform-origin: top left; box-shadow: 0 8px 26px rgb(15 30 50 / 15%); overflow: hidden; }
 body .pixel-workspace .pixel-canvas .pixel-canvas-renderer { display: block; width: 100%; height: 100%; max-width: none; }
 .pw-ruler { position: absolute; color: var(--pw-muted); font: 10px ui-monospace, monospace; pointer-events: none; opacity: .7; }
 .pw-ruler-x { top: -22px; left: 0; right: 0; height: 18px; }

@@ -84,7 +84,7 @@
 .gomoku-restart p { color: var(--ts-text-secondary); font-size: 13px; }
 .gomoku-restart > div { display: flex; gap: 10px; justify-content: end; margin-top: 24px; }
 .game-center-page :is(a, button):focus-visible, .gomoku-page :is(a, button, select, summary, textarea, input):focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
-.content-shell .page.gomoku-page { padding-inline: clamp(12px, 2vw, 32px); }
+.content-shell .page.gomoku-page { width: min(var(--page-width), 100%); padding-inline: clamp(12px, 2vw, 32px); }
 .gomoku-wrap { max-width: 1480px; }
 .gomoku-header { max-width: 800px; margin-inline: auto; }
 @media (max-width: 1000px) { .gomoku-layout { gap: 16px; } .gomoku-table { padding: 14px; } }

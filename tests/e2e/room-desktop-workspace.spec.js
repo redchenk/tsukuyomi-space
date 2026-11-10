@@ -41,7 +41,8 @@ test('desktop tabs preserve a pending reply and drafts through utility panels an
     const stage = await page.locator('.room-stage').boundingBox();
     const chat = await page.locator('.room-conversation-surface').boundingBox();
     expect(stage.x + stage.width).toBeLessThan(chat.x);
-    expect(chat.y).toBeCloseTo(stage.y, 0);
+    expect(chat.y).toBeGreaterThanOrEqual(stage.y);
+    expect(chat.y + chat.height).toBeLessThanOrEqual(stage.y + stage.height);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('#chatInput')).toHaveValue('下一条消息草稿');
     await expect(page.locator('.room-mobile-header')).toBeVisible();

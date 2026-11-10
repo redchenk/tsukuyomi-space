@@ -1373,12 +1373,6 @@
     grid-column: 1/-1;
     margin-top: 0;
   }
-  .app-shell:has(.room-settings-page) .site-music-drawer {
-    top: auto;
-    bottom: calc(144px + env(safe-area-inset-bottom));
-    left: max(12px, env(safe-area-inset-left));
-    right: auto;
-  }
 }
 .room-settings-page input[role='switch'] {
   min-height: 22px;
@@ -1391,11 +1385,6 @@
 .room-settings-page input[type='radio'] {
   min-height: 17px;
   padding: 0;
-}
-@media (max-width: 860px) {
-  .app-shell:has(.room-settings-page) .site-music-drawer:not(.is-open) {
-    z-index: 300;
-  }
 }
 #room-llm-settings label[for] { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 500; }
 
@@ -1507,8 +1496,6 @@
 .settings-context:not([open]) > :not(summary) { display:none; }
 .settings-heading-actions { display: flex; align-items: center; gap: 8px; }
 .settings-heading-actions > button { width: 42px; padding-inline: 8px !important; }
-.app-shell:has(.room-settings-page) .site-music-drawer:not(.is-open) { display: none; }
-.app-shell:has(.room-settings-page) .site-music-drawer.is-open { bottom: calc(72px + env(safe-area-inset-bottom)); }
 .room-settings-page .settings-compact-savebar { padding: 0 0 env(safe-area-inset-bottom); }
 .room-settings-page .settings-compact-savebar .button-row { display: flex; flex-wrap: nowrap; width: auto; }
 .room-settings-page .settings-compact-savebar .button-row button { min-height: 40px; flex: initial; width: auto; white-space: nowrap; padding: 8px 14px; }

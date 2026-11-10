@@ -345,7 +345,7 @@ describe('room Live2D mobile quality parity', () => {
         const textureManager = source('src/live2d/lapptexturemanager.ts');
         const nginx = source('deploy/nginx.conf');
 
-        assert.match(app, /showSitePet = computed\(\(\) => route\.name === 'gomoku'\)/);
+        assert.match(app, /showSitePet = computed\(\(\) => route\.name === 'gomoku' \|\| guideRequested\.value\)/);
         assert.doesNotMatch(app, /onMounted\(\(\) => \{\s*refreshUser\(\);/);
         assert.match(app, /function handlePageShow\(event\) \{\s*if \(!event\?\.persisted\) return;/);
         assert.match(app, /router\.isReady\(\)\.then\(\(\) => \{[\s\S]*initialRouteReady = true;[\s\S]*refreshUser\(\);/);

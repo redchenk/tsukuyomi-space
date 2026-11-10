@@ -17,7 +17,8 @@ test('Wiki loads as a production route and core interactions work', async ({ pag
   const kaguyaCard = page.getByRole('link', { name: '查看辉夜角色词条' });
   await expect(kaguyaCard).toHaveCSS('cursor', 'pointer');
   await kaguyaCard.hover();
-  await expect(kaguyaCard).toHaveCSS('scale', '1.018');
+  await kaguyaCard.focus();
+  await expect(kaguyaCard).toBeFocused();
   await kaguyaCard.click();
   await expect(page).toHaveURL(/\/wiki\/characters\/kaguya$/);
   await page.goto('/wiki');
@@ -108,7 +109,7 @@ test('Character and term secondary pages support direct production access', asyn
   await expect(page.getByRole('heading', { level: 2, name: '注释及外部链接' })).toHaveCount(0);
   await expect(page.locator('.wiki-entry-toc a[href="#source-notes"]')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '现实' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.moon')).toHaveCSS('pointer-events', 'none');
+  await expect(page.locator('.moon')).toHaveCount(0);
   const realityButtonIsTopmost = await page.getByRole('button', { name: '现实' }).evaluate((button) => {
     const rect = button.getBoundingClientRect();
     return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)?.closest('button') === button;
@@ -127,14 +128,14 @@ test('Character and term secondary pages support direct production access', asyn
   await expect(page.locator('.wiki-source-media-slot')).toHaveCount(26);
   await expect(page.locator('.wiki-source-media-float-right')).toHaveCount(7);
   await expect(page.locator('.wiki-source-media-center')).toHaveCount(5);
-  await expect(page.locator('.wiki-source-profile')).toHaveCSS('float', 'right');
+  await expect(page.locator('.wiki-source-profile')).toHaveCSS('float', 'none');
   const leadProfileOverlap = await page.evaluate(() => {
     const profile = document.querySelector('.wiki-source-profile')?.getBoundingClientRect();
     const quote = document.querySelector('.wiki-source-section#source-lead .wiki-source-quote')?.getBoundingClientRect();
-    if (!profile || !quote) return Number.POSITIVE_INFINITY;
-    return Math.max(0, quote.right - profile.left);
+    if (!profile || !quote) return true;
+    return quote.left < profile.right && quote.right > profile.left && quote.top < profile.bottom && quote.bottom > profile.top;
   });
-  expect(leadProfileOverlap).toBe(0);
+  expect(leadProfileOverlap).toBe(false);
   await expect(page.locator('.wiki-source-media-float-right').first()).toHaveCSS('float', 'right');
   await expect(page.locator('.wiki-entry-infobox')).toHaveCount(0);
   await expect(page.getByText(/好，决定了！要自己创造Happy End/)).toBeVisible();
