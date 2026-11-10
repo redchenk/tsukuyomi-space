@@ -5,6 +5,8 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 
         await page.setViewportSize(viewport);
         await page.goto('/hub');
         await expect(page.locator('#boot-splash')).toHaveCount(0);
+        // The splash hands off to the intro before the Hub can scroll.
+        await expect(page.locator('.access-gate')).toHaveCount(0);
         const background = page.locator('.site-global-bg');
         await expect(background).toHaveCSS('position', 'fixed');
         await expect(background).toHaveCSS('animation-name', 'none');
