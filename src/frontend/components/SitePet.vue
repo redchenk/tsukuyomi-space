@@ -8,6 +8,7 @@ const props = defineProps({
   lang: { type: String, default: 'zh' },
   routeName: { type: String, default: '' },
   reduced: { type: Boolean, default: false },
+  entryActive: Boolean,
   spriteSrc: { type: String, default: '/assets/pets/yachiyo/spritesheet-perf-r2.webp' }
 });
 const emit = defineEmits(['go']);
@@ -132,7 +133,7 @@ let previousBodyOverflow = '';
 
 const copy = computed(() => COPY[props.lang] || COPY.zh);
 const petStyle = computed(() => {
-  if (props.reduced) return { backgroundImage: 'url("/assets/pets/yachiyo/idle.webp")', backgroundPosition: '0 0', backgroundSize: '100% 100%' };
+  if (props.reduced || props.entryActive) return { backgroundImage: 'url("/assets/pets/yachiyo/idle.webp")', backgroundPosition: '0 0', backgroundSize: '100% 100%' };
   const col = frame.value % SPRITE_COLUMNS;
   const row = Math.floor(frame.value / SPRITE_COLUMNS);
   return {
@@ -349,7 +350,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="site-pet-wrap" :class="routeName ? `site-pet-route-${routeName}` : ''">
+  <div class="site-pet-wrap" :class="routeName ? `site-pet-route-${routeName}` : ''" :inert="entryActive">
     <SitePetGameBubble v-if="gameInteraction" v-show="gameBubbleVisible" :interaction="gameInteraction" :expanded="gameBubbleExpanded"
       @expand="gameBubbleExpanded = true" @close="closeGameBubble" @go="navigate" />
     <button ref="petButton" class="site-pet" type="button" :aria-label="gameInteraction ? gameInteraction.copy.petOpen : copy.petLabel"

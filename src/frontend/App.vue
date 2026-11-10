@@ -16,6 +16,7 @@ import { animateRouteEnter, animateRouteLeave, cancelRouteMotion } from './utils
 import { focusRouteHeading, installRouteLinks, routeViewKey } from './utils/routeNavigation';
 import { loadAccessPage, warmRoutePath } from './router';
 import { useAccessTransition } from './composables/useAccessTransition';
+import MoonlightEntry from './components/MoonlightEntry.vue';
 import { useRoomEntryTransition } from './composables/useRoomEntryTransition';
 import RoomEntrySplash from './components/RoomEntrySplash.vue';
 import './styles/access-transition.css';
@@ -58,9 +59,16 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
   ? 'ページを読み込み中'
   : lang.value === 'en' ? 'Loading page' : '页面加载中');
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
-const { gate: accessGate, phase: entryPhase, failed: entryFailed, enter: enterSpace } = useAccessTransition({
-  route, router, onEntered: () => {
-    try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
+const {
+  gate: accessGate, phase: entryPhase, cinematic: entryCinematic, fromAccess: entryFromAccess,
+  failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
+  enter: enterSpace, startDirect: startDirectEntry, skip: skipEntry
+} = useAccessTransition({
+  route, router, onEntered: clicked => {
+    if (clicked) {
+      try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
+    }
+    petReady.value = true;
     focusRouteHeading(document.querySelector('[data-route-name="hub"]'));
     loadVisitPopup();
   }
@@ -272,7 +280,7 @@ function finishRouteProgress() {
 }
 
 function enterRoute(element, done) {
-  if (routeMotionImmediate) {
+  if (routeMotionImmediate || (entryActive.value && route.name === 'hub')) {
     routeViewEntered = true;
     done();
     finishRouteProgress();
@@ -419,6 +427,7 @@ onMounted(() => {
   // Other direct routes are ready once the initial route has rendered.
   router.isReady().then(async () => {
     await nextTick();
+    if (startDirectEntry()) return;
     if (!isAccessRoute.value && !isRoomRoute.value) window.dispatchEvent(new Event('tsukuyomi:entry-ready'));
   });
   stopSeasonTracking = startSeasonTracking();
@@ -454,9 +463,12 @@ onUnmounted(() => {
 
 <template>
   <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
-    :data-phase="entryPhase" :inert="entryPhase === 'revealing'">
-    <AccessPage :t="t" :entering="entryActive" :entry-failed="entryFailed"
+    :data-phase="entryPhase" :data-cinematic="entryCinematic || undefined" :inert="entryPhase === 'revealing'">
+    <AccessPage v-if="isAccessRoute || entryFromAccess" :t="t" :entering="entryActive" :entry-failed="entryFailed"
+      :inert="entryCinematic"
       @enter="enterSpace" @warm="warmRoutePath('/hub')" />
+    <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" :from-access="entryFromAccess"
+      :waiting="entryWaiting" :progress="entryProgress" @skip="skipEntry" />
   </div>
   <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang"
     :can-enter="isRoomRoute" @retry="retryRoom" @leave="leaveRoom" @continue="revealRoom" />
@@ -519,7 +531,8 @@ onUnmounted(() => {
     aria-busy="true"
   ><span aria-hidden="true"></span></div>
 
-  <SitePet v-if="showSitePet && (petReady || route.name === 'gomoku') && !entryActive && !roomEntryActive" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
+  <SitePet v-if="showSitePet && (petReady || entryActive || route.name === 'gomoku') && !roomEntryActive"
+    :lang="lang" :route-name="route.name" :reduced="petReduced" :entry-active="entryActive" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
