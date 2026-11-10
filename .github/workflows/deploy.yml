@@ -1,249 +1,140 @@
-name: Deploy
-
+name: Guarded Water Mirror replay rollout
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
-
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
 concurrency:
-  # PR checks do not touch servers. Only main/deployment runs share the
-  # production lock (also used by server diagnostics).
-  group: ${{ github.event_name == 'pull_request' && format('pr-checks-{0}', github.event.pull_request.number) || 'production-deploy' }}
+  group: production-deploy
   cancel-in-progress: false
-
 jobs:
-  deployment-targets:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate domestic and overseas server configuration
-        env:
-          DOMESTIC_SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          OVERSEAS_SERVER_HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          OVERSEAS_SERVER_PASSWORD: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          OVERSEAS_SERVER_SSH_KEY: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-        run: |
-          test -n "$DOMESTIC_SERVER_HOST" || { echo "SERVER_HOST is not configured" >&2; exit 1; }
-          test -n "$OVERSEAS_SERVER_HOST" || { echo "OVERSEAS_SERVER_HOST is not configured" >&2; exit 1; }
-          test -n "$OVERSEAS_SERVER_PASSWORD" || test -n "$OVERSEAS_SERVER_SSH_KEY" || {
-            echo "OVERSEAS_SERVER_PASSWORD or OVERSEAS_SERVER_SSH_KEY is not configured" >&2
-            exit 1
-          }
-
-  check:
-    # Playwright 1.59 requires a supported, stable runner image.
+  release:
+    if: github.ref == 'refs/heads/codex/water-mirror-replay-rollout'
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
         with:
-          node-version: 20.20.2
-          cache: npm
-
-      - run: npm ci
-      - name: Install the pinned vector extension for isolated knowledge tests
-        run: python3 -m pip install sqlite-vec==0.1.6
-      - run: npm test
-      - run: python3 -m unittest discover -s tests -p 'deployment_safety_test.py'
-      - name: Build and smoke-test Docker runtime
+          persist-credentials: false
+      - name: Verify merged and tested source
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          docker build --target runtime -t tsukuyomi-ci:${{ github.sha }} .
-          bash tests/docker-smoke.sh tsukuyomi-ci:${{ github.sha }}
-      - name: Build domestic frontend
-        run: |
-          npm run build:web
-          mkdir -p deployment-artifacts/domestic
-          cp -a dist/frontend/. deployment-artifacts/domestic/
-      - name: Install browser dependencies and binaries
-        timeout-minutes: 10
-        run: |
-          # The runner's Azure Ubuntu mirror can stall individual downloads.
-          # Use Ubuntu's archive while retaining apt's signature verification.
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
-          fi
-          npx playwright install --with-deps chromium
-      - name: Run desktop and mobile Chromium tests
-        run: npm run test:e2e -- --project=chromium --project=chromium-mobile --trace=retain-on-failure
-      - name: Save Chromium failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-test-failures
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 3
-
-      - name: Build overseas frontend
-        run: |
-          npm run build:web:overseas
-          mkdir -p deployment-artifacts/overseas
-          cp -a dist/frontend/. deployment-artifacts/overseas/
-
-      - uses: actions/upload-artifact@v4
+          python3 - <<'CHECK'
+          import json, subprocess
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/redchenk/tsukuyomi-space/' + path]))
+          sha = '1c2a7591b6f3249b47702cde0805061d9f24e153'
+          old_base = '2ecf284cecdb34a770fb12ab02a75b20797176fb'
+          pr = api('pulls/52')
+          run = api('actions/runs/42761274209')
+          assert pr['merged'] and pr['head']['sha'] == sha and pr['base']['ref'] == 'main'
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['event'] == 'workflow_dispatch' and run['head_branch'] == 'codex/water-mirror-replay-checks'
+          assert run['head_sha'] == '508f1e401a330689e8068d716327e06ca8ca9a32'
+          assert run['path'] == '.github/workflows/deploy.yml'
+          jobs = api('actions/runs/42761274209/jobs?per_page=100')['jobs']
+          checks = {job['name']: job['conclusion'] for job in jobs}
+          expected = {'build', 'chromium', 'webkit'}
+          assert set(checks) == expected and all(result == 'success' for result in checks.values())
+          main = api('commits/main')
+          assert main['sha'] == pr['merge_commit_sha']
+          assert [parent['sha'] for parent in main['parents']] == [old_base]
+          assert main['commit']['tree']['sha'] == api('commits/' + sha)['commit']['tree']['sha']
+          CHECK
+      - name: Download checked builds
+        uses: actions/download-artifact@v4
         with:
           name: production-dist
-          path: deployment-artifacts
-          if-no-files-found: error
-
-  check-webkit:
-    # Native WebKit provides the closest-to-Safari rendering and media behavior.
-    # Keep both existing WebKit projects mandatory alongside Chromium coverage.
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.20.2
-          cache: npm
-      - run: npm ci
-      - run: npm run build:web
-      - name: Install native WebKit
-        timeout-minutes: 10
-        run: npx playwright install webkit
-      - name: Run iPhone and responsive WebKit tests
-        run: npm run test:e2e -- --project=webkit-iphone11 --project=webkit-mobile --workers=2 --trace=retain-on-failure
-      - name: Save WebKit failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: webkit-test-failures
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 3
-
-  deploy:
-    needs: [check, check-webkit, deployment-targets]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 100
-          path: deployment-source
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: production-dist
-          path: deployment-artifacts
-
-      - name: Create incremental deployment bundle
-        shell: bash
+          path: checked-frontend
+          run-id: 42761274209
+          github-token: ${{ github.token }}
+      - name: Prepare deltas from the checked builds
         run: |
-          cd deployment-source
-          git branch -f codex-deploy "$GITHUB_SHA"
-          base="$(git rev-list --first-parent --max-count=100 "$GITHUB_SHA" | tail -1)"
-          bundle="../tsukuyomi-deployment-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bundle"
-          if [ "$base" = "$GITHUB_SHA" ]; then
-            git bundle create "$bundle" refs/heads/codex-deploy
-          else
-            git bundle create "$bundle" refs/heads/codex-deploy "^$base"
-          fi
-          git bundle verify "$bundle"
-
-      - name: Upload domestic frontend
+          test "$(cat checked-frontend/checked-source.txt)" = '1c2a7591b6f3249b47702cde0805061d9f24e153'
+          python3 .water-mirror-replay-release/pack.py checked-frontend
+      - name: Upload domestic delta
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: deployment-artifacts/domestic,deployment-source/deploy/safe-release.py,deployment-source/deploy/prepare-lightweight-release.sh,deployment-source/deploy/prune-release-backups.py
-          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
-          overwrite: true
-
-      - name: Upload overseas frontend
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          source: deployment-artifacts/overseas,deployment-source/deploy/safe-release.py,deployment-source/deploy/prepare-lightweight-release.sh,deployment-source/deploy/prune-release-backups.py
-          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
-          overwrite: true
-
-      - name: Upload deployment bundle
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          source: tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle
-          target: /tmp
-          overwrite: true
-
+          source: .water-mirror-replay-release/domestic.json,.water-mirror-replay-release/domestic.tgz,.water-mirror-replay-release/publish.py,deploy/safe-release.py
+          target: /tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Verify overseas SSH host key
+        id: overseas_connection
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+        run: |
+          set -euo pipefail
+          command -v sshpass >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq sshpass; }
+          ssh-keyscan -T 10 -t ed25519 -p "$PORT" "$HOST" > "$RUNNER_TEMP/water-mirror-replay-known-hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/water-mirror-replay-known-hosts" | awk '{print $2}' | sort -u)" = 'SHA256:iWgrq0f82PS81s/NNfMp622ag23vLk83CyHruht53xA'
+      - name: Upload overseas delta
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/water-mirror-replay-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=12)
+          stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$HOST" "umask 077; mkdir -p '$stage/.water-mirror-replay-release'"
+          sshpass -e scp "${opts[@]}" -P "$PORT" .water-mirror-replay-release/overseas.json .water-mirror-replay-release/overseas.tgz .water-mirror-replay-release/publish.py deploy/safe-release.py "$LOGIN@$HOST:$stage/.water-mirror-replay-release/"
       - name: Prepare domestic release
-        id: prepare_domestic
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 6m
           script: |
             set -eu
-            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
-            state=/var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
-            bash "$stage/deployment-source/deploy/prepare-lightweight-release.sh" \
-              --site domestic --state "$state" \
-              --root /var/www/tsukuyomi-space --frontend /var/www/tsukuyomi-space/dist/frontend \
-              --artifact "$stage/deployment-artifacts/domestic" \
-              --base-url https://yachiyo.hk --resolve yachiyo.hk:443:127.0.0.1 \
-              --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle \
-              --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets \
-              --retire-room-artwork
-
+            stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+            cp "$stage/deploy/safe-release.py" "$stage/.water-mirror-replay-release/safe-release.py"
+            python3 "$stage/.water-mirror-replay-release/publish.py" domestic prepare ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Prepare overseas release
-        id: prepare_overseas
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            set -eu
-            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
-            state=/var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
-            bash "$stage/deployment-source/deploy/prepare-lightweight-release.sh" \
-              --site overseas --state "$state" \
-              --root /opt/1panel/www/sites/tsukuyomi-space.com/frontend --frontend /opt/1panel/www/sites/tsukuyomi-space.com/frontend \
-              --artifact "$stage/deployment-artifacts/overseas" \
-              --base-url https://tsukuyomi-space.com --resolve tsukuyomi-space.com:443:127.0.0.1 \
-              --retire-room-artwork
-
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/water-mirror-replay-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=12)
+          stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$HOST" "python3 '$stage/.water-mirror-replay-release/publish.py' overseas prepare ${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Activate domestic release
+        id: activate_domestic
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 6m
           script: |
             set -eu
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py activate \
-              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
-
+            stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+            cp "$stage/deploy/safe-release.py" "$stage/.water-mirror-replay-release/safe-release.py"
+            python3 "$stage/.water-mirror-replay-release/publish.py" domestic activate ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Activate overseas release
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            set -eu
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py activate \
-              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
-
+        id: activate_overseas
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/water-mirror-replay-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=12)
+          stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$HOST" "python3 '$stage/.water-mirror-replay-release/publish.py' overseas activate ${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Verify domestic release
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -251,63 +142,56 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 6m
           script: |
             set -eu
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py verify \
-              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
-
+            stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+            cp "$stage/deploy/safe-release.py" "$stage/.water-mirror-replay-release/safe-release.py"
+            python3 "$stage/.water-mirror-replay-release/publish.py" domestic verify ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Verify overseas release
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            set -eu
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py verify \
-              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
-
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/water-mirror-replay-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=12)
+          stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$HOST" "python3 '$stage/.water-mirror-replay-release/publish.py' overseas verify ${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Verify live HTTPS on both sites
+        run: |
+          for attempt in 1 2 3; do
+            if python3 .water-mirror-replay-release/verify-public.py checked-frontend; then exit 0; fi
+            sleep 6
+          done
+          exit 1
       - name: Rollback overseas release
-        if: failure() && steps.prepare_overseas.outcome == 'success'
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            set -eu
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py rollback \
-              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
-
+        if: failure() && steps.activate_overseas.outcome != 'skipped'
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/water-mirror-replay-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=12)
+          stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$HOST" "python3 '$stage/.water-mirror-replay-release/publish.py' overseas rollback ${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Rollback domestic release
-        if: failure() && steps.prepare_domestic.outcome == 'success'
+        if: failure() && steps.activate_domestic.outcome != 'skipped'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 6m
           script: |
             set -eu
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py rollback \
-              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
-
-      - name: Prune domestic completed backups
-        if: success()
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          script: |
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/prune-release-backups.py --retention 10
-
+            stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+            cp "$stage/deploy/safe-release.py" "$stage/.water-mirror-replay-release/safe-release.py"
+            python3 "$stage/.water-mirror-replay-release/publish.py" domestic rollback ${{ github.run_id }}-${{ github.run_attempt }}
       - name: Clean domestic staging
         if: always()
         continue-on-error: true
@@ -318,36 +202,18 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
-            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
-            case "$stage" in /tmp/tsukuyomi-prebuilt-[0-9]*-[0-9]*) ;; *) exit 1 ;; esac
-            rm -rf -- "$stage"
-            rm -f -- /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle
-
-      - name: Prune overseas completed backups
-        if: success()
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/prune-release-backups.py --retention 10
-
+            set -eu
+            rm -rf -- /tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Clean overseas staging
-        if: always()
+        if: always() && steps.overseas_connection.outcome == 'success'
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
-            case "$stage" in /tmp/tsukuyomi-prebuilt-[0-9]*-[0-9]*) ;; *) exit 1 ;; esac
-            rm -rf -- "$stage"
-            rm -f -- /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle
+        env:
+          HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/water-mirror-replay-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=12)
+          stage=/tmp/tsukuyomi-water-mirror-replay-${{ github.run_id }}-${{ github.run_attempt }}
+          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$HOST" "rm -rf -- '$stage'"
