@@ -48,13 +48,17 @@ test('long Chinese memory reads use short POST URLs through a URI-limited proxy'
     });
     expect(saved.ok()).toBe(true);
     await page.goto('/room');
-    await expect(page.locator('#loadingOverlay')).toBeHidden();
+    // Wait for the room's bounded startup before checking the URI contract,
+    // including cold rendering on shared WebKit runners.
+    await expect(page.locator('#loadingOverlay')).toBeHidden({ timeout: 20000 });
     for (const fallback of [false, true]) {
         failIndex = fallback;
         const previous = modelRequests.length;
         await page.locator('#chatInput').fill(question);
         await page.locator('#sendChatBtn').click();
-        await expect.poll(() => modelRequests.length).toBe(previous + 1);
+        // Retrieval allows 8s for the index plus 4s for its source fallback;
+        // leave time for that complete path before checking the model request.
+        await expect.poll(() => modelRequests.length, { timeout: 20000 }).toBe(previous + 1);
         await expect(page.locator('#chatInput')).toBeEnabled();
         await expect(page.locator('.chat-message.assistant').last()).toContainText('雪团');
         expect(modelRequests.at(-1).systemPrompt).toContain('雪团');
