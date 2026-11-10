@@ -1,4 +1,4 @@
-# Room opening — Moonlit garden
+# Moonlit garden video assets
 
 The background comes from the video supplied and approved by the site owner.
 The original upload is preserved outside the repository; the website uses
@@ -12,9 +12,7 @@ video, music or Live2D resources.
   playback with the MP4 metadata at the beginning (`faststart`).
 - `manifest.json` records byte sizes and SHA-256 checksums.
 
-`RoomEntrySplash.vue` imports these assets so Vite fingerprints them for immutable
-caching. The browser selects one clip while Room loads. Reduced-motion and
-data-saving preferences, or autoplay failure, leave the poster visible. The
-Room reveal is driven by room readiness and never waits for the clip.
+These clips were used for the previous Room loading screen. Room now uses
+the animated Moonlight Door from PR #50, with artwork in `../entry`.
 
 The homepage uses the separate [1080p Water Mirror assets](water-mirror/prompts.md).

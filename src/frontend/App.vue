@@ -73,7 +73,11 @@ const {
     loadVisitPopup();
   }
 });
-const { splash: roomSplash, phase: roomEntryPhase, active: roomEntryActive, roomReady, reveal: revealRoom, retry: retryRoom, leave: leaveRoom } = useRoomEntryTransition({ route, router });
+const {
+  splash: roomSplash, phase: roomEntryPhase, active: roomEntryActive, cinematic: roomEntryCinematic,
+  loaded: roomEntryLoaded, waiting: roomEntryWaiting, roomReady,
+  reveal: revealRoom, retry: retryRoom, leave: leaveRoom, skip: skipRoomEntry
+} = useRoomEntryTransition({ route, router });
 const entryActive = computed(() => entryPhase.value !== 'idle');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
@@ -471,8 +475,9 @@ onUnmounted(() => {
     <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" :from-access="entryFromAccess"
       :waiting="entryWaiting" :progress="entryProgress" @skip="skipEntry" />
   </div>
-  <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang"
-    :can-enter="isRoomRoute" @retry="retryRoom" @leave="leaveRoom" @continue="revealRoom" />
+  <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang" :t="t"
+    :cinematic="roomEntryCinematic" :loaded="roomEntryLoaded" :waiting="roomEntryWaiting" :can-enter="isRoomRoute"
+    @skip="skipRoomEntry" @retry="retryRoom" @leave="leaveRoom" @continue="revealRoom" />
   <AppShell
     :class="{ 'entry-destination-preparing': entryActive }"
     :inert="isAccessRoute || entryActive || roomEntryActive"
