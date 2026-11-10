@@ -44,16 +44,16 @@ test('list return and Hub return reuse pages, restore scroll and retain forward 
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const calls = await content(page);
     await page.goto('/hub');
-    await expect(page.locator('.page.hub')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.hub')).toHaveAttribute('aria-busy', 'false');
     await expect.poll(() => calls.hub).toBe(1);
     await settle(page);
     const hubState = await page.evaluate(() => {
-        window.__hubNode = document.querySelector('.page.hub');
+        window.__hubNode = document.querySelector('.hub');
         scrollTo({ top: 320, behavior: 'instant' });
         return { position: history.state.position, stamp: window.__documentStamp, y: scrollY };
     });
     await navigate(page, '/stage?sort=latest&page=2');
-    await expect(page.locator('.stage-card')).toHaveCount(6);
+    await expect(page.locator('.journal-title')).toHaveCount(6);
     await expect(page.locator('.stage-page')).toHaveAttribute('aria-busy', 'false');
     await settle(page);
     const stageState = await page.evaluate(() => {
@@ -63,7 +63,7 @@ test('list return and Hub return reuse pages, restore scroll and retain forward 
     });
     const listCount = calls.lists.length;
     // Programmatic click avoids moving the list to the first card before leaving.
-    await page.locator('.stage-card').first().evaluate(anchor => anchor.click());
+    await page.locator('.journal-title').first().evaluate(anchor => anchor.click());
     await expect(page.locator('.article-reader h1')).toHaveText(article.title);
     await page.locator('.article-back').click();
     await expect(page).toHaveURL(/\/stage\?sort=latest&page=2$/);
@@ -73,7 +73,7 @@ test('list return and Hub return reuse pages, restore scroll and retain forward 
     expect(calls.lists.length).toBe(listCount);
     await page.locator('.site-brand').evaluate(anchor => anchor.click());
     await expect(page).toHaveURL(/\/hub$/);
-    await expect.poll(() => page.evaluate(() => document.querySelector('.page.hub') === window.__hubNode)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.querySelector('.hub') === window.__hubNode)).toBe(true);
     await expect.poll(() => page.evaluate(() => history.state.position)).toBe(hubState.position);
     await expect.poll(() => page.evaluate(y => Math.abs(scrollY - y), hubState.y)).toBeLessThan(3);
     expect(calls.hub).toBe(1);
@@ -91,11 +91,11 @@ test('list return and Hub return reuse pages, restore scroll and retain forward 
 test('stale cached Hub remains readable while refreshing and on refresh failure', async ({ page }) => {
     await content(page);
     await page.goto('/hub');
-    await expect(page.locator('.page.hub')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.locator('.scene-card').first()).toBeVisible();
-    await page.evaluate(() => { window.__hubNode = document.querySelector('.page.hub'); });
+    await expect(page.locator('.hub')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.discovery-item').first()).toBeVisible();
+    await page.evaluate(() => { window.__hubNode = document.querySelector('.hub'); });
     await navigate(page, '/stage');
-    await expect(page.locator('.stage-card')).toHaveCount(6);
+    await expect(page.locator('.journal-title')).toHaveCount(6);
     await page.evaluate(() => { const now = Date.now; Date.now = () => now() + 35000; });
     let refreshed = false, release;
     const waiting = new Promise(resolve => { release = resolve; });
@@ -106,12 +106,12 @@ test('stale cached Hub remains readable while refreshing and on refresh failure'
     try {
         await page.locator('.site-brand').evaluate(anchor => anchor.click());
         await expect.poll(() => refreshed).toBe(true);
-        await expect(page.locator('.page.hub')).toHaveAttribute('aria-busy', 'false');
-        await expect(page.locator('.scene-card').first()).toBeVisible();
-        expect(await page.evaluate(() => document.querySelector('.page.hub') === window.__hubNode)).toBe(true);
+        await expect(page.locator('.hub')).toHaveAttribute('aria-busy', 'false');
+        await expect(page.locator('.discovery-item').first()).toBeVisible();
+        expect(await page.evaluate(() => document.querySelector('.hub') === window.__hubNode)).toBe(true);
     } finally { release(); }
-    await expect(page.locator('.hub-preview-error')).toHaveCount(0);
-    await expect(page.locator('.scene-card').first()).toBeVisible();
+    await expect(page.locator('.home-error')).toHaveCount(0);
+    await expect(page.locator('.discovery-item').first()).toBeVisible();
 });
 
 test('Plaza drafts survive a public page return and are discarded after logout', async ({ page }) => {
@@ -154,11 +154,11 @@ test('direct article return stays inside the site and immersive pages are releas
     await expect(page.locator('.article-reader h1')).toHaveText(article.title);
     await page.locator('.article-back').click();
     await expect(page).toHaveURL(/\/stage$/);
-    await expect(page.locator('.stage-card')).toHaveCount(6);
+    await expect(page.locator('.journal-title')).toHaveCount(6);
     await navigate(page, '/room');
     await expect(page.locator('#chatInput')).toBeVisible();
     await page.locator('#chatInput').fill('不会留在公共页面缓存里的房间草稿');
-    await page.locator('.site-brand').evaluate(anchor => anchor.click());
+    await page.locator('.room-home-link').evaluate(anchor => anchor.click());
     await expect(page).toHaveURL(/\/hub$/);
     await expect(page.locator('#chatInput')).toHaveCount(0);
     await expect(page.locator('.room-page canvas')).toHaveCount(0);
@@ -172,9 +172,9 @@ test('direct article return stays inside the site and immersive pages are releas
 test('cached Stage filters stay visible during a slow or failed refresh', async ({ page }) => {
     const calls = await content(page);
     await page.goto('/stage?q=moon&sort=daily&page=2');
-    await expect(page.locator('.stage-card')).toHaveCount(6);
+    await expect(page.locator('.journal-title')).toHaveCount(6);
     await page.evaluate(() => { window.__stageNode = document.querySelector('.stage-page'); });
-    await page.locator('.stage-card').first().evaluate(anchor => anchor.click());
+    await page.locator('.journal-title').first().evaluate(anchor => anchor.click());
     await expect(page.locator('.article-reader h1')).toHaveText(article.title);
     await page.evaluate(() => { const now = Date.now; Date.now = () => now() + 35000; });
     let started = false, release;
@@ -186,14 +186,14 @@ test('cached Stage filters stay visible during a slow or failed refresh', async 
     try {
         await page.locator('.article-back').click();
         await expect.poll(() => started).toBe(true);
-        await expect(page.locator('.stage-card')).toHaveCount(6);
+        await expect(page.locator('.journal-title')).toHaveCount(6);
         await expect(page.locator('.stage-page')).toHaveAttribute('aria-busy', 'false');
-        await expect(page.locator('.stage-controls input')).toHaveValue('moon');
-        await expect(page.locator('.stage-order [aria-pressed=true]')).toContainText('每日');
+        await expect(page.locator('.journal-search input')).toHaveValue('moon');
+        await expect(page.locator('.journal-tools select')).toHaveValue('daily');
         expect(await page.evaluate(() => document.querySelector('.stage-page') === window.__stageNode)).toBe(true);
     } finally { release(); }
     await expect(page.locator('.stage-status.error')).toHaveCount(0);
-    await expect(page.locator('.stage-card')).toHaveCount(6);
+    await expect(page.locator('.journal-title')).toHaveCount(6);
     expect(calls.lists.length).toBe(1);
 });
 
@@ -213,7 +213,7 @@ test('a cached Gallery retains filters and cannot open a delayed image modal on 
     // A normal button cannot be clicked behind a modal; delegated navigation can
     // still occur from notification/keyboard shortcuts.
     await navigate(page, '/stage');
-    await expect(page.locator('.stage-card')).toHaveCount(6);
+    await expect(page.locator('.journal-title')).toHaveCount(6);
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     await page.goBack();
     await expect(page).toHaveURL(/\/gallery$/);
@@ -231,7 +231,7 @@ test('a cached Gallery retains filters and cannot open a delayed image modal on 
     await navigate(page, '/stage');
     try {
         release();
-        await expect(page.locator('.stage-card')).toHaveCount(6);
+        await expect(page.locator('.journal-title')).toHaveCount(6);
         await expect(page.locator('.gallery-viewer')).toHaveCount(0);
         await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     } finally { release(); }

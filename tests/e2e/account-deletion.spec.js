@@ -52,7 +52,7 @@ for (const { width, lang, theme } of [
       await expect(page.locator('#boot-splash')).toBeHidden();
       await page.evaluate(() => document.fonts.ready);
       const heading = await page.locator('.privacy-heading').boundingBox();
-      const navigation = await page.locator('.site-commandbar').boundingBox();
+      const navigation = await page.locator('.site-header').boundingBox();
       expect(heading.y).toBeGreaterThanOrEqual(navigation.y + navigation.height);
       const cards = await page.locator('.privacy-section').all();
       expect(cards.length).toBe(route === '/privacy' ? 11 : 4);

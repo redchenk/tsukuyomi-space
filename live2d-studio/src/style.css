@@ -1,2 +1,4 @@
-@import url("../../assets/css/vue/foundation.css");
+@import url("../../src/frontend/styles/jingyue/tokens.css");
+@import url("../../src/frontend/styles/jingyue/reset.css");
+@import url("../../src/frontend/styles/jingyue/components.css");
 @import url("../../assets/css/vue/pages/live2d.css");

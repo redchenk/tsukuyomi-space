@@ -32,7 +32,7 @@ test('game center opens both games; discovery and search use the new name', asyn
   await expect(page).toHaveURL(/\/game\/gomoku$/);
   await expect(page.getByRole('grid', { name: '五子棋棋盘' })).toBeVisible();
   await page.getByRole('link', { name: '返回游戏中心' }).click();
-  if (testInfo.project.name === 'chromium') await page.locator('.site-search-trigger').click();
+  if (testInfo.project.name === 'chromium') await page.locator('.header-search').click();
   else {
     await page.getByRole('button', { name: '探索', exact: true }).click();
     await expect(page.locator('#site-navigation').getByRole('link', { name: /游戏中心/ })).toBeVisible();

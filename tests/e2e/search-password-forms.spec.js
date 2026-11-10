@@ -74,9 +74,9 @@ for (const width of [1280, 390]) {
 
     // A search submitted from the global dialog must continue navigating normally,
     // without using the still-mounted password form or sending another update.
-    if (width > 860) await page.locator('.site-search-trigger').click();
+    if (width > 860) await page.locator('.header-search').click();
     else {
-      await page.locator('.site-mobile-navigation-trigger').click();
+      await page.locator('.mobile-dock > button').click();
       await page.locator('#site-navigation .site-menu-search').click();
     }
     const globalSearch = page.locator('#site-search input[type="search"]');

@@ -21,7 +21,7 @@ test('signed-in visitors can open App downloads directly from the header on desk
   });
   expect((await login.json()).success).toBe(true);
   await page.goto('/hub');
-  const link = page.locator('.site-commandbar').getByRole('link', { name: '下载 App', exact: true });
+  const link = page.locator('.site-header').getByRole('link', { name: '下载 App', exact: true });
   await expect(link).toHaveAttribute('href', '/download');
   for (const width of [320, 332, 390, 861, 1280, 1440]) {
     await page.setViewportSize({ width, height: 844 });
@@ -29,7 +29,7 @@ test('signed-in visitors can open App downloads directly from the header on desk
     const box = await link.boundingBox();
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
-    expect(await page.locator('.site-commandbar').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(await page.locator('.site-header').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     const account = await page.locator('.site-account-trigger').boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(account.x + account.width);
   }

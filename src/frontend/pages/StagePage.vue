@@ -39,12 +39,12 @@ function setFilter(key, value) {
   if (!value || key === 'sort' && value === 'latest') delete query[key]; else query[key] = value;
   router.replace({ path: '/stage', query });
 }
-async function load(more = false) {
+async function load(more = false, background = false) {
   if (more && (loadingMore.value || page.value >= totalPages.value)) return;
   const run = ++revision;
   const requestPage = more ? page.value + 1 : Math.max(1, Number.parseInt(route.query.page, 10) || 1);
   if (more) loadingMore.value = true;
-  else { loading.value = true; snapshot = ''; }
+  else if (!background) { loading.value = true; snapshot = ''; }
   error.value = '';
   try {
     const result = await loadStageArticles({ page: requestPage, limit: STAGE_PAGE_SIZE, category: category.value, search: querySearch.value, sort: order.value, snapshot });
@@ -57,6 +57,7 @@ async function load(more = false) {
   } catch (cause) {
     if (run !== revision) return;
     if (more && cause.status === 409) { snapshot = ''; return load(false); }
+    if (background) return;
     error.value = cause.message || tr('文章暂时未能加载，请重试。', 'Unable to load stories. Please try again.');
     if (!more) articles.value = [];
   } finally { if (run === revision) { loading.value = false; loadingMore.value = false; trackVisibleArticles(); } }
@@ -67,7 +68,7 @@ watch(() => [category.value, order.value, querySearch.value, route.query.page, p
   search.value = querySearch.value; load();
 });
 onMounted(() => { search.value = querySearch.value; load(); });
-onActivated(() => { active = true; if (loadedAt && Date.now() - loadedAt > 30000) load(); else if (loadedAt) trackVisibleArticles(); });
+onActivated(() => { active = true; if (loadedAt && Date.now() - loadedAt > 30000) load(false, true); else if (loadedAt) trackVisibleArticles(); });
 onDeactivated(() => { active = false; discoveryTracker.stop(); clearTimeout(timer); });
 onBeforeUnmount(() => { active = false; discoveryTracker.destroy(); revision++; clearTimeout(timer); });
 useContentTranslationRefresh(() => load());

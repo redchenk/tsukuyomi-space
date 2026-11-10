@@ -70,7 +70,7 @@ test('the painted scene stays mounted through the moonlit reveal of one live Hub
   expect(await scene.evaluate(node => node === document.querySelector('.water-mirror-scene'))).toBe(true);
   await expect(gate).toHaveAttribute('data-captured', 'true', { timeout: 11000 });
   await expect(page.locator('.hub')).toHaveCount(1);
-  await expect(page.locator('.hub-actions a')).toHaveCount(2);
+  await expect(page.locator('.discovery-item')).toHaveCount(4);
   await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   await expect(gate).toHaveCSS('mask-image', /^radial-gradient/);
   expect(await gate.evaluate(node => node.getAnimations()[0].effect.getTiming().duration)).toBe(560);

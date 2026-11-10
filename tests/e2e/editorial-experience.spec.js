@@ -47,7 +47,7 @@ test('short articles have no empty directory, mobile long articles start collaps
     await expect(page.locator('.article-toc')).toHaveCount(0);
 });
 
-test('image bloom keeps a themed placeholder until the article cover is decoded', async ({ page }) => {
+test('article cover reserves its layout while the native image loads', async ({ page }) => {
     let releaseImage;
     const imageGate = new Promise((resolve) => { releaseImage = resolve; });
     await page.route(/\/api\/(?:live\/[^/]+\/)?articles\/3\/live\//, (route) => route.fulfill({
@@ -63,20 +63,19 @@ test('image bloom keeps a themed placeholder until the article cover is decoded'
 
     await page.goto('/article?id=3', { waitUntil: 'domcontentloaded' });
     const cover = page.locator('.article-cover');
-    await expect(cover).toHaveAttribute('data-image-state', 'pending');
+    expect((await cover.boundingBox()).height).toBeGreaterThan(120);
     const pendingVisual = await cover.evaluate((node) => {
         const style = getComputedStyle(node);
         return { backgroundImage: style.backgroundImage, filter: style.filter };
     });
-    expect(pendingVisual.backgroundImage).toContain('gradient');
-    expect(pendingVisual.filter).not.toBe('none');
+    expect(pendingVisual.filter).toBe('none');
 
     releaseImage();
-    await expect(cover).toHaveAttribute('data-image-state', 'loaded');
+    await expect(cover).toHaveJSProperty('complete', true);
     await expect.poll(() => cover.evaluate((node) => node.naturalWidth)).toBe(1600);
 });
 
-test('global image bloom covers dynamic images and avoids replaying cached images', async ({ page }) => {
+test('dynamic and cached images decode without a global animation observer', async ({ page }) => {
     let releaseSecond;
     const secondGate = new Promise((resolve) => { releaseSecond = resolve; });
     await page.route('**/e2e-global-first.svg', (route) => route.fulfill({
@@ -101,17 +100,17 @@ test('global image bloom covers dynamic images and avoids replaying cached image
         document.body.append(image);
     });
     const image = page.locator('#global-image-probe');
-    await expect(image).toHaveAttribute('data-image-state', 'loaded');
+    await expect(image).toHaveJSProperty('complete', true);
 
     await image.evaluate((node) => {
         node.className = 'avatar-probe';
         node.src = '/e2e-global-second.svg';
     });
-    await expect(image).toHaveAttribute('data-image-state', 'pending');
-    expect(await image.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain('gradient');
+    await expect(image).toHaveJSProperty('complete', false);
+    expect(await image.evaluate((node) => node.getAnimations().length)).toBe(0);
     expect(await image.evaluate((node) => getComputedStyle(node).filter)).toBe('none');
     releaseSecond();
-    await expect(image).toHaveAttribute('data-image-state', 'loaded');
+    await expect(image).toHaveJSProperty('complete', true);
     await expect.poll(() => image.evaluate((node) => node.naturalWidth)).toBe(320);
 
     await page.evaluate(async () => {
@@ -122,12 +121,12 @@ test('global image bloom covers dynamic images and avoids replaying cached image
         document.body.append(cached);
     });
     const cached = page.locator('#cached-image-probe');
-    await expect(cached).toHaveAttribute('data-image-state', 'loaded');
-    await expect(cached).toHaveAttribute('data-image-reveal', 'skip');
+    await expect(cached).toHaveJSProperty('complete', true);
+    await expect(cached).not.toHaveAttribute('data-image-reveal');
     expect(await cached.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
 });
 
-test('stage defaults to featured and preserves daily and latest selections', async ({ page }) => {
+test('stage defaults to latest and preserves featured and daily selections', async ({ page }) => {
     const articles = [
         { ...article, id: 'featured', title: '精选旧文', pinned_at: null, featured_score: 72, like_count: 20, bookmark_count: 12, created_at: '2026-01-01', published_at: '2026-01-01', excerpt: '旧文摘要' },
         { ...article, id: 'pinned', title: '置顶文章', pinned_at: '2026-09-10', featured_score: 8, like_count: 0, bookmark_count: 0, created_at: '2025-01-01', published_at: '2025-01-01', excerpt: '置顶摘要' },
@@ -144,24 +143,21 @@ test('stage defaults to featured and preserves daily and latest selections', asy
         return route.fulfill({ json: { success: true, data, recommendationDate: '2026-09-27', pagination: { page: 1, limit: 6, totalPages: 1, total: data.length } } });
     });
     await page.goto('/stage');
-    await expect(page.getByRole('button', { name: '精选优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('.stage-card-title')).toHaveText(['精选旧文', '最新文章', '置顶文章']);
-    await expect(page.locator('.stage-card').first().getByLabel('20 点赞')).toBeVisible();
-    await expect(page.locator('.stage-card').first().getByLabel('12 收藏')).toBeVisible();
-    await expect(page.locator('.stage-card .read-time')).toHaveCount(0);
-    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=%2Fstage$/);
-    await page.getByRole('button', { name: '最新优先', exact: true }).click();
-    await expect(page).toHaveURL(/sort=latest/);
-    await expect(page.locator('.stage-card-title')).toHaveText(['最新文章', '精选旧文', '置顶文章']);
-    await page.getByRole('button', { name: '每日推荐', exact: true }).click();
+    const sort = page.getByRole('combobox', { name: '文章排序' });
+    await expect(sort).toHaveValue('latest');
+    await expect(page.locator('.journal-title h2')).toHaveText(['最新文章', '精选旧文', '置顶文章']);
+    await expect(page.locator('.journal-title').first()).toHaveAttribute('href', /from=%2Fstage$/);
+    await sort.selectOption('featured');
+    await expect(page).toHaveURL(/sort=featured/);
+    await expect(page.locator('.journal-title h2')).toHaveText(['精选旧文', '最新文章', '置顶文章']);
+    await sort.selectOption('daily');
     await expect(page).toHaveURL(/sort=daily/);
-    await expect(page.locator('.stage-card-title')).toHaveText(['精选旧文', '最新文章']);
-    await expect(page.locator('.stage-ranking-hint')).toContainText('2026-09-27');
-    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=.*sort%3Ddaily/);
+    await expect(page.locator('.journal-title h2')).toHaveText(['精选旧文', '最新文章']);
+    await expect(page.locator('.journal-title').first()).toHaveAttribute('href', /from=.*sort%3Ddaily/);
     await page.reload();
-    await expect(page.getByRole('button', { name: '每日推荐', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('.stage-card-title')).toHaveText(['精选旧文', '最新文章']);
-    expect(requestedSorts).toEqual(['featured', 'latest', 'daily', 'daily']);
+    await expect(sort).toHaveValue('daily');
+    await expect(page.locator('.journal-title h2')).toHaveText(['精选旧文', '最新文章']);
+    expect(requestedSorts).toEqual(['latest', 'featured', 'daily', 'daily']);
 });
 
 test('stage requests only the current server page', async ({ page }) => {
@@ -181,26 +177,25 @@ test('stage requests only the current server page', async ({ page }) => {
     });
 
     await page.goto('/stage?page=2');
-    await expect(page.locator('.stage-card-title')).toHaveText('第 2 页文章');
-    await expect(page.locator('.stage-result-strip')).toContainText('当前 7-12 篇');
-    await page.getByRole('button', { name: '上一页', exact: true }).click();
-    await expect(page.locator('.stage-card-title')).toHaveText('第 1 页文章');
-    expect(requestedPages).toEqual([2, 1]);
+    await expect(page.locator('.journal-title h2')).toHaveText('第 2 页文章');
+    await page.getByRole('button', { name: '再读一些', exact: true }).click();
+    await expect(page.locator('.journal-title h2')).toHaveText(['第 2 页文章', '第 3 页文章']);
+    expect(requestedPages).toEqual([2, 3]);
 });
 
 test('public content is visible when opening an inactive window', async ({ page }) => {
     await page.goto('/hub');
     await page.evaluate(() => { document.documentElement.dataset.windowActive = 'false'; });
-    for (const selector of ['.site-commandbar', '.hub-showcase', '.hub-grid-wrap', '.hub-hero-panel', '.hub-hero-copy', '.scene-card']) {
+    for (const selector of ['.site-header', '.home-hero', '.home-content', '.home-hero-content', '.discovery-item']) {
         await expect(page.locator(selector).first()).toHaveCSS('opacity', '1');
         await expect(page.locator(selector).first()).toHaveCSS('animation-name', 'none');
     }
-    const notice = page.locator('.hub-notice');
+    const notice = page.locator('.home-notice');
     await notice.locator('summary').click();
     await expect(notice.locator('p')).toBeVisible();
 });
 
-test('hub article, gallery and pixel cards reveal through image bloom', async ({ page }) => {
+test('hub previews load their media and keep the pixel studio accessible', async ({ page }) => {
     await page.route(/\/api\/(?:live\/[^/]+\/)?hub-preview(?:\?|$)/, (route) => route.fulfill({
         json: {
             success: true,
@@ -224,11 +219,10 @@ test('hub article, gallery and pixel cards reveal through image bloom', async ({
     }
 
     await page.goto('/hub');
-    const media = page.locator('.scene-card-media[data-image-bloom]');
+    const media = page.locator('.featured-story img, .discovery-item[href="/gallery"] img');
     await expect(media).toHaveCount(2);
-    await expect(media.nth(0)).toHaveAttribute('data-image-state', 'loaded');
-    await expect(media.nth(1)).toHaveAttribute('data-image-state', 'loaded');
-    await expect(page.locator('.hub-arena-cover canvas[data-image-bloom]')).toHaveAttribute('data-image-state', 'loaded');
+    for (const image of await media.all()) { await image.scrollIntoViewIfNeeded(); await expect(image).toHaveJSProperty('complete', true); expect(await image.evaluate(el => el.naturalWidth)).toBe(1200); }
+    await expect(page.locator('.discovery-item[href="/pixel"]')).toBeVisible();
 });
 
 test('gallery lightbox replaces the list thumbnail with the full image', async ({ page }) => {
@@ -270,8 +264,8 @@ test('image cards retain readable text in the mobile light theme', async ({ page
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => localStorage.setItem('tsukuyomi_theme', 'light'));
     await page.goto('/hub');
-    await expect(page.locator('.scene-card').first().locator('.scene-name')).toHaveCSS('color', await page.locator('.scene-card').first().evaluate(el => { const probe = document.createElement('span'); probe.style.color = 'var(--ts-editorial-ink)'; el.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color; }));
-    await expect(page.locator('.site-global-bg')).toHaveCSS('opacity', '1');
+    await expect(page.locator('.discovery-title h3').first()).toHaveCSS('color', await page.locator('.discovery-item').first().evaluate(el => { const probe = document.createElement('span'); probe.style.color = 'var(--ink)'; el.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color; }));
+    expect(await page.locator('.site-background-shell').evaluate(el => getComputedStyle(el, '::before').backgroundImage)).toContain('.webp');
 });
 
 

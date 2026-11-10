@@ -710,7 +710,7 @@ describe('unified async loading states', () => {
         assert.match(plaza, /LoadingSkeleton v-if="plaza\.loading"[\s\S]*v-else-if="plaza\.loadError"[^>]*role="alert"[\s\S]*v-else-if="!plazaMessages\.length"/);
         assert.match(userCenter, /LoadingSkeleton v-if="uc\.articleLoading && !uc\.articles\.length"[\s\S]*v-else-if="uc\.articleError && !uc\.articles\.length"[^>]*role="alert"/);
         assert.match(userCenter, /v-if="uc\.articleError && uc\.articles\.length"[^>]*role="alert"/);
-        assert.match(hub, /LoadingSkeleton v-if="loading" variant="hub"[\s\S]*v-else-if="error"[^>]*role="alert"/);
+        assert.match(hub, /LoadingSkeleton v-if="loading" variant="hub"[\s\S]*v-else-if="error && !content"[^>]*role="alert"/);
     });
 
     it('loads the notification inbox in bounded server-side pages', () => {
