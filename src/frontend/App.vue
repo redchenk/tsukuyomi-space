@@ -61,7 +61,7 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const {
   gate: accessGate, phase: entryPhase, cinematic: entryCinematic, fromAccess: entryFromAccess,
-  canPlayIntro, failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
+  failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
   enter: enterSpace, startDirect: startDirectEntry, skip: skipEntry
 } = useAccessTransition({
   route, router, onEntrySound: () => music.startEntryMusic(), onEntered: clicked => {
@@ -465,7 +465,7 @@ onUnmounted(() => {
   <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
     :data-phase="entryPhase" :data-cinematic="entryCinematic || undefined"
     :data-water-mirror="(entryCinematic && entryFromAccess) || undefined" :inert="entryPhase === 'revealing'">
-    <AccessPage v-if="isAccessRoute || entryFromAccess" :t="t" :entering="entryActive" :cinematic="entryCinematic" :can-play-intro="canPlayIntro" :entry-failed="entryFailed"
+    <AccessPage v-if="isAccessRoute || entryFromAccess" :t="t" :entering="entryActive" :cinematic="entryCinematic" :entry-failed="entryFailed"
       :inert="entryCinematic"
       @enter="enterSpace" @warm="warmRoutePath('/hub')" />
     <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" :from-access="entryFromAccess"
