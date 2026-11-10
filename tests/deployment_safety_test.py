@@ -90,6 +90,71 @@ class DeploymentSafetyTest(unittest.TestCase):
         root = state['root'] if name in release.BRAND_FILES else state['frontend_real']
         return (Path(root) / name).read_bytes()
 
+    def frontend_args(self, **overrides):
+        values = dict(state=str(self.base / 'backups/frontend-only'), site='domestic',
+                      root=str(self.root), frontend=str(self.front), artifact=str(self.artifact),
+                      bundle=None, commit='frontend-build-commit', extra_resource=[],
+                      base_url='https://example.invalid', resolve='', frontend_only=True,
+                      environment_release=False, brand_artifact=None, retire_room_artwork=False)
+        values.update(overrides)
+        return argparse.Namespace(**values)
+
+    def test_frontend_release_and_rollback_preserve_dirty_checkout_and_runtime(self):
+        self.write(self.root / 'backend/server.js', 'staged production fix')
+        self.git('add', 'backend/server.js')
+        self.write(self.root / 'backend/server.js', 'unstaged production fix')
+        untouched = {'backend/server.js', 'backend/untracked.js', 'src/page.vue',
+                     'node_modules/native/build.node', '.env', 'data/fixture.db', '.git/index'}
+        for name in untouched - {'backend/server.js', '.git/index'}:
+            self.write(self.root / name, 'existing ' + name)
+        before = {name: (self.root / name).read_bytes() for name in untouched}
+        head = self.git('rev-parse', 'HEAD')
+        with patch.object(release, 'git', side_effect=AssertionError('Frontend publication must not operate on Git')), \
+                patch.object(release, 'prepare_dependencies', side_effect=AssertionError('Must preserve dependencies')), \
+                patch.object(release.subprocess, 'check_call') as commands, \
+                patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            state = release.prepare(self.frontend_args())
+            release.activate(state)
+            self.assertEqual((self.front / 'index.html').read_bytes(), (self.artifact / 'index.html').read_bytes())
+            release.rollback(state)
+        self.assertIn('main-old12345.js', (self.front / 'index.html').read_text())
+        self.assertEqual({name: (self.root / name).read_bytes() for name in untouched}, before)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), head)
+        self.assertEqual([call.args[0] for call in commands.call_args_list],
+                         [['pm2', 'reload', 'tsukuyomi-api']] * 2)
+
+    def test_frontend_release_rejects_dependency_and_protected_resource_flags(self):
+        for options in ({'environment_release': True}, {'brand_artifact': 'brand'}, {'retire_room_artwork': True}):
+            with self.subTest(options=options), self.assertRaisesRegex(RuntimeError, 'Frontend-only releases cannot'):
+                release.prepare(self.frontend_args(**options))
+        self.assertFalse((self.base / 'backups/frontend-only').exists())
+
+    def test_frontend_release_still_blocks_resource_changes_before_activation(self):
+        state = release.prepare(self.frontend_args())
+        self.write(self.root / 'assets/music/song.flac', 'changed during preparation')
+        with self.assertRaises(RuntimeError), patch.object(release.subprocess, 'check_call') as commands:
+            release.activate(state)
+        commands.assert_not_called()
+        self.assertIn('main-old12345.js', (self.front / 'index.html').read_text())
+
+    def test_frontend_verification_failure_can_restore_the_previous_entry(self):
+        state = release.prepare(self.frontend_args())
+        with patch.object(release.subprocess, 'check_call'), \
+                patch.object(release, 'verify', side_effect=RuntimeError('health failed')):
+            with self.assertRaisesRegex(RuntimeError, 'health failed'):
+                release.activate(state)
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.rollback(state)
+        self.assertEqual(state['status'], 'rolled_back')
+        self.assertIn('main-old12345.js', (self.front / 'index.html').read_text())
+
+    def test_overseas_frontend_release_does_not_reload_an_api_process(self):
+        state = release.prepare(self.frontend_args(site='overseas'))
+        with patch.object(release.subprocess, 'check_call') as commands, patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            release.rollback(state)
+        commands.assert_not_called()
+
     def brand_candidate(self):
         source = self.base / 'brand'
         for name in release.BRAND_FILES:
