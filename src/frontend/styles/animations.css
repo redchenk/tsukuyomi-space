@@ -322,3 +322,22 @@ body.vue-global-bg-route::after {
         display: none;
     }
 }
+
+/* The Hub's existing elements settle under the opening's feathered light. */
+.water-mirror-arriving :is(.site-commandbar, .hub-showcase, .hub-notice, .scene-card) {
+    animation: ts-water-mirror-arrival 290ms cubic-bezier(.2,.7,.28,1) both;
+}
+.water-mirror-arriving .hub-showcase { animation-delay: 30ms; }
+.water-mirror-arriving .hub-notice { animation-delay: 80ms; }
+.water-mirror-arriving .scene-card { animation-delay: calc(var(--water-card-index, 0) * 31ms + 44ms); }
+.water-mirror-arriving .scene-card:nth-child(2) { --water-card-index: 1; }
+.water-mirror-arriving .scene-card:nth-child(3) { --water-card-index: 2; }
+.water-mirror-arriving .scene-card:nth-child(4) { --water-card-index: 3; }
+.water-mirror-arriving .scene-card:nth-child(5) { --water-card-index: 4; }
+.water-mirror-arriving .scene-card:nth-child(6) { --water-card-index: 5; }
+.water-mirror-arriving .scene-card:nth-child(7) { --water-card-index: 6; }
+.water-mirror-arriving .scene-card:nth-child(8) { --water-card-index: 7; }
+@keyframes ts-water-mirror-arrival {
+    from { opacity: 0; translate: 0 12px; }
+    to { opacity: 1; translate: 0 0; }
+}

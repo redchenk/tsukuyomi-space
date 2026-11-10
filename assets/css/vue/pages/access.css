@@ -1,218 +1,166 @@
-/* Access has its own moonlit palette in both website themes. */
 body.vue-access-route { overflow-y: auto; }
+
 .page.access-page {
-    --access-ink: #fff5ed;
-    --access-rose: #b96883;
-    --ts-unified-primary-bg: var(--access-rose);
+    --access-ink: #fff6eb;
+    --access-gold: #f5d8ac;
+    --access-night: #0b112c;
+    --water-center-y: 48%;
     --ts-unified-primary-text: var(--access-ink);
-    --ts-border-strong: #f0c1d0;
     position: relative;
     isolation: isolate;
     display: block;
     width: 100%;
-    height: 100svh;
-    min-height: 540px;
+    min-height: 100svh;
+    height: 100%;
     padding: 0;
     overflow: hidden;
-    background: #263453;
+    background: var(--access-night);
     color: var(--access-ink);
     animation: none;
     opacity: 1;
 }
-.access-media, .access-content { position: absolute; inset: 0; }
-.access-media { z-index: 0; overflow: hidden; pointer-events: none; }
-/* Separate the inline-video plane from the interactive foreground on iOS. */
-.access-content { z-index: 3; transform: translateZ(0); isolation: isolate; }
-.access-page .access-hero, .access-page .access-enter {
-    visibility: visible;
-    animation: none;
-}
-.access-page .access-poster, .access-page .access-video, .access-page .access-overlay {
+
+.water-mirror-scene, .access-film-frame, .access-film-shade, .access-film-mist, .access-content {
     position: absolute;
     inset: 0;
+}
+.water-mirror-scene {
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    background: radial-gradient(ellipse at 50% 57%, #30284d, #151b39 45%, #0b112c 80%);
+}
+.access-film-frame > :is(img, video) {
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
+    object-position: 50% 50%;
     pointer-events: none;
-    user-select: none;
+    transition: none;
 }
-.access-poster { z-index: 0; }
-.access-video {
-    z-index: 1;
+.access-film-frame video { opacity: 0; }
+.access-film-idle.is-painted { opacity: 1; }
+.access-film-intro { z-index: 2; }
+.access-film-shade {
+    background: radial-gradient(ellipse 257px 208px at 50% var(--water-center-y), #0b112cba, #0b112c6e 65%, transparent),
+        linear-gradient(180deg, #06091f79, transparent 22%, transparent 77%, #070a1cac);
+}
+.access-film-mist {
     opacity: 0;
-    background: transparent;
-    pointer-events: none;
-    touch-action: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    transition: opacity 300ms ease;
+    background: radial-gradient(ellipse at 50% 48%, #fff9f2 0%, #fff1f6 41%, #f0d9ea 78%, #d3bddc 100%);
 }
-.access-page.video-ready .access-video { opacity: 1; }
-.access-page.video-failed .access-video { opacity: 0; }
-.access-page .access-overlay { z-index: 2; background: rgba(13, 22, 42, .06); }
+
+.access-content { z-index: 3; isolation: isolate; }
 .access-page .access-brand {
-    position: absolute;
-    top: max(24px, env(safe-area-inset-top));
-    left: max(42px, env(safe-area-inset-left));
-    z-index: 4;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: var(--access-ink);
-    font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif);
-    font-size: 27px;
-    letter-spacing: .13em;
-    text-shadow: 0 2px 12px #17243999;
+    position: absolute; top: max(20px, env(safe-area-inset-top)); left: max(30px, env(safe-area-inset-left));
+    display: flex; align-items: center; gap: 9px;
+    color: var(--access-ink); font: 500 clamp(15px, 1.6vw, 23px)/1.2 var(--ts-font-serif, Georgia, serif);
+    letter-spacing: .14em; text-shadow: 0 2px 12px #120c28;
 }
-.access-brand img { width: 64px; height: 64px; object-fit: contain; }
+.access-brand img { width: 52px; height: 52px; object-fit: contain; }
 .access-page .access-hero {
-    position: absolute;
-    z-index: 4;
-    top: 18.8%;
-    left: 55%;
-    width: min(740px, 60vw);
-    transform: translateX(-50%);
-    text-align: center;
-    font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif);
-    text-shadow: 0 2px 16px #14213a80;
-    transition: opacity 180ms ease;
+    position: absolute; top: var(--water-center-y); left: 50%;
+    translate: -50% -50%; width: min(540px, 63vw); padding: 0 10px;
+    text-align: center; font-family: var(--ts-font-serif, Georgia, serif);
+    text-shadow: 0 2px 12px #0b102b, 0 0 22px #0b102b;
+    transform-origin: 50% 50%;
 }
-.access-kicker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    margin: 0 0 22px;
-    color: #f1dcd7;
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 15px;
-    line-height: 1.5;
-    letter-spacing: .64em;
-    padding-left: .64em;
-    white-space: nowrap;
+.access-page .access-kicker {
+    display: flex; align-items: center; justify-content: center; gap: 13px; margin: 0 0 13px;
+    color: var(--access-gold); font: 500 clamp(9px, 1.05vw, 13px)/1.4 Georgia, serif;
+    letter-spacing: .39em; white-space: nowrap;
 }
-.access-kicker::before, .access-kicker::after { content: ''; width: 48px; height: 1px; background: #e9c4c399; }
-.access-title {
-    margin: 0;
-    color: var(--access-ink);
-    font-size: clamp(64px, 7.6vw, 122px);
-    font-weight: 600;
-    letter-spacing: .075em;
-    line-height: 1.05;
-    white-space: nowrap;
+.access-page .access-kicker::before, .access-page .access-kicker::after { content: ''; width: 23px; height: 1px; background: #dfb68e89; }
+.access-page .access-title {
+    margin: 0; color: var(--access-ink); font-size: clamp(38px, 6.2vw, 94px);
+    font-weight: 600; line-height: 1.06; letter-spacing: .1em; text-indent: .1em;
+    text-shadow: 0 2px 15px #090b21, 0 0 39px #ffd7b144;
 }
-.access-divider {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    margin: 12px auto 18px;
-    color: #f5d6d4;
+.access-page .access-divider { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 10px auto 9px; color: #f3c89e; }
+.access-divider::before, .access-divider::after { content: ''; width: clamp(32px, 5vw, 75px); height: 1px; background: #ecc2967d; }
+.access-page .access-subtitle { margin: 0; color: var(--access-ink); font-size: clamp(13px, 1.6vw, 21px); line-height: 1.5; letter-spacing: .19em; }
+.access-page .access-invitation {
+    margin: 14px auto 0; max-width: 320px;
+    color: #fbebee; font: 400 clamp(10px, 1vw, 13px)/1.55 var(--ts-font-sans, system-ui);
+    letter-spacing: .04em; text-wrap: balance;
 }
-.access-divider::before, .access-divider::after { content: ''; width: clamp(80px, 11vw, 172px); height: 1px; background: #edc9c9b3; }
-.access-subtitle { margin: 0; color: var(--access-ink); font-size: 23px; line-height: 1.6; letter-spacing: .3em; }
-.access-invitation { margin: 25px auto 25px; color: var(--access-ink); font-size: 20px; line-height: 1.75; letter-spacing: .06em; }
 .access-page .access-enter {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    gap: 17px;
-    min-width: 300px;
-    min-height: 64px;
-    padding: 12px 30px;
-    border: 1px solid #f0c1d0;
-    border-radius: 999px;
-    color: #fff9f4;
-    background: var(--access-rose);
-    box-shadow: 0 4px 25px #af647645, inset 0 1px 0 #ffffff24;
-    font-family: inherit;
-    font-size: 22px;
-    font-weight: 500;
-    line-height: 1.5;
-    letter-spacing: .045em;
-    cursor: pointer;
-    transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    display: inline-flex; justify-content: center; align-items: center; gap: 13px;
+    min-width: min(242px, 100%); min-height: 52px; margin-top: 20px; padding: 9px 21px;
+    border: 1px solid #f2c99db3; border-radius: 999px;
+    color: #fff7ed; background: linear-gradient(135deg, #704758d9, #34283ee8 74%);
+    box-shadow: inset 0 1px 0 #ffefd332, 0 0 24px #efa38c32, 0 5px 22px #090b25ad;
+    font: 600 clamp(14px, 1.45vw, 18px)/1.35 var(--ts-font-sans, system-ui);
+    letter-spacing: .06em; cursor: pointer;
+    transition: transform 180ms, background 180ms, box-shadow 180ms;
 }
-.access-enter-moon { fill: currentColor; stroke: none; }
-.access-page .access-enter > .ts-icon { width: 24px; height: 24px; flex-shrink: 0; }
-.access-page .access-enter:disabled { cursor: progress; opacity: .8; }
-.access-page .access-enter:focus-visible, .access-page .access-motion-control:focus-visible { outline: 3px solid #fff1e8; outline-offset: 5px; }
+.access-enter-moon { fill: #f7d6a5; stroke: none; }
+.access-page .access-enter > .ts-icon { flex: 0 0 auto; }
+.access-page .access-enter:not(:disabled):is(:hover, :focus-visible) {
+    background: linear-gradient(135deg, #855765f2, #48334cf2);
+    box-shadow: inset 0 1px 0 #ffefd34d, 0 0 35px #ffc58b65;
+}
+.access-page :is(.access-enter, .access-motion-control):focus-visible { outline: 2px solid #fff0d6; outline-offset: 4px; }
+.access-controls {
+    position: absolute; top: max(24px, env(safe-area-inset-top)); right: max(30px, env(safe-area-inset-right));
+    display: flex; gap: 8px;
+}
 .access-page .access-motion-control {
-    position: absolute;
-    top: max(30px, env(safe-area-inset-top));
-    right: max(32px, env(safe-area-inset-right));
-    z-index: 5;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    color: var(--access-ink);
-    background: #19294373;
-    border: 1px solid #edd2d54d;
-    border-radius: 50%;
-    cursor: pointer;
+    display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+    position: relative; color: var(--access-ink); background: #12152dd6;
+    border: 1px solid #f0ccac65; border-radius: 50%; cursor: pointer;
+}
+.access-page .access-motion-control:hover { background: #362846; }
+.access-sound-control[aria-pressed="false"]::after {
+    content: ''; position: absolute; width: 24px; height: 1.5px; rotate: -45deg; border-radius: 5px;
+    background: currentColor; box-shadow: 0 0 2px #14182e;
 }
 .access-page .access-beian {
-    position: absolute;
-    z-index: 4;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 12px 32px;
-    padding: 16px 24px max(24px, env(safe-area-inset-bottom));
-    color: #f4e1e1;
-    text-align: center;
-    background: #1520394a;
+    position: absolute; inset: auto 0 0;
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 20px;
+    padding: 10px 14px max(15px, env(safe-area-inset-bottom)); text-align: center;
 }
-.access-copyright { margin: 0; font-size: 12px; line-height: 1.6; }
-.access-page .access-beian .beian-links { flex-direction: row; flex-wrap: wrap; gap: 10px 28px; }
-.access-page .access-beian .beian-link { font-size: 12px; line-height: 1.6; white-space: nowrap; }
-.access-page .access-beian .mps-beian-icon { width: 16px; height: 16px; }
-:lang(en) .access-title { font-size: clamp(46px, 5vw, 82px); letter-spacing: .02em; white-space: normal; }
-:lang(en) .access-subtitle { letter-spacing: .05em; }
-@media (hover: hover) and (pointer: fine) {
-    .access-page .access-enter:not(:disabled):hover { transform: translateY(-3px); background: #c57590; box-shadow: 0 8px 32px #af647670; }
-    .access-page .access-motion-control:hover { background: #192943a6; }
-}
+.access-copyright { margin: 0; font-size: 11px; line-height: 1.45; }
+.access-page .access-beian .beian-links { flex-direction: row; flex-wrap: wrap; gap: 5px 17px; justify-content: center; }
+.access-page .access-beian .beian-link { font-size: 11px; line-height: 1.45; white-space: nowrap; }
+.access-page .access-beian .mps-beian-icon { width: 14px; height: 14px; }
+.access-page:lang(en) .access-title { font-size: clamp(36px, 5.1vw, 73px); letter-spacing: .015em; }
+.access-page:lang(en) .access-subtitle { letter-spacing: .04em; }
+
 @media (max-width: 760px) {
-    .page.access-page { min-height: 650px; }
-    .access-page .access-brand { top: max(20px, env(safe-area-inset-top)); left: max(20px, env(safe-area-inset-left)); gap: 9px; font-size: 20px; }
-    .access-brand img { width: 46px; height: 46px; }
-    .access-page .access-motion-control { top: max(21px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); }
-    .access-page .access-video, .access-page .access-poster { object-position: 19% center; }
-    .access-page .access-overlay { background: linear-gradient(180deg, #12213e12 18%, #12213e22 38%, #12213eb8 65%, #12213eeb); }
-    .access-page .access-hero { top: auto; bottom: max(116px, calc(env(safe-area-inset-bottom) + 100px)); left: 50%; width: calc(100% - 40px); }
-    .access-kicker { gap: 14px; margin-bottom: 14px; font-size: 10px; letter-spacing: .4em; }
-    .access-kicker::before, .access-kicker::after { width: 22px; }
-    .access-title { font-size: clamp(44px, 13vw, 72px); letter-spacing: .075em; }
-    .access-divider { gap: 10px; margin: 14px auto 12px; }
-    .access-divider::before, .access-divider::after { width: 74px; }
-    .access-divider .ts-icon { width: 20px; height: 20px; }
-    .access-subtitle { font-size: 17px; letter-spacing: .16em; }
-    .access-invitation { max-width: 310px; margin: 18px auto 24px; font-size: 15px; line-height: 1.8; letter-spacing: .04em; }
-    .access-page .access-enter { min-width: 260px; min-height: 56px; gap: 14px; padding: 12px 24px; font-size: 19px; }
-    .access-page .access-beian { gap: 7px; padding: 10px 16px max(16px, env(safe-area-inset-bottom)); background: transparent; }
-    .access-copyright, .access-page .access-beian .beian-link { font-size: 10px; }
-    .access-page .access-beian .beian-links { gap: 6px 14px; }
-    :lang(en) .access-title { font-size: 43px; line-height: 1.12; }
+    .access-page .access-brand { left: max(12px, env(safe-area-inset-left)); top: max(13px, env(safe-area-inset-top)); }
+    .access-brand img { width: 43px; height: 43px; }
+    .access-controls { top: max(13px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); gap: 6px; }
+    .access-page .access-hero { width: min(94vw, 500px); }
+    .access-page .access-title { font-size: clamp(40px, 11vw, 71px); }
+    .access-page .access-enter { margin-top: 16px; min-height: 48px; min-width: min(207px, 100%); }
+    .access-page .access-invitation { display: none; }
+    .access-page .access-beian { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
 }
-@media (max-height: 690px) and (min-width: 761px) {
-    .access-page .access-hero { top: 16%; }
-    .access-title { font-size: clamp(60px, 7vw, 88px); }
-    .access-kicker { margin-bottom: 14px; }
-    .access-divider { margin: 16px auto 12px; }
-    .access-subtitle { font-size: 20px; }
-    .access-invitation { margin: 18px auto 24px; font-size: 17px; }
-    .access-page .access-enter { min-height: 56px; font-size: 20px; }
+@media (max-height: 505px) {
+    .access-page .access-brand, .access-controls { top: max(9px, env(safe-area-inset-top)); }
+    .access-page .access-title { font-size: clamp(33px, 9svh, 52px); }
+    .access-page .access-kicker { margin-bottom: 8px; }
+    .access-page .access-divider { margin-block: 6px; }
+    .access-page .access-enter { min-height: 44px; margin-top: 10px; }
+    .access-page .access-invitation { margin-top: 7px; }
+}
+@media (max-aspect-ratio: 5/6) {
+    .page.access-page { --water-center-y: clamp(168px, 28%, 250px); }
+    .access-film-frame {
+        inset: 57% 0 auto;
+        height: min(65svh, 122vw);
+        translate: 0 -50%;
+        mask-image: linear-gradient(180deg, transparent, #000 15%, #000 84%, transparent);
+    }
+    .access-film-frame > :is(img, video) { object-position: 33% 50%; }
+    .access-film-shade { background: linear-gradient(180deg, #0b112c38, transparent 54%, transparent 82%, #0b112c8c); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .access-page .access-video { display: none; }
-    .access-page .access-enter, .access-page .access-hero { transition: none; }
-    .access-page .access-enter:hover { transform: none; }
+    .access-page .access-enter:is(:hover,:active) { transform: none; }
 }

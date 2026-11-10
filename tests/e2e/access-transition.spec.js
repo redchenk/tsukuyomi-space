@@ -23,7 +23,7 @@ test('every full entry reload shows the brand splash, even with the legacy sessi
   await page.addInitScript(() => sessionStorage.setItem('tsukuyomi_entry_splash_seen', '1'));
   let releasePoster;
   let poster = new Promise(resolve => { releasePoster = resolve; });
-  await page.route('**/*moon-gate-poster*.webp', async route => { await poster; await route.continue(); });
+  await page.route('**/*water-mirror-poster*.webp', async route => { await poster; await route.continue(); });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#boot-splash')).toBeVisible();
   releasePoster();
@@ -78,7 +78,7 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
   });
 }
 
-test('the circle reveals a single live Hub that updates and survives the transition', async ({ page }) => {
+test('the painted scene stays mounted through the moonlit reveal of one live Hub', async ({ page }) => {
   await pauseReveal(page);
   let releaseData;
   const data = new Promise(resolve => { releaseData = resolve; });
@@ -94,16 +94,24 @@ test('the circle reveals a single live Hub that updates and survives the transit
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await entry(page);
+  const scene = await page.locator('.water-mirror-scene').elementHandle();
+  const idle = page.locator('.access-film-idle');
+  await expect(idle).toHaveClass(/is-painted/);
   await page.locator('.access-enter').click();
   const gate = page.locator('.access-gate');
   await expect(gate.getByRole('dialog', { name: '月光之门' })).toBeVisible();
-  await expect(gate.locator('.moon-entry-corridor')).toHaveJSProperty('complete', true);
-  await expect(gate).toHaveAttribute('data-captured', 'true');
+  await expect(gate.locator('.access-film-poster')).toHaveJSProperty('complete', true);
+  const film = gate.locator('.access-film-intro');
+  await expect(film).toHaveCSS('opacity', '1', { timeout: 4000 });
+  expect(await film.evaluate(video => video.currentTime)).toBeGreaterThan(0);
+  await expect(idle).toHaveJSProperty('paused', true);
+  expect(await scene.evaluate(node => node === document.querySelector('.water-mirror-scene'))).toBe(true);
+  await expect(gate).toHaveAttribute('data-captured', 'true', { timeout: 11000 });
   await expect(page.locator('.hub')).toHaveCount(1);
   await expect(page.locator('.hub-actions a')).toHaveCount(2);
   await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
-  await expect(gate).toHaveCSS('clip-path', /^path\(evenodd/);
-  expect(await gate.evaluate(node => node.getAnimations()[0].effect.getTiming().duration)).toBe(650);
+  await expect(gate).toHaveCSS('mask-image', /^radial-gradient/);
+  expect(await gate.evaluate(node => node.getAnimations()[0].effect.getTiming().duration)).toBe(560);
   const hub = await page.locator('.hub').elementHandle();
   releaseData();
   await expect(page.locator('.hub')).toContainText('圆形展开时实时到达的文章');
@@ -122,6 +130,7 @@ test('reduced motion uses a short fade and keyboard entry lands on the Hub headi
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await pauseReveal(page);
   await entry(page);
+  await expect(page.locator('.access-film-idle, .access-film-intro')).toHaveCount(0);
   await page.locator('.access-enter').focus();
   await page.keyboard.press('Enter');
   const gate = page.locator('.access-gate');
@@ -188,9 +197,9 @@ test('resize during the reveal releases clipping and scrolling', async ({ page }
 });
 
 for (const size of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
-  test(`poster and video failures do not hide the entry at ${size.width}x${size.height}`, async ({ page }) => {
+  test(`scene image failures do not hide the entry at ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
-    await page.route('**/*moon-gate*', route => route.abort());
+    await page.route('**/*water-mirror-*.webp', route => route.abort());
     await entry(page);
     await expect(page.locator('.access-enter')).toBeInViewport();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -232,6 +241,18 @@ test('the first direct Hub visit plays the entrance and the same tab skips it on
   await page.locator('.access-enter').click();
   await expect(page.locator('.hub h1')).toBeFocused();
   await expect(page.locator('html')).not.toHaveAttribute('data-moonlight-played', 'true');
+});
+
+test('missing motion videos keeps the matching poster and does not block entry', async ({ page }) => {
+  await page.route(/water-mirror-(?:enter|standby)[^/]*\.mp4$/, route => route.abort());
+  await entry(page);
+  const poster = page.locator('.access-film-poster');
+  await expect(poster).toHaveJSProperty('complete', true);
+  expect(await poster.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+  await expect(page.locator('.access-film-idle')).toHaveCSS('opacity', '0');
+  await page.locator('.access-enter').click();
+  await expect(page.locator('.access-gate')).toHaveCount(0);
+  await expect(page.locator('.hub h1')).toBeFocused();
 });
 
 test('a failed application bundle exposes a reload action instead of an endless splash', async ({ page }) => {

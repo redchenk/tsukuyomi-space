@@ -3,6 +3,7 @@ import { loadHubPage } from '../router';
 import { lockPageScroll } from '../utils/pageScrollLock';
 import { animateCircleReveal } from '../utils/circleReveal';
 import { playMoonlightEntry } from '../utils/moonlightEntryMotion';
+import { playWaterMirrorEntry } from '../utils/waterMirrorEntryMotion';
 
 const INTRO_SEEN_KEY = 'tsukuyomi_moonlight_intro_seen';
 
@@ -25,11 +26,12 @@ function waitForResource(resource, duration, signal, optional = false) {
   });
 }
 
-export function useAccessTransition({ route, router, onEntered }) {
+export function useAccessTransition({ route, router, onEntered, onEntrySound }) {
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const motionAllowed = () => !motion.matches && !navigator.connection?.saveData;
   let seen = false;
   try { seen = window.sessionStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch (_) {}
+  const canPlayIntro = ref(!seen);
   let directPending = /^\/hub\/?$/.test(window.location.pathname);
   const directIntro = directPending && !seen && motionAllowed();
   const gate = ref(null);
@@ -45,7 +47,7 @@ export function useAccessTransition({ route, router, onEntered }) {
     const run = current;
     current = null;
     run?.controller.abort();
-    run?.musicShell?.classList.remove('moonlight-arriving');
+    run?.musicShell?.classList.remove('moonlight-arriving', 'water-mirror-arriving');
     run?.glare?.revert();
     run?.reveal?.cancel();
     run?.film?.dispose();
@@ -94,31 +96,36 @@ export function useAccessTransition({ route, router, onEntered }) {
     progress.value = clicked ? 0 : 55;
 
     try {
+      // Start native video playback inside the original interaction.
+      if (clicked && cinematic.value) run.film = playWaterMirrorEntry(gate.value);
       await nextTick();
       if (current !== run) return;
       if (!clicked) handoffBootSplash();
       if (cinematic.value) {
-        run.film = playMoonlightEntry(gate.value, clicked);
+        if (!clicked) run.film = playMoonlightEntry(gate.value);
         seen = true;
+        canPlayIntro.value = false;
         try { window.sessionStorage.setItem(INTRO_SEEN_KEY, '1'); } catch (_) {}
         gate.value.querySelector('.moon-entry-skip')?.focus({ preventScroll: true });
       }
-      const prelude = run.film?.finished.then(() => {
+      const prelude = run.film?.finished.then(completed => {
         if (current === run && progress.value < 100) waiting.value = true;
+        return completed;
       });
-      await Promise.all([prepareHub(run, clicked, !alreadySeen), prelude]);
+      const [, filmCompleted] = await Promise.all([prepareHub(run, clicked, !alreadySeen), prelude]);
       if (current !== run || route.name !== 'hub') return;
 
       if (!alreadySeen) {
-        const fullReveal = cinematic.value && !run.skipped && !document.hidden;
+        const fullReveal = cinematic.value && filmCompleted !== false && !run.skipped && !document.hidden;
         phase.value = 'revealing';
         if (fullReveal) {
-          run.glare = run.film.reveal();
+          run.glare = run.film.reveal?.();
           run.musicShell = document.querySelector('.entry-destination-preparing');
           run.musicShell?.classList.add('moonlight-arriving');
+          if (clicked) run.musicShell?.classList.add('water-mirror-arriving');
         }
         const center = fullReveal || !origin ? { x: window.innerWidth / 2, y: window.innerHeight / 2 } : origin;
-        run.reveal = animateCircleReveal(gate.value, center, { short: !fullReveal });
+        run.reveal = animateCircleReveal(gate.value, center, { short: !fullReveal, mist: clicked });
         if (document.hidden) run.reveal.finish();
         await run.reveal.finished;
         if (current !== run) return;
@@ -142,6 +149,7 @@ export function useAccessTransition({ route, router, onEntered }) {
       window.location.reload();
       return;
     }
+    if (origin?.sound && !seen && motionAllowed() && !document.hidden) onEntrySound?.();
     void start(true, origin);
   }
 
@@ -206,5 +214,5 @@ export function useAccessTransition({ route, router, onEntered }) {
     document.removeEventListener('visibilitychange', onHidden);
     motion.removeEventListener('change', onMotionPreference);
   });
-  return { gate, phase, cinematic, fromAccess, failed, progress, waiting, enter, startDirect, skip };
+  return { gate, phase, cinematic, fromAccess, canPlayIntro, failed, progress, waiting, enter, startDirect, skip };
 }

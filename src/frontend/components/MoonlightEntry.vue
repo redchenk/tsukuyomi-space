@@ -29,14 +29,14 @@ const frames = [moonHouse, kaguya, wiki, iroha, gallery, yachiyo];
 </script>
 
 <template>
-  <div class="moonlight-entry" :class="{ 'is-direct': !fromAccess }"
+  <div class="moonlight-entry" :class="{ 'is-direct': !fromAccess, 'is-water-mirror': fromAccess }"
     :style="{ '--moon-entry-progress': 100 - progress }" role="dialog" aria-modal="true" :aria-label="copy.arrival" @keydown.tab.prevent>
-    <div class="moon-entry-set" aria-hidden="true">
+    <div v-if="!fromAccess" class="moon-entry-set" aria-hidden="true">
       <img class="moon-entry-corridor" :src="corridor" alt="" data-image-bloom="off" fetchpriority="high">
       <div class="moon-entry-vignette"></div>
       <canvas class="moon-entry-dust"></canvas>
       <div class="moon-entry-ripple"></div>
-      <div v-if="!fromAccess" class="moon-entry-direct-copy">
+      <div class="moon-entry-direct-copy">
         <p class="access-kicker">TSUKUYOMI SPACE</p>
         <p class="access-title">{{ t.title }}</p>
         <p class="access-subtitle">{{ t.subtitle }}</p>

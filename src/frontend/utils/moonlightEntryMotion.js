@@ -81,20 +81,17 @@ function createPetFlight(root, width, height) {
   return { trail, pet, point, draw };
 }
 
-export function playMoonlightEntry(gate, fromAccess) {
+export function playMoonlightEntry(gate) {
   const root = gate.querySelector('.moonlight-entry');
   const select = name => root.querySelector(`.moon-entry-${name}`);
   const width = gate.clientWidth;
   const height = gate.clientHeight;
   const reduced = isReducedPerformance();
-  const titleArea = fromAccess ? gate.querySelector('.access-hero') : select('direct-copy');
+  const titleArea = select('direct-copy');
   const titles = [...(titleArea?.querySelectorAll('.access-title, .access-kicker, .access-subtitle') || [])];
-  const media = gate.querySelector('.access-media');
-  const content = gate.querySelector('.access-content');
-  const button = gate.querySelector('.access-enter');
   const ripple = select('ripple');
   const seal = select('seal');
-  const source = (button || select('badge')).getBoundingClientRect();
+  const source = select('badge').getBoundingClientRect();
   Object.assign(ripple.style, { left: `${source.left}px`, top: `${source.top}px`, width: `${source.width}px`, height: `${source.height}px` });
   const particles = textParticles(titles, reduced);
   const canvas = select('dust');
@@ -143,14 +140,12 @@ export function playMoonlightEntry(gate, fromAccess) {
     onRender: self => draw(self.currentTime),
     onComplete: () => resolve()
   });
-  if (media) film.add(media, { scale: [1, 1.12], filter: ['blur(0px)', 'blur(12px)'], duration: 800 }, 0);
-  if (content) film.add(content, { opacity: [1, 0], duration: 330 }, 350);
   if (titles.length) film.add(titles, { translateY: [0, -20], opacity: [1, 0], duration: 430 }, 60);
   film
     .add(ripple, { scale: [1, 1.62], opacity: [{ to: .82, duration: 75 }, { to: 0, duration: 480 }] }, 0)
-    .add(seal, { scale: [.55, 1], opacity: [fromAccess ? 0 : 1, 1], duration: 690 }, 75)
+    .add(seal, { scale: [.55, 1], opacity: 1, duration: 690 }, 75)
     .add(select('orbit'), { rotate: [-9, 38], duration: 1800, ease: 'linear' }, 120)
-    .add(select('corridor'), { opacity: [fromAccess ? 0 : .38, 1], scale: [1, 1.16], duration: 910, ease: 'inOutQuad' }, 320)
+    .add(select('corridor'), { opacity: [.38, 1], scale: [1, 1.16], duration: 910, ease: 'inOutQuad' }, 320)
     .add(select('vignette'), { opacity: [0, .88], duration: 740 }, 410)
     .add(flight.trail, { opacity: [0, .86], duration: 210 }, 810)
     .add(flight.pet, { opacity: [0, 1], duration: 190 }, 815)
