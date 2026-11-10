@@ -58,6 +58,7 @@ watch(() => props.allowIntro, scheduleWarm);
 onMounted(() => {
   mounted = true;
   document.addEventListener('visibilitychange', syncIdle);
+  window.addEventListener('pageshow', syncIdle);
   syncIdle();
   scheduleWarm();
 });
@@ -65,6 +66,7 @@ onBeforeUnmount(() => {
   mounted = false;
   clearTimeout(primeTimer);
   document.removeEventListener('visibilitychange', syncIdle);
+  window.removeEventListener('pageshow', syncIdle);
   cancelIdleFrame();
   idle.value?.pause();
 });
