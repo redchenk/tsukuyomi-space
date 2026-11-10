@@ -14,7 +14,7 @@ assets/uploads/
 assets/images/beian-mps.png
 
 # Node modules
-node_modules/
+node_modules
 .release-dependencies/
 npm-debug.log*
 
@@ -86,7 +86,7 @@ backups/
 *_slot*_backup_*.json
 
 # Node modules
-node_modules/
+node_modules
 npm-debug.log*
 
 # Database

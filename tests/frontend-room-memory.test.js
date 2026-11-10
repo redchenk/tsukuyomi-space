@@ -345,7 +345,7 @@ describe('room Live2D mobile quality parity', () => {
         const textureManager = source('src/live2d/lapptexturemanager.ts');
         const nginx = source('deploy/nginx.conf');
 
-        assert.match(app, /Boolean\(route\.name\).*showSitePet|showSitePet.*Boolean\(route\.name\)/s);
+        assert.match(app, /showSitePet = computed\(\(\) => route\.name === 'gomoku'\)/);
         assert.doesNotMatch(app, /onMounted\(\(\) => \{\s*refreshUser\(\);/);
         assert.match(app, /function handlePageShow\(event\) \{\s*if \(!event\?\.persisted\) return;/);
         assert.match(app, /router\.isReady\(\)\.then\(\(\) => \{[\s\S]*initialRouteReady = true;[\s\S]*refreshUser\(\);/);
@@ -398,7 +398,7 @@ describe('room Live2D mobile quality parity', () => {
     });
 
     it('avoids mobile Room filters that force full-screen recompositing', () => {
-        const responsive = source('src/frontend/styles/responsive.css');
+        const responsive = source('src/frontend/styles/routes/room.css');
 
         assert.doesNotMatch(responsive, /\.room-shell \.room-live2d-container \{[^}]*drop-shadow/s);
         assert.doesNotMatch(responsive, /\.room-shell \.room-weather-card \{[^}]*backdrop-filter/s);

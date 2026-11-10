@@ -19,61 +19,23 @@ async function pauseReveal(page) {
   });
 }
 
-test('every full entry reload shows the brand splash, even with the legacy session marker', async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem('tsukuyomi_entry_splash_seen', '1'));
-  let releasePoster;
-  let poster = new Promise(resolve => { releasePoster = resolve; });
-  await page.route('**/*water-mirror-poster*.webp', async route => { await poster; await route.continue(); });
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#boot-splash')).toBeVisible();
-  releasePoster();
-  await expect(page.locator('#boot-splash')).toHaveCount(0);
-  poster = new Promise(resolve => { releasePoster = resolve; });
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#boot-splash')).toBeVisible();
-  releasePoster();
-  await expect(page.locator('#boot-splash')).toHaveCount(0);
-  await expect(page.locator('.access-enter')).toBeEnabled();
-});
-
 for (const reducedMotion of ['no-preference', 'reduce']) {
-  test(`fast homepage loads and cached reloads keep a readable splash (${reducedMotion})`, async ({ page }) => {
+  test(`Access reloads keep the Seedance scene without a separate brand animation (${reducedMotion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion });
-    // Observe actual topmost, fully opaque frames without delaying any resource.
-    await page.addInitScript(() => {
-      window.brandFrames = [];
-      // WebKit can pause rAF sampling during screenshots. The splash remains
-      // painted in that interval; measure its fade/removal via DOM mutation.
-      new MutationObserver(() => {
-        const splash = document.getElementById('boot-splash');
-        if (window.brandFrames.length && !window.brandOpaqueUntil && (!splash || splash.classList.contains('is-ready'))) {
-          window.brandOpaqueUntil = performance.now();
-        }
-      }).observe(document, { childList: true, attributes: true, subtree: true });
-      const observe = () => {
-        const splash = document.getElementById('boot-splash');
-        if (splash && getComputedStyle(splash).opacity === '1'
-          && document.elementFromPoint(innerWidth / 2, innerHeight / 2)?.closest('#boot-splash')) {
-          window.brandFrames.push(performance.now());
-        }
-        if (splash || document.readyState === 'loading') requestAnimationFrame(observe);
-      };
-      requestAnimationFrame(observe);
-    });
-    for (const reload of [false, true]) {
-      if (reload) await page.reload({ waitUntil: 'domcontentloaded' });
+    let releasePoster;
+    let poster = new Promise(resolve => { releasePoster = resolve; });
+    await page.route('**/*water-mirror-poster*.webp', async route => { await poster; await route.continue(); });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) await page.reload({ waitUntil: 'domcontentloaded' });
       else await page.goto('/', { waitUntil: 'domcontentloaded' });
-      // The protocol may return after this deliberately short splash is gone.
-      // Its in-page observer records the actual opaque, topmost painted frames.
-      await expect.poll(() => page.evaluate(() => window.brandFrames.length)).toBeGreaterThan(0);
-      if (!reload && await page.locator('#boot-splash').isVisible()) {
-        await page.screenshot({ path: `output/access-transition/${test.info().project.name}-boot-${reducedMotion}.png` });
-      }
-      await expect(page.locator('#boot-splash')).toHaveCount(0);
-      const duration = await page.evaluate(() => window.brandOpaqueUntil - window.brandFrames[0]);
-      expect(duration).toBeGreaterThanOrEqual(800);
-      await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+      const splash = page.locator('#boot-splash');
+      await expect(splash).toHaveAttribute('data-scene', 'water-mirror');
+      await expect(splash.locator('.boot-splash-content')).toBeHidden();
+      releasePoster();
+      await expect(splash).toHaveCount(0);
       await expect(page.locator('.access-enter')).toBeEnabled();
+      await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+      poster = new Promise(resolve => { releasePoster = resolve; });
     }
   });
 }
@@ -210,33 +172,22 @@ for (const size of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
   });
 }
 
-test('the automatic Hub intro plays once, but the homepage button still plays the film', async ({ page }) => {
+test('direct Hub visits have no alternate intro, while Access keeps the Seedance film', async ({ page }) => {
   await page.addInitScript(() => {
     new MutationObserver(() => {
       if (document.querySelector('.moonlight-entry.is-direct')) document.documentElement.dataset.moonlightPlayed = 'true';
     }).observe(document, { childList: true, subtree: true });
   });
-  let releaseBundle;
-  let bundle = new Promise(resolve => { releaseBundle = resolve; });
-  await page.route('**/assets/index-*.js', async route => { await bundle; await route.continue(); });
-  await page.goto('/hub', { waitUntil: 'commit' });
-  await expect(page.locator('#boot-splash')).toBeVisible();
-  releaseBundle();
+  await page.goto('/hub');
   await expect(page.locator('#boot-splash')).toHaveCount(0);
-  await expect(page.getByRole('dialog', { name: '月光之门' })).toBeVisible();
-  await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   await expect(page.locator('.hub')).toBeVisible();
-  await page.getByRole('button', { name: '跳过开场' }).click();
-  await expect(page.locator('#boot-splash, .access-gate')).toHaveCount(0);
-  await expect(page.locator('.hub h1')).toBeFocused();
-  bundle = new Promise(resolve => { releaseBundle = resolve; });
-  await page.reload({ waitUntil: 'commit' });
-  await expect(page.locator('#boot-splash')).toBeVisible();
-  releaseBundle();
+  await expect(page.locator('.access-gate')).toHaveCount(0);
+  await expect(page.locator('.app-shell')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('html')).not.toHaveAttribute('data-moonlight-played', 'true');
+  await page.reload();
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.hub')).toBeVisible();
   await expect(page.locator('html')).not.toHaveAttribute('data-moonlight-played', 'true');
-  await expect(page.locator('.site-pet-route-hub .site-pet')).toBeEnabled();
   await entry(page);
   await page.locator('.access-enter').click();
   const film = page.locator('.access-film-intro');

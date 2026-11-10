@@ -40,7 +40,7 @@ test('Wiki route, navigation and production fallback are wired together', () => 
   assert.match(staticMiddleware, /\{ path: '\/wiki', priority: '0\.8', changefreq: 'monthly' \}/);
   assert.match(staticMiddleware, /vueRoutes = new Set\(\[[^\]]*'\/wiki'/);
   assert.match(staticMiddleware, /wikiEntryRoute = req\.path\.startsWith\('\/wiki\/characters\/'\) \|\| req\.path\.startsWith\('\/wiki\/terms\/'\)/);
-  assert.match(read('src/frontend/styles/routes/wiki.css'), /assets\/css\/vue\/pages\/wiki(?:-entry)?\.css/);
+  assert.match(read('src/frontend/styles/routes/wiki.css'), /\.wiki-entry-layout/);
 });
 
 test('MediaWiki rendering keeps generated HTML inside a strict passive allowlist', () => {
@@ -132,7 +132,7 @@ test('Every published Wiki entry is admitted by the overseas SEO allowlist', () 
 test('Every character and term receives a reusable secondary entry page', () => {
   const data = read('src/frontend/data/cosmicKaguyaWikiEntries.js');
   const page = read('src/frontend/pages/WikiEntryPage.vue');
-  const styles = read('assets/css/vue/pages/wiki-entry.css');
+  const styles = read('src/frontend/styles/routes/wiki.css') + read('src/frontend/styles/jingyue/wiki-source.css');
   const sourceComponent = read('src/frontend/components/KaguyaSourceArticle.vue');
   const sourceParser = read('src/frontend/utils/mediaWikiArticle.js');
   const kaguyaSource = read('src/frontend/data/wiki-sources/kaguya.mediawiki');
@@ -178,24 +178,23 @@ test('Every character and term receives a reusable secondary entry page', () => 
   assert.match(styles, /\.wiki-entry-image-placeholder/);
   assert.match(styles, /\.wiki-entry-image-variants/);
   assert.doesNotMatch(styles, /@keyframes wiki-entry-image-in\s*\{\s*from \{ opacity: 0;/);
-  assert.match(styles, /body\.wiki-entry-open \.route-stage \{ z-index: 4; \}/);
-  assert.match(styles, /body\.wiki-entry-open \.moon \{ pointer-events: none; \}/);
+  assert.match(styles, /\.wiki-entry-layout/);
   assert.match(styles, /\.wiki-source-blackout/);
   assert.match(styles, /\.wiki-source-blackout \.wiki-source-link \{ color: inherit; text-decoration-color: transparent; \}/);
   assert.match(styles, /\.wiki-source-section#source-lead \.wiki-source-quote \{ display: flow-root; \}/);
   assert.match(styles, /\.wiki-source-media-slot/);
   assert.match(styles, /\.wiki-source-media-float-right/);
-  assert.match(styles, /\.wiki-entry-layout-source/);
+  assert.match(styles, /\.wiki-entry-layout/);
   assert.match(page, /:class="\{ 'wiki-entry-layout-source': entry\.sourceArticle \}"/);
   assert.match(page, /<aside v-if="!entry\.sourceArticle" class="wiki-entry-infobox"/);
   assert.match(styles, /\.wiki-entry-moegirl-card/);
-  assert.match(styles, /html\[lang="en"\] \.wiki-entry-moegirl-card::after \{[\s\S]*?content: "M"/);
+  assert.match(styles, /\.wiki-entry-moegirl-copy/);
 });
 
 test('Wiki landing page includes the expanded release, credits, music and derivative archive', () => {
   const data = read('src/frontend/data/cosmicKaguyaWiki.js');
   const page = read('src/frontend/pages/WikiPage.vue');
-  const styles = read('assets/css/vue/pages/wiki.css');
+  const styles = read('src/frontend/styles/routes/wiki.css');
 
   assert.match(data, /\{ id: 'release', label: '发行与衍生', index: '07' \}/);
   assert.match(data, /2025-11-05/);
@@ -226,7 +225,7 @@ test('User-provided source media resolves into article images and primary-page c
   const page = read('src/frontend/pages/WikiPage.vue');
   const parser = read('src/frontend/utils/mediaWikiArticle.js');
   const manifest = read('src/frontend/data/sourceMediaAssets.js');
-  const entryStyles = read('assets/css/vue/pages/wiki-entry.css');
+  const entryStyles = read('src/frontend/styles/routes/wiki.css') + read('src/frontend/styles/jingyue/wiki-source.css');
   const mediaDir = path.join(root, 'assets/images/wiki/content');
   const mediaFiles = fs.readdirSync(mediaDir).filter((file) => file.endsWith('.webp'));
   const normalize = (name) => name

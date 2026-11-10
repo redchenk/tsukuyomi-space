@@ -51,7 +51,10 @@
     "en": "Clear search",
     "ja": "検索をクリア"
   },
-  "打开音乐": {"en":"Open music","ja":"音楽を開く"},
+  "打开音乐": {
+    "en": "Open music",
+    "ja": "音楽を開く"
+  },
   "让房间更合你的心意。": {
     "en": "Make the room feel like yours.",
     "ja": "あなたらしいお部屋に。"
@@ -224,480 +227,1902 @@
     "en": "Local voice",
     "ja": "ローカル音声"
   },
-  "官方服务视图": {"en": "Service management views", "ja": "公式サービス管理ビュー"},
-  "语言模型": {"en": "Language models", "ja": "言語モデル"},
-  "语音合成": {"en": "Speech synthesis", "ja": "音声合成"},
-  "调用统计": {"en": "Usage statistics", "ja": "利用統計"},
-  "检测音源": {"en": "Check voice services", "ja": "音声サービスを確認"},
-  "正在读取语音配置…": {"en": "Loading voice settings…", "ja": "音声設定を読み込み中…"},
-  "官方音源": {"en": "Official voice services", "ja": "公式音声サービス"},
-  "主音源": {"en": "Primary voice service", "ja": "メイン音声サービス"},
-  "启用此音源": {"en": "Enable this voice service", "ja": "この音声サービスを有効にする"},
-  "音色 ID": {"en": "Voice ID", "ja": "ボイス ID"},
-  "默认模型": {"en": "Default model", "ja": "既定のモデル"},
-  "向普通用户开放的模型": {"en": "Models available to users", "ja": "一般ユーザーに公開するモデル"},
-  "默认模型始终开放。Room 根据 Fish 账户的可用额度显示模型。": {"en": "The default model is included. Room lists models supported by the Fish account’s available credit.", "ja": "既定のモデルは常に含まれます。Room では Fish アカウントの利用可能残高に応じてモデルが表示されます。"},
-  "更换 Fish 密钥": {"en": "Replace Fish API key", "ja": "Fish API キーを変更"},
-  "留空保留现有密钥": {"en": "Leave blank to keep the current key", "ja": "空欄で現在のキーを保持"},
-  "已配置密钥": {"en": "Key configured", "ja": "キー設定済み"},
-  "保存音源设置": {"en": "Save voice settings", "ja": "音声サービス設定を保存"},
-  "语音配置已保存，新朗读请求使用新设置。": {"en": "Voice settings saved. New requests use these settings.", "ja": "音声設定を保存しました。次の読み上げから適用されます。"},
-  "管理站内 LLM 与 TTS": {"en": "Manage site LLM and TTS services", "ja": "サイト内の LLM と TTS を管理"},
-  "支付管理视图": {"en": "Payment management views", "ja": "決済管理ビュー"},
-  "商品与收款": {"en": "Products and payments", "ja": "商品と決済設定"},
-  "收款连接详情": {"en": "Payment connection details", "ja": "決済接続の詳細"},
-  "商品列表": {"en": "Product list", "ja": "商品一覧"},
-  "未命名商品": {"en": "Untitled product", "ja": "名称未設定の商品"},
-  "已上架": {"en": "Listed", "ja": "販売中"},
-  "未上架": {"en": "Unlisted", "ja": "非公開"},
-  "件商品": {"en": "products", "ja": "件の商品"},
-  "商品分页": {"en": "Product pages", "ja": "商品一覧のページ"},
-  "请检查选中商品的编号、名称和价格": {"en": "Check the selected product’s ID, name and price.", "ja": "選択した商品の ID、名前、価格を確認してください。"},
-  "官方 AI 服务": {"en": "Official AI services", "ja": "公式 AI サービス"},
-  "管理站内语言模型、语音合成和调用记录": {"en": "Manage hosted language models, speech synthesis and usage records", "ja": "サイト提供の言語モデル、音声合成、利用記録を管理"},
-  "语音配置已更新，请重新读取后再保存": {"en": "Voice settings have changed. Reload them before saving.", "ja": "音声設定が変更されました。再読み込みしてから保存してください。"},
-  "音源配置不完整，请检查服务器配置或 Fish 密钥": {"en": "Voice configuration is incomplete. Check the server settings or Fish key.", "ja": "音声サービスの設定が不完全です。サーバー設定または Fish キーを確認してください。"},
-  "此超级管理员的站内账号尚未加入 LLM 服务维护者名单": {"en": "This super administrator’s site account is not on the LLM operator list.", "ja": "このスーパー管理者のサイトアカウントは LLM 運営者一覧に登録されていません。"},
-  "站内 LLM 服务暂不可用": {"en": "The site LLM service is currently unavailable.", "ja": "サイト内 LLM サービスを現在利用できません。"},
-  "站内账号已切换，请重新登录 Terminal": {"en": "The site account changed. Sign in to Terminal again.", "ja": "アカウントが切り替わりました。Terminal に再度ログインしてください。"},
-  "回复由当前聊天模型翻译成日语后朗读，翻译按该模型的规则计费。": {"en": "Your current chat model translates replies into Japanese for speech. Its usual translation charges apply.", "ja": "現在のチャットモデルが返信を日本語に翻訳して読み上げます。翻訳にはそのモデルの料金が適用されます。"},
-  "聊天原文": {"en": "Original chat text", "ja": "チャットの原文"},
-  "日语": {"en": "Japanese", "ja": "日本語"},
-  "朗读语言": {"en": "Spoken language", "ja": "読み上げ言語"},
-  "Fish Audio 模型": {"en":"Fish Audio model","ja":"Fish Audio モデル"},
-  "此官方 Fish Audio 模型暂不可用，请重新选择": {"en":"This official Fish Audio model is unavailable. Please choose another.","ja":"この公式 Fish Audio モデルは現在利用できません。別のモデルを選んでください。"},
-  "Fish Audio 未返回有效的 MP3 音频": {"en":"Fish Audio did not return a valid MP3.","ja":"Fish Audio から有効な MP3 音声が返されませんでした。"},
-  "请选择支持情感提示的 Fish Audio 模型": {"en":"Choose a Fish Audio model that supports emotion cues.","ja":"感情指定に対応する Fish Audio モデルを選択してください。"},
-  "Fish Audio 音色 ID 应为 32 位十六进制字符": {"en":"The Fish Audio voice ID must contain 32 hexadecimal characters.","ja":"Fish Audio の音声 ID は32桁の16進数で入力してください。"},
-  "请填写 Fish Audio API 密钥": {"en":"Enter your Fish Audio API key.","ja":"Fish Audio の API キーを入力してください。"},
-  "Fish Audio 仅支持官方语音端点": {"en":"Fish Audio requires its official speech endpoint.","ja":"Fish Audio の公式音声エンドポイントを指定してください。"},
-  "官方直供 · Fish Audio · ¥0.05 / 条": {"en":"Official · Fish Audio · ¥0.05 per clip","ja":"公式 · Fish Audio · 1件 ¥0.05"},
-  "朗读语气": {"en":"Voice expression","ja":"読み上げの感情"},
-  "跟随八千代表情": {"en":"Follow Yachiyo’s expression","ja":"八千代の表情に合わせる"},
-  "不加情感提示": {"en":"No emotion cue","ja":"感情の指定なし"},
-  "语气只用于朗读，不会写进聊天正文。": {"en":"Expression applies only to speech.","ja":"感情の指定は読み上げにのみ反映されます。"},
-  "官方 Fish Audio 尚未配置，可使用个人 Fish Audio。": {"en":"Official Fish Audio is not configured. You can use your own Fish Audio account.","ja":"公式 Fish Audio は未設定です。個人アカウントで利用できます。"},
-  "官方 Fish Audio 暂不可用。": {"en":"Official Fish Audio is currently unavailable.","ja":"公式 Fish Audio は現在利用できません。"},
-  "官方 Fish Audio 音源在线，可选择跟随八千代表情朗读。": {"en":"Official Fish Audio is available and can follow Yachiyo’s expression.","ja":"公式 Fish Audio が利用できます。八千代の表情に合わせて読み上げられます。"},
-  "开心": {"en":"Happy","ja":"嬉しい"},
-  "平静": {"en":"Calm","ja":"穏やか"},
-  "兴奋": {"en":"Excited","ja":"興奮"},
-  "难过": {"en":"Sad","ja":"悲しい"},
-  "生气": {"en":"Angry","ja":"怒り"},
-  "得意": {"en":"Proud","ja":"得意げ"},
-  "好奇": {"en":"Curious","ja":"好奇心"},
-  "体贴": {"en":"Empathetic","ja":"思いやり"},
-  "轻声": {"en":"Whisper","ja":"ささやき"},
-  "Google 登录": {"en":"Google sign-in","ja":"Google ログイン"},
-  "请验证可接收验证码的邮箱，Google 已验证邮箱也需验证码": {"en":"Verify an email that can receive a code, even if it is verified on Google.","ja":"確認コードを受信できるメールを確認してください。Google で確認済みでもコードが必要です。"},
-  "Google 登录暂时无法连接，请稍后重试": {"en":"Google sign-in is unavailable. Please try again.","ja":"Google に接続できません。再試行してください。"},
-  "手动连接 Google，之后可一键登录当前账号。": {"en":"Link Google to sign in to this account with one click.","ja":"Google を連携すると、このアカウントにワンクリックでログインできます。"},
-  "该 Google 或当前账号已有其他绑定，请检查后重试": {"en":"This Google or site account already has another link. Check the link and try again.","ja":"この Google またはサイトのアカウントには別の連携があります。確認して再試行してください。"},
-  "Google 已绑定": {"en":"Google linked","ja":"Google を連携しました"},
-  "Google 登录暂未配置，请稍后再试": {"en":"Google sign-in is not configured yet. Please try later.","ja":"Google ログインはまだ設定されていません。後でもう一度お試しください。"},
-  "Google 登录启动失败，请稍后再试": {"en":"Could not start Google sign-in. Please try again.","ja":"Google ログインを開始できません。再試行してください。"},
-  "Google 授权已取消": {"en":"Google authorization cancelled","ja":"Google の認証をキャンセルしました"},
-  "Google 回调缺少授权码，请重新登录": {"en":"Google did not return an authorization code. Please sign in again.","ja":"Google の認証コードがありません。再度ログインしてください。"},
-  "Google 登录状态已过期，请重新授权": {"en":"Google sign-in expired. Please authorize again.","ja":"Google ログインの有効期限が切れました。再認証してください。"},
-  "Google 回调处理失败，请稍后再试": {"en":"Could not complete Google authorization. Please try again.","ja":"Google の認証を完了できません。再試行してください。"},
-  "该 Google 已绑定其他账号": {"en":"This Google is already linked to another account.","ja":"この Google は別のアカウントに連携済みです。"},
-  "请先登录网站，再在用户中心绑定 Google": {"en":"Sign in to the site first, then link Google in the user center.","ja":"先にサイトにログインし、ユーザーセンターで Google を連携してください。"},
-  "Google 登录处理失败，请重试": {"en":"Could not complete Google sign-in. Please try again.","ja":"Google ログインを完了できません。再試行してください。"},
-  "该 Google 或邮箱已绑定其他账号": {"en":"This Google or email is already linked to another account.","ja":"この Google またはメールは別のアカウントに連携済みです。"},
-  "当前账号已绑定其他 Google，请先解绑": {"en":"This account already has another Google linked. Unlink it first.","ja":"別の Google に連携済みです。先に連携を解除してください。"},
-  "该 Google 已绑定其他邮箱账号": {"en":"This Google is already linked to another email account.","ja":"この Google は別のメールアカウントに連携済みです。"},
-  "Google 已绑定到已有邮箱账号": {"en":"Google linked to your existing email account.","ja":"Google を既存のメールアカウントに連携しました。"},
-  "邮箱已绑定，Google 登录成功": {"en":"Email linked. Google sign-in successful.","ja":"メールを連携しました。Google ログインに成功しました。"},
-  "当前账号未绑定 Google": {"en":"This account has no Google linked.","ja":"このアカウントは Google に未連携です。"},
-  "Google 已解绑": {"en":"Google unlinked","ja":"Google の連携を解除しました"},
-  "下载月读空间 Flutter 原生应用，按设备选择 Windows、macOS、Android、Linux 或 iOS 安装包，文件直接由 Google 提供。": {"en":"Download the native Flutter app for Tsukuyomi Space. Choose the Windows, macOS, Android, Linux or iOS package for your device. Files download directly from Google.","ja":"月読空間の Flutter ネイティブアプリをダウンロード。デバイスに合わせて Windows・macOS・Android・Linux・iOS のパッケージを選び、Google から直接取得します。"},
-  "请验证可接收验证码的邮箱，{0} 已验证邮箱也需验证码": {"en":"Verify an email that can receive codes. A code is also required for a {0} verified email.","ja":"確認コードを受信できるメールを確認してください。{0} で確認済みのメールにもコードが必要です。"},
-  "所选时段 {0} 次": {"en":"Selected period: {0} calls","ja":"選択期間：{0} 回"},
-  "· 最早记录": {"en":"· Earliest record","ja":"・最初の記録"},
-  "日期": {"en":"Date","ja":"日付"},
-  "完成": {"en":"Completed","ja":"完了"},
-  "· 未完成": {"en":"· Incomplete","ja":"・未完了"},
-  "· 待确认": {"en":"· Pending","ja":"・確認待ち"},
-  "官方服务每日调用": {"en": "Daily official service usage", "ja": "公式サービスの日別利用"},
-  "全站汇总 · 北京时间（UTC+8）": {"en": "Site-wide totals · Beijing time (UTC+8)", "ja": "サイト全体・北京時間（UTC+8）"},
-  "统计天数": {"en": "Period", "ja": "集計期間"},
-  "截至日期": {"en": "Through date", "ja": "終了日"},
-  "7 天": {"en": "7 days", "ja": "7 日間"},
-  "30 天": {"en": "30 days", "ja": "30 日間"},
-  "90 天": {"en": "90 days", "ja": "90 日間"},
-  "正在读取官方服务调用记录…": {"en": "Loading official service usage…", "ja": "公式サービスの利用記録を読み込み中…"},
-  "无法读取官方服务调用统计": {"en": "Unable to load official service usage", "ja": "公式サービスの利用統計を読み込めません"},
-  "官方 LLM": {"en": "Official LLM", "ja": "公式 LLM"},
-  "官方 TTS": {"en": "Official TTS", "ja": "公式 TTS"},
-  "今日请求": {"en": "requests today", "ja": "本日のリクエスト"},
-  "今日合成": {"en": "generations today", "ja": "本日の音声生成"},
-  "所选时段": {"en": "Selected period", "ja": "選択期間"},
-  "最早记录": {"en": "Earliest record", "ja": "最初の記録"},
-  "官方服务每日调用明细": {"en": "Daily official service usage details", "ja": "公式サービスの日別利用明細"},
-  "LLM 请求": {"en": "LLM requests", "ja": "LLM リクエスト"},
-  "TTS 合成": {"en": "TTS generations", "ja": "TTS 音声生成"},
-  "未完成": {"en": "Incomplete", "ja": "未完了"},
-  "待确认": {"en": "Pending", "ja": "確認待ち"},
-  "统计口径": {"en": "How usage is counted", "ja": "集計方法"},
-  "按服务已接纳的唯一请求计数，包含免扣费调用。同一请求重试、语音缓存回放不重复计数；自带 API、健康探测和接纳前被拒绝的请求不计入。": {"en": "Counts unique accepted requests, including sponsored calls. Retries and cached audio playback do not count again. Personal APIs, health probes and requests rejected before acceptance are excluded.", "ja": "受理された一意のリクエストを集計し、無料利用も含みます。再試行やキャッシュ音声の再生は重複計上しません。個人 API、ヘルスチェック、受理前の拒否は対象外です。"},
-  "完成表示已有最终用量记录；未完成表示失败或取消并已释放预留；处理中或结果尚未核实的请求列为待确认。跨日请求归入发起日期，状态会随处理结果更新。": {"en": "Completed requests have final usage records. Incomplete requests failed or were cancelled with their reservation released. In-progress or unresolved requests are pending. Requests belong to their start date; statuses update as results arrive.", "ja": "完了は最終利用量が確定したリクエストです。未完了は失敗・取消で予約分が解放されたもの、確認待ちは処理中または結果未確定のものです。開始日で集計し、結果に応じて状態が更新されます。"},
-  "只汇总已有服务记录，不读取对话或语音内容；历史未记录的调用无法补算。": {"en": "Summarizes existing service records without reading conversations or audio. Calls that were never recorded cannot be reconstructed.", "ja": "既存のサービス記録のみを集計し、会話や音声の内容は読み取りません。過去に記録されなかった呼び出しは復元できません。"},
-  "角色卡参考：": {"en":"Character card reference: ","ja":"キャラクターカード参考："},
-  "未载入": {"en":"Not loaded","ja":"未読み込み"},
-  "已带入": {"en":"Included","ja":"反映済み"},
-  "因篇幅限制未带入": {"en":"Omitted due to the length limit","ja":"長さ制限により省略"},
-  "世界书：": {"en":"World book: ","ja":"ワールドブック："},
-  "已带入 {0} 条": {"en":"{0} entries included","ja":"{0} 件を反映"},
-  "已开启，本轮未命中": {"en":"Enabled; no match this turn","ja":"有効・今回は一致なし"},
-  "两个开关分别生效，保存后用于下一轮聊天。世界书按关键词匹配，“始终参考”的条目会直接带入。": {"en":"The switches work independently. Save to apply them to the next turn. World book entries match keywords; constant entries are included automatically.","ja":"2 つの設定は独立しており、保存後の次の会話に反映されます。ワールドブックはキーワードで選び、常時参照の項目は自動で反映します。"},
-  "本轮参考": {"en":"Context for this reply","ja":"今回の参考情報"},
-  "已带入角色、场景与当前对话者。": {"en":"Character, scene and current speaker are included.","ja":"キャラクター、場面、現在の話し相手を反映しています。"},
-  "称呼与明确约定": {"en":"Saved names and agreements","ja":"呼び名と明確な約束"},
-  "世界书": {"en":"World book","ja":"ワールドブック"},
-  "部分可选参考因篇幅限制未带入。": {"en":"Some optional references were omitted to fit the length budget.","ja":"長さ制限により一部の参考情報を省略しました。"},
-  "角色与对话": {"en":"Character and conversation","ja":"キャラクターと会話"},
-  "结局后的日常 · 剧透偏好 · 角色卡与世界书": {"en":"Life after the ending · Spoilers · Character cards and world books","ja":"結末後の日常・ネタバレ設定・キャラクターカード"},
-  "八千代默认生活在电影结局之后：期待日常、创作与相聚，保留原作身份和关系。你的称呼和明确约定来自当前账号的记忆。": {"en":"By default, Yachiyo looks forward to daily life, creativity and reunions after the film, preserving her original identity and relationships. Names and agreements come from memories for the current account.","ja":"八千代は映画の結末後、原作の人物像や関係を保ち、日常や創作、再会を楽しみにしています。呼び名や約束には現在のアカウントの記憶を使います。"},
-  "剧透偏好": {"en":"Spoiler preference","ja":"ネタバレ設定"},
-  "不主动剧透，问到时再聊": {"en":"Avoid spoilers unless asked","ja":"聞かれるまでネタバレしない"},
-  "可以聊结局与身世": {"en":"Allow discussion of the ending and identity","ja":"結末や正体について話してよい"},
-  "希望八千代怎样认识你": {"en":"How should Yachiyo know you?","ja":"八千代に知っておいてほしいこと"},
-  "可选：希望使用的称呼、交流习惯；不要填写密码等敏感信息": {"en":"Optional: preferred name and conversation preferences. Do not enter passwords or sensitive information.","ja":"任意：呼び名や会話の好み。パスワードなどの機密情報は入力しないでください。"},
-  "今天的聊天场景": {"en":"Today's conversation setting","ja":"今日の会話の場面"},
-  "可选：一起讨论新作品，或只是轻松聊聊。留空使用结局后的日常。": {"en":"Optional: discuss a new creation or relax together. Leave blank for daily life after the ending.","ja":"任意：新しい作品の話や雑談など。空欄なら結末後の日常になります。"},
-  "只保存在当前账号的这个浏览器中。长期记忆关闭后，下面“长期记忆”中的记录不会用于聊天；这里主动填写的介绍仍会使用。": {"en":"Saved only for this account in this browser. Disabling long-term memory stops using its records in chat; your introduction here is still used.","ja":"このブラウザの現在のアカウントにのみ保存します。長期記憶をオフにしても、ここで入力した自己紹介は引き続き使います。"},
-  "导入参考角色卡": {"en":"Import a reference card","ja":"参考カードを読み込む"},
-  "导出八千代角色卡": {"en":"Export Yachiyo character card","ja":"八千代のカードを書き出す"},
-  "支持 Character Card V2 JSON。借鉴表达与场景，不替换八千代身份。不会执行扩展脚本，也不会把示例当作你们经历过的对话。": {"en":"Supports Character Card V2 JSON. References preserve Yachiyo's identity. Extension scripts are not executed and examples are never treated as shared experiences.","ja":"Character Card V2 JSON に対応。表現や場面を参考にし、八千代の人物像は維持します。拡張スクリプトは実行せず、例文を実際の会話として扱いません。"},
-  "作者：": {"en":"Creator:","ja":"作者："},
-  "参考说明": {"en":"Reference description","ja":"参考説明"},
-  "可借鉴的性格表达": {"en":"Personality expressions to reference","ja":"参考にする性格表現"},
-  "参考场景": {"en":"Reference scene","ja":"参考場面"},
-  "查看示例（不会发送给模型）": {"en":"View examples (not sent to the model)","ja":"例文を見る（モデルには送信しません）"},
-  "在聊天中参考这张卡": {"en":"Use this card as a chat reference","ja":"会話でこのカードを参考にする"},
-  "启用卡片世界书（": {"en":"Enable card world book (","ja":"カードのワールドブックを有効にする（"},
-  "条）": {"en":" entries)","ja":"件）"},
-  "检查世界书条目": {"en":"Review world book entries","ja":"ワールドブックの項目を確認"},
-  "条目 {0}": {"en":"Entry {0}","ja":"項目 {0}"},
-  "始终参考": {"en":"Always include","ja":"常に参考にする"},
-  "关键词：{0}": {"en":"Keywords: {0}","ja":"キーワード：{0}"},
-  "无": {"en":"None","ja":"なし"},
-  "包含结局或身世剧透": {"en":"Contains ending or identity spoilers","ja":"結末や正体のネタバレを含む"},
-  "世界书内容 {0}": {"en":"World book content {0}","ja":"ワールドブックの内容 {0}"},
-  "移除参考卡": {"en":"Remove reference card","ja":"参考カードを削除"},
-  "预览本轮会参考什么": {"en":"Preview context selection","ja":"今回使う参考情報を確認"},
-  "试写一句话": {"en":"Try a message","ja":"メッセージを試す"},
-  "仅在本机检查编排，不调用模型，不保存聊天。": {"en":"Checks context selection locally without calling a model or saving a conversation.","ja":"この端末で情報の選択だけを確認します。モデルを呼び出さず、会話も保存しません。"},
-  "世界书命中": {"en":"Matched world book entries:","ja":"一致したワールドブック項目："},
-  "条因篇幅限制省略": {"en":" omitted due to the length limit","ja":"件を長さ制限により省略"},
-  "（已缩短）": {"en":" (shortened)","ja":"（短縮済み）"},
-  "保存对话设置": {"en":"Save conversation settings","ja":"会話設定を保存"},
-  "撤销未保存修改": {"en":"Discard unsaved changes","ja":"未保存の変更を破棄"},
-  "对话设置尚未保存，确定离开并放弃这些修改？": {"en":"Conversation settings are not saved. Leave and discard these changes?","ja":"会話設定は未保存です。変更を破棄して移動しますか？"},
-  "请选择不超过 200 KB 的 JSON 角色卡": {"en":"Choose a JSON character card no larger than 200 KB.","ja":"200 KB 以下の JSON キャラクターカードを選択してください。"},
-  "账号已变化，请重新打开对话设置": {"en":"The account changed. Please reopen conversation settings.","ja":"アカウントが変わりました。会話設定を開き直してください。"},
-  "已载入预览并开启角色卡与世界书，保存后用于聊天。": {"en":"Preview loaded with the character reference and world book enabled. Save to use them in chat.","ja":"プレビューを読み込み、キャラクター参考とワールドブックを有効にしました。保存すると会話に反映されます。"},
-  "已保存，下一轮聊天生效。": {"en":"Saved. Changes apply to the next reply.","ja":"保存しました。次の会話から反映されます。"},
-  "已恢复到上次保存的设置。": {"en":"Restored the last saved settings.","ja":"最後に保存した設定に戻しました。"},
-  "关闭好感度": {"en": "Close affinity", "ja": "好感度を閉じる"},
-  "未增加": {"en": "unchanged", "ja": "増加なし"},
-  "互动记录已更新": {"en": "Interaction progress updated", "ja": "交流の記録を更新"},
-  "聊完第一轮，看看这里的变化。": {"en": "Complete your first turn to see progress here.", "ja": "最初の会話を終えると、ここに進捗が表示されます。"},
-  "存档好感度": {"en": "Archived affinity", "ja": "保存時の好感度"},
-  "这里保留写日记时的历史数值。当前好感度可在房间的好感度抽屉查看：完成并保存一轮新对话 +1，每天最多 +10。无需写日记或开启长期记忆；重复内容与重新生成不重复加分。导入旧存档不会覆盖当前互动进度。": {"en": "These are historical diary values. Open the Room affinity drawer for current progress: complete and save a new turn for +1, up to +10 daily. No diary or long-term memory is required. Repeated content and regeneration do not add points. Importing an old archive does not replace current progress.", "ja": "ここは日記作成時の過去の数値です。現在の好感度はお部屋の好感度ドロワーで確認できます。新しい会話の完了・保存で +1、1日最大 +10。日記や長期記憶は不要です。同じ内容や再生成では追加加点されません。古い記録を読み込んでも現在の進捗は変わりません。"},
-  "登录后，完成并保存一轮新对话 +1，每天最多 +10；变化时会短暂提示，点开好感度抽屉可查看当前进度和未加分原因。手机上从房间功能菜单进入，电脑上点击心形按钮。重复内容、重新生成和要求加分不重复计分。无需写日记或开启长期记忆。日记里的数值是历史记录。": {"en": "After signing in, complete and save a new turn for +1, up to +10 daily. A brief notice shows changes; open the affinity drawer for current progress and reasons for no increase. Use the Room tools menu on mobile or the heart button on desktop. Repeated text, regeneration and requests for points do not earn extra points. No diary or long-term memory is required. Diary values are historical.", "ja": "ログイン後、新しい会話を完了・保存すると +1、1日最大 +10。変化は短く通知され、現在の進捗や加点されない理由は好感度ドロワーで確認できます。スマートフォンではお部屋の機能メニュー、パソコンではハートボタンから開きます。同じ内容、再生成、加点の要求では増えません。日記や長期記憶は不要です。日記は過去の記録です。"},
-  "完成并保存一轮新对话 +1，无需开启长期记忆或写日记。共同约定、表达信任经确认后，本轮最多 +2，不重复累加；所有互动每天最多增长 10 点。重复内容、重新生成、要求加分不重复计分，缺席、悲伤和拒绝不扣分。当前分数与本次变化也会显示在聊天界面。": {"en": "Complete and save a new turn for +1 without enabling memory or writing a diary. Confirmed shared plans or trust can raise that turn to +2 total, with a daily limit of 10. Repeated text, regeneration and requests for points do not earn extra points. Absence, sadness and refusal never deduct points. Chat also shows the current score and change.", "ja": "長期記憶や日記なしでも新しい会話の完了・保存で +1。約束や信頼が確認されると、その会話は合計最大 +2、1日最大 10。同じ内容、再生成、加点の要求では増えません。欠席、悲しみ、拒否で減点されません。現在の点数と変化はチャットにも表示されます。"},
-  "星海来信": {"en": "Starlit Letters", "ja": "星の海からの手紙"},
-  "文字与图片": {"en": "Text and images", "ja": "テキストと画像"},
-  "文字": {"en": "Text", "ja": "テキスト"},
-  "Room 可直接发送图片，图片与文字按实际 Token 用量统一计费。": {"en": "Send images directly in Room. Images and text are billed by actual token usage.", "ja": "Room から画像を直接送信できます。画像とテキストは実際のトークン使用量に応じて課金されます。"},
-  "官方语音账单": {"en": "Official voice usage", "ja": "公式音声の利用履歴"},
-  "刷新语音记录": {"en": "Refresh voice history", "ja": "音声履歴を更新"},
-  "¥0.05 / 条 · 与聊天共用网站余额。显示最近 30 条合成记录。": {"en": "¥0.05 per clip · Uses the same site balance as chat. Shows the latest 30 synthesis records.", "ja": "1 件 ¥0.05・チャットと共通のサイト残高を使用。直近 30 件の合成履歴を表示します。"},
-  "正在读取…": {"en": "Loading…", "ja": "読み込み中…"},
-  "暂无语音记录。": {"en": "No voice history yet.", "ja": "音声履歴はまだありません。"},
-  "八千代语音": {"en": "Yachiyo voice", "ja": "ヤチヨの音声"},
-  "暂时无法读取语音账单": {"en": "Voice usage is temporarily unavailable.", "ja": "音声の利用履歴を読み込めません。"},
-  "官方直供 · 八千代语音": {"en": "Official service · Yachiyo voice", "ja": "公式提供・ヤチヨの音声"},
-  "算力在线": {"en": "Service online", "ja": "サービス稼働中"},
-  "检测中": {"en": "Checking", "ja": "確認中"},
-  "算力离线": {"en": "Service offline", "ja": "サービス停止中"},
-  "¥0.05 / 条 · 使用网站余额，无需填写 API 密钥。成功合成后扣费，失败不收费。超级管理员沿用无限额度。": {"en": "¥0.05 per clip · Uses your site balance; no API key needed. Charged only after successful synthesis. Super administrators retain unlimited access.", "ja": "1 件 ¥0.05・サイト残高を使用し、API キーは不要です。合成成功時のみ課金されます。最高管理者は引き続き無制限で利用できます。"},
-  "可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。": {"en": "You can use the official service. It pauses when offline and becomes available again when restored.", "ja": "公式サービスを選択できます。停止中は自動で一時停止し、復旧後に利用を再開できます。"},
-  "当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。": {"en": "Temporarily unavailable. Access resumes when the service is restored. You can also use your configured voice service.", "ja": "現在利用できません。復旧後に自動で利用可能になります。自分で設定した音声サービスも使用できます。"},
-  "每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。": {"en": "Up to 1,000 characters per clip. Replaying a valid cached clip in the same page session is free; the cache lasts up to 24 hours.", "ja": "1 件あたり最大 1,000 文字。同じページセッションで有効なキャッシュを再生しても追加料金はかかりません。キャッシュは最長 24 時間保持されます。"},
-  "正在检测…": {"en": "Checking…", "ja": "確認中…"},
-  "检测算力": {"en": "Check service", "ja": "サービスを確認"},
-  "余额与充值": {"en": "Balance and top-up", "ja": "残高とチャージ"},
-  "正在读取邮件通道与用户…": {"en": "Loading mail service and users…", "ja": "メールサービスとユーザーを読み込み中…"},
-  "邮件通道已就绪 · 使用网站统一邮件样式": {"en": "Mail service ready · Uses the site's email style", "ja": "メールサービス準備完了・サイト共通のメールデザインを使用"},
-  "邮件通道未配置，仍可编辑和预览，配置完成后才能发送。": {"en": "Mail service is not configured. You can edit and preview; sending requires setup.", "ja": "メールサービスが未設定です。編集とプレビューはできますが、送信には設定が必要です。"},
-  "1 · 选择收件人": {"en": "1 · Choose recipients", "ja": "1・宛先を選択"},
-  "勾选用户": {"en": "Select users", "ja": "ユーザーを選択"},
-  "群发给全部匹配用户": {"en": "Send to all matching users", "ja": "一致する全ユーザーに送信"},
-  "搜索用户": {"en": "Search users", "ja": "ユーザーを検索"},
-  "昵称、用户名、邮箱或 ID": {"en": "Display name, username, email or ID", "ja": "表示名、ユーザー名、メールアドレス、ID"},
-  "用户角色": {"en": "User role", "ja": "ユーザー権限"},
-  "所有角色": {"en": "All roles", "ja": "すべての権限"},
-  "普通用户": {"en": "Regular users", "ja": "一般ユーザー"},
-  "仅显示已绑定有效邮箱的用户；相同邮箱只发送一封。": {"en": "Only users with a valid linked email are shown. Each address receives one email.", "ja": "有効なメールアドレスを登録したユーザーのみ表示。同じアドレスには 1 通だけ送信します。"},
-  "正在搜索…": {"en": "Searching…", "ja": "検索中…"},
-  "匹配 {0} 名用户": {"en": "{0} matching users", "ja": "{0} 人のユーザーが一致"},
-  "已勾选 {0} 人": {"en": "{0} users selected", "ja": "{0} 人を選択済み"},
-  "将发送给全部匹配用户，包含其他分页": {"en": "Sends to all matching users, including other pages", "ja": "他のページも含め、一致する全ユーザーに送信します"},
-  "勾选本页": {"en": "Select this page", "ja": "このページを選択"},
-  "选择 {0}": {"en": "Select {0}", "ja": "{0} を選択"},
-  "没有匹配的收件用户": {"en": "No matching recipients", "ja": "一致する宛先がありません"},
-  "收件用户分页": {"en": "Recipient pages", "ja": "宛先のページ切り替え"},
-  "已勾选": {"en": "Selected", "ja": "選択済み"},
-  "人（跨页保留）": {"en": "users (kept across pages)", "ja": "人（ページを移動しても保持）"},
-  "清空选择": {"en": "Clear selection", "ja": "選択を解除"},
-  "移除 {0}": {"en": "Remove {0}", "ja": "{0} を削除"},
-  "2 · 撰写邮件": {"en": "2 · Compose email", "ja": "2・メールを作成"},
-  "邮件主题": {"en": "Email subject", "ja": "件名"},
-  "例如：月读空间本周更新": {"en": "For example: This week at Tsukuyomi Space", "ja": "例：月読空間の今週の更新"},
-  "邮件正文": {"en": "Email body", "ja": "メール本文"},
-  "写下想告诉用户的内容，支持分段与换行。": {"en": "Write your message to users. Paragraphs and line breaks are supported.", "ja": "ユーザーに伝えたい内容を入力。段落と改行を使用できます。"},
-  "按钮链接（选填）": {"en": "Button link (optional)", "ja": "ボタンのリンク（任意）"},
-  "本站路径，例如 /stage": {"en": "A site path, such as /stage", "ja": "サイト内のパス（例：/stage）"},
-  "查看详情": {"en": "View details", "ja": "詳細を見る"},
-  "主题、正文和按钮均可自定义；正文按文本呈现，保留换行。邮件自动使用网站统一横幅和卡片样式。": {"en": "Customize the subject, body and button. The body uses plain text with line breaks. Emails use the site's shared banner and card style.", "ja": "件名、本文、ボタンを変更できます。本文は改行を保持したテキストで表示されます。サイト共通のバナーとカードデザインを使用します。"},
-  "正在生成预览…": {"en": "Generating preview…", "ja": "プレビューを生成中…"},
-  "预览并确认收件人": {"en": "Preview and confirm recipients", "ja": "プレビューと宛先確認"},
-  "发送记录": {"en": "Send history", "ja": "送信履歴"},
-  "刷新记录": {"en": "Refresh history", "ja": "履歴を更新"},
-  "显示最近 30 批邮件。“已提交”表示邮件服务接收，不代表已进入收件箱；结果待核实的邮件不会自动重发。": {"en": "Shows the latest 30 batches. Submitted means the mail service accepted the email, not that it reached the inbox. Unconfirmed results are not retried automatically.", "ja": "直近 30 件の一括送信を表示。「送信受付済み」はメールサービスが受け付けたことを示し、受信箱への到着を保証しません。結果未確認のメールは自動再送されません。"},
-  "还没有发送记录": {"en": "No send history yet", "ja": "送信履歴はまだありません"},
-  "· 已提交": {"en": "· Submitted", "ja": "・送信受付済み"},
-  "· 失败": {"en": "· Failed", "ja": "・失敗"},
-  "· 待核实": {"en": "· Unconfirmed", "ja": "・未確認"},
-  "· 跳过": {"en": "· Skipped", "ja": "・スキップ"},
-  "· 取消": {"en": "· Cancelled", "ja": "・キャンセル"},
-  "发送进度": {"en": "Send progress", "ja": "送信の進捗"},
-  "查看明细": {"en": "View breakdown", "ja": "内訳を見る"},
-  "停止剩余发送": {"en": "Stop remaining sends", "ja": "残りの送信を停止"},
-  "发送明细": {"en": "Send details", "ja": "送信の詳細"},
-  "· 发送明细": {"en": "· Send details", "ja": "・送信の詳細"},
-  "个邮箱": {"en": "email addresses", "ja": "件のメールアドレス"},
-  "发送明细分页": {"en": "Send detail pages", "ja": "送信詳細のページ切り替え"},
-  "确认邮件与收件人": {"en": "Confirm email and recipients", "ja": "メールと宛先を確認"},
-  "返回编辑": {"en": "Back to editing", "ja": "編集に戻る"},
-  "本批将发送给": {"en": "This batch will be sent to", "ja": "この一括送信の宛先"},
-  "查看收件邮箱": {"en": "View recipient addresses", "ja": "宛先アドレスを確認"},
-  "（前 20 个）": {"en": "(first 20)", "ja": "（先頭 20 件）"},
-  "邮件样式预览": {"en": "Email preview", "ja": "メールのプレビュー"},
-  "每位收件人收到独立邮件，不会看到其他人的邮箱。确认后后台继续发送，关闭页面不影响进度。": {"en": "Each recipient receives a separate email and cannot see other addresses. Sending continues in the background after confirmation, even if you close this page.", "ja": "各宛先に個別のメールを送信し、他の人のアドレスは表示されません。確認後はバックグラウンドで送信を続け、ページを閉じても進行します。"},
-  "正在提交…": {"en": "Submitting…", "ja": "送信処理中…"},
-  "确认发送给 {0} 个邮箱": {"en": "Confirm sending to {0} addresses", "ja": "{0} 件のアドレスに送信する"},
-  "手动勾选用户": {"en": "Manually selected users", "ja": "手動で選択したユーザー"},
-  "匹配用户 · {0} · {1}": {"en": "Matching users · {0} · {1}", "ja": "一致するユーザー・{0}・{1}"},
-  "全部用户": {"en": "All users", "ja": "全ユーザー"},
-  "已提交 {0} 个邮箱，发送将在后台继续，可在下方查看进度。": {"en": "Submitted {0} addresses. Sending continues in the background; view progress below.", "ja": "{0} 件のアドレスを受け付けました。バックグラウンドで送信を続けます。進捗は下で確認できます。"},
-  "{0}。可再次点击确认，重复确认不会重复发送本批邮件。": {"en": "{0}. You can confirm again; repeated confirmation will not send this batch twice.", "ja": "{0}。もう一度確認を押せます。同じ一括送信を重複して送ることはありません。"},
-  "已停止尚未开始的邮件，正在发送的邮件会记录最终结果。": {"en": "Emails that have not started are stopped. In-progress emails will record their final results.", "ja": "未送信のメールを停止しました。送信中のメールは最終結果を記録します。"},
-  "进度刷新失败：{0}": {"en": "Could not refresh progress: {0}", "ja": "進捗を更新できません：{0}"},
-  "当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。": {"en": "This site model does not support images. Choose an image-capable model or enable MCP image recognition in settings.", "ja": "現在のサイト提供モデルは画像に対応していません。画像対応モデルを選ぶか、設定で MCP 画像認識を選択してください。"},
-  "审核待处理的瓶子和回信。命中关键词不代表内容违规。": {"en": "Review pending bottles and replies. A keyword match does not itself mean a violation.", "ja": "審査待ちの瓶と返信を確認します。キーワードの一致だけで違反とは限りません。"},
-  "回信": {"en": "Reply", "ja": "返信"},
-  "· 所属瓶子 #": {"en": "· Bottle #", "ja": "・対象の瓶 #"},
-  "关键词：": {"en": "Keywords:", "ja": "キーワード："},
-  "用户举报，原对话已关闭": {"en": "Reported by a user; the conversation is closed", "ja": "ユーザーからの通報により会話は終了しています"},
-  "没有匹配的待审内容": {"en": "No matching pending content", "ja": "一致する審査待ちの内容がありません"},
-  "暂无待审核的漂流瓶或回信": {"en": "No bottles or replies awaiting review", "ja": "審査待ちの瓶や返信はありません"},
-  "内容包含外部链接：{0}。确认通过？": {"en": "This content includes external links: {0}. Approve it?", "ja": "外部リンクが含まれています：{0}。承認しますか？"},
-  "漂流瓶内容已通过": {"en": "Bottle content approved", "ja": "漂流瓶の内容を承認しました"},
-  "漂流瓶内容已拒绝": {"en": "Bottle content rejected", "ja": "漂流瓶の内容を却下しました"},
-  "今日任务已完成，+{0} 经验": {"en": "Daily task completed, +{0} XP", "ja": "今日のタスク完了、経験値 +{0}"},
-  "打开任意文章，点击点赞或收藏即可完成。": {"en": "Open any article and like or bookmark it to complete the task.", "ja": "記事を開いて「いいね」またはブックマークすると完了します。"},
-  "支持文字、图片与工具调用。图片会自动压缩，按实际 Token 用量计费。": {"en": "Supports text, images and tool calls. Images are compressed automatically and billed by actual token usage.", "ja": "テキスト、画像、ツール呼び出しに対応。画像は自動圧縮され、実際のトークン使用量に応じて課金されます。"},
-  "支持文字聊天和工具调用；图片请配合 MCP 识图。": {"en": "Supports text chat and tool calls; use MCP image recognition for images.", "ja": "テキストチャットとツール呼び出しに対応。画像には MCP 画像認識を利用してください。"},
-  "官方语音使用网站余额，每条成功合成的语音收费 0.05 元。": {"en": "Official voice uses your site balance and costs ¥0.05 per successfully synthesized clip.", "ja": "公式音声はサイト残高を使用し、合成に成功した音声 1 件につき ¥0.05 かかります。"},
-  "官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。": {"en": "The official voice speaks Japanese. Chinese replies are first translated by your current chat model, billed under that model's pricing.", "ja": "公式音声は日本語で読み上げます。中国語の返信は現在のチャットモデルで先に日本語へ翻訳し、そのモデルの料金規則に従って課金されます。"},
-  "官方语音需要登录账号。": {"en": "Sign in to use official voice.", "ja": "公式音声の利用にはログインが必要です。"},
-  "前往登录": {"en": "Go to sign-in", "ja": "ログインへ"},
-  "正在合成…": {"en": "Synthesizing…", "ja": "音声合成中…"},
-  "保存并试听 · ¥0.05": {"en": "Save and preview · ¥0.05", "ja": "保存して試聴・¥0.05"},
-  "仅保存设置": {"en": "Save settings only", "ja": "設定のみ保存"},
-  "官方直供 · ¥0.05 / 条": {"en": "Official service · ¥0.05 per clip", "ja": "公式提供・1 件 ¥0.05"},
-  "请登录后使用官方语音": {"en": "Sign in to use official voice", "ja": "公式音声を使うにはログインしてください"},
-  "设置已保存，算力恢复在线后可继续使用": {"en": "Settings saved. You can resume when the service is online.", "ja": "設定を保存しました。サービス復旧後に利用を再開できます"},
-  "官方语音设置已保存": {"en": "Official voice settings saved", "ja": "公式音声の設定を保存しました"},
-  "请登录并等待官方算力上线后再试听": {"en": "Sign in and wait for the official service to come online before previewing.", "ja": "ログインし、公式サービスが稼働してから試聴してください"},
-  "官方语音试听": {"en": "Official voice preview", "ja": "公式音声の試聴"},
-  "正在合成八千代语音…": {"en": "Synthesizing Yachiyo's voice…", "ja": "ヤチヨの音声を合成中…"},
-  "成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。": {"en": "Charged ¥0.05 per successful clip; failures are free. Replaying valid cached audio incurs no extra charge.", "ja": "合成成功時に 1 件 ¥0.05 を課金し、失敗時は課金しません。有効なキャッシュの再試聴には追加料金はかかりません。"},
-  "发送邮件": {"en": "Send email", "ja": "メールを送信"},
-  "自定义邮件、筛选收件人和查看群发进度": {"en": "Customize emails, filter recipients and track batch progress", "ja": "メールの編集、宛先の絞り込み、一括送信の進捗確認"},
-  "该 QQ 或当前账号已有其他绑定，请检查后重试": {"en": "This QQ or site account already has another binding. Check it and try again.", "ja": "この QQ または現在のアカウントには別の連携があります。確認してから再試行してください"},
-  "QQ 绑定未完成，请重新授权": {"en": "QQ linking did not complete. Authorize again.", "ja": "QQ の連携が完了しませんでした。再度認証してください"},
-  "月读空间 Google Play 测试申请": {"en": "Tsukuyomi Space Google Play test application", "ja": "月読空間 Google Play テスト参加申請"},
-  "申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。": {"en": "Apply for the Tsukuyomi Space Android closed test and read how to join on Google Play, install the app and submit feedback.", "ja": "月読空間 Android クローズドテストに申請し、Google Play での参加、アプリのインストール、フィードバック方法を確認できます。"},
-  "Google Play 测试申请管理": {"en": "Google Play test applications", "ja": "Google Play テスト申請の管理"},
-  "请登录后重新保存官方语音设置。": {"en": "Sign in and save your official voice settings again.", "ja": "ログインして公式音声の設定を保存し直してください。"},
-  "官方语音暂不可用": {"en": "Official voice is temporarily unavailable", "ja": "公式音声は現在利用できません"},
-  "官方语音算力离线，未发起翻译或合成，请稍后重试。": {"en": "Official voice is offline. No translation or synthesis was started. Try again later.", "ja": "公式音声は停止中です。翻訳も合成も開始していません。しばらくしてから再試行してください。"},
-  "语音文本为空，未发起合成。": {"en": "Voice text is empty. Synthesis was not started.", "ja": "読み上げるテキストが空のため、合成を開始していません。"},
-  "语音仍在处理中，请稍后再次点击，同一请求不会重复扣费。": {"en": "Audio is still processing. Try again shortly; the same request will not be charged twice.", "ja": "音声を処理中です。しばらくしてからもう一度押してください。同じリクエストに重複課金はしません。"},
-  "暂时无法读取语音，请重试；缓存有效期内不会重复扣费。": {"en": "Audio could not be loaded. Try again; valid cached audio will not be charged twice.", "ja": "音声を読み込めません。再試行してください。キャッシュの有効期間内は重複課金されません。"},
-  "附加文字审核关键词": {"en":"Additional text review keywords","ja":"追加のテキスト審査キーワード"},
-  "附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。": {"en":"Custom rules always extend the baseline rules. Flagged messages await review; other flagged public text must be revised before publishing.","ja":"追加ルールは常に基本ルールに加算されます。該当するメッセージは審査待ちとなり、その他の公開テキストは修正後に投稿してください。"},
-  "每行一个或用逗号分隔。附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。": {"en":"One per line or comma-separated. Custom rules always extend the baseline rules. Flagged messages await review; other flagged public text must be revised before publishing.","ja":"1行に1件、またはカンマで区切ってください。追加ルールは常に基本ルールに加算されます。該当するメッセージは審査待ちとなり、その他の公開テキストは修正後に投稿してください。"},
-  "文字内容包含需审核的内容，请修改后再发布。原有内容保持不变。": {"en":"This text requires moderation. Please revise it before publishing. Your previously saved content has not changed.","ja":"審査が必要なテキストが含まれています。修正してから投稿してください。保存済みの内容は変更されていません。"},
-"月下漂流瓶": {"en":"Moonlit bottles","ja":"月夜の漂流瓶"},
-"漂流瓶": {"en":"Drift bottles","ja":"漂流瓶"},
-"漂流瓶审核": {"en":"Bottle moderation","ja":"漂流瓶の審査"},
-"潮水还没带来新的瓶子，稍后再来看看。": {"en":"No bottles on this tide. Come back a little later.","ja":"今は瓶がありません。また後で。"},
-  "游戏中心": {"en": "Game Center", "ja": "ゲームセンター"},
-  "和八千代下一局五子棋，或挑战辉夜快跑。": {"en": "Play Gomoku with Yachiyo or try Kaguya Run.", "ja": "ヤチヨと五目並べ、またはかぐやランで遊ぼう。"},
-  "和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。": {"en": "Play Moonlit Gomoku with Yachiyo, or follow the rhythm and challenge your score in Kaguya Run.", "ja": "ヤチヨと月下の五目並べを楽しんだり、かぐやランでリズムとスコアに挑戦しよう。"},
-  "月下五子棋 · 和八千代一起": {"en": "Moonlit Gomoku with Yachiyo", "ja": "月下の五目並べ・ヤチヨと一緒に"},
-  "和八千代对弈五子棋，支持先后手、难度选择、悔棋、提示和本地续局。": {"en": "Play Gomoku with Yachiyo. Choose your color and difficulty, undo turns, get hints and resume locally.", "ja": "ヤチヨと五目並べ。先後手・難しさの選択、一手戻す、ヒント、対局の再開に対応。"},
-  "先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。": {"en":"Finish chat setup, then send a message below. Once a reply arrives, keep chatting; voice can be enabled later.","ja":"チャットを設定し、下の欄から話しかけてみましょう。返信が届いたら会話を続けられます。音声は後から設定できます。"},
-  "第一次使用 / 发现功能": {"en":"Getting started / Discover features","ja":"使い方・機能を見つける"},
-  "当前好感度": {"en":"Current affinity","ja":"現在の好感度"},
-  "· 存档": {"en":"· Save slot","ja":"・セーブ"},
-  "· 如何变化？": {"en":"· How does it change?","ja":"・変化のしくみ"},
-  "好感度来自当前日记存档。结束聊天并成功生成、保存日记后，会记录本次好感度；不会按消息条数或点击角色次数自动增加，也可能保持不变。导入或同步存档后，数值可能改变。": {"en":"Affinity comes from the current diary save. It is recorded when a diary is successfully generated and saved after a chat. It does not increase with each message or character tap, and may stay unchanged. Importing or syncing saves may change the value.","ja":"好感度は現在の日記セーブに記録されています。会話を終えて日記の生成・保存が成功すると記録されます。メッセージ数やタップ回数では自動的に増えず、変わらないこともあります。セーブのインポートや同期で変わる場合があります。"},
-  "最近记录：{0} {1}": {"en":"Latest record: {0} {1}","ja":"最新の記録：{0} {1}"},
-  "还没有生成日记。先聊几句，再使用“结束并写日记”。": {"en":"No diary yet. Chat for a while, then choose “End and write diary”.","ja":"日記はまだありません。少し会話してから「終了して日記を書く」を選びましょう。"},
-  "第一次来，先和八千代聊起来": {"en":"New here? Start a chat with Yachiyo","ja":"はじめての方へ。八千代と話してみましょう"},
-  "跟着三步完成：选择聊天服务 → 测试并保存 → 发出第一句话。站内直供需要登录账号与可用额度；也可以连接自己的服务。语音和其他设置可以稍后再做。": {"en":"Three steps: choose a chat service → test and save → send your first message. Site supply requires a signed-in account and available credit; you can also connect your own service. Voice and other settings can wait.","ja":"3ステップ：サービスを選ぶ → テストして保存 → 最初のメッセージを送信。サイト提供モデルにはログインと利用可能な残高が必要です。自分のサービスにも接続できます。音声などは後から設定できます。"},
-  "开始分步配置": {"en":"Start guided setup","ja":"順番に設定する"},
-  "先看看能做什么": {"en":"Explore what you can do","ja":"できることを見る"},
-  "角色加载失败：": {"en":"Character failed to load:","ja":"キャラクターの読み込みに失敗："},
-  "。文字聊天仍可使用；请重新进入房间重试。": {"en":". Text chat is still available; re-enter the room to retry.","ja":"。テキストチャットは利用できます。部屋に入り直して再試行してください。"},
-  "角色尚未就绪，请等待加载完成。": {"en":"The character is not ready yet. Please wait for loading to finish.","ja":"キャラクターの準備中です。読み込み完了までお待ちください。"},
-  "已发送“{0}”动作，请观察角色；文字聊天与语音分别运行。": {"en":"Sent “{0}”. Watch the character; text chat and voice run separately.","ja":"「{0}」を送信しました。キャラクターを確認してください。チャットと音声は個別に動きます。"},
-  "这个动作暂时不可用，请尝试其他动作。": {"en":"This action is currently unavailable. Try another one.","ja":"この動作は現在利用できません。別の動作をお試しください。"},
-  "舞台使用指引": {"en":"Stage guide","ja":"ステージの使い方"},
-  "第一次玩舞台？": {"en":"First time on the stage?","ja":"ステージは初めてですか？"},
-  "① 等待角色就绪 → ② 点一次“试试点头” → ③ 再尝试 AI 演出。": {"en":"① Wait for the character → ② Try a nod → ③ Try an AI performance.","ja":"① キャラクターを待つ → ② うなずきを試す → ③ AIの演出を試す。"},
-  "角色加载失败，请重新进入舞台重试。文字输出不代表动作已执行。": {"en":"Character loading failed. Re-enter the stage to retry. Text output does not confirm that an action ran.","ja":"キャラクターの読み込みに失敗しました。ステージに入り直してください。文字が出ても動作が実行されたとは限りません。"},
-  "角色已就绪，可以试表情和动作。": {"en":"Character ready. Try an expression or motion.","ja":"準備ができました。表情や動作を試せます。"},
-  "正在加载角色，动作按钮将在就绪后开放。": {"en":"Loading the character. Action buttons will become available when ready.","ja":"キャラクターを読み込み中です。準備ができると動作ボタンを使えます。"},
-  "试试点头": {"en":"Try a nod","ja":"うなずきを試す"},
-  "有文字，却没动作或声音？": {"en":"Text appears, but no motion or sound?","ja":"文字は出るのに動きや音がない？"},
-  "文字、动作与语音分别运行。先用点头按钮检查角色；AI 演出需要配置聊天模型，声音还需要语音服务。没有声音时也可以先试动作。": {"en":"Text, motion and voice run separately. Try a nod to check the character. AI performances need a chat model, and sound needs a voice service. You can try motions without sound.","ja":"文字・動作・音声は個別に動きます。うなずきでキャラクターを確認しましょう。AI演出にはチャットモデル、音声には音声サービスが必要です。音がなくても動作は試せます。"},
-  "配置聊天模型": {"en":"Set up a chat model","ja":"チャットモデルを設定"},
-  "语音与其他设置": {"en":"Voice and other settings","ja":"音声などの設定"},
-  "角色还未就绪，请先等待加载完成。": {"en":"The character is not ready. Wait for loading to finish.","ja":"キャラクターの準備ができていません。読み込みをお待ちください。"},
-  "点头指令已发送，请观察上方角色。如果没有动作，请重新进入舞台后重试。": {"en":"Nod command sent. Watch the character above. If nothing moves, re-enter the stage and retry.","ja":"うなずき指令を送信しました。上のキャラクターを確認してください。動かない場合はステージに入り直して再試行してください。"},
-  "动作暂时不可用，请重试。": {"en":"Action unavailable. Please retry.","ja":"動作を利用できません。もう一度お試しください。"},
-  "开始使用与发现功能": {"en":"Getting started and discovering features","ja":"使い方と機能ガイド"},
-  "首次聊天配置": {"en":"First chat setup","ja":"初めてのチャット設定"},
-  "第一次聊天，跟着这三步就好": {"en":"Your first chat in three steps","ja":"3ステップで最初の会話へ"},
-  "语音、记忆和外观可以稍后设置。当前填写的内容会保留到你离开页面。": {"en":"Voice, memory and appearance can wait. Your draft stays here until you leave the page.","ja":"音声・記憶・外観は後から設定できます。ページを離れるまでは入力内容が保持されます。"},
-  "查看全部设置": {"en":"View all settings","ja":"すべての設定を表示"},
-  "接下来，确认能收到回复": {"en":"Next, check that you can receive a reply","ja":"次に、返信が届くか確認しましょう"},
-  "当前模型：": {"en":"Current model:","ja":"現在のモデル："},
-  "。测试会调用所选服务，可能产生用量；不会自动发送聊天。": {"en":". Testing calls the selected service and may incur usage. No chat is sent automatically.","ja":"。テストでは選択したサービスを呼び出し、利用量が発生する場合があります。チャットは自動送信されません。"},
-  "通过后点击“保存，去说第一句话”。也可以跳过测试，保存后直接尝试聊天。": {"en":"After a successful test, choose “Save and send your first message”. You can also skip testing and try chatting after saving.","ja":"テスト成功後は「保存して最初のメッセージへ」を選びましょう。テストを省略して保存後に会話を試すこともできます。"},
-  "请查看测试结果中的原因。可以回到上一步修改信息，或保留设置后稍后重试。": {"en":"Check the reason in the test result. Go back to edit your details, or keep the settings and retry later.","ja":"テスト結果の原因を確認してください。前のステップで情報を修正するか、設定を保存して後で再試行できます。"},
-  "信息已填写，可以继续": {"en":"Details entered. You can continue.","ja":"入力済みです。次へ進めます。"},
-  "请填写当前服务所需的信息": {"en":"Enter the details required by this service","ja":"このサービスに必要な情報を入力してください"},
-  "选择适合你的连接方式": {"en":"Choose a connection method that works for you","ja":"接続方法を選んでください"},
-  "上一步": {"en":"Back","ja":"戻る"},
-  "下一步": {"en":"Next","ja":"次へ"},
-  "保存，去说第一句话": {"en":"Save and send your first message","ja":"保存して最初のメッセージへ"},
-  "跳过测试并保存": {"en":"Skip testing and save","ja":"テストを省略して保存"},
-  "月读空间 · 随时可以回来看看": {"en":"Tsukuyomi Space · Come back to this guide anytime","ja":"月読空間・いつでもこのガイドを開けます"},
-  "关闭使用指南": {"en":"Close getting-started guide","ja":"使い方ガイドを閉じる"},
-  "先和八千代说句话": {"en":"Say something to Yachiyo","ja":"八千代に話しかけてみましょう"},
-  "选择聊天服务": {"en":"Choose a chat service","ja":"チャットサービスを選ぶ"},
-  "使用站内账号与可用余额，或连接自己的云端／本机模型。": {"en":"Use your site account and available credit, or connect your own cloud or local model.","ja":"サイトアカウントと利用可能な残高を使うか、自分のクラウド・ローカルモデルを接続します。"},
-  "测试连接并保存": {"en":"Test and save the connection","ja":"接続をテストして保存"},
-  "测试通过后保存。测试会调用所选服务，可能产生用量；语音和其他设置可以稍后再做。": {"en":"Save after testing. Tests call the selected service and may incur usage. Voice and other settings can wait.","ja":"テスト後に保存します。テストでは選択したサービスを呼び出し、利用量が発生する場合があります。音声などは後から設定できます。"},
-  "回到聊天，发送一句话": {"en":"Return to chat and send a message","ja":"チャットに戻って話しかける"},
-  "收到完整回复，才算完成首次对话。没有声音时也可以继续文字聊天。": {"en":"Your first conversation is complete when a full reply arrives. You can keep chatting without sound.","ja":"完全な返信が届いたら、最初の会話は完了です。音声がなくてもチャットは続けられます。"},
-  "你已完成一轮对话，可以继续聊天或探索下面的功能。": {"en":"You have completed a conversation. Keep chatting or explore the features below.","ja":"会話を1往復できました。そのまま話したり、下の機能を試したりできます。"},
-  "聊天设置已填写，接下来发送一句话，确认能收到回复。": {"en":"Chat settings are filled in. Send a message next to check that a reply arrives.","ja":"チャット設定は入力済みです。次に話しかけて、返信が届くか確認しましょう。"},
-  "还没有完成聊天设置，先跟着步骤连接一个模型。": {"en":"Chat setup is not complete. Follow the steps to connect a model.","ja":"チャット設定がまだ完了していません。手順に沿ってモデルを接続しましょう。"},
-  "去说第一句话": {"en":"Send your first message","ja":"最初のメッセージへ"},
-  "查看配置步骤": {"en":"View setup steps","ja":"設定手順を見る"},
-  "还可以做这些": {"en":"More things to try","ja":"ほかにもできること"},
-  "好感度为什么没有变化？": {"en":"Why has affinity not changed?","ja":"好感度が変わらないのはなぜ？"},
-  "好感度来自当前日记存档，不按发消息条数或点击角色次数自动增加。结束聊天并成功生成、保存日记后，会记录本次好感度；数值也可能保持不变。导入或同步其他存档后，显示值可能改变。": {"en":"Affinity comes from the current diary save; it does not increase with message counts or character taps. After a chat ends and a diary is successfully generated and saved, affinity is recorded and may stay unchanged. Importing or syncing other saves can change the displayed value.","ja":"好感度は現在の日記セーブに記録され、メッセージ数やタップ回数では増えません。会話を終えて日記の生成・保存に成功すると記録され、変わらない場合もあります。別のセーブのインポートや同期で表示値が変わることがあります。"},
-  "查看日记与当前存档": {"en":"View diary and current save","ja":"日記と現在のセーブを見る"},
-  "有文字，但角色没有反应？": {"en":"Text appears, but the character does not respond?","ja":"文字は出るのにキャラクターが反応しない？"},
-  "文字回复、角色动作和语音是分别运行的。先等角色加载完成，在舞台试一次“点头”；仍无反应时查看角色加载提示。只有开启并配置语音后才会发声，不是每条文字都会带动作。": {"en":"Text replies, character motions and voice run separately. Wait for the character to load, then try a nod on the stage. If nothing moves, check the loading message. Sound requires voice to be configured and enabled; not every reply includes a motion.","ja":"返信・動作・音声は個別に動きます。読み込み後にステージでうなずきを試し、動かない場合は読み込み表示を確認してください。音声には設定と有効化が必要です。すべての返信に動作が付くわけではありません。"},
-  "去舞台检查": {"en":"Check on the stage","ja":"ステージで確認"},
-  "跟着音乐跑一局，进入后查看键盘或触屏操作。": {"en":"Play along with the music. Check keyboard or touch controls after entering.","ja":"音楽に合わせて遊びましょう。入場後にキーボード・タッチ操作を確認できます。"},
-  "Live2D 舞台": {"en":"Live2D stage","ja":"Live2D ステージ"},
-  "先试表情和动作，无需聊天模型；AI 演出与语音另行配置。": {"en":"Try expressions and motions without a chat model. AI performances and voice need separate setup.","ja":"モデル設定なしで表情や動作を試せます。AI演出と音声には別の設定が必要です。"},
-  "月读广场": {"en":"Tsukuyomi Plaza","ja":"月読広場"},
-  "看看同好在聊什么，登录后留言、回复或参与话题。": {"en":"See what other fans are discussing. Sign in to post, reply or join a topic.","ja":"ファン同士の会話をのぞいてみましょう。ログインすると投稿・返信・話題への参加ができます。"},
-  "作品百科": {"en":"Story encyclopedia","ja":"作品百科"},
-  "查找角色、故事与音乐，继续回味作品。": {"en":"Explore characters, stories and music to revisit the work.","ja":"キャラクター・物語・音楽を調べて、作品を振り返りましょう。"},
-  "浏览大家分享的图片，找到喜欢的作品。": {"en":"Browse shared images and find works you like.","ja":"共有された画像を眺めて、好きな作品を見つけましょう。"},
-  "查看签到、任务与等级；这里的等级与日记好感度分开记录。": {"en":"View check-ins, tasks and levels. Levels are recorded separately from diary affinity.","ja":"チェックイン・タスク・レベルを確認できます。レベルと日記の好感度は別々に記録されます。"},
-  "访问主舞台": { "en": "Visit the Stage", "ja": "ステージを開く" },
-  "参考内容与真实曝光反馈，给新作、低曝光作品和优质旧文留出位置；任务帖后置。": { "en": "Content and feedback after real exposure make room for new, less-seen and valuable older work. Task posts appear later.", "ja": "内容と実際の表示後の反応を参考に、新作・未発見の作品・良質な過去作を紹介。タスク投稿は後方に表示します。" },
-  "模型响应超时，原对话已保留，请稍后重试。": { "en": "The model timed out. Your conversation is kept; try again later.", "ja": "モデルの応答がタイムアウトしました。会話は保持されています。後で再試行してください。" },
-  "登录已失效，请重新登录后使用站内直供。": { "en": "Your session expired. Sign in again to use site models.", "ja": "ログインの有効期限が切れました。再ログインしてサイトのモデルを利用してください。" },
-  "网站余额不足，请前往支付页面充值后重试。": { "en": "Your site balance is insufficient. Top up on the payment page, then retry.", "ja": "サイト残高が不足しています。支払いページでチャージしてから再試行してください。" },
-  "正在等待模型完成日记，原对话会保留到保存成功。": { "en": "Waiting for the model to finish the diary. Your conversation stays until saving succeeds.", "ja": "モデルが日記を書き終えるのを待っています。保存が完了するまで元の会話は保持されます。" },
-  "日记同步未完成：{0}": { "en": "Diary sync did not complete: {0}", "ja": "日記の同期が完了しませんでした：{0}" },
-  "原对话已保留，可以稍后重试。": { "en": "Your conversation is kept. You can retry later.", "ja": "元の会話は保持されています。後で再試行できます。" },
-  "日记回复中断，未保存未完成的内容，原对话已保留。": { "en": "The diary response was interrupted. Incomplete content was not saved; your conversation is kept.", "ja": "日記の応答が中断されました。未完成の内容は保存されず、元の会話は保持されています。" },
-  "更换访问密钥": { "en": "Replace access credentials", "ja": "アクセスキーを変更" },
-  "访问密钥已配置。保存其他设置会保留现有密钥；需要更换时再勾选并填写。": { "en": "Access credentials are configured. Saving other settings preserves them. Enable replacement only when you need to change them.", "ja": "アクセスキーは設定済みです。他の設定を保存しても既存のキーを保持します。変更するときだけ選択して入力してください。" },
-  "尚未配置访问密钥，请勾选“更换访问密钥”后填写。": { "en": "No access credentials are configured. Enable replacement, then enter them.", "ja": "アクセスキーが未設定です。「アクセスキーを変更」を選択して入力してください。" },
-  "新的 AccessKey Secret": { "en": "New AccessKey Secret", "ja": "新しい AccessKey Secret" },
-  "填写阿里云 AccessKey Secret，不是网站登录密码": { "en": "Enter your Alibaba Cloud AccessKey Secret, not your site password", "ja": "サイトのパスワードではなく、Alibaba Cloud の AccessKey Secret を入力してください" },
-  "更换访问密钥时，请完整填写 AccessKey ID 和 AccessKey Secret": { "en": "To replace credentials, enter both AccessKey ID and AccessKey Secret", "ja": "キーを変更する場合は AccessKey ID と AccessKey Secret を両方入力してください" },
-  "支付成功后按实付金额充值到网站余额": { "en": "Credit the actual payment to the site wallet after payment succeeds", "ja": "支払い成功後、実際の支払額をサイト残高にチャージ" },
-  "充值商品验签后自动入账，其他服务按商品说明交付": { "en": "Top-ups are credited after signature verification; other services follow the product description", "ja": "チャージ商品は署名検証後に自動入金し、その他のサービスは商品説明に従います" },
-  "网站统一余额": { "en": "Shared site wallet", "ja": "サイト共通残高" },
-  "网站余额": { "en": "Site balance", "ja": "サイト残高" },
-  "超级管理员不限余额，官方 API 用量正常记录，免扣充值余额。": { "en": "Super admins have unlimited access. API usage is recorded without deducting the prepaid balance.", "ja": "最高管理者は残高制限なしです。API 使用量は記録されますが、チャージ残高からは引かれません。" },
-  "可用 ¥": { "en": "Available ¥", "ja": "利用可能 ¥" },
-  "· 账面 ¥": { "en": "· Balance ¥", "ja": "· 残高 ¥" },
-  "· 待结算冻结 ¥": { "en": "· Held for settlement ¥", "ja": "· 精算待ち保留 ¥" },
-  "充值到账后可直接用于官方 API，所有页面共用这份余额。冻结金额尚未扣费。": { "en": "Top-ups can be used for the official API. All pages share this wallet. Held funds have not been charged.", "ja": "チャージ後は公式 API に使え、すべてのページで残高を共有します。保留金額はまだ課金されていません。" },
-  "官方 API 中心": { "en": "Official API center", "ja": "公式 API センター" },
-  "已充值 ¥{0} 到网站余额。": { "en": "¥{0} has been credited to your site wallet.", "ja": "サイト残高に ¥{0} をチャージしました。" },
-  "支付成功后充值 ¥": { "en": "After payment, credit ¥", "ja": "支払い後に ¥" },
-  "到网站余额。": { "en": " to your site wallet.", "ja": " をサイト残高にチャージします。" },
-  "选择连接方式": { "en": "Choose a connection", "ja": "接続方法を選択" },
-  "选择站内模型": { "en": "Choose a site model", "ja": "サイトのモデルを選択" },
-  "填写本机模型": { "en": "Enter a local model", "ja": "ローカルモデルを入力" },
-  "站内直供": { "en": "Site-hosted models", "ja": "サイト提供モデル" },
-  "账号直接使用 · 统一余额计费": { "en": "Use your account · Shared wallet", "ja": "アカウントで利用 · 共通残高" },
-  "用月读空间账号直接聊天": { "en": "Chat with your Tsukuyomi account", "ja": "月読空間のアカウントでチャット" },
-  "超级管理员不限额度": { "en": "Unlimited for super admins", "ja": "最高管理者は上限なし" },
-  "可用余额 ¥{0}": { "en": "Available balance ¥{0}", "ja": "利用可能残高 ¥{0}" },
-  "登录后读取可用模型，使用网站现有余额；无需购买或填写服务商密钥。": { "en": "Sign in to load available models and use your site balance. No provider key is needed.", "ja": "ログインして利用可能なモデルとサイトの残高を使えます。提供元のキーは不要です。" },
-  "每百万 Token：输入 ¥": { "en": "Per million tokens: input ¥", "ja": "100万トークンあたり：入力 ¥" },
-  "，缓存输入 ¥": { "en": ", cached input ¥", "ja": "、キャッシュ入力 ¥" },
-  "，输出 ¥": { "en": ", output ¥", "ja": "、出力 ¥" },
-  "。按实际用量结算，测试连接也会产生用量。": { "en": ". Billed by actual usage, including connection tests.", "ja": "。実際の使用量で精算され、接続テストも使用量に含まれます。" },
-  "单次输出上限": { "en": "Output limit per request:", "ja": "1回の出力上限：" },
-  "Token；当前直供支持文字聊天和工具调用，图片请配合 MCP 识图。": { "en": "tokens. Text chat and tools are supported; use MCP for images.", "ja": "トークン。テキストとツールに対応し、画像には MCP を使います。" },
-  "余额与支付": { "en": "Balance & payments", "ja": "残高と支払い" },
-  "直供控制台": { "en": "Model service console", "ja": "モデルサービス管理" },
-  "登录账号": { "en": "Sign in", "ja": "ログイン" },
-  "正在加载站内模型…": { "en": "Loading site models…", "ja": "サイトのモデルを読み込み中…" },
-  "请选择站内模型": { "en": "Choose a site model", "ja": "サイトのモデルを選択してください" },
-  "选择站内已开放的模型，保存后返回房间即可使用。": { "en": "Choose an available model, save, then return to Room to chat.", "ja": "公開中のモデルを選び、保存して房間へ戻ると利用できます。" },
-  "站内直供通过当前网站安全连接，使用登录 Cookie 验证身份。": { "en": "Site models connect securely through this website using your sign-in Cookie.", "ja": "サイトのモデルは、このサイトのログイン Cookie で認証して安全に接続します。" },
-  "正在读取当前账号的站内模型与余额…": { "en": "Loading models and balance for your account…", "ja": "現在のアカウントのモデルと残高を読み込み中…" },
-  "使用当前登录账号，无需填写 API 密钥。": { "en": "Use your signed-in account. No API key is needed.", "ja": "ログイン中のアカウントを使います。API キーは不要です。" },
-  "站内直供暂未开放，请稍后再试或选择其他连接方式。": { "en": "Site models are not available. Try later or choose another connection.", "ja": "サイトのモデルは現在利用できません。後で試すか、別の接続方法を選んでください。" },
-  "请等待站内模型加载完成，或点击刷新模型。": { "en": "Wait for models to load, or refresh the model list.", "ja": "モデルの読み込みを待つか、モデル一覧を更新してください。" },
-  "站内直供已保存，使用当前登录账号及网站统一余额。": { "en": "Site model settings saved. Your signed-in account and site wallet will be used.", "ja": "サイトのモデル設定を保存しました。ログイン中のアカウントと共通残高を使います。" },
-  "请检查登录状态和网站统一余额；可前往「余额与支付」充值，或在直供控制台查看服务状态。": { "en": "Check your sign-in and site balance. Top up in Balance & payments or check the service console.", "ja": "ログイン状態と共通残高を確認してください。「残高と支払い」でチャージし、管理画面でサービス状態を確認できます。" },
-  "先为八千代选择一个聊天模型": { "en": "Choose a chat model for Yachiyo", "ja": "八千代のチャットモデルを選びましょう" },
-  "还没有配置聊天 API。前往房间设置，选择「站内直供」即可使用网站账号和余额，也可以连接自己的云端 API 或本机 Ollama。": { "en": "Your chat API is not configured. In Room settings, choose Site-hosted models to use your site account and balance, or connect your own cloud API or local Ollama.", "ja": "チャット API が未設定です。房間設定で「サイト提供モデル」を選ぶとアカウントと残高を使えます。クラウド API やローカル Ollama にも接続できます。" },
-  "完成配置前不会发送聊天请求或产生模型费用。": { "en": "No chat request or model charge occurs before setup is complete.", "ja": "設定が完了するまでは、チャットリクエストやモデル料金は発生しません。" },
-  "去配置聊天模型": { "en": "Set up a chat model", "ja": "チャットモデルを設定" },
-  "稍后设置": { "en": "Set up later", "ja": "後で設定" },
-  "请先在房间设置中选择并配置聊天模型。": { "en": "Choose and configure a chat model in Room settings first.", "ja": "まず房間設定でチャットモデルを選択・設定してください。" },
-  "当前站内直供仅支持文字，图片请在设置中选择 MCP 识图，或切换支持图片的模型。": { "en": "Site models currently support text only. Use MCP image recognition in settings, or select a model that supports images.", "ja": "現在のサイトモデルはテキストのみです。MCP 画像認識を設定するか、画像対応モデルに切り替えてください。" },
-  "请先登录月读空间，再使用站内直供。": { "en": "Sign in to Tsukuyomi Space to use site models.", "ja": "サイトのモデルを使うには月読空間にログインしてください。" },
-  "站内直供暂时无法读取，请稍后刷新。": { "en": "Unable to load site models. Refresh later.", "ja": "サイトのモデルを読み込めません。後で更新してください。" },
-  "站内直供返回的数据不完整，请稍后刷新。": { "en": "Site model data is incomplete. Refresh later.", "ja": "サイトのモデル情報が不完全です。後で更新してください。" },
-  "站内直供暂未开放，请选择其他连接方式或稍后再试。": { "en": "Site models are not available. Choose another connection or try later.", "ja": "サイトのモデルは現在利用できません。別の接続方法を選ぶか、後で試してください。" },
-  "该站内模型暂不可用，请刷新模型列表后重新选择。": { "en": "This site model is unavailable. Refresh the list and choose again.", "ja": "このサイトモデルは利用できません。一覧を更新して選び直してください。" },
+  "官方服务视图": {
+    "en": "Service management views",
+    "ja": "公式サービス管理ビュー"
+  },
+  "语言模型": {
+    "en": "Language models",
+    "ja": "言語モデル"
+  },
+  "语音合成": {
+    "en": "Speech synthesis",
+    "ja": "音声合成"
+  },
+  "调用统计": {
+    "en": "Usage statistics",
+    "ja": "利用統計"
+  },
+  "检测音源": {
+    "en": "Check voice services",
+    "ja": "音声サービスを確認"
+  },
+  "正在读取语音配置…": {
+    "en": "Loading voice settings…",
+    "ja": "音声設定を読み込み中…"
+  },
+  "官方音源": {
+    "en": "Official voice services",
+    "ja": "公式音声サービス"
+  },
+  "主音源": {
+    "en": "Primary voice service",
+    "ja": "メイン音声サービス"
+  },
+  "启用此音源": {
+    "en": "Enable this voice service",
+    "ja": "この音声サービスを有効にする"
+  },
+  "音色 ID": {
+    "en": "Voice ID",
+    "ja": "ボイス ID"
+  },
+  "默认模型": {
+    "en": "Default model",
+    "ja": "既定のモデル"
+  },
+  "向普通用户开放的模型": {
+    "en": "Models available to users",
+    "ja": "一般ユーザーに公開するモデル"
+  },
+  "默认模型始终开放。Room 根据 Fish 账户的可用额度显示模型。": {
+    "en": "The default model is included. Room lists models supported by the Fish account’s available credit.",
+    "ja": "既定のモデルは常に含まれます。Room では Fish アカウントの利用可能残高に応じてモデルが表示されます。"
+  },
+  "更换 Fish 密钥": {
+    "en": "Replace Fish API key",
+    "ja": "Fish API キーを変更"
+  },
+  "留空保留现有密钥": {
+    "en": "Leave blank to keep the current key",
+    "ja": "空欄で現在のキーを保持"
+  },
+  "已配置密钥": {
+    "en": "Key configured",
+    "ja": "キー設定済み"
+  },
+  "保存音源设置": {
+    "en": "Save voice settings",
+    "ja": "音声サービス設定を保存"
+  },
+  "语音配置已保存，新朗读请求使用新设置。": {
+    "en": "Voice settings saved. New requests use these settings.",
+    "ja": "音声設定を保存しました。次の読み上げから適用されます。"
+  },
+  "管理站内 LLM 与 TTS": {
+    "en": "Manage site LLM and TTS services",
+    "ja": "サイト内の LLM と TTS を管理"
+  },
+  "支付管理视图": {
+    "en": "Payment management views",
+    "ja": "決済管理ビュー"
+  },
+  "商品与收款": {
+    "en": "Products and payments",
+    "ja": "商品と決済設定"
+  },
+  "收款连接详情": {
+    "en": "Payment connection details",
+    "ja": "決済接続の詳細"
+  },
+  "商品列表": {
+    "en": "Product list",
+    "ja": "商品一覧"
+  },
+  "未命名商品": {
+    "en": "Untitled product",
+    "ja": "名称未設定の商品"
+  },
+  "已上架": {
+    "en": "Listed",
+    "ja": "販売中"
+  },
+  "未上架": {
+    "en": "Unlisted",
+    "ja": "非公開"
+  },
+  "件商品": {
+    "en": "products",
+    "ja": "件の商品"
+  },
+  "商品分页": {
+    "en": "Product pages",
+    "ja": "商品一覧のページ"
+  },
+  "请检查选中商品的编号、名称和价格": {
+    "en": "Check the selected product’s ID, name and price.",
+    "ja": "選択した商品の ID、名前、価格を確認してください。"
+  },
+  "官方 AI 服务": {
+    "en": "Official AI services",
+    "ja": "公式 AI サービス"
+  },
+  "管理站内语言模型、语音合成和调用记录": {
+    "en": "Manage hosted language models, speech synthesis and usage records",
+    "ja": "サイト提供の言語モデル、音声合成、利用記録を管理"
+  },
+  "语音配置已更新，请重新读取后再保存": {
+    "en": "Voice settings have changed. Reload them before saving.",
+    "ja": "音声設定が変更されました。再読み込みしてから保存してください。"
+  },
+  "音源配置不完整，请检查服务器配置或 Fish 密钥": {
+    "en": "Voice configuration is incomplete. Check the server settings or Fish key.",
+    "ja": "音声サービスの設定が不完全です。サーバー設定または Fish キーを確認してください。"
+  },
+  "此超级管理员的站内账号尚未加入 LLM 服务维护者名单": {
+    "en": "This super administrator’s site account is not on the LLM operator list.",
+    "ja": "このスーパー管理者のサイトアカウントは LLM 運営者一覧に登録されていません。"
+  },
+  "站内 LLM 服务暂不可用": {
+    "en": "The site LLM service is currently unavailable.",
+    "ja": "サイト内 LLM サービスを現在利用できません。"
+  },
+  "站内账号已切换，请重新登录 Terminal": {
+    "en": "The site account changed. Sign in to Terminal again.",
+    "ja": "アカウントが切り替わりました。Terminal に再度ログインしてください。"
+  },
+  "回复由当前聊天模型翻译成日语后朗读，翻译按该模型的规则计费。": {
+    "en": "Your current chat model translates replies into Japanese for speech. Its usual translation charges apply.",
+    "ja": "現在のチャットモデルが返信を日本語に翻訳して読み上げます。翻訳にはそのモデルの料金が適用されます。"
+  },
+  "聊天原文": {
+    "en": "Original chat text",
+    "ja": "チャットの原文"
+  },
+  "日语": {
+    "en": "Japanese",
+    "ja": "日本語"
+  },
+  "朗读语言": {
+    "en": "Spoken language",
+    "ja": "読み上げ言語"
+  },
+  "Fish Audio 模型": {
+    "en": "Fish Audio model",
+    "ja": "Fish Audio モデル"
+  },
+  "此官方 Fish Audio 模型暂不可用，请重新选择": {
+    "en": "This official Fish Audio model is unavailable. Please choose another.",
+    "ja": "この公式 Fish Audio モデルは現在利用できません。別のモデルを選んでください。"
+  },
+  "Fish Audio 未返回有效的 MP3 音频": {
+    "en": "Fish Audio did not return a valid MP3.",
+    "ja": "Fish Audio から有効な MP3 音声が返されませんでした。"
+  },
+  "请选择支持情感提示的 Fish Audio 模型": {
+    "en": "Choose a Fish Audio model that supports emotion cues.",
+    "ja": "感情指定に対応する Fish Audio モデルを選択してください。"
+  },
+  "Fish Audio 音色 ID 应为 32 位十六进制字符": {
+    "en": "The Fish Audio voice ID must contain 32 hexadecimal characters.",
+    "ja": "Fish Audio の音声 ID は32桁の16進数で入力してください。"
+  },
+  "请填写 Fish Audio API 密钥": {
+    "en": "Enter your Fish Audio API key.",
+    "ja": "Fish Audio の API キーを入力してください。"
+  },
+  "Fish Audio 仅支持官方语音端点": {
+    "en": "Fish Audio requires its official speech endpoint.",
+    "ja": "Fish Audio の公式音声エンドポイントを指定してください。"
+  },
+  "官方直供 · Fish Audio · ¥0.05 / 条": {
+    "en": "Official · Fish Audio · ¥0.05 per clip",
+    "ja": "公式 · Fish Audio · 1件 ¥0.05"
+  },
+  "朗读语气": {
+    "en": "Voice expression",
+    "ja": "読み上げの感情"
+  },
+  "跟随八千代表情": {
+    "en": "Follow Yachiyo’s expression",
+    "ja": "八千代の表情に合わせる"
+  },
+  "不加情感提示": {
+    "en": "No emotion cue",
+    "ja": "感情の指定なし"
+  },
+  "语气只用于朗读，不会写进聊天正文。": {
+    "en": "Expression applies only to speech.",
+    "ja": "感情の指定は読み上げにのみ反映されます。"
+  },
+  "官方 Fish Audio 尚未配置，可使用个人 Fish Audio。": {
+    "en": "Official Fish Audio is not configured. You can use your own Fish Audio account.",
+    "ja": "公式 Fish Audio は未設定です。個人アカウントで利用できます。"
+  },
+  "官方 Fish Audio 暂不可用。": {
+    "en": "Official Fish Audio is currently unavailable.",
+    "ja": "公式 Fish Audio は現在利用できません。"
+  },
+  "官方 Fish Audio 音源在线，可选择跟随八千代表情朗读。": {
+    "en": "Official Fish Audio is available and can follow Yachiyo’s expression.",
+    "ja": "公式 Fish Audio が利用できます。八千代の表情に合わせて読み上げられます。"
+  },
+  "开心": {
+    "en": "Happy",
+    "ja": "嬉しい"
+  },
+  "平静": {
+    "en": "Calm",
+    "ja": "穏やか"
+  },
+  "兴奋": {
+    "en": "Excited",
+    "ja": "興奮"
+  },
+  "难过": {
+    "en": "Sad",
+    "ja": "悲しい"
+  },
+  "生气": {
+    "en": "Angry",
+    "ja": "怒り"
+  },
+  "得意": {
+    "en": "Proud",
+    "ja": "得意げ"
+  },
+  "好奇": {
+    "en": "Curious",
+    "ja": "好奇心"
+  },
+  "体贴": {
+    "en": "Empathetic",
+    "ja": "思いやり"
+  },
+  "轻声": {
+    "en": "Whisper",
+    "ja": "ささやき"
+  },
+  "Google 登录": {
+    "en": "Google sign-in",
+    "ja": "Google ログイン"
+  },
+  "请验证可接收验证码的邮箱，Google 已验证邮箱也需验证码": {
+    "en": "Verify an email that can receive a code, even if it is verified on Google.",
+    "ja": "確認コードを受信できるメールを確認してください。Google で確認済みでもコードが必要です。"
+  },
+  "Google 登录暂时无法连接，请稍后重试": {
+    "en": "Google sign-in is unavailable. Please try again.",
+    "ja": "Google に接続できません。再試行してください。"
+  },
+  "手动连接 Google，之后可一键登录当前账号。": {
+    "en": "Link Google to sign in to this account with one click.",
+    "ja": "Google を連携すると、このアカウントにワンクリックでログインできます。"
+  },
+  "该 Google 或当前账号已有其他绑定，请检查后重试": {
+    "en": "This Google or site account already has another link. Check the link and try again.",
+    "ja": "この Google またはサイトのアカウントには別の連携があります。確認して再試行してください。"
+  },
+  "Google 已绑定": {
+    "en": "Google linked",
+    "ja": "Google を連携しました"
+  },
+  "Google 登录暂未配置，请稍后再试": {
+    "en": "Google sign-in is not configured yet. Please try later.",
+    "ja": "Google ログインはまだ設定されていません。後でもう一度お試しください。"
+  },
+  "Google 登录启动失败，请稍后再试": {
+    "en": "Could not start Google sign-in. Please try again.",
+    "ja": "Google ログインを開始できません。再試行してください。"
+  },
+  "Google 授权已取消": {
+    "en": "Google authorization cancelled",
+    "ja": "Google の認証をキャンセルしました"
+  },
+  "Google 回调缺少授权码，请重新登录": {
+    "en": "Google did not return an authorization code. Please sign in again.",
+    "ja": "Google の認証コードがありません。再度ログインしてください。"
+  },
+  "Google 登录状态已过期，请重新授权": {
+    "en": "Google sign-in expired. Please authorize again.",
+    "ja": "Google ログインの有効期限が切れました。再認証してください。"
+  },
+  "Google 回调处理失败，请稍后再试": {
+    "en": "Could not complete Google authorization. Please try again.",
+    "ja": "Google の認証を完了できません。再試行してください。"
+  },
+  "该 Google 已绑定其他账号": {
+    "en": "This Google is already linked to another account.",
+    "ja": "この Google は別のアカウントに連携済みです。"
+  },
+  "请先登录网站，再在用户中心绑定 Google": {
+    "en": "Sign in to the site first, then link Google in the user center.",
+    "ja": "先にサイトにログインし、ユーザーセンターで Google を連携してください。"
+  },
+  "Google 登录处理失败，请重试": {
+    "en": "Could not complete Google sign-in. Please try again.",
+    "ja": "Google ログインを完了できません。再試行してください。"
+  },
+  "该 Google 或邮箱已绑定其他账号": {
+    "en": "This Google or email is already linked to another account.",
+    "ja": "この Google またはメールは別のアカウントに連携済みです。"
+  },
+  "当前账号已绑定其他 Google，请先解绑": {
+    "en": "This account already has another Google linked. Unlink it first.",
+    "ja": "別の Google に連携済みです。先に連携を解除してください。"
+  },
+  "该 Google 已绑定其他邮箱账号": {
+    "en": "This Google is already linked to another email account.",
+    "ja": "この Google は別のメールアカウントに連携済みです。"
+  },
+  "Google 已绑定到已有邮箱账号": {
+    "en": "Google linked to your existing email account.",
+    "ja": "Google を既存のメールアカウントに連携しました。"
+  },
+  "邮箱已绑定，Google 登录成功": {
+    "en": "Email linked. Google sign-in successful.",
+    "ja": "メールを連携しました。Google ログインに成功しました。"
+  },
+  "当前账号未绑定 Google": {
+    "en": "This account has no Google linked.",
+    "ja": "このアカウントは Google に未連携です。"
+  },
+  "Google 已解绑": {
+    "en": "Google unlinked",
+    "ja": "Google の連携を解除しました"
+  },
+  "下载月读空间 Flutter 原生应用，按设备选择 Windows、macOS、Android、Linux 或 iOS 安装包，文件直接由 Google 提供。": {
+    "en": "Download the native Flutter app for Tsukuyomi Space. Choose the Windows, macOS, Android, Linux or iOS package for your device. Files download directly from Google.",
+    "ja": "月読空間の Flutter ネイティブアプリをダウンロード。デバイスに合わせて Windows・macOS・Android・Linux・iOS のパッケージを選び、Google から直接取得します。"
+  },
+  "请验证可接收验证码的邮箱，{0} 已验证邮箱也需验证码": {
+    "en": "Verify an email that can receive codes. A code is also required for a {0} verified email.",
+    "ja": "確認コードを受信できるメールを確認してください。{0} で確認済みのメールにもコードが必要です。"
+  },
+  "所选时段 {0} 次": {
+    "en": "Selected period: {0} calls",
+    "ja": "選択期間：{0} 回"
+  },
+  "· 最早记录": {
+    "en": "· Earliest record",
+    "ja": "・最初の記録"
+  },
+  "日期": {
+    "en": "Date",
+    "ja": "日付"
+  },
+  "完成": {
+    "en": "Completed",
+    "ja": "完了"
+  },
+  "· 未完成": {
+    "en": "· Incomplete",
+    "ja": "・未完了"
+  },
+  "· 待确认": {
+    "en": "· Pending",
+    "ja": "・確認待ち"
+  },
+  "官方服务每日调用": {
+    "en": "Daily official service usage",
+    "ja": "公式サービスの日別利用"
+  },
+  "全站汇总 · 北京时间（UTC+8）": {
+    "en": "Site-wide totals · Beijing time (UTC+8)",
+    "ja": "サイト全体・北京時間（UTC+8）"
+  },
+  "统计天数": {
+    "en": "Period",
+    "ja": "集計期間"
+  },
+  "截至日期": {
+    "en": "Through date",
+    "ja": "終了日"
+  },
+  "7 天": {
+    "en": "7 days",
+    "ja": "7 日間"
+  },
+  "30 天": {
+    "en": "30 days",
+    "ja": "30 日間"
+  },
+  "90 天": {
+    "en": "90 days",
+    "ja": "90 日間"
+  },
+  "正在读取官方服务调用记录…": {
+    "en": "Loading official service usage…",
+    "ja": "公式サービスの利用記録を読み込み中…"
+  },
+  "无法读取官方服务调用统计": {
+    "en": "Unable to load official service usage",
+    "ja": "公式サービスの利用統計を読み込めません"
+  },
+  "官方 LLM": {
+    "en": "Official LLM",
+    "ja": "公式 LLM"
+  },
+  "官方 TTS": {
+    "en": "Official TTS",
+    "ja": "公式 TTS"
+  },
+  "今日请求": {
+    "en": "requests today",
+    "ja": "本日のリクエスト"
+  },
+  "今日合成": {
+    "en": "generations today",
+    "ja": "本日の音声生成"
+  },
+  "所选时段": {
+    "en": "Selected period",
+    "ja": "選択期間"
+  },
+  "最早记录": {
+    "en": "Earliest record",
+    "ja": "最初の記録"
+  },
+  "官方服务每日调用明细": {
+    "en": "Daily official service usage details",
+    "ja": "公式サービスの日別利用明細"
+  },
+  "LLM 请求": {
+    "en": "LLM requests",
+    "ja": "LLM リクエスト"
+  },
+  "TTS 合成": {
+    "en": "TTS generations",
+    "ja": "TTS 音声生成"
+  },
+  "未完成": {
+    "en": "Incomplete",
+    "ja": "未完了"
+  },
+  "待确认": {
+    "en": "Pending",
+    "ja": "確認待ち"
+  },
+  "统计口径": {
+    "en": "How usage is counted",
+    "ja": "集計方法"
+  },
+  "按服务已接纳的唯一请求计数，包含免扣费调用。同一请求重试、语音缓存回放不重复计数；自带 API、健康探测和接纳前被拒绝的请求不计入。": {
+    "en": "Counts unique accepted requests, including sponsored calls. Retries and cached audio playback do not count again. Personal APIs, health probes and requests rejected before acceptance are excluded.",
+    "ja": "受理された一意のリクエストを集計し、無料利用も含みます。再試行やキャッシュ音声の再生は重複計上しません。個人 API、ヘルスチェック、受理前の拒否は対象外です。"
+  },
+  "完成表示已有最终用量记录；未完成表示失败或取消并已释放预留；处理中或结果尚未核实的请求列为待确认。跨日请求归入发起日期，状态会随处理结果更新。": {
+    "en": "Completed requests have final usage records. Incomplete requests failed or were cancelled with their reservation released. In-progress or unresolved requests are pending. Requests belong to their start date; statuses update as results arrive.",
+    "ja": "完了は最終利用量が確定したリクエストです。未完了は失敗・取消で予約分が解放されたもの、確認待ちは処理中または結果未確定のものです。開始日で集計し、結果に応じて状態が更新されます。"
+  },
+  "只汇总已有服务记录，不读取对话或语音内容；历史未记录的调用无法补算。": {
+    "en": "Summarizes existing service records without reading conversations or audio. Calls that were never recorded cannot be reconstructed.",
+    "ja": "既存のサービス記録のみを集計し、会話や音声の内容は読み取りません。過去に記録されなかった呼び出しは復元できません。"
+  },
+  "角色卡参考：": {
+    "en": "Character card reference: ",
+    "ja": "キャラクターカード参考："
+  },
+  "未载入": {
+    "en": "Not loaded",
+    "ja": "未読み込み"
+  },
+  "已带入": {
+    "en": "Included",
+    "ja": "反映済み"
+  },
+  "因篇幅限制未带入": {
+    "en": "Omitted due to the length limit",
+    "ja": "長さ制限により省略"
+  },
+  "世界书：": {
+    "en": "World book: ",
+    "ja": "ワールドブック："
+  },
+  "已带入 {0} 条": {
+    "en": "{0} entries included",
+    "ja": "{0} 件を反映"
+  },
+  "已开启，本轮未命中": {
+    "en": "Enabled; no match this turn",
+    "ja": "有効・今回は一致なし"
+  },
+  "两个开关分别生效，保存后用于下一轮聊天。世界书按关键词匹配，“始终参考”的条目会直接带入。": {
+    "en": "The switches work independently. Save to apply them to the next turn. World book entries match keywords; constant entries are included automatically.",
+    "ja": "2 つの設定は独立しており、保存後の次の会話に反映されます。ワールドブックはキーワードで選び、常時参照の項目は自動で反映します。"
+  },
+  "本轮参考": {
+    "en": "Context for this reply",
+    "ja": "今回の参考情報"
+  },
+  "已带入角色、场景与当前对话者。": {
+    "en": "Character, scene and current speaker are included.",
+    "ja": "キャラクター、場面、現在の話し相手を反映しています。"
+  },
+  "称呼与明确约定": {
+    "en": "Saved names and agreements",
+    "ja": "呼び名と明確な約束"
+  },
+  "世界书": {
+    "en": "World book",
+    "ja": "ワールドブック"
+  },
+  "部分可选参考因篇幅限制未带入。": {
+    "en": "Some optional references were omitted to fit the length budget.",
+    "ja": "長さ制限により一部の参考情報を省略しました。"
+  },
+  "角色与对话": {
+    "en": "Character and conversation",
+    "ja": "キャラクターと会話"
+  },
+  "结局后的日常 · 剧透偏好 · 角色卡与世界书": {
+    "en": "Life after the ending · Spoilers · Character cards and world books",
+    "ja": "結末後の日常・ネタバレ設定・キャラクターカード"
+  },
+  "八千代默认生活在电影结局之后：期待日常、创作与相聚，保留原作身份和关系。你的称呼和明确约定来自当前账号的记忆。": {
+    "en": "By default, Yachiyo looks forward to daily life, creativity and reunions after the film, preserving her original identity and relationships. Names and agreements come from memories for the current account.",
+    "ja": "八千代は映画の結末後、原作の人物像や関係を保ち、日常や創作、再会を楽しみにしています。呼び名や約束には現在のアカウントの記憶を使います。"
+  },
+  "剧透偏好": {
+    "en": "Spoiler preference",
+    "ja": "ネタバレ設定"
+  },
+  "不主动剧透，问到时再聊": {
+    "en": "Avoid spoilers unless asked",
+    "ja": "聞かれるまでネタバレしない"
+  },
+  "可以聊结局与身世": {
+    "en": "Allow discussion of the ending and identity",
+    "ja": "結末や正体について話してよい"
+  },
+  "希望八千代怎样认识你": {
+    "en": "How should Yachiyo know you?",
+    "ja": "八千代に知っておいてほしいこと"
+  },
+  "可选：希望使用的称呼、交流习惯；不要填写密码等敏感信息": {
+    "en": "Optional: preferred name and conversation preferences. Do not enter passwords or sensitive information.",
+    "ja": "任意：呼び名や会話の好み。パスワードなどの機密情報は入力しないでください。"
+  },
+  "今天的聊天场景": {
+    "en": "Today's conversation setting",
+    "ja": "今日の会話の場面"
+  },
+  "可选：一起讨论新作品，或只是轻松聊聊。留空使用结局后的日常。": {
+    "en": "Optional: discuss a new creation or relax together. Leave blank for daily life after the ending.",
+    "ja": "任意：新しい作品の話や雑談など。空欄なら結末後の日常になります。"
+  },
+  "只保存在当前账号的这个浏览器中。长期记忆关闭后，下面“长期记忆”中的记录不会用于聊天；这里主动填写的介绍仍会使用。": {
+    "en": "Saved only for this account in this browser. Disabling long-term memory stops using its records in chat; your introduction here is still used.",
+    "ja": "このブラウザの現在のアカウントにのみ保存します。長期記憶をオフにしても、ここで入力した自己紹介は引き続き使います。"
+  },
+  "导入参考角色卡": {
+    "en": "Import a reference card",
+    "ja": "参考カードを読み込む"
+  },
+  "导出八千代角色卡": {
+    "en": "Export Yachiyo character card",
+    "ja": "八千代のカードを書き出す"
+  },
+  "支持 Character Card V2 JSON。借鉴表达与场景，不替换八千代身份。不会执行扩展脚本，也不会把示例当作你们经历过的对话。": {
+    "en": "Supports Character Card V2 JSON. References preserve Yachiyo's identity. Extension scripts are not executed and examples are never treated as shared experiences.",
+    "ja": "Character Card V2 JSON に対応。表現や場面を参考にし、八千代の人物像は維持します。拡張スクリプトは実行せず、例文を実際の会話として扱いません。"
+  },
+  "作者：": {
+    "en": "Creator:",
+    "ja": "作者："
+  },
+  "参考说明": {
+    "en": "Reference description",
+    "ja": "参考説明"
+  },
+  "可借鉴的性格表达": {
+    "en": "Personality expressions to reference",
+    "ja": "参考にする性格表現"
+  },
+  "参考场景": {
+    "en": "Reference scene",
+    "ja": "参考場面"
+  },
+  "查看示例（不会发送给模型）": {
+    "en": "View examples (not sent to the model)",
+    "ja": "例文を見る（モデルには送信しません）"
+  },
+  "在聊天中参考这张卡": {
+    "en": "Use this card as a chat reference",
+    "ja": "会話でこのカードを参考にする"
+  },
+  "启用卡片世界书（": {
+    "en": "Enable card world book (",
+    "ja": "カードのワールドブックを有効にする（"
+  },
+  "条）": {
+    "en": " entries)",
+    "ja": "件）"
+  },
+  "检查世界书条目": {
+    "en": "Review world book entries",
+    "ja": "ワールドブックの項目を確認"
+  },
+  "条目 {0}": {
+    "en": "Entry {0}",
+    "ja": "項目 {0}"
+  },
+  "始终参考": {
+    "en": "Always include",
+    "ja": "常に参考にする"
+  },
+  "关键词：{0}": {
+    "en": "Keywords: {0}",
+    "ja": "キーワード：{0}"
+  },
+  "无": {
+    "en": "None",
+    "ja": "なし"
+  },
+  "包含结局或身世剧透": {
+    "en": "Contains ending or identity spoilers",
+    "ja": "結末や正体のネタバレを含む"
+  },
+  "世界书内容 {0}": {
+    "en": "World book content {0}",
+    "ja": "ワールドブックの内容 {0}"
+  },
+  "移除参考卡": {
+    "en": "Remove reference card",
+    "ja": "参考カードを削除"
+  },
+  "预览本轮会参考什么": {
+    "en": "Preview context selection",
+    "ja": "今回使う参考情報を確認"
+  },
+  "试写一句话": {
+    "en": "Try a message",
+    "ja": "メッセージを試す"
+  },
+  "仅在本机检查编排，不调用模型，不保存聊天。": {
+    "en": "Checks context selection locally without calling a model or saving a conversation.",
+    "ja": "この端末で情報の選択だけを確認します。モデルを呼び出さず、会話も保存しません。"
+  },
+  "世界书命中": {
+    "en": "Matched world book entries:",
+    "ja": "一致したワールドブック項目："
+  },
+  "条因篇幅限制省略": {
+    "en": " omitted due to the length limit",
+    "ja": "件を長さ制限により省略"
+  },
+  "（已缩短）": {
+    "en": " (shortened)",
+    "ja": "（短縮済み）"
+  },
+  "保存对话设置": {
+    "en": "Save conversation settings",
+    "ja": "会話設定を保存"
+  },
+  "撤销未保存修改": {
+    "en": "Discard unsaved changes",
+    "ja": "未保存の変更を破棄"
+  },
+  "对话设置尚未保存，确定离开并放弃这些修改？": {
+    "en": "Conversation settings are not saved. Leave and discard these changes?",
+    "ja": "会話設定は未保存です。変更を破棄して移動しますか？"
+  },
+  "请选择不超过 200 KB 的 JSON 角色卡": {
+    "en": "Choose a JSON character card no larger than 200 KB.",
+    "ja": "200 KB 以下の JSON キャラクターカードを選択してください。"
+  },
+  "账号已变化，请重新打开对话设置": {
+    "en": "The account changed. Please reopen conversation settings.",
+    "ja": "アカウントが変わりました。会話設定を開き直してください。"
+  },
+  "已载入预览并开启角色卡与世界书，保存后用于聊天。": {
+    "en": "Preview loaded with the character reference and world book enabled. Save to use them in chat.",
+    "ja": "プレビューを読み込み、キャラクター参考とワールドブックを有効にしました。保存すると会話に反映されます。"
+  },
+  "已保存，下一轮聊天生效。": {
+    "en": "Saved. Changes apply to the next reply.",
+    "ja": "保存しました。次の会話から反映されます。"
+  },
+  "已恢复到上次保存的设置。": {
+    "en": "Restored the last saved settings.",
+    "ja": "最後に保存した設定に戻しました。"
+  },
+  "关闭好感度": {
+    "en": "Close affinity",
+    "ja": "好感度を閉じる"
+  },
+  "未增加": {
+    "en": "unchanged",
+    "ja": "増加なし"
+  },
+  "互动记录已更新": {
+    "en": "Interaction progress updated",
+    "ja": "交流の記録を更新"
+  },
+  "聊完第一轮，看看这里的变化。": {
+    "en": "Complete your first turn to see progress here.",
+    "ja": "最初の会話を終えると、ここに進捗が表示されます。"
+  },
+  "存档好感度": {
+    "en": "Archived affinity",
+    "ja": "保存時の好感度"
+  },
+  "这里保留写日记时的历史数值。当前好感度可在房间的好感度抽屉查看：完成并保存一轮新对话 +1，每天最多 +10。无需写日记或开启长期记忆；重复内容与重新生成不重复加分。导入旧存档不会覆盖当前互动进度。": {
+    "en": "These are historical diary values. Open the Room affinity drawer for current progress: complete and save a new turn for +1, up to +10 daily. No diary or long-term memory is required. Repeated content and regeneration do not add points. Importing an old archive does not replace current progress.",
+    "ja": "ここは日記作成時の過去の数値です。現在の好感度はお部屋の好感度ドロワーで確認できます。新しい会話の完了・保存で +1、1日最大 +10。日記や長期記憶は不要です。同じ内容や再生成では追加加点されません。古い記録を読み込んでも現在の進捗は変わりません。"
+  },
+  "登录后，完成并保存一轮新对话 +1，每天最多 +10；变化时会短暂提示，点开好感度抽屉可查看当前进度和未加分原因。手机上从房间功能菜单进入，电脑上点击心形按钮。重复内容、重新生成和要求加分不重复计分。无需写日记或开启长期记忆。日记里的数值是历史记录。": {
+    "en": "After signing in, complete and save a new turn for +1, up to +10 daily. A brief notice shows changes; open the affinity drawer for current progress and reasons for no increase. Use the Room tools menu on mobile or the heart button on desktop. Repeated text, regeneration and requests for points do not earn extra points. No diary or long-term memory is required. Diary values are historical.",
+    "ja": "ログイン後、新しい会話を完了・保存すると +1、1日最大 +10。変化は短く通知され、現在の進捗や加点されない理由は好感度ドロワーで確認できます。スマートフォンではお部屋の機能メニュー、パソコンではハートボタンから開きます。同じ内容、再生成、加点の要求では増えません。日記や長期記憶は不要です。日記は過去の記録です。"
+  },
+  "完成并保存一轮新对话 +1，无需开启长期记忆或写日记。共同约定、表达信任经确认后，本轮最多 +2，不重复累加；所有互动每天最多增长 10 点。重复内容、重新生成、要求加分不重复计分，缺席、悲伤和拒绝不扣分。当前分数与本次变化也会显示在聊天界面。": {
+    "en": "Complete and save a new turn for +1 without enabling memory or writing a diary. Confirmed shared plans or trust can raise that turn to +2 total, with a daily limit of 10. Repeated text, regeneration and requests for points do not earn extra points. Absence, sadness and refusal never deduct points. Chat also shows the current score and change.",
+    "ja": "長期記憶や日記なしでも新しい会話の完了・保存で +1。約束や信頼が確認されると、その会話は合計最大 +2、1日最大 10。同じ内容、再生成、加点の要求では増えません。欠席、悲しみ、拒否で減点されません。現在の点数と変化はチャットにも表示されます。"
+  },
+  "星海来信": {
+    "en": "Starlit Letters",
+    "ja": "星の海からの手紙"
+  },
+  "文字与图片": {
+    "en": "Text and images",
+    "ja": "テキストと画像"
+  },
+  "文字": {
+    "en": "Text",
+    "ja": "テキスト"
+  },
+  "Room 可直接发送图片，图片与文字按实际 Token 用量统一计费。": {
+    "en": "Send images directly in the room. Images and text are billed together by actual token usage.",
+    "ja": "Room から画像を直接送信できます。画像とテキストは実際のトークン使用量でまとめて課金されます。"
+  },
+  "官方语音账单": {
+    "en": "Voice billing history",
+    "ja": "公式音声の利用明細"
+  },
+  "刷新语音记录": {
+    "en": "Refresh voice history",
+    "ja": "音声履歴を更新"
+  },
+  "¥0.05 / 条 · 与聊天共用网站余额。显示最近 30 条合成记录。": {
+    "en": "¥0.05 per synthesis · Uses the same site balance as chat. Shows your 30 most recent requests.",
+    "ja": "1 回 ¥0.05・チャットと同じサイト残高を使用します。直近 30 件の合成履歴を表示します。"
+  },
+  "正在读取…": {
+    "en": "Loading…",
+    "ja": "読み込み中…"
+  },
+  "暂无语音记录。": {
+    "en": "No voice requests yet.",
+    "ja": "音声の利用履歴はありません。"
+  },
+  "八千代语音": {
+    "en": "Yachiyo voice",
+    "ja": "ヤチヨの音声"
+  },
+  "暂时无法读取语音账单": {
+    "en": "Unable to load voice billing history. Try again later.",
+    "ja": "音声の利用明細を読み込めません。後ほどお試しください。"
+  },
+  "官方直供 · 八千代语音": {
+    "en": "Site-hosted Yachiyo voice",
+    "ja": "サイト提供・ヤチヨの音声"
+  },
+  "算力在线": {
+    "en": "Voice service online",
+    "ja": "音声サービス稼働中"
+  },
+  "检测中": {
+    "en": "Checking",
+    "ja": "確認中"
+  },
+  "算力离线": {
+    "en": "Voice service offline",
+    "ja": "音声サービス停止中"
+  },
+  "¥0.05 / 条 · 使用网站余额，无需填写 API 密钥。成功合成后扣费，失败不收费。超级管理员沿用无限额度。": {
+    "en": "¥0.05 per synthesis · Uses your site balance; no API key needed. Charged only after successful synthesis. Failed requests are free. Super administrators retain unlimited usage.",
+    "ja": "1 回 ¥0.05・サイト残高を使用し、API キーは不要です。合成成功時のみ課金され、失敗時は無料です。スーパー管理者は引き続き無制限で利用できます。"
+  },
+  "可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。": {
+    "en": "You can use the site-hosted voice service. Requests pause while it is offline and become available when it returns.",
+    "ja": "サイト提供の音声を利用できます。停止中は自動的に一時停止し、復旧後に再開できます。"
+  },
+  "当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。": {
+    "en": "Temporarily unavailable. It will reopen when the service recovers. You can also connect your own voice service.",
+    "ja": "現在は利用できません。サービス復旧後に自動的に利用可能になります。ご自身の音声サービスも設定できます。"
+  },
+  "每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。": {
+    "en": "Up to 1,000 characters per request. Replaying a valid cached result in the same page session is free. Cache entries last up to 24 hours.",
+    "ja": "1 回最大 1,000 文字です。同じページセッション内で有効なキャッシュを再生しても追加課金されません。キャッシュは最長 24 時間保持されます。"
+  },
+  "正在检测…": {
+    "en": "Checking…",
+    "ja": "確認中…"
+  },
+  "检测算力": {
+    "en": "Check availability",
+    "ja": "稼働状況を確認"
+  },
+  "余额与充值": {
+    "en": "Balance and top-up",
+    "ja": "残高とチャージ"
+  },
+  "正在读取邮件通道与用户…": {
+    "en": "Loading email service and users…",
+    "ja": "メールサービスとユーザーを読み込み中…"
+  },
+  "邮件通道已就绪 · 使用网站统一邮件样式": {
+    "en": "Email service ready · Uses the site’s email template",
+    "ja": "メールサービス準備完了・サイト共通のメール書式を使用"
+  },
+  "邮件通道未配置，仍可编辑和预览，配置完成后才能发送。": {
+    "en": "Email is not configured. You can compose and preview; sending becomes available after setup.",
+    "ja": "メールサービス未設定です。編集とプレビューはできますが、送信には設定が必要です。"
+  },
+  "1 · 选择收件人": {
+    "en": "1 · Choose recipients",
+    "ja": "1・宛先を選択"
+  },
+  "勾选用户": {
+    "en": "Select users",
+    "ja": "ユーザーを選択"
+  },
+  "群发给全部匹配用户": {
+    "en": "Send to all matching users",
+    "ja": "一致するすべてのユーザーへ送信"
+  },
+  "搜索用户": {
+    "en": "Search users",
+    "ja": "ユーザーを検索"
+  },
+  "昵称、用户名、邮箱或 ID": {
+    "en": "Nickname, username, email or ID",
+    "ja": "ニックネーム・ユーザー名・メール・ID"
+  },
+  "用户角色": {
+    "en": "User role",
+    "ja": "ユーザーロール"
+  },
+  "所有角色": {
+    "en": "All roles",
+    "ja": "すべてのロール"
+  },
+  "普通用户": {
+    "en": "Member",
+    "ja": "一般ユーザー"
+  },
+  "仅显示已绑定有效邮箱的用户；相同邮箱只发送一封。": {
+    "en": "Only users with a valid linked email are shown. Each email address receives one copy.",
+    "ja": "有効なメールアドレスを登録済みのユーザーのみ表示します。同じアドレスには 1 通だけ送信します。"
+  },
+  "正在搜索…": {
+    "en": "Searching…",
+    "ja": "検索中…"
+  },
+  "匹配 {0} 名用户": {
+    "en": "{0} matching users",
+    "ja": "一致するユーザー {0} 人"
+  },
+  "已勾选 {0} 人": {
+    "en": "{0} selected",
+    "ja": "{0} 人を選択中"
+  },
+  "将发送给全部匹配用户，包含其他分页": {
+    "en": "Includes all matching users across every page",
+    "ja": "他のページを含む一致するすべてのユーザーに送信します"
+  },
+  "勾选本页": {
+    "en": "Select this page",
+    "ja": "このページを選択"
+  },
+  "选择 {0}": {
+    "en": "Select {0}",
+    "ja": "{0} を選択"
+  },
+  "没有匹配的收件用户": {
+    "en": "No matching recipients",
+    "ja": "一致する宛先がありません"
+  },
+  "收件用户分页": {
+    "en": "Recipient pagination",
+    "ja": "宛先のページ切り替え"
+  },
+  "已勾选": {
+    "en": "Selected",
+    "ja": "選択中"
+  },
+  "人（跨页保留）": {
+    "en": "users (kept across pages)",
+    "ja": "人（ページを移動しても保持）"
+  },
+  "清空选择": {
+    "en": "Clear selection",
+    "ja": "選択を解除"
+  },
+  "移除 {0}": {
+    "en": "Remove {0}",
+    "ja": "{0} を削除"
+  },
+  "2 · 撰写邮件": {
+    "en": "2 · Compose email",
+    "ja": "2・メールを作成"
+  },
+  "邮件主题": {
+    "en": "Subject",
+    "ja": "件名"
+  },
+  "例如：月读空间本周更新": {
+    "en": "For example: This week at Tsukuyomi Space",
+    "ja": "例：月読空間の今週の更新"
+  },
+  "邮件正文": {
+    "en": "Email body",
+    "ja": "メール本文"
+  },
+  "写下想告诉用户的内容，支持分段与换行。": {
+    "en": "Write your message. Paragraphs and line breaks are supported.",
+    "ja": "伝えたい内容を入力してください。段落と改行に対応します。"
+  },
+  "按钮链接（选填）": {
+    "en": "Button link (optional)",
+    "ja": "ボタンのリンク（任意）"
+  },
+  "本站路径，例如 /stage": {
+    "en": "Site path, for example /stage",
+    "ja": "サイト内パス（例：/stage）"
+  },
+  "查看详情": {
+    "en": "View details",
+    "ja": "詳細を見る"
+  },
+  "主题、正文和按钮均可自定义；正文按文本呈现，保留换行。邮件自动使用网站统一横幅和卡片样式。": {
+    "en": "Customize the subject, body and button. The body is plain text with line breaks preserved. Emails use the site’s standard banner and card layout.",
+    "ja": "件名・本文・ボタンを編集できます。本文は改行を保持したテキストで表示し、サイト共通のバナーとカード書式を使用します。"
+  },
+  "正在生成预览…": {
+    "en": "Generating preview…",
+    "ja": "プレビューを作成中…"
+  },
+  "预览并确认收件人": {
+    "en": "Preview and review recipients",
+    "ja": "プレビューと宛先の確認"
+  },
+  "发送记录": {
+    "en": "Send history",
+    "ja": "送信履歴"
+  },
+  "刷新记录": {
+    "en": "Refresh history",
+    "ja": "履歴を更新"
+  },
+  "显示最近 30 批邮件。“已提交”表示邮件服务接收，不代表已进入收件箱；结果待核实的邮件不会自动重发。": {
+    "en": "Shows the 30 most recent campaigns. “Submitted” means accepted by the email service, not delivered to the inbox. Unconfirmed results are not retried automatically.",
+    "ja": "直近 30 回の送信を表示します。「送信受付」はメールサービスが受け付けたことを示し、受信箱への到達を保証しません。結果不明のメールは自動再送されません。"
+  },
+  "还没有发送记录": {
+    "en": "No emails sent yet",
+    "ja": "送信履歴はありません"
+  },
+  "· 已提交": {
+    "en": "· Submitted",
+    "ja": "・送信受付"
+  },
+  "· 失败": {
+    "en": "· Failed",
+    "ja": "・失敗"
+  },
+  "· 待核实": {
+    "en": "· Unconfirmed",
+    "ja": "・要確認"
+  },
+  "· 跳过": {
+    "en": "· Skipped",
+    "ja": "・スキップ"
+  },
+  "· 取消": {
+    "en": "· Cancelled",
+    "ja": "・キャンセル"
+  },
+  "发送进度": {
+    "en": "Send progress",
+    "ja": "送信状況"
+  },
+  "查看明细": {
+    "en": "View details",
+    "ja": "明細を見る"
+  },
+  "停止剩余发送": {
+    "en": "Stop remaining sends",
+    "ja": "残りの送信を停止"
+  },
+  "发送明细": {
+    "en": "Send details",
+    "ja": "送信明細"
+  },
+  "· 发送明细": {
+    "en": "· Send details",
+    "ja": "・送信明細"
+  },
+  "个邮箱": {
+    "en": "email addresses",
+    "ja": "件のメールアドレス"
+  },
+  "发送明细分页": {
+    "en": "Send-detail pagination",
+    "ja": "送信明細のページ切り替え"
+  },
+  "确认邮件与收件人": {
+    "en": "Review email and recipients",
+    "ja": "メールと宛先を確認"
+  },
+  "返回编辑": {
+    "en": "Back to editing",
+    "ja": "編集に戻る"
+  },
+  "本批将发送给": {
+    "en": "This campaign will be sent to",
+    "ja": "今回の送信先"
+  },
+  "查看收件邮箱": {
+    "en": "View recipient addresses",
+    "ja": "宛先アドレスを見る"
+  },
+  "（前 20 个）": {
+    "en": "(first 20)",
+    "ja": "（最初の 20 件）"
+  },
+  "邮件样式预览": {
+    "en": "Email preview",
+    "ja": "メールのプレビュー"
+  },
+  "每位收件人收到独立邮件，不会看到其他人的邮箱。确认后后台继续发送，关闭页面不影响进度。": {
+    "en": "Each recipient gets an individual email and cannot see other addresses. Sending continues in the background after confirmation, even if you close this page.",
+    "ja": "宛先ごとに個別送信され、他のアドレスは表示されません。確認後はバックグラウンドで続行し、ページを閉じても送信されます。"
+  },
+  "正在提交…": {
+    "en": "Submitting…",
+    "ja": "送信を開始中…"
+  },
+  "确认发送给 {0} 个邮箱": {
+    "en": "Confirm send to {0} email addresses",
+    "ja": "{0} 件のアドレスへの送信を確認"
+  },
+  "手动勾选用户": {
+    "en": "Manually selected users",
+    "ja": "手動で選択したユーザー"
+  },
+  "匹配用户 · {0} · {1}": {
+    "en": "Matching users · {0} · {1}",
+    "ja": "一致するユーザー・{0}・{1}"
+  },
+  "全部用户": {
+    "en": "All users",
+    "ja": "すべてのユーザー"
+  },
+  "已提交 {0} 个邮箱，发送将在后台继续，可在下方查看进度。": {
+    "en": "Submitted for {0} email addresses. Sending continues in the background; track progress below.",
+    "ja": "{0} 件のアドレスへの送信を受け付けました。バックグラウンドで続行し、下に進捗を表示します。"
+  },
+  "{0}。可再次点击确认，重复确认不会重复发送本批邮件。": {
+    "en": "{0}. You can confirm again; repeated confirmation will not send this campaign twice.",
+    "ja": "{0}。再度確認できます。繰り返し確認しても、このメールが二重送信されることはありません。"
+  },
+  "已停止尚未开始的邮件，正在发送的邮件会记录最终结果。": {
+    "en": "Unstarted emails have been stopped. In-progress emails will record their final result.",
+    "ja": "未開始の送信を停止しました。送信中のメールは最終結果を記録します。"
+  },
+  "进度刷新失败：{0}": {
+    "en": "Unable to refresh progress: {0}",
+    "ja": "進捗を更新できません：{0}"
+  },
+  "当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。": {
+    "en": "This site-hosted model does not support images. Choose an image-capable model or enable MCP image recognition in Settings.",
+    "ja": "このサイト提供モデルは画像に対応していません。画像対応モデルか、設定の MCP 画像認識を選択してください。"
+  },
+  "审核待处理的瓶子和回信。命中关键词不代表内容违规。": {
+    "en": "Review pending bottles and replies. A keyword match does not itself mean a violation.",
+    "ja": "審査待ちの瓶と返信を確認します。キーワードの一致だけで違反とは限りません。"
+  },
+  "回信": {
+    "en": "Reply",
+    "ja": "返信"
+  },
+  "· 所属瓶子 #": {
+    "en": "· Bottle #",
+    "ja": "・対象の瓶 #"
+  },
+  "关键词：": {
+    "en": "Keywords:",
+    "ja": "キーワード："
+  },
+  "用户举报，原对话已关闭": {
+    "en": "Reported by a user; the conversation is closed",
+    "ja": "ユーザーからの通報により会話は終了しています"
+  },
+  "没有匹配的待审内容": {
+    "en": "No matching pending content",
+    "ja": "一致する審査待ちの内容がありません"
+  },
+  "暂无待审核的漂流瓶或回信": {
+    "en": "No bottles or replies awaiting review",
+    "ja": "審査待ちの瓶や返信はありません"
+  },
+  "内容包含外部链接：{0}。确认通过？": {
+    "en": "This content includes external links: {0}. Approve it?",
+    "ja": "外部リンクが含まれています：{0}。承認しますか？"
+  },
+  "漂流瓶内容已通过": {
+    "en": "Bottle content approved",
+    "ja": "漂流瓶の内容を承認しました"
+  },
+  "漂流瓶内容已拒绝": {
+    "en": "Bottle content rejected",
+    "ja": "漂流瓶の内容を却下しました"
+  },
+  "今日任务已完成，+{0} 经验": {
+    "en": "Daily task completed, +{0} XP",
+    "ja": "今日のタスク完了、経験値 +{0}"
+  },
+  "打开任意文章，点击点赞或收藏即可完成。": {
+    "en": "Open any article and like or bookmark it to complete this task.",
+    "ja": "記事を開き、いいねまたはブックマークすると完了します。"
+  },
+  "支持文字、图片与工具调用。图片会自动压缩，按实际 Token 用量计费。": {
+    "en": "Supports text, images and tools. Images are compressed automatically and billed by actual token usage.",
+    "ja": "テキスト・画像・ツール呼び出しに対応します。画像は自動圧縮され、実際のトークン使用量で課金されます。"
+  },
+  "支持文字聊天和工具调用；图片请配合 MCP 识图。": {
+    "en": "Supports text chat and tools. Use MCP image recognition for images.",
+    "ja": "テキストチャットとツール呼び出しに対応します。画像には MCP 画像認識を併用してください。"
+  },
+  "官方语音使用网站余额，每条成功合成的语音收费 0.05 元。": {
+    "en": "Site-hosted voice uses your site balance and costs ¥0.05 per successful synthesis.",
+    "ja": "サイト提供の音声はサイト残高を使用し、合成成功 1 回につき 0.05 元かかります。"
+  },
+  "官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。": {
+    "en": "The site-hosted voice reads Japanese. Chinese replies are first translated into Japanese by your selected chat model; that translation is billed at the model’s rates.",
+    "ja": "サイト提供の音声は日本語で読み上げます。中国語の返信は現在のチャットモデルで日本語に翻訳され、そのモデルの料金で課金されます。"
+  },
+  "官方语音需要登录账号。": {
+    "en": "Sign in to use site-hosted voice.",
+    "ja": "サイト提供の音声にはログインが必要です。"
+  },
+  "前往登录": {
+    "en": "Sign in",
+    "ja": "ログイン"
+  },
+  "正在合成…": {
+    "en": "Synthesizing…",
+    "ja": "音声合成中…"
+  },
+  "保存并试听 · ¥0.05": {
+    "en": "Save and preview · ¥0.05",
+    "ja": "保存して試聴・¥0.05"
+  },
+  "仅保存设置": {
+    "en": "Save settings only",
+    "ja": "設定のみ保存"
+  },
+  "官方直供 · ¥0.05 / 条": {
+    "en": "Site-hosted · ¥0.05 per synthesis",
+    "ja": "サイト提供・1 回 ¥0.05"
+  },
+  "请登录后使用官方语音": {
+    "en": "Sign in to use site-hosted voice.",
+    "ja": "ログインしてからサイト提供の音声をご利用ください。"
+  },
+  "设置已保存，算力恢复在线后可继续使用": {
+    "en": "Settings saved. Voice will be available when the service is back online.",
+    "ja": "設定を保存しました。サービス復旧後に音声を利用できます。"
+  },
+  "官方语音设置已保存": {
+    "en": "Voice settings saved.",
+    "ja": "音声設定を保存しました。"
+  },
+  "请登录并等待官方算力上线后再试听": {
+    "en": "Sign in and wait for the voice service to come online before previewing.",
+    "ja": "ログインし、音声サービスの復旧を待ってから試聴してください。"
+  },
+  "官方语音试听": {
+    "en": "Voice preview",
+    "ja": "音声の試聴"
+  },
+  "正在合成八千代语音…": {
+    "en": "Synthesizing Yachiyo’s voice…",
+    "ja": "ヤチヨの音声を合成中…"
+  },
+  "成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。": {
+    "en": "Successful synthesis costs ¥0.05. Failed requests are free. Replaying a valid cached preview incurs no additional charge.",
+    "ja": "合成成功時に 1 回 ¥0.05 かかります。失敗時や有効なキャッシュの再試聴では追加課金されません。"
+  },
+  "发送邮件": {
+    "en": "Send email",
+    "ja": "メール送信"
+  },
+  "自定义邮件、筛选收件人和查看群发进度": {
+    "en": "Compose email, filter recipients and track delivery",
+    "ja": "メール作成・宛先の絞り込み・送信状況の確認"
+  },
+  "该 QQ 或当前账号已有其他绑定，请检查后重试": {
+    "en": "This QQ identity or site account is already linked elsewhere. Check the existing connection and try again.",
+    "ja": "この QQ またはサイトアカウントは別の連携があります。確認してから再試行してください。"
+  },
+  "QQ 绑定未完成，请重新授权": {
+    "en": "QQ linking was not completed. Authorize QQ again.",
+    "ja": "QQ 連携が完了していません。再度認証してください。"
+  },
+  "月读空间 Google Play 测试申请": {
+    "en": "Tsukuyomi Space Google Play test application",
+    "ja": "月読空間 Google Play テスト参加申請"
+  },
+  "申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。": {
+    "en": "Apply for the Tsukuyomi Space Android closed test and learn how to join through Google Play, install the app and send feedback.",
+    "ja": "月読空間 Android クローズドテストへの申請と、Google Play での参加・インストール・フィードバックの手順。"
+  },
+  "Google Play 测试申请管理": {
+    "en": "Google Play test applications",
+    "ja": "Google Play テスト申請管理"
+  },
+  "请登录后重新保存官方语音设置。": {
+    "en": "Sign in, then save your voice settings again.",
+    "ja": "ログイン後、音声設定をもう一度保存してください。"
+  },
+  "官方语音暂不可用": {
+    "en": "Site-hosted voice is temporarily unavailable.",
+    "ja": "サイト提供の音声は一時的に利用できません。"
+  },
+  "官方语音算力离线，未发起翻译或合成，请稍后重试。": {
+    "en": "The voice service is offline. No translation or synthesis was started. Try again later.",
+    "ja": "音声サービスが停止中のため、翻訳も合成も実行していません。後ほどお試しください。"
+  },
+  "语音文本为空，未发起合成。": {
+    "en": "There is no text to read. No synthesis was started.",
+    "ja": "読み上げるテキストがないため、合成していません。"
+  },
+  "语音仍在处理中，请稍后再次点击，同一请求不会重复扣费。": {
+    "en": "Voice is still processing. Try again shortly; the same request will not be charged twice.",
+    "ja": "音声を処理中です。しばらくしてから再度押してください。同じリクエストに二重課金はありません。"
+  },
+  "暂时无法读取语音，请重试；缓存有效期内不会重复扣费。": {
+    "en": "Unable to load the audio. Try again; replaying within the cache validity period will not incur another charge.",
+    "ja": "音声を読み込めません。再試行してください。有効なキャッシュの再生には追加課金されません。"
+  },
+  "附加文字审核关键词": {
+    "en": "Additional text review keywords",
+    "ja": "追加のテキスト審査キーワード"
+  },
+  "附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。": {
+    "en": "Custom rules always extend the baseline rules. Flagged messages await review; other flagged public text must be revised before publishing.",
+    "ja": "追加ルールは常に基本ルールに加算されます。該当するメッセージは審査待ちとなり、その他の公開テキストは修正後に投稿してください。"
+  },
+  "每行一个或用逗号分隔。附加规则始终叠加系统基础规则；留言命中后进入待审，其他公开文字需修改后再发布。": {
+    "en": "One per line or comma-separated. Custom rules always extend the baseline rules. Flagged messages await review; other flagged public text must be revised before publishing.",
+    "ja": "1行に1件、またはカンマで区切ってください。追加ルールは常に基本ルールに加算されます。該当するメッセージは審査待ちとなり、その他の公開テキストは修正後に投稿してください。"
+  },
+  "文字内容包含需审核的内容，请修改后再发布。原有内容保持不变。": {
+    "en": "This text requires moderation. Please revise it before publishing. Your previously saved content has not changed.",
+    "ja": "審査が必要なテキストが含まれています。修正してから投稿してください。保存済みの内容は変更されていません。"
+  },
+  "月下漂流瓶": {
+    "en": "Moonlit bottles",
+    "ja": "月夜の漂流瓶"
+  },
+  "漂流瓶": {
+    "en": "Drift bottles",
+    "ja": "漂流瓶"
+  },
+  "漂流瓶审核": {
+    "en": "Bottle moderation",
+    "ja": "漂流瓶の審査"
+  },
+  "潮水还没带来新的瓶子，稍后再来看看。": {
+    "en": "No bottles on this tide. Come back a little later.",
+    "ja": "今は瓶がありません。また後で。"
+  },
+  "游戏中心": {
+    "en": "Game Center",
+    "ja": "ゲームセンター"
+  },
+  "和八千代下一局五子棋，或挑战辉夜快跑。": {
+    "en": "Play Gomoku with Yachiyo or try Kaguya Run.",
+    "ja": "ヤチヨと五目並べ、またはかぐやランで遊ぼう。"
+  },
+  "和八千代一起玩月下五子棋，或在辉夜快跑中挑战节奏与成绩。": {
+    "en": "Play Moonlit Gomoku with Yachiyo, or follow the rhythm and challenge your score in Kaguya Run.",
+    "ja": "ヤチヨと月下の五目並べを楽しんだり、かぐやランでリズムとスコアに挑戦しよう。"
+  },
+  "月下五子棋 · 和八千代一起": {
+    "en": "Moonlit Gomoku with Yachiyo",
+    "ja": "月下の五目並べ・ヤチヨと一緒に"
+  },
+  "和八千代对弈五子棋，支持先后手、难度选择、悔棋、提示和本地续局。": {
+    "en": "Play Gomoku with Yachiyo. Choose your color and difficulty, undo turns, get hints and resume locally.",
+    "ja": "ヤチヨと五目並べ。先後手・難しさの選択、一手戻す、ヒント、対局の再開に対応。"
+  },
+  "先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。": {
+    "en": "Finish chat setup, then send a message below. Once a reply arrives, keep chatting; voice can be enabled later.",
+    "ja": "チャットを設定し、下の欄から話しかけてみましょう。返信が届いたら会話を続けられます。音声は後から設定できます。"
+  },
+  "第一次使用 / 发现功能": {
+    "en": "Getting started / Discover features",
+    "ja": "使い方・機能を見つける"
+  },
+  "当前好感度": {
+    "en": "Current affinity",
+    "ja": "現在の好感度"
+  },
+  "· 存档": {
+    "en": "· Save slot",
+    "ja": "・セーブ"
+  },
+  "· 如何变化？": {
+    "en": "· How does it change?",
+    "ja": "・変化のしくみ"
+  },
+  "好感度来自当前日记存档。结束聊天并成功生成、保存日记后，会记录本次好感度；不会按消息条数或点击角色次数自动增加，也可能保持不变。导入或同步存档后，数值可能改变。": {
+    "en": "Affinity comes from the current diary save. It is recorded when a diary is successfully generated and saved after a chat. It does not increase with each message or character tap, and may stay unchanged. Importing or syncing saves may change the value.",
+    "ja": "好感度は現在の日記セーブに記録されています。会話を終えて日記の生成・保存が成功すると記録されます。メッセージ数やタップ回数では自動的に増えず、変わらないこともあります。セーブのインポートや同期で変わる場合があります。"
+  },
+  "最近记录：{0} {1}": {
+    "en": "Latest record: {0} {1}",
+    "ja": "最新の記録：{0} {1}"
+  },
+  "还没有生成日记。先聊几句，再使用“结束并写日记”。": {
+    "en": "No diary yet. Chat for a while, then choose “End and write diary”.",
+    "ja": "日記はまだありません。少し会話してから「終了して日記を書く」を選びましょう。"
+  },
+  "第一次来，先和八千代聊起来": {
+    "en": "New here? Start a chat with Yachiyo",
+    "ja": "はじめての方へ。八千代と話してみましょう"
+  },
+  "跟着三步完成：选择聊天服务 → 测试并保存 → 发出第一句话。站内直供需要登录账号与可用额度；也可以连接自己的服务。语音和其他设置可以稍后再做。": {
+    "en": "Three steps: choose a chat service → test and save → send your first message. Site supply requires a signed-in account and available credit; you can also connect your own service. Voice and other settings can wait.",
+    "ja": "3ステップ：サービスを選ぶ → テストして保存 → 最初のメッセージを送信。サイト提供モデルにはログインと利用可能な残高が必要です。自分のサービスにも接続できます。音声などは後から設定できます。"
+  },
+  "开始分步配置": {
+    "en": "Start guided setup",
+    "ja": "順番に設定する"
+  },
+  "先看看能做什么": {
+    "en": "Explore what you can do",
+    "ja": "できることを見る"
+  },
+  "角色加载失败：": {
+    "en": "Character failed to load:",
+    "ja": "キャラクターの読み込みに失敗："
+  },
+  "。文字聊天仍可使用；请重新进入房间重试。": {
+    "en": ". Text chat is still available; re-enter the room to retry.",
+    "ja": "。テキストチャットは利用できます。部屋に入り直して再試行してください。"
+  },
+  "角色尚未就绪，请等待加载完成。": {
+    "en": "The character is not ready yet. Please wait for loading to finish.",
+    "ja": "キャラクターの準備中です。読み込み完了までお待ちください。"
+  },
+  "已发送“{0}”动作，请观察角色；文字聊天与语音分别运行。": {
+    "en": "Sent “{0}”. Watch the character; text chat and voice run separately.",
+    "ja": "「{0}」を送信しました。キャラクターを確認してください。チャットと音声は個別に動きます。"
+  },
+  "这个动作暂时不可用，请尝试其他动作。": {
+    "en": "This action is currently unavailable. Try another one.",
+    "ja": "この動作は現在利用できません。別の動作をお試しください。"
+  },
+  "舞台使用指引": {
+    "en": "Stage guide",
+    "ja": "ステージの使い方"
+  },
+  "第一次玩舞台？": {
+    "en": "First time on the stage?",
+    "ja": "ステージは初めてですか？"
+  },
+  "① 等待角色就绪 → ② 点一次“试试点头” → ③ 再尝试 AI 演出。": {
+    "en": "① Wait for the character → ② Try a nod → ③ Try an AI performance.",
+    "ja": "① キャラクターを待つ → ② うなずきを試す → ③ AIの演出を試す。"
+  },
+  "角色加载失败，请重新进入舞台重试。文字输出不代表动作已执行。": {
+    "en": "Character loading failed. Re-enter the stage to retry. Text output does not confirm that an action ran.",
+    "ja": "キャラクターの読み込みに失敗しました。ステージに入り直してください。文字が出ても動作が実行されたとは限りません。"
+  },
+  "角色已就绪，可以试表情和动作。": {
+    "en": "Character ready. Try an expression or motion.",
+    "ja": "準備ができました。表情や動作を試せます。"
+  },
+  "正在加载角色，动作按钮将在就绪后开放。": {
+    "en": "Loading the character. Action buttons will become available when ready.",
+    "ja": "キャラクターを読み込み中です。準備ができると動作ボタンを使えます。"
+  },
+  "试试点头": {
+    "en": "Try a nod",
+    "ja": "うなずきを試す"
+  },
+  "有文字，却没动作或声音？": {
+    "en": "Text appears, but no motion or sound?",
+    "ja": "文字は出るのに動きや音がない？"
+  },
+  "文字、动作与语音分别运行。先用点头按钮检查角色；AI 演出需要配置聊天模型，声音还需要语音服务。没有声音时也可以先试动作。": {
+    "en": "Text, motion and voice run separately. Try a nod to check the character. AI performances need a chat model, and sound needs a voice service. You can try motions without sound.",
+    "ja": "文字・動作・音声は個別に動きます。うなずきでキャラクターを確認しましょう。AI演出にはチャットモデル、音声には音声サービスが必要です。音がなくても動作は試せます。"
+  },
+  "配置聊天模型": {
+    "en": "Set up a chat model",
+    "ja": "チャットモデルを設定"
+  },
+  "语音与其他设置": {
+    "en": "Voice and other settings",
+    "ja": "音声などの設定"
+  },
+  "角色还未就绪，请先等待加载完成。": {
+    "en": "The character is not ready. Wait for loading to finish.",
+    "ja": "キャラクターの準備ができていません。読み込みをお待ちください。"
+  },
+  "点头指令已发送，请观察上方角色。如果没有动作，请重新进入舞台后重试。": {
+    "en": "Nod command sent. Watch the character above. If nothing moves, re-enter the stage and retry.",
+    "ja": "うなずき指令を送信しました。上のキャラクターを確認してください。動かない場合はステージに入り直して再試行してください。"
+  },
+  "动作暂时不可用，请重试。": {
+    "en": "Action unavailable. Please retry.",
+    "ja": "動作を利用できません。もう一度お試しください。"
+  },
+  "开始使用与发现功能": {
+    "en": "Getting started and discovering features",
+    "ja": "使い方と機能ガイド"
+  },
+  "首次聊天配置": {
+    "en": "First chat setup",
+    "ja": "初めてのチャット設定"
+  },
+  "第一次聊天，跟着这三步就好": {
+    "en": "Your first chat in three steps",
+    "ja": "3ステップで最初の会話へ"
+  },
+  "语音、记忆和外观可以稍后设置。当前填写的内容会保留到你离开页面。": {
+    "en": "Voice, memory and appearance can wait. Your draft stays here until you leave the page.",
+    "ja": "音声・記憶・外観は後から設定できます。ページを離れるまでは入力内容が保持されます。"
+  },
+  "查看全部设置": {
+    "en": "View all settings",
+    "ja": "すべての設定を表示"
+  },
+  "接下来，确认能收到回复": {
+    "en": "Next, check that you can receive a reply",
+    "ja": "次に、返信が届くか確認しましょう"
+  },
+  "当前模型：": {
+    "en": "Current model:",
+    "ja": "現在のモデル："
+  },
+  "。测试会调用所选服务，可能产生用量；不会自动发送聊天。": {
+    "en": ". Testing calls the selected service and may incur usage. No chat is sent automatically.",
+    "ja": "。テストでは選択したサービスを呼び出し、利用量が発生する場合があります。チャットは自動送信されません。"
+  },
+  "通过后点击“保存，去说第一句话”。也可以跳过测试，保存后直接尝试聊天。": {
+    "en": "After a successful test, choose “Save and send your first message”. You can also skip testing and try chatting after saving.",
+    "ja": "テスト成功後は「保存して最初のメッセージへ」を選びましょう。テストを省略して保存後に会話を試すこともできます。"
+  },
+  "请查看测试结果中的原因。可以回到上一步修改信息，或保留设置后稍后重试。": {
+    "en": "Check the reason in the test result. Go back to edit your details, or keep the settings and retry later.",
+    "ja": "テスト結果の原因を確認してください。前のステップで情報を修正するか、設定を保存して後で再試行できます。"
+  },
+  "信息已填写，可以继续": {
+    "en": "Details entered. You can continue.",
+    "ja": "入力済みです。次へ進めます。"
+  },
+  "请填写当前服务所需的信息": {
+    "en": "Enter the details required by this service",
+    "ja": "このサービスに必要な情報を入力してください"
+  },
+  "选择适合你的连接方式": {
+    "en": "Choose a connection method that works for you",
+    "ja": "接続方法を選んでください"
+  },
+  "上一步": {
+    "en": "Back",
+    "ja": "戻る"
+  },
+  "下一步": {
+    "en": "Next",
+    "ja": "次へ"
+  },
+  "保存，去说第一句话": {
+    "en": "Save and send your first message",
+    "ja": "保存して最初のメッセージへ"
+  },
+  "跳过测试并保存": {
+    "en": "Skip testing and save",
+    "ja": "テストを省略して保存"
+  },
+  "月读空间 · 随时可以回来看看": {
+    "en": "Tsukuyomi Space · Come back to this guide anytime",
+    "ja": "月読空間・いつでもこのガイドを開けます"
+  },
+  "关闭使用指南": {
+    "en": "Close getting-started guide",
+    "ja": "使い方ガイドを閉じる"
+  },
+  "先和八千代说句话": {
+    "en": "Say something to Yachiyo",
+    "ja": "八千代に話しかけてみましょう"
+  },
+  "选择聊天服务": {
+    "en": "Choose a chat service",
+    "ja": "チャットサービスを選ぶ"
+  },
+  "使用站内账号与可用余额，或连接自己的云端／本机模型。": {
+    "en": "Use your site account and available credit, or connect your own cloud or local model.",
+    "ja": "サイトアカウントと利用可能な残高を使うか、自分のクラウド・ローカルモデルを接続します。"
+  },
+  "测试连接并保存": {
+    "en": "Test and save the connection",
+    "ja": "接続をテストして保存"
+  },
+  "测试通过后保存。测试会调用所选服务，可能产生用量；语音和其他设置可以稍后再做。": {
+    "en": "Save after testing. Tests call the selected service and may incur usage. Voice and other settings can wait.",
+    "ja": "テスト後に保存します。テストでは選択したサービスを呼び出し、利用量が発生する場合があります。音声などは後から設定できます。"
+  },
+  "回到聊天，发送一句话": {
+    "en": "Return to chat and send a message",
+    "ja": "チャットに戻って話しかける"
+  },
+  "收到完整回复，才算完成首次对话。没有声音时也可以继续文字聊天。": {
+    "en": "Your first conversation is complete when a full reply arrives. You can keep chatting without sound.",
+    "ja": "完全な返信が届いたら、最初の会話は完了です。音声がなくてもチャットは続けられます。"
+  },
+  "你已完成一轮对话，可以继续聊天或探索下面的功能。": {
+    "en": "You have completed a conversation. Keep chatting or explore the features below.",
+    "ja": "会話を1往復できました。そのまま話したり、下の機能を試したりできます。"
+  },
+  "聊天设置已填写，接下来发送一句话，确认能收到回复。": {
+    "en": "Chat settings are filled in. Send a message next to check that a reply arrives.",
+    "ja": "チャット設定は入力済みです。次に話しかけて、返信が届くか確認しましょう。"
+  },
+  "还没有完成聊天设置，先跟着步骤连接一个模型。": {
+    "en": "Chat setup is not complete. Follow the steps to connect a model.",
+    "ja": "チャット設定がまだ完了していません。手順に沿ってモデルを接続しましょう。"
+  },
+  "去说第一句话": {
+    "en": "Send your first message",
+    "ja": "最初のメッセージへ"
+  },
+  "查看配置步骤": {
+    "en": "View setup steps",
+    "ja": "設定手順を見る"
+  },
+  "还可以做这些": {
+    "en": "More things to try",
+    "ja": "ほかにもできること"
+  },
+  "好感度为什么没有变化？": {
+    "en": "Why has affinity not changed?",
+    "ja": "好感度が変わらないのはなぜ？"
+  },
+  "好感度来自当前日记存档，不按发消息条数或点击角色次数自动增加。结束聊天并成功生成、保存日记后，会记录本次好感度；数值也可能保持不变。导入或同步其他存档后，显示值可能改变。": {
+    "en": "Affinity comes from the current diary save; it does not increase with message counts or character taps. After a chat ends and a diary is successfully generated and saved, affinity is recorded and may stay unchanged. Importing or syncing other saves can change the displayed value.",
+    "ja": "好感度は現在の日記セーブに記録され、メッセージ数やタップ回数では増えません。会話を終えて日記の生成・保存に成功すると記録され、変わらない場合もあります。別のセーブのインポートや同期で表示値が変わることがあります。"
+  },
+  "查看日记与当前存档": {
+    "en": "View diary and current save",
+    "ja": "日記と現在のセーブを見る"
+  },
+  "有文字，但角色没有反应？": {
+    "en": "Text appears, but the character does not respond?",
+    "ja": "文字は出るのにキャラクターが反応しない？"
+  },
+  "文字回复、角色动作和语音是分别运行的。先等角色加载完成，在舞台试一次“点头”；仍无反应时查看角色加载提示。只有开启并配置语音后才会发声，不是每条文字都会带动作。": {
+    "en": "Text replies, character motions and voice run separately. Wait for the character to load, then try a nod on the stage. If nothing moves, check the loading message. Sound requires voice to be configured and enabled; not every reply includes a motion.",
+    "ja": "返信・動作・音声は個別に動きます。読み込み後にステージでうなずきを試し、動かない場合は読み込み表示を確認してください。音声には設定と有効化が必要です。すべての返信に動作が付くわけではありません。"
+  },
+  "去舞台检查": {
+    "en": "Check on the stage",
+    "ja": "ステージで確認"
+  },
+  "跟着音乐跑一局，进入后查看键盘或触屏操作。": {
+    "en": "Play along with the music. Check keyboard or touch controls after entering.",
+    "ja": "音楽に合わせて遊びましょう。入場後にキーボード・タッチ操作を確認できます。"
+  },
+  "Live2D 舞台": {
+    "en": "Live2D stage",
+    "ja": "Live2D ステージ"
+  },
+  "先试表情和动作，无需聊天模型；AI 演出与语音另行配置。": {
+    "en": "Try expressions and motions without a chat model. AI performances and voice need separate setup.",
+    "ja": "モデル設定なしで表情や動作を試せます。AI演出と音声には別の設定が必要です。"
+  },
+  "月读广场": {
+    "en": "Tsukuyomi Plaza",
+    "ja": "月読広場"
+  },
+  "看看同好在聊什么，登录后留言、回复或参与话题。": {
+    "en": "See what other fans are discussing. Sign in to post, reply or join a topic.",
+    "ja": "ファン同士の会話をのぞいてみましょう。ログインすると投稿・返信・話題への参加ができます。"
+  },
+  "作品百科": {
+    "en": "Story encyclopedia",
+    "ja": "作品百科"
+  },
+  "查找角色、故事与音乐，继续回味作品。": {
+    "en": "Explore characters, stories and music to revisit the work.",
+    "ja": "キャラクター・物語・音楽を調べて、作品を振り返りましょう。"
+  },
+  "浏览大家分享的图片，找到喜欢的作品。": {
+    "en": "Browse shared images and find works you like.",
+    "ja": "共有された画像を眺めて、好きな作品を見つけましょう。"
+  },
+  "查看签到、任务与等级；这里的等级与日记好感度分开记录。": {
+    "en": "View check-ins, tasks and levels. Levels are recorded separately from diary affinity.",
+    "ja": "チェックイン・タスク・レベルを確認できます。レベルと日記の好感度は別々に記録されます。"
+  },
+  "访问主舞台": {
+    "en": "Visit the Stage",
+    "ja": "ステージを開く"
+  },
+  "参考内容与真实曝光反馈，给新作、低曝光作品和优质旧文留出位置；任务帖后置。": {
+    "en": "Content and feedback after real exposure make room for new, less-seen and valuable older work. Task posts appear later.",
+    "ja": "内容と実際の表示後の反応を参考に、新作・未発見の作品・良質な過去作を紹介。タスク投稿は後方に表示します。"
+  },
+  "模型响应超时，原对话已保留，请稍后重试。": {
+    "en": "The model timed out. Your conversation is kept; try again later.",
+    "ja": "モデルの応答がタイムアウトしました。会話は保持されています。後で再試行してください。"
+  },
+  "登录已失效，请重新登录后使用站内直供。": {
+    "en": "Your session expired. Sign in again to use site models.",
+    "ja": "ログインの有効期限が切れました。再ログインしてサイトのモデルを利用してください。"
+  },
+  "网站余额不足，请前往支付页面充值后重试。": {
+    "en": "Your site balance is insufficient. Top up on the payment page, then retry.",
+    "ja": "サイト残高が不足しています。支払いページでチャージしてから再試行してください。"
+  },
+  "正在等待模型完成日记，原对话会保留到保存成功。": {
+    "en": "Waiting for the model to finish the diary. Your conversation stays until saving succeeds.",
+    "ja": "モデルが日記を書き終えるのを待っています。保存が完了するまで元の会話は保持されます。"
+  },
+  "日记同步未完成：{0}": {
+    "en": "Diary sync did not complete: {0}",
+    "ja": "日記の同期が完了しませんでした：{0}"
+  },
+  "原对话已保留，可以稍后重试。": {
+    "en": "Your conversation is kept. You can retry later.",
+    "ja": "元の会話は保持されています。後で再試行できます。"
+  },
+  "日记回复中断，未保存未完成的内容，原对话已保留。": {
+    "en": "The diary response was interrupted. Incomplete content was not saved; your conversation is kept.",
+    "ja": "日記の応答が中断されました。未完成の内容は保存されず、元の会話は保持されています。"
+  },
+  "更换访问密钥": {
+    "en": "Replace access credentials",
+    "ja": "アクセスキーを変更"
+  },
+  "访问密钥已配置。保存其他设置会保留现有密钥；需要更换时再勾选并填写。": {
+    "en": "Access credentials are configured. Saving other settings preserves them. Enable replacement only when you need to change them.",
+    "ja": "アクセスキーは設定済みです。他の設定を保存しても既存のキーを保持します。変更するときだけ選択して入力してください。"
+  },
+  "尚未配置访问密钥，请勾选“更换访问密钥”后填写。": {
+    "en": "No access credentials are configured. Enable replacement, then enter them.",
+    "ja": "アクセスキーが未設定です。「アクセスキーを変更」を選択して入力してください。"
+  },
+  "新的 AccessKey Secret": {
+    "en": "New AccessKey Secret",
+    "ja": "新しい AccessKey Secret"
+  },
+  "填写阿里云 AccessKey Secret，不是网站登录密码": {
+    "en": "Enter your Alibaba Cloud AccessKey Secret, not your site password",
+    "ja": "サイトのパスワードではなく、Alibaba Cloud の AccessKey Secret を入力してください"
+  },
+  "更换访问密钥时，请完整填写 AccessKey ID 和 AccessKey Secret": {
+    "en": "To replace credentials, enter both AccessKey ID and AccessKey Secret",
+    "ja": "キーを変更する場合は AccessKey ID と AccessKey Secret を両方入力してください"
+  },
+  "支付成功后按实付金额充值到网站余额": {
+    "en": "Credit the actual payment to the site wallet after payment succeeds",
+    "ja": "支払い成功後、実際の支払額をサイト残高にチャージ"
+  },
+  "充值商品验签后自动入账，其他服务按商品说明交付": {
+    "en": "Top-ups are credited after signature verification; other services follow the product description",
+    "ja": "チャージ商品は署名検証後に自動入金し、その他のサービスは商品説明に従います"
+  },
+  "网站统一余额": {
+    "en": "Shared site wallet",
+    "ja": "サイト共通残高"
+  },
+  "网站余额": {
+    "en": "Site balance",
+    "ja": "サイト残高"
+  },
+  "超级管理员不限余额，官方 API 用量正常记录，免扣充值余额。": {
+    "en": "Super admins have unlimited access. API usage is recorded without deducting the prepaid balance.",
+    "ja": "最高管理者は残高制限なしです。API 使用量は記録されますが、チャージ残高からは引かれません。"
+  },
+  "可用 ¥": {
+    "en": "Available ¥",
+    "ja": "利用可能 ¥"
+  },
+  "· 账面 ¥": {
+    "en": "· Balance ¥",
+    "ja": "· 残高 ¥"
+  },
+  "· 待结算冻结 ¥": {
+    "en": "· Held for settlement ¥",
+    "ja": "· 精算待ち保留 ¥"
+  },
+  "充值到账后可直接用于官方 API，所有页面共用这份余额。冻结金额尚未扣费。": {
+    "en": "Top-ups can be used for the official API. All pages share this wallet. Held funds have not been charged.",
+    "ja": "チャージ後は公式 API に使え、すべてのページで残高を共有します。保留金額はまだ課金されていません。"
+  },
+  "官方 API 中心": {
+    "en": "Official API center",
+    "ja": "公式 API センター"
+  },
+  "已充值 ¥{0} 到网站余额。": {
+    "en": "¥{0} has been credited to your site wallet.",
+    "ja": "サイト残高に ¥{0} をチャージしました。"
+  },
+  "支付成功后充值 ¥": {
+    "en": "After payment, credit ¥",
+    "ja": "支払い後に ¥"
+  },
+  "到网站余额。": {
+    "en": " to your site wallet.",
+    "ja": " をサイト残高にチャージします。"
+  },
+  "选择连接方式": {
+    "en": "Choose a connection",
+    "ja": "接続方法を選択"
+  },
+  "选择站内模型": {
+    "en": "Choose a site model",
+    "ja": "サイトのモデルを選択"
+  },
+  "填写本机模型": {
+    "en": "Enter a local model",
+    "ja": "ローカルモデルを入力"
+  },
+  "站内直供": {
+    "en": "Site-hosted models",
+    "ja": "サイト提供モデル"
+  },
+  "账号直接使用 · 统一余额计费": {
+    "en": "Use your account · Shared wallet",
+    "ja": "アカウントで利用 · 共通残高"
+  },
+  "用月读空间账号直接聊天": {
+    "en": "Chat with your Tsukuyomi account",
+    "ja": "月読空間のアカウントでチャット"
+  },
+  "超级管理员不限额度": {
+    "en": "Unlimited for super admins",
+    "ja": "最高管理者は上限なし"
+  },
+  "可用余额 ¥{0}": {
+    "en": "Available balance ¥{0}",
+    "ja": "利用可能残高 ¥{0}"
+  },
+  "登录后读取可用模型，使用网站现有余额；无需购买或填写服务商密钥。": {
+    "en": "Sign in to load available models and use your site balance. No provider key is needed.",
+    "ja": "ログインして利用可能なモデルとサイトの残高を使えます。提供元のキーは不要です。"
+  },
+  "每百万 Token：输入 ¥": {
+    "en": "Per million tokens: input ¥",
+    "ja": "100万トークンあたり：入力 ¥"
+  },
+  "，缓存输入 ¥": {
+    "en": ", cached input ¥",
+    "ja": "、キャッシュ入力 ¥"
+  },
+  "，输出 ¥": {
+    "en": ", output ¥",
+    "ja": "、出力 ¥"
+  },
+  "。按实际用量结算，测试连接也会产生用量。": {
+    "en": ". Billed by actual usage, including connection tests.",
+    "ja": "。実際の使用量で精算され、接続テストも使用量に含まれます。"
+  },
+  "单次输出上限": {
+    "en": "Output limit per request:",
+    "ja": "1回の出力上限："
+  },
+  "Token；当前直供支持文字聊天和工具调用，图片请配合 MCP 识图。": {
+    "en": "tokens. Text chat and tools are supported; use MCP for images.",
+    "ja": "トークン。テキストとツールに対応し、画像には MCP を使います。"
+  },
+  "余额与支付": {
+    "en": "Balance & payments",
+    "ja": "残高と支払い"
+  },
+  "直供控制台": {
+    "en": "Model service console",
+    "ja": "モデルサービス管理"
+  },
+  "登录账号": {
+    "en": "Sign in",
+    "ja": "ログイン"
+  },
+  "正在加载站内模型…": {
+    "en": "Loading site models…",
+    "ja": "サイトのモデルを読み込み中…"
+  },
+  "请选择站内模型": {
+    "en": "Choose a site model",
+    "ja": "サイトのモデルを選択してください"
+  },
+  "选择站内已开放的模型，保存后返回房间即可使用。": {
+    "en": "Choose an available model, save, then return to Room to chat.",
+    "ja": "公開中のモデルを選び、保存して房間へ戻ると利用できます。"
+  },
+  "站内直供通过当前网站安全连接，使用登录 Cookie 验证身份。": {
+    "en": "Site models connect securely through this website using your sign-in Cookie.",
+    "ja": "サイトのモデルは、このサイトのログイン Cookie で認証して安全に接続します。"
+  },
+  "正在读取当前账号的站内模型与余额…": {
+    "en": "Loading models and balance for your account…",
+    "ja": "現在のアカウントのモデルと残高を読み込み中…"
+  },
+  "使用当前登录账号，无需填写 API 密钥。": {
+    "en": "Use your signed-in account. No API key is needed.",
+    "ja": "ログイン中のアカウントを使います。API キーは不要です。"
+  },
+  "站内直供暂未开放，请稍后再试或选择其他连接方式。": {
+    "en": "Site models are not available. Try later or choose another connection.",
+    "ja": "サイトのモデルは現在利用できません。後で試すか、別の接続方法を選んでください。"
+  },
+  "请等待站内模型加载完成，或点击刷新模型。": {
+    "en": "Wait for models to load, or refresh the model list.",
+    "ja": "モデルの読み込みを待つか、モデル一覧を更新してください。"
+  },
+  "站内直供已保存，使用当前登录账号及网站统一余额。": {
+    "en": "Site model settings saved. Your signed-in account and site wallet will be used.",
+    "ja": "サイトのモデル設定を保存しました。ログイン中のアカウントと共通残高を使います。"
+  },
+  "请检查登录状态和网站统一余额；可前往「余额与支付」充值，或在直供控制台查看服务状态。": {
+    "en": "Check your sign-in and site balance. Top up in Balance & payments or check the service console.",
+    "ja": "ログイン状態と共通残高を確認してください。「残高と支払い」でチャージし、管理画面でサービス状態を確認できます。"
+  },
+  "先为八千代选择一个聊天模型": {
+    "en": "Choose a chat model for Yachiyo",
+    "ja": "八千代のチャットモデルを選びましょう"
+  },
+  "还没有配置聊天 API。前往房间设置，选择「站内直供」即可使用网站账号和余额，也可以连接自己的云端 API 或本机 Ollama。": {
+    "en": "Your chat API is not configured. In Room settings, choose Site-hosted models to use your site account and balance, or connect your own cloud API or local Ollama.",
+    "ja": "チャット API が未設定です。房間設定で「サイト提供モデル」を選ぶとアカウントと残高を使えます。クラウド API やローカル Ollama にも接続できます。"
+  },
+  "完成配置前不会发送聊天请求或产生模型费用。": {
+    "en": "No chat request or model charge occurs before setup is complete.",
+    "ja": "設定が完了するまでは、チャットリクエストやモデル料金は発生しません。"
+  },
+  "去配置聊天模型": {
+    "en": "Set up a chat model",
+    "ja": "チャットモデルを設定"
+  },
+  "稍后设置": {
+    "en": "Set up later",
+    "ja": "後で設定"
+  },
+  "请先在房间设置中选择并配置聊天模型。": {
+    "en": "Choose and configure a chat model in Room settings first.",
+    "ja": "まず房間設定でチャットモデルを選択・設定してください。"
+  },
+  "当前站内直供仅支持文字，图片请在设置中选择 MCP 识图，或切换支持图片的模型。": {
+    "en": "Site models currently support text only. Use MCP image recognition in settings, or select a model that supports images.",
+    "ja": "現在のサイトモデルはテキストのみです。MCP 画像認識を設定するか、画像対応モデルに切り替えてください。"
+  },
+  "请先登录月读空间，再使用站内直供。": {
+    "en": "Sign in to Tsukuyomi Space to use site models.",
+    "ja": "サイトのモデルを使うには月読空間にログインしてください。"
+  },
+  "站内直供暂时无法读取，请稍后刷新。": {
+    "en": "Unable to load site models. Refresh later.",
+    "ja": "サイトのモデルを読み込めません。後で更新してください。"
+  },
+  "站内直供返回的数据不完整，请稍后刷新。": {
+    "en": "Site model data is incomplete. Refresh later.",
+    "ja": "サイトのモデル情報が不完全です。後で更新してください。"
+  },
+  "站内直供暂未开放，请选择其他连接方式或稍后再试。": {
+    "en": "Site models are not available. Choose another connection or try later.",
+    "ja": "サイトのモデルは現在利用できません。別の接続方法を選ぶか、後で試してください。"
+  },
+  "该站内模型暂不可用，请刷新模型列表后重新选择。": {
+    "en": "This site model is unavailable. Refresh the list and choose again.",
+    "ja": "このサイトモデルは利用できません。一覧を更新して選び直してください。"
+  },
   "已授权应用": {
     "en": "Authorized apps",
     "ja": "認可済みアプリ"
@@ -10374,101 +11799,386 @@
     "en": "This account was deleted. Check the order in the Alipay merchant portal.",
     "ja": "このアカウントは削除されています。Alipay加盟店画面で注文を確認してください。"
   },
-  "支付中心": {"en": "Payment centre", "ja": "お支払いセンター"},
-  "充值、订单与聊天用量，在这里一起查看。": {"en": "Your top-ups, orders and chat usage in one place.", "ja": "チャージ、注文、チャット使用量をまとめて確認できます。"},
-  "正在读取支付中心…": {"en": "Loading payment centre…", "ja": "お支払いセンターを読み込み中…"},
-  "登录后查看支付中心": {"en": "Sign in to view your payments", "ja": "ログインしてお支払いを確認"},
-  "充值、余额和用量均关联到你的月读空间账号。": {"en": "Top-ups, balance and usage are linked to your Tsukuyomi account.", "ja": "チャージ、残高、使用量は月読空間アカウントに紐づきます。"},
-  "支付中心导航": {"en": "Payment centre navigation", "ja": "お支払いセンターのナビゲーション"},
-  "充值": {"en": "Top up", "ja": "チャージ"},
-  "直供模型": {"en": "Hosted models", "ja": "サイト提供モデル"},
-  "用量账单": {"en": "Usage & billing", "ja": "使用量と請求"},
-  "网站可用余额": {"en": "Available site balance", "ja": "サイト利用可能残高"},
-  "不限额度": {"en": "Unlimited", "ja": "上限なし"},
-  "超级管理员免扣余额，用量照常记录。": {"en": "Super admins are not charged; usage is still recorded.", "ja": "スーパー管理者の残高は引き落とされません。使用量は記録されます。"},
-  "充值到账后，可直接在 Room 使用站内直供。": {"en": "Once credited, your balance can be used for hosted models in Room.", "ja": "チャージ後、Room のサイト提供モデルに利用できます。"},
-  "查看充值选项": {"en": "View top-up options", "ja": "チャージ方法を見る"},
-  "账面余额": {"en": "Total balance", "ja": "残高合計"},
-  "待结算冻结": {"en": "Held for settlement", "ja": "精算待ち保留額"},
-  "全站共用一份余额，冻结金额尚未扣费。": {"en": "One shared site balance. Held amounts have not been charged.", "ja": "サイト共通の残高です。保留額はまだ引き落とされていません。"},
-  "充值与服务": {"en": "Top-ups & services", "ja": "チャージとサービス"},
-  "支付宝安全支付": {"en": "Secure Alipay checkout", "ja": "Alipay 安全決済"},
-  "统一查看网站余额、充值订单和站内直供用量。": {"en": "View your site balance, top-up orders and hosted model usage together.", "ja": "サイト残高、チャージ注文、サイト提供モデルの使用量をまとめて確認。"},
-  "刷新用量": {"en": "Refresh usage", "ja": "使用量を更新"},
-  "正在读取模型与用量…": {"en": "Loading models and usage…", "ja": "モデルと使用量を読み込み中…"},
-  "暂时无法读取直供服务。充值与订单仍可独立使用。": {"en": "Hosted service details are unavailable. Top-ups and orders remain accessible.", "ja": "サイト提供サービスの情報を取得できません。チャージと注文は引き続き利用できます。"},
-  "在 Room 设置选择“站内直供”，即可使用网站余额聊天。": {"en": "Choose “Site hosted” in Room settings to chat using your site balance.", "ja": "Room 設定で「サイト提供」を選ぶと、サイト残高でチャットできます。"},
-  "· 最多输出": {"en": "· Max output", "ja": "· 最大出力"},
-  "服务已启用": {"en": "Service enabled", "ja": "サービス有効"},
-  "暂未开放": {"en": "Not available yet", "ja": "現在利用できません"},
-  "输入 · 未命中缓存": {"en": "Input · cache miss", "ja": "入力 · キャッシュ未使用"},
-  "输入 · 命中缓存": {"en": "Input · cache hit", "ja": "入力 · キャッシュ使用"},
-  "输出": {"en": "Output", "ja": "出力"},
-  "售价尚未公布。": {"en": "Pricing has not been published.", "ja": "料金はまだ公開されていません。"},
-  "单价为每百万 Token 的人民币金额。请求接纳时锁定售价，按最终用量结算；冻结金额尚未扣费。": {"en": "Prices are CNY per million tokens, locked when a request is accepted and settled against final usage. Holds are not charges.", "ja": "料金は100万トークンあたりの人民元です。受付時の料金を固定し、最終使用量で精算します。保留額は引き落としではありません。"},
-  "前往聊天模型设置": {"en": "Open chat model settings", "ja": "チャットモデル設定へ"},
-  "账单月份": {"en": "Billing month", "ja": "請求月"},
-  "按 UTC 自然月统计。余额不按月清零，账单汇总不会再次扣费。": {"en": "Calendar months use UTC. Balance does not expire monthly; summaries do not create new charges.", "ja": "UTC の暦月で集計します。残高は毎月リセットされず、集計による追加請求もありません。"},
-  "已结算消费": {"en": "Settled charges", "ja": "精算済み利用額"},
-  "已到账充值": {"en": "Credited top-ups", "ja": "入金済みチャージ"},
-  "待核对冻结": {"en": "Held pending review", "ja": "確認待ち保留額"},
-  "正在读取月账单…": {"en": "Loading monthly statement…", "ja": "月次明細を読み込み中…"},
-  "最近使用记录": {"en": "Recent usage", "ja": "最近の使用履歴"},
-  "暂无使用记录。开始聊天后，可在这里核对费用。": {"en": "No usage yet. After chatting, check your charges here.", "ja": "使用履歴はありません。チャット後、ここで料金を確認できます。"},
-  "输入": {"en": "Input", "ja": "入力"},
-  "· 缓存": {"en": "· Cached", "ja": "· キャッシュ"},
-  "· 输出": {"en": "· Output", "ja": "· 出力"},
-  "最终用量待核对": {"en": "Final usage pending review", "ja": "最終使用量を確認中"},
-  "免扣费": {"en": "No charge", "ja": "課金なし"},
-  "尚未结算": {"en": "Not settled", "ja": "未精算"},
-  "加载更多记录": {"en": "Load more records", "ja": "履歴をさらに表示"},
-  "直供服务管理": {"en": "Hosted service management", "ja": "サイト提供サービス管理"},
-  "仅维护者可见": {"en": "Maintainers only", "ja": "保守担当者のみ"},
-  "重新读取配置": {"en": "Reload configuration", "ja": "設定を再読み込み"},
-  "更新页面用量": {"en": "Refresh page usage", "ja": "ページの使用量を更新"},
-  "管理充值商品": {"en": "Manage top-up products", "ja": "チャージ商品を管理"},
-  "供应商与模型": {"en": "Provider & model", "ja": "プロバイダーとモデル"},
-  "模型 ID": {"en": "Model ID", "ja": "モデル ID"},
-  "已加密保存密钥": {"en": "Key saved encrypted", "ja": "キーは暗号化して保存済み"},
-  "尚未配置密钥": {"en": "No key configured", "ja": "キー未設定"},
-  "更换供应商密钥": {"en": "Replace provider key", "ja": "プロバイダーキーを変更"},
-  "留空保留已保存的密钥": {"en": "Leave blank to keep the saved key", "ja": "空欄で保存済みキーを保持"},
-  "删除所选供应商密钥": {"en": "Delete selected provider key", "ja": "選択中のプロバイダーキーを削除"},
-  "每百万 Token 售价（元）": {"en": "Price per million tokens (CNY)", "ja": "100万トークンあたりの料金（人民元）"},
-  "未缓存输入": {"en": "Uncached input", "ja": "キャッシュ未使用の入力"},
-  "缓存输入": {"en": "Cached input", "ja": "キャッシュ使用の入力"},
-  "请求限制": {"en": "Request limits", "ja": "リクエスト制限"},
-  "输入 Token 上限": {"en": "Input token limit", "ja": "入力トークン上限"},
-  "输出 Token 上限": {"en": "Output token limit", "ja": "出力トークン上限"},
-  "每人并发数": {"en": "Concurrent requests per user", "ja": "ユーザーごとの同時実行数"},
-  "每分钟请求数": {"en": "Requests per minute", "ja": "1分あたりのリクエスト数"},
-  "服务状态": {"en": "Service status", "ja": "サービス状態"},
-  "公布售价": {"en": "Publish pricing", "ja": "料金を公開"},
-  "已核验供应商最终用量协议": {"en": "Final usage reporting verified", "ja": "最終使用量の報告を検証済み"},
-  "已核验请求费用上限": {"en": "Request cost bound verified", "ja": "リクエスト費用上限を検証済み"},
-  "启用站内直供": {"en": "Enable hosted models", "ja": "サイト提供モデルを有効化"},
-  "保存后仅影响新请求。充值金额、商品和支付开关沿用网站支付管理。": {"en": "Changes affect new requests only. Top-up amounts, products and payments use the existing site payment manager.", "ja": "変更は新規リクエストにのみ適用されます。チャージ金額、商品、決済設定は既存のサイト決済管理を使用します。"},
-  "处理中…": {"en": "Processing…", "ja": "処理中…"},
-  "保存服务配置": {"en": "Save service configuration", "ja": "サービス設定を保存"},
-  "待核对请求": {"en": "Requests pending review", "ja": "確認待ちリクエスト"},
-  "目前没有待核对的请求。": {"en": "No requests are pending review.", "ja": "確認待ちのリクエストはありません。"},
-  "冻结 ¥": {"en": "Held ¥", "ja": "保留 ¥"},
-  "供应商核对凭据编号": {"en": "Provider evidence reference", "ja": "プロバイダー確認証憑番号"},
-  "按凭据结算": {"en": "Settle with evidence", "ja": "証憑に基づいて精算"},
-  "凭未消费证明释放": {"en": "Release with proof of no usage", "ja": "未使用証明に基づいて保留解除"},
-  "服务配置已保存，新请求采用新设置。": {"en": "Configuration saved. New requests use the updated settings.", "ja": "設定を保存しました。新規リクエストに適用されます。"},
-  "核对完成，最终用量已结算。": {"en": "Review complete. Final usage has been settled.", "ja": "確認完了。最終使用量を精算しました。"},
-  "冻结已释放，核对凭据已留档。": {"en": "Hold released. Evidence has been recorded.", "ja": "保留を解除し、確認証憑を記録しました。"},
-  "核对证据已记录，冻结仍保留，请继续核查。": {"en": "Evidence recorded. The hold remains; further review is needed.", "ja": "証憑を記録しました。保留は継続中です。引き続き確認してください。"},
-  "单价最多支持 9 位小数。": {"en": "Prices support up to 9 decimal places.", "ja": "単価は小数点以下9桁までです。"},
-  "服务请求地址无效。": {"en": "Invalid service request path.", "ja": "サービスリクエストのパスが無効です。"},
-  "请刷新支付中心，确认当前账号后重试。": {"en": "Refresh the payment centre to verify your account, then retry.", "ja": "お支払いセンターを更新してアカウントを確認し、再試行してください。"},
-  "登录账号已变化，请刷新支付中心后重试。": {"en": "Your signed-in account changed. Refresh the payment centre and retry.", "ja": "ログインアカウントが変わりました。お支払いセンターを更新して再試行してください。"},
-  "请检查登录状态和网站余额；可前往「支付中心」充值并查看模型、用量和订单。": {"en": "Check your sign-in and site balance. Open the payment centre to top up and view models, usage and orders.", "ja": "ログイン状態とサイト残高を確認してください。「お支払いセンター」でチャージ、モデル、使用量、注文を確認できます。"},
-  "模型用量暂不可用，请在“站内直供”刷新重试。": { "en": "Model usage is unavailable. Refresh the hosted service above to retry.", "ja": "モデル使用量を取得できません。上のサイト提供サービスで更新して再試行してください。" },
-  "未产生消费，冻结已释放": { "en": "No consumption; hold released", "ja": "利用なし。保留を解除しました" },
-  "未扣费": { "en": "Not charged", "ja": "引き落としなし" },
-  "新供应商密钥": { "en": "New provider key", "ja": "新しいプロバイダーキー" },
+  "支付中心": {
+    "en": "Payment centre",
+    "ja": "お支払いセンター"
+  },
+  "充值、订单与聊天用量，在这里一起查看。": {
+    "en": "Your top-ups, orders and chat usage in one place.",
+    "ja": "チャージ、注文、チャット使用量をまとめて確認できます。"
+  },
+  "正在读取支付中心…": {
+    "en": "Loading payment centre…",
+    "ja": "お支払いセンターを読み込み中…"
+  },
+  "登录后查看支付中心": {
+    "en": "Sign in to view your payments",
+    "ja": "ログインしてお支払いを確認"
+  },
+  "充值、余额和用量均关联到你的月读空间账号。": {
+    "en": "Top-ups, balance and usage are linked to your Tsukuyomi account.",
+    "ja": "チャージ、残高、使用量は月読空間アカウントに紐づきます。"
+  },
+  "支付中心导航": {
+    "en": "Payment centre navigation",
+    "ja": "お支払いセンターのナビゲーション"
+  },
+  "充值": {
+    "en": "Top up",
+    "ja": "チャージ"
+  },
+  "直供模型": {
+    "en": "Hosted models",
+    "ja": "サイト提供モデル"
+  },
+  "用量账单": {
+    "en": "Usage & billing",
+    "ja": "使用量と請求"
+  },
+  "网站可用余额": {
+    "en": "Available site balance",
+    "ja": "サイト利用可能残高"
+  },
+  "不限额度": {
+    "en": "Unlimited",
+    "ja": "上限なし"
+  },
+  "超级管理员免扣余额，用量照常记录。": {
+    "en": "Super admins are not charged; usage is still recorded.",
+    "ja": "スーパー管理者の残高は引き落とされません。使用量は記録されます。"
+  },
+  "充值到账后，可直接在 Room 使用站内直供。": {
+    "en": "Once credited, your balance can be used for hosted models in Room.",
+    "ja": "チャージ後、Room のサイト提供モデルに利用できます。"
+  },
+  "查看充值选项": {
+    "en": "View top-up options",
+    "ja": "チャージ方法を見る"
+  },
+  "账面余额": {
+    "en": "Total balance",
+    "ja": "残高合計"
+  },
+  "待结算冻结": {
+    "en": "Held for settlement",
+    "ja": "精算待ち保留額"
+  },
+  "全站共用一份余额，冻结金额尚未扣费。": {
+    "en": "One shared site balance. Held amounts have not been charged.",
+    "ja": "サイト共通の残高です。保留額はまだ引き落とされていません。"
+  },
+  "充值与服务": {
+    "en": "Top-ups & services",
+    "ja": "チャージとサービス"
+  },
+  "支付宝安全支付": {
+    "en": "Secure Alipay checkout",
+    "ja": "Alipay 安全決済"
+  },
+  "统一查看网站余额、充值订单和站内直供用量。": {
+    "en": "View your site balance, top-up orders and hosted model usage together.",
+    "ja": "サイト残高、チャージ注文、サイト提供モデルの使用量をまとめて確認。"
+  },
+  "刷新用量": {
+    "en": "Refresh usage",
+    "ja": "使用量を更新"
+  },
+  "正在读取模型与用量…": {
+    "en": "Loading models and usage…",
+    "ja": "モデルと使用量を読み込み中…"
+  },
+  "暂时无法读取直供服务。充值与订单仍可独立使用。": {
+    "en": "Hosted service details are unavailable. Top-ups and orders remain accessible.",
+    "ja": "サイト提供サービスの情報を取得できません。チャージと注文は引き続き利用できます。"
+  },
+  "在 Room 设置选择“站内直供”，即可使用网站余额聊天。": {
+    "en": "Choose “Site hosted” in Room settings to chat using your site balance.",
+    "ja": "Room 設定で「サイト提供」を選ぶと、サイト残高でチャットできます。"
+  },
+  "· 最多输出": {
+    "en": "· Max output",
+    "ja": "· 最大出力"
+  },
+  "服务已启用": {
+    "en": "Service enabled",
+    "ja": "サービス有効"
+  },
+  "暂未开放": {
+    "en": "Not available yet",
+    "ja": "現在利用できません"
+  },
+  "输入 · 未命中缓存": {
+    "en": "Input · cache miss",
+    "ja": "入力 · キャッシュ未使用"
+  },
+  "输入 · 命中缓存": {
+    "en": "Input · cache hit",
+    "ja": "入力 · キャッシュ使用"
+  },
+  "输出": {
+    "en": "Output",
+    "ja": "出力"
+  },
+  "售价尚未公布。": {
+    "en": "Pricing has not been published.",
+    "ja": "料金はまだ公開されていません。"
+  },
+  "单价为每百万 Token 的人民币金额。请求接纳时锁定售价，按最终用量结算；冻结金额尚未扣费。": {
+    "en": "Prices are CNY per million tokens, locked when a request is accepted and settled against final usage. Holds are not charges.",
+    "ja": "料金は100万トークンあたりの人民元です。受付時の料金を固定し、最終使用量で精算します。保留額は引き落としではありません。"
+  },
+  "前往聊天模型设置": {
+    "en": "Open chat model settings",
+    "ja": "チャットモデル設定へ"
+  },
+  "账单月份": {
+    "en": "Billing month",
+    "ja": "請求月"
+  },
+  "按 UTC 自然月统计。余额不按月清零，账单汇总不会再次扣费。": {
+    "en": "Calendar months use UTC. Balance does not expire monthly; summaries do not create new charges.",
+    "ja": "UTC の暦月で集計します。残高は毎月リセットされず、集計による追加請求もありません。"
+  },
+  "已结算消费": {
+    "en": "Settled charges",
+    "ja": "精算済み利用額"
+  },
+  "已到账充值": {
+    "en": "Credited top-ups",
+    "ja": "入金済みチャージ"
+  },
+  "待核对冻结": {
+    "en": "Held pending review",
+    "ja": "確認待ち保留額"
+  },
+  "正在读取月账单…": {
+    "en": "Loading monthly statement…",
+    "ja": "月次明細を読み込み中…"
+  },
+  "最近使用记录": {
+    "en": "Recent usage",
+    "ja": "最近の使用履歴"
+  },
+  "暂无使用记录。开始聊天后，可在这里核对费用。": {
+    "en": "No usage yet. After chatting, check your charges here.",
+    "ja": "使用履歴はありません。チャット後、ここで料金を確認できます。"
+  },
+  "输入": {
+    "en": "Input",
+    "ja": "入力"
+  },
+  "· 缓存": {
+    "en": "· Cached",
+    "ja": "· キャッシュ"
+  },
+  "· 输出": {
+    "en": "· Output",
+    "ja": "· 出力"
+  },
+  "最终用量待核对": {
+    "en": "Final usage pending review",
+    "ja": "最終使用量を確認中"
+  },
+  "免扣费": {
+    "en": "No charge",
+    "ja": "課金なし"
+  },
+  "尚未结算": {
+    "en": "Not settled",
+    "ja": "未精算"
+  },
+  "加载更多记录": {
+    "en": "Load more records",
+    "ja": "履歴をさらに表示"
+  },
+  "直供服务管理": {
+    "en": "Hosted service management",
+    "ja": "サイト提供サービス管理"
+  },
+  "仅维护者可见": {
+    "en": "Maintainers only",
+    "ja": "保守担当者のみ"
+  },
+  "重新读取配置": {
+    "en": "Reload configuration",
+    "ja": "設定を再読み込み"
+  },
+  "更新页面用量": {
+    "en": "Refresh page usage",
+    "ja": "ページの使用量を更新"
+  },
+  "管理充值商品": {
+    "en": "Manage top-up products",
+    "ja": "チャージ商品を管理"
+  },
+  "供应商与模型": {
+    "en": "Provider & model",
+    "ja": "プロバイダーとモデル"
+  },
+  "模型 ID": {
+    "en": "Model ID",
+    "ja": "モデル ID"
+  },
+  "已加密保存密钥": {
+    "en": "Key saved encrypted",
+    "ja": "キーは暗号化して保存済み"
+  },
+  "尚未配置密钥": {
+    "en": "No key configured",
+    "ja": "キー未設定"
+  },
+  "更换供应商密钥": {
+    "en": "Replace provider key",
+    "ja": "プロバイダーキーを変更"
+  },
+  "留空保留已保存的密钥": {
+    "en": "Leave blank to keep the saved key",
+    "ja": "空欄で保存済みキーを保持"
+  },
+  "删除所选供应商密钥": {
+    "en": "Delete selected provider key",
+    "ja": "選択中のプロバイダーキーを削除"
+  },
+  "每百万 Token 售价（元）": {
+    "en": "Price per million tokens (CNY)",
+    "ja": "100万トークンあたりの料金（人民元）"
+  },
+  "未缓存输入": {
+    "en": "Uncached input",
+    "ja": "キャッシュ未使用の入力"
+  },
+  "缓存输入": {
+    "en": "Cached input",
+    "ja": "キャッシュ使用の入力"
+  },
+  "请求限制": {
+    "en": "Request limits",
+    "ja": "リクエスト制限"
+  },
+  "输入 Token 上限": {
+    "en": "Input token limit",
+    "ja": "入力トークン上限"
+  },
+  "输出 Token 上限": {
+    "en": "Output token limit",
+    "ja": "出力トークン上限"
+  },
+  "每人并发数": {
+    "en": "Concurrent requests per user",
+    "ja": "ユーザーごとの同時実行数"
+  },
+  "每分钟请求数": {
+    "en": "Requests per minute",
+    "ja": "1分あたりのリクエスト数"
+  },
+  "服务状态": {
+    "en": "Service status",
+    "ja": "サービス状態"
+  },
+  "公布售价": {
+    "en": "Publish pricing",
+    "ja": "料金を公開"
+  },
+  "已核验供应商最终用量协议": {
+    "en": "Final usage reporting verified",
+    "ja": "最終使用量の報告を検証済み"
+  },
+  "已核验请求费用上限": {
+    "en": "Request cost bound verified",
+    "ja": "リクエスト費用上限を検証済み"
+  },
+  "启用站内直供": {
+    "en": "Enable hosted models",
+    "ja": "サイト提供モデルを有効化"
+  },
+  "保存后仅影响新请求。充值金额、商品和支付开关沿用网站支付管理。": {
+    "en": "Changes affect new requests only. Top-up amounts, products and payments use the existing site payment manager.",
+    "ja": "変更は新規リクエストにのみ適用されます。チャージ金額、商品、決済設定は既存のサイト決済管理を使用します。"
+  },
+  "处理中…": {
+    "en": "Processing…",
+    "ja": "処理中…"
+  },
+  "保存服务配置": {
+    "en": "Save service configuration",
+    "ja": "サービス設定を保存"
+  },
+  "待核对请求": {
+    "en": "Requests pending review",
+    "ja": "確認待ちリクエスト"
+  },
+  "目前没有待核对的请求。": {
+    "en": "No requests are pending review.",
+    "ja": "確認待ちのリクエストはありません。"
+  },
+  "冻结 ¥": {
+    "en": "Held ¥",
+    "ja": "保留 ¥"
+  },
+  "供应商核对凭据编号": {
+    "en": "Provider evidence reference",
+    "ja": "プロバイダー確認証憑番号"
+  },
+  "按凭据结算": {
+    "en": "Settle with evidence",
+    "ja": "証憑に基づいて精算"
+  },
+  "凭未消费证明释放": {
+    "en": "Release with proof of no usage",
+    "ja": "未使用証明に基づいて保留解除"
+  },
+  "服务配置已保存，新请求采用新设置。": {
+    "en": "Configuration saved. New requests use the updated settings.",
+    "ja": "設定を保存しました。新規リクエストに適用されます。"
+  },
+  "核对完成，最终用量已结算。": {
+    "en": "Review complete. Final usage has been settled.",
+    "ja": "確認完了。最終使用量を精算しました。"
+  },
+  "冻结已释放，核对凭据已留档。": {
+    "en": "Hold released. Evidence has been recorded.",
+    "ja": "保留を解除し、確認証憑を記録しました。"
+  },
+  "核对证据已记录，冻结仍保留，请继续核查。": {
+    "en": "Evidence recorded. The hold remains; further review is needed.",
+    "ja": "証憑を記録しました。保留は継続中です。引き続き確認してください。"
+  },
+  "单价最多支持 9 位小数。": {
+    "en": "Prices support up to 9 decimal places.",
+    "ja": "単価は小数点以下9桁までです。"
+  },
+  "服务请求地址无效。": {
+    "en": "Invalid service request path.",
+    "ja": "サービスリクエストのパスが無効です。"
+  },
+  "请刷新支付中心，确认当前账号后重试。": {
+    "en": "Refresh the payment centre to verify your account, then retry.",
+    "ja": "お支払いセンターを更新してアカウントを確認し、再試行してください。"
+  },
+  "登录账号已变化，请刷新支付中心后重试。": {
+    "en": "Your signed-in account changed. Refresh the payment centre and retry.",
+    "ja": "ログインアカウントが変わりました。お支払いセンターを更新して再試行してください。"
+  },
+  "请检查登录状态和网站余额；可前往「支付中心」充值并查看模型、用量和订单。": {
+    "en": "Check your sign-in and site balance. Open the payment centre to top up and view models, usage and orders.",
+    "ja": "ログイン状態とサイト残高を確認してください。「お支払いセンター」でチャージ、モデル、使用量、注文を確認できます。"
+  },
+  "模型用量暂不可用，请在“站内直供”刷新重试。": {
+    "en": "Model usage is unavailable. Refresh the hosted service above to retry.",
+    "ja": "モデル使用量を取得できません。上のサイト提供サービスで更新して再試行してください。"
+  },
+  "未产生消费，冻结已释放": {
+    "en": "No consumption; hold released",
+    "ja": "利用なし。保留を解除しました"
+  },
+  "未扣费": {
+    "en": "Not charged",
+    "ja": "引き落としなし"
+  },
+  "新供应商密钥": {
+    "en": "New provider key",
+    "ja": "新しいプロバイダーキー"
+  },
   "隐私政策 / Privacy": {
     "en": "Privacy policy",
     "ja": "プライバシーポリシー"
@@ -10873,470 +12583,6 @@
     "en": "Invitation link saved. Future invitations will use this link.",
     "ja": "招待リンクを保存しました。今後の招待にはこのリンクを使用します。"
   },
-  "文字与图片": {
-    "en": "Text and images",
-    "ja": "テキストと画像"
-  },
-  "文字": {
-    "en": "Text",
-    "ja": "テキスト"
-  },
-  "Room 可直接发送图片，图片与文字按实际 Token 用量统一计费。": {
-    "en": "Send images directly in the room. Images and text are billed together by actual token usage.",
-    "ja": "Room から画像を直接送信できます。画像とテキストは実際のトークン使用量でまとめて課金されます。"
-  },
-  "官方语音账单": {
-    "en": "Voice billing history",
-    "ja": "公式音声の利用明細"
-  },
-  "刷新语音记录": {
-    "en": "Refresh voice history",
-    "ja": "音声履歴を更新"
-  },
-  "¥0.05 / 条 · 与聊天共用网站余额。显示最近 30 条合成记录。": {
-    "en": "¥0.05 per synthesis · Uses the same site balance as chat. Shows your 30 most recent requests.",
-    "ja": "1 回 ¥0.05・チャットと同じサイト残高を使用します。直近 30 件の合成履歴を表示します。"
-  },
-  "正在读取…": {
-    "en": "Loading…",
-    "ja": "読み込み中…"
-  },
-  "暂无语音记录。": {
-    "en": "No voice requests yet.",
-    "ja": "音声の利用履歴はありません。"
-  },
-  "八千代语音": {
-    "en": "Yachiyo voice",
-    "ja": "ヤチヨの音声"
-  },
-  "暂时无法读取语音账单": {
-    "en": "Unable to load voice billing history. Try again later.",
-    "ja": "音声の利用明細を読み込めません。後ほどお試しください。"
-  },
-  "官方直供 · 八千代语音": {
-    "en": "Site-hosted Yachiyo voice",
-    "ja": "サイト提供・ヤチヨの音声"
-  },
-  "算力在线": {
-    "en": "Voice service online",
-    "ja": "音声サービス稼働中"
-  },
-  "检测中": {
-    "en": "Checking",
-    "ja": "確認中"
-  },
-  "算力离线": {
-    "en": "Voice service offline",
-    "ja": "音声サービス停止中"
-  },
-  "¥0.05 / 条 · 使用网站余额，无需填写 API 密钥。成功合成后扣费，失败不收费。超级管理员沿用无限额度。": {
-    "en": "¥0.05 per synthesis · Uses your site balance; no API key needed. Charged only after successful synthesis. Failed requests are free. Super administrators retain unlimited usage.",
-    "ja": "1 回 ¥0.05・サイト残高を使用し、API キーは不要です。合成成功時のみ課金され、失敗時は無料です。スーパー管理者は引き続き無制限で利用できます。"
-  },
-  "可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。": {
-    "en": "You can use the site-hosted voice service. Requests pause while it is offline and become available when it returns.",
-    "ja": "サイト提供の音声を利用できます。停止中は自動的に一時停止し、復旧後に再開できます。"
-  },
-  "当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。": {
-    "en": "Temporarily unavailable. It will reopen when the service recovers. You can also connect your own voice service.",
-    "ja": "現在は利用できません。サービス復旧後に自動的に利用可能になります。ご自身の音声サービスも設定できます。"
-  },
-  "每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。": {
-    "en": "Up to 1,000 characters per request. Replaying a valid cached result in the same page session is free. Cache entries last up to 24 hours.",
-    "ja": "1 回最大 1,000 文字です。同じページセッション内で有効なキャッシュを再生しても追加課金されません。キャッシュは最長 24 時間保持されます。"
-  },
-  "正在检测…": {
-    "en": "Checking…",
-    "ja": "確認中…"
-  },
-  "检测算力": {
-    "en": "Check availability",
-    "ja": "稼働状況を確認"
-  },
-  "余额与充值": {
-    "en": "Balance and top-up",
-    "ja": "残高とチャージ"
-  },
-  "支持文字、图片与工具调用。图片会自动压缩，按实际 Token 用量计费。": {
-    "en": "Supports text, images and tools. Images are compressed automatically and billed by actual token usage.",
-    "ja": "テキスト・画像・ツール呼び出しに対応します。画像は自動圧縮され、実際のトークン使用量で課金されます。"
-  },
-  "支持文字聊天和工具调用；图片请配合 MCP 识图。": {
-    "en": "Supports text chat and tools. Use MCP image recognition for images.",
-    "ja": "テキストチャットとツール呼び出しに対応します。画像には MCP 画像認識を併用してください。"
-  },
-  "官方语音使用网站余额，每条成功合成的语音收费 0.05 元。": {
-    "en": "Site-hosted voice uses your site balance and costs ¥0.05 per successful synthesis.",
-    "ja": "サイト提供の音声はサイト残高を使用し、合成成功 1 回につき 0.05 元かかります。"
-  },
-  "官方音色采用日语朗读。中文回复会先通过当前聊天模型翻译为日语，翻译按该模型的规则计费。": {
-    "en": "The site-hosted voice reads Japanese. Chinese replies are first translated into Japanese by your selected chat model; that translation is billed at the model’s rates.",
-    "ja": "サイト提供の音声は日本語で読み上げます。中国語の返信は現在のチャットモデルで日本語に翻訳され、そのモデルの料金で課金されます。"
-  },
-  "官方语音需要登录账号。": {
-    "en": "Sign in to use site-hosted voice.",
-    "ja": "サイト提供の音声にはログインが必要です。"
-  },
-  "前往登录": {
-    "en": "Sign in",
-    "ja": "ログイン"
-  },
-  "正在合成…": {
-    "en": "Synthesizing…",
-    "ja": "音声合成中…"
-  },
-  "保存并试听 · ¥0.05": {
-    "en": "Save and preview · ¥0.05",
-    "ja": "保存して試聴・¥0.05"
-  },
-  "仅保存设置": {
-    "en": "Save settings only",
-    "ja": "設定のみ保存"
-  },
-  "官方直供 · ¥0.05 / 条": {
-    "en": "Site-hosted · ¥0.05 per synthesis",
-    "ja": "サイト提供・1 回 ¥0.05"
-  },
-  "请登录后使用官方语音": {
-    "en": "Sign in to use site-hosted voice.",
-    "ja": "ログインしてからサイト提供の音声をご利用ください。"
-  },
-  "设置已保存，算力恢复在线后可继续使用": {
-    "en": "Settings saved. Voice will be available when the service is back online.",
-    "ja": "設定を保存しました。サービス復旧後に音声を利用できます。"
-  },
-  "官方语音设置已保存": {
-    "en": "Voice settings saved.",
-    "ja": "音声設定を保存しました。"
-  },
-  "请登录并等待官方算力上线后再试听": {
-    "en": "Sign in and wait for the voice service to come online before previewing.",
-    "ja": "ログインし、音声サービスの復旧を待ってから試聴してください。"
-  },
-  "官方语音试听": {
-    "en": "Voice preview",
-    "ja": "音声の試聴"
-  },
-  "正在合成八千代语音…": {
-    "en": "Synthesizing Yachiyo’s voice…",
-    "ja": "ヤチヨの音声を合成中…"
-  },
-  "成功合成后按 ¥0.05 / 条结算，失败不扣费。重复试听有效缓存不会再次扣费。": {
-    "en": "Successful synthesis costs ¥0.05. Failed requests are free. Replaying a valid cached preview incurs no additional charge.",
-    "ja": "合成成功時に 1 回 ¥0.05 かかります。失敗時や有効なキャッシュの再試聴では追加課金されません。"
-  },
-  "请登录后重新保存官方语音设置。": {
-    "en": "Sign in, then save your voice settings again.",
-    "ja": "ログイン後、音声設定をもう一度保存してください。"
-  },
-  "官方语音暂不可用": {
-    "en": "Site-hosted voice is temporarily unavailable.",
-    "ja": "サイト提供の音声は一時的に利用できません。"
-  },
-  "官方语音算力离线，未发起翻译或合成，请稍后重试。": {
-    "en": "The voice service is offline. No translation or synthesis was started. Try again later.",
-    "ja": "音声サービスが停止中のため、翻訳も合成も実行していません。後ほどお試しください。"
-  },
-  "语音文本为空，未发起合成。": {
-    "en": "There is no text to read. No synthesis was started.",
-    "ja": "読み上げるテキストがないため、合成していません。"
-  },
-  "语音仍在处理中，请稍后再次点击，同一请求不会重复扣费。": {
-    "en": "Voice is still processing. Try again shortly; the same request will not be charged twice.",
-    "ja": "音声を処理中です。しばらくしてから再度押してください。同じリクエストに二重課金はありません。"
-  },
-  "暂时无法读取语音，请重试；缓存有效期内不会重复扣费。": {
-    "en": "Unable to load the audio. Try again; replaying within the cache validity period will not incur another charge.",
-    "ja": "音声を読み込めません。再試行してください。有効なキャッシュの再生には追加課金されません。"
-  },
-  "当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。": {
-    "en": "This site-hosted model does not support images. Choose an image-capable model or enable MCP image recognition in Settings.",
-    "ja": "このサイト提供モデルは画像に対応していません。画像対応モデルか、設定の MCP 画像認識を選択してください。"
-  },
-  "该 QQ 或当前账号已有其他绑定，请检查后重试": {
-    "en": "This QQ identity or site account is already linked elsewhere. Check the existing connection and try again.",
-    "ja": "この QQ またはサイトアカウントは別の連携があります。確認してから再試行してください。"
-  },
-  "QQ 绑定未完成，请重新授权": {
-    "en": "QQ linking was not completed. Authorize QQ again.",
-    "ja": "QQ 連携が完了していません。再度認証してください。"
-  },
-  "发送邮件": {
-    "en": "Send email",
-    "ja": "メール送信"
-  },
-  "自定义邮件、筛选收件人和查看群发进度": {
-    "en": "Compose email, filter recipients and track delivery",
-    "ja": "メール作成・宛先の絞り込み・送信状況の確認"
-  },
-  "正在读取邮件通道与用户…": {
-    "en": "Loading email service and users…",
-    "ja": "メールサービスとユーザーを読み込み中…"
-  },
-  "邮件通道已就绪 · 使用网站统一邮件样式": {
-    "en": "Email service ready · Uses the site’s email template",
-    "ja": "メールサービス準備完了・サイト共通のメール書式を使用"
-  },
-  "邮件通道未配置，仍可编辑和预览，配置完成后才能发送。": {
-    "en": "Email is not configured. You can compose and preview; sending becomes available after setup.",
-    "ja": "メールサービス未設定です。編集とプレビューはできますが、送信には設定が必要です。"
-  },
-  "1 · 选择收件人": {
-    "en": "1 · Choose recipients",
-    "ja": "1・宛先を選択"
-  },
-  "勾选用户": {
-    "en": "Select users",
-    "ja": "ユーザーを選択"
-  },
-  "群发给全部匹配用户": {
-    "en": "Send to all matching users",
-    "ja": "一致するすべてのユーザーへ送信"
-  },
-  "搜索用户": {
-    "en": "Search users",
-    "ja": "ユーザーを検索"
-  },
-  "昵称、用户名、邮箱或 ID": {
-    "en": "Nickname, username, email or ID",
-    "ja": "ニックネーム・ユーザー名・メール・ID"
-  },
-  "用户角色": {
-    "en": "User role",
-    "ja": "ユーザーロール"
-  },
-  "所有角色": {
-    "en": "All roles",
-    "ja": "すべてのロール"
-  },
-  "普通用户": {
-    "en": "Member",
-    "ja": "一般ユーザー"
-  },
-  "仅显示已绑定有效邮箱的用户；相同邮箱只发送一封。": {
-    "en": "Only users with a valid linked email are shown. Each email address receives one copy.",
-    "ja": "有効なメールアドレスを登録済みのユーザーのみ表示します。同じアドレスには 1 通だけ送信します。"
-  },
-  "正在搜索…": {
-    "en": "Searching…",
-    "ja": "検索中…"
-  },
-  "匹配 {0} 名用户": {
-    "en": "{0} matching users",
-    "ja": "一致するユーザー {0} 人"
-  },
-  "已勾选 {0} 人": {
-    "en": "{0} selected",
-    "ja": "{0} 人を選択中"
-  },
-  "将发送给全部匹配用户，包含其他分页": {
-    "en": "Includes all matching users across every page",
-    "ja": "他のページを含む一致するすべてのユーザーに送信します"
-  },
-  "勾选本页": {
-    "en": "Select this page",
-    "ja": "このページを選択"
-  },
-  "选择 {0}": {
-    "en": "Select {0}",
-    "ja": "{0} を選択"
-  },
-  "没有匹配的收件用户": {
-    "en": "No matching recipients",
-    "ja": "一致する宛先がありません"
-  },
-  "收件用户分页": {
-    "en": "Recipient pagination",
-    "ja": "宛先のページ切り替え"
-  },
-  "已勾选": {
-    "en": "Selected",
-    "ja": "選択中"
-  },
-  "人（跨页保留）": {
-    "en": "users (kept across pages)",
-    "ja": "人（ページを移動しても保持）"
-  },
-  "清空选择": {
-    "en": "Clear selection",
-    "ja": "選択を解除"
-  },
-  "移除 {0}": {
-    "en": "Remove {0}",
-    "ja": "{0} を削除"
-  },
-  "2 · 撰写邮件": {
-    "en": "2 · Compose email",
-    "ja": "2・メールを作成"
-  },
-  "邮件主题": {
-    "en": "Subject",
-    "ja": "件名"
-  },
-  "例如：月读空间本周更新": {
-    "en": "For example: This week at Tsukuyomi Space",
-    "ja": "例：月読空間の今週の更新"
-  },
-  "邮件正文": {
-    "en": "Email body",
-    "ja": "メール本文"
-  },
-  "写下想告诉用户的内容，支持分段与换行。": {
-    "en": "Write your message. Paragraphs and line breaks are supported.",
-    "ja": "伝えたい内容を入力してください。段落と改行に対応します。"
-  },
-  "按钮链接（选填）": {
-    "en": "Button link (optional)",
-    "ja": "ボタンのリンク（任意）"
-  },
-  "本站路径，例如 /stage": {
-    "en": "Site path, for example /stage",
-    "ja": "サイト内パス（例：/stage）"
-  },
-  "查看详情": {
-    "en": "View details",
-    "ja": "詳細を見る"
-  },
-  "主题、正文和按钮均可自定义；正文按文本呈现，保留换行。邮件自动使用网站统一横幅和卡片样式。": {
-    "en": "Customize the subject, body and button. The body is plain text with line breaks preserved. Emails use the site’s standard banner and card layout.",
-    "ja": "件名・本文・ボタンを編集できます。本文は改行を保持したテキストで表示し、サイト共通のバナーとカード書式を使用します。"
-  },
-  "正在生成预览…": {
-    "en": "Generating preview…",
-    "ja": "プレビューを作成中…"
-  },
-  "预览并确认收件人": {
-    "en": "Preview and review recipients",
-    "ja": "プレビューと宛先の確認"
-  },
-  "发送记录": {
-    "en": "Send history",
-    "ja": "送信履歴"
-  },
-  "刷新记录": {
-    "en": "Refresh history",
-    "ja": "履歴を更新"
-  },
-  "显示最近 30 批邮件。“已提交”表示邮件服务接收，不代表已进入收件箱；结果待核实的邮件不会自动重发。": {
-    "en": "Shows the 30 most recent campaigns. “Submitted” means accepted by the email service, not delivered to the inbox. Unconfirmed results are not retried automatically.",
-    "ja": "直近 30 回の送信を表示します。「送信受付」はメールサービスが受け付けたことを示し、受信箱への到達を保証しません。結果不明のメールは自動再送されません。"
-  },
-  "还没有发送记录": {
-    "en": "No emails sent yet",
-    "ja": "送信履歴はありません"
-  },
-  "· 已提交": {
-    "en": "· Submitted",
-    "ja": "・送信受付"
-  },
-  "· 失败": {
-    "en": "· Failed",
-    "ja": "・失敗"
-  },
-  "· 待核实": {
-    "en": "· Unconfirmed",
-    "ja": "・要確認"
-  },
-  "· 跳过": {
-    "en": "· Skipped",
-    "ja": "・スキップ"
-  },
-  "· 取消": {
-    "en": "· Cancelled",
-    "ja": "・キャンセル"
-  },
-  "发送进度": {
-    "en": "Send progress",
-    "ja": "送信状況"
-  },
-  "查看明细": {
-    "en": "View details",
-    "ja": "明細を見る"
-  },
-  "停止剩余发送": {
-    "en": "Stop remaining sends",
-    "ja": "残りの送信を停止"
-  },
-  "发送明细": {
-    "en": "Send details",
-    "ja": "送信明細"
-  },
-  "· 发送明细": {
-    "en": "· Send details",
-    "ja": "・送信明細"
-  },
-  "个邮箱": {
-    "en": "email addresses",
-    "ja": "件のメールアドレス"
-  },
-  "发送明细分页": {
-    "en": "Send-detail pagination",
-    "ja": "送信明細のページ切り替え"
-  },
-  "确认邮件与收件人": {
-    "en": "Review email and recipients",
-    "ja": "メールと宛先を確認"
-  },
-  "返回编辑": {
-    "en": "Back to editing",
-    "ja": "編集に戻る"
-  },
-  "本批将发送给": {
-    "en": "This campaign will be sent to",
-    "ja": "今回の送信先"
-  },
-  "查看收件邮箱": {
-    "en": "View recipient addresses",
-    "ja": "宛先アドレスを見る"
-  },
-  "（前 20 个）": {
-    "en": "(first 20)",
-    "ja": "（最初の 20 件）"
-  },
-  "邮件样式预览": {
-    "en": "Email preview",
-    "ja": "メールのプレビュー"
-  },
-  "每位收件人收到独立邮件，不会看到其他人的邮箱。确认后后台继续发送，关闭页面不影响进度。": {
-    "en": "Each recipient gets an individual email and cannot see other addresses. Sending continues in the background after confirmation, even if you close this page.",
-    "ja": "宛先ごとに個別送信され、他のアドレスは表示されません。確認後はバックグラウンドで続行し、ページを閉じても送信されます。"
-  },
-  "正在提交…": {
-    "en": "Submitting…",
-    "ja": "送信を開始中…"
-  },
-  "确认发送给 {0} 个邮箱": {
-    "en": "Confirm send to {0} email addresses",
-    "ja": "{0} 件のアドレスへの送信を確認"
-  },
-  "手动勾选用户": {
-    "en": "Manually selected users",
-    "ja": "手動で選択したユーザー"
-  },
-  "匹配用户 · {0} · {1}": {
-    "en": "Matching users · {0} · {1}",
-    "ja": "一致するユーザー・{0}・{1}"
-  },
-  "全部用户": {
-    "en": "All users",
-    "ja": "すべてのユーザー"
-  },
-  "已提交 {0} 个邮箱，发送将在后台继续，可在下方查看进度。": {
-    "en": "Submitted for {0} email addresses. Sending continues in the background; track progress below.",
-    "ja": "{0} 件のアドレスへの送信を受け付けました。バックグラウンドで続行し、下に進捗を表示します。"
-  },
-  "{0}。可再次点击确认，重复确认不会重复发送本批邮件。": {
-    "en": "{0}. You can confirm again; repeated confirmation will not send this campaign twice.",
-    "ja": "{0}。再度確認できます。繰り返し確認しても、このメールが二重送信されることはありません。"
-  },
-  "已停止尚未开始的邮件，正在发送的邮件会记录最终结果。": {
-    "en": "Unstarted emails have been stopped. In-progress emails will record their final result.",
-    "ja": "未開始の送信を停止しました。送信中のメールは最終結果を記録します。"
-  },
-  "进度刷新失败：{0}": {
-    "en": "Unable to refresh progress: {0}",
-    "ja": "進捗を更新できません：{0}"
-  },
   "第 {0} 步，共 {1} 步": {
     "en": "Step {0} of {1}",
     "ja": "ステップ {0} / {1}"
@@ -11669,26 +12915,6 @@
     "en": "Human review required",
     "ja": "確認が必要です"
   },
-  "今日任务已完成，+{0} 经验": {
-    "en": "Daily task completed, +{0} XP",
-    "ja": "今日のタスク完了、経験値 +{0}"
-  },
-  "打开任意文章，点击点赞或收藏即可完成。": {
-    "en": "Open any article and like or bookmark it to complete this task.",
-    "ja": "記事を開き、いいねまたはブックマークすると完了します。"
-  },
-  "月读空间 Google Play 测试申请": {
-    "en": "Tsukuyomi Space Google Play test application",
-    "ja": "月読空間 Google Play テスト参加申請"
-  },
-  "申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。": {
-    "en": "Apply for the Tsukuyomi Space Android closed test and learn how to join through Google Play, install the app and send feedback.",
-    "ja": "月読空間 Android クローズドテストへの申請と、Google Play での参加・インストール・フィードバックの手順。"
-  },
-  "Google Play 测试申请管理": {
-    "en": "Google Play test applications",
-    "ja": "Google Play テスト申請管理"
-  },
   "正在测试连接": {
     "en": "Testing connection",
     "ja": "接続をテスト中"
@@ -11769,7 +12995,48 @@
     "en": "The previous save has been recovered without generating a duplicate diary.",
     "ja": "前回の保存結果を復元しました。日記は重複して生成されていません。"
   },
-  "费用已免除": {"en": "Charge waived", "ja": "料金免除"},
-  "费用由网站承担，冻结已释放": {"en": "Cost covered by the site; hold released", "ja": "サイト負担で料金免除。保留を解除しました"},
-  "冻结已释放，未扣费": {"en": "Hold released; no charge", "ja": "保留解除済み。課金なし"}
+  "费用已免除": {
+    "en": "Charge waived",
+    "ja": "料金免除"
+  },
+  "费用由网站承担，冻结已释放": {
+    "en": "Cost covered by the site; hold released",
+    "ja": "サイト負担で料金免除。保留を解除しました"
+  },
+  "冻结已释放，未扣费": {
+    "en": "Hold released; no charge",
+    "ja": "保留解除済み。課金なし"
+  },
+  "默认春日樱花；选择自动时按设备日期切换。浅色／暗色独立。": {
+    "en": "Spring cherry blossoms are the default. Auto follows your device’s date. Light and dark modes are independent.",
+    "ja": "標準は春の桜です。自動では端末の日付に合わせて季節を切り替えます。ライト／ダークは別に設定できます。"
+  },
+  "音乐播放器": {
+    "en": "Music player",
+    "ja": "音楽プレーヤー"
+  },
+  "月": {
+    "en": "Moon",
+    "ja": "月"
+  },
+  "最新内容暂时未能加载。": {
+    "en": "The latest content could not be loaded.",
+    "ja": "最新の内容を読み込めませんでした。"
+  },
+  "浏览器暂时无法保存草稿，请进入房间后输入。": {
+    "en": "Draft storage is unavailable. Please type in the room.",
+    "ja": "下書きを保存できません。お部屋に入ってから入力してください。"
+  },
+  "返回月读": {
+    "en": "Back to Tsukuyomi",
+    "ja": "月読に戻る"
+  },
+  "文章暂时未能加载，请重试。": {
+    "en": "Unable to load stories. Please try again.",
+    "ja": "記事を読み込めませんでした。もう一度お試しください。"
+  },
+  "点击正文中带颜色的词条可快速查看解释；这里保留完整词条位置，方便复制链接和交叉阅读。": {
+    "en": "Select a colored term in the text to see its definition. Full entries remain here for linking and cross-reference.",
+    "ja": "本文中の色付き用語を選ぶと説明を確認できます。リンクのコピーや参照用に、完全な用語一覧をここに掲載しています。"
+  }
 }

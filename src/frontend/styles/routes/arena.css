@@ -1,22 +1,22 @@
-@import url("../../../../assets/css/vue/pages/arena.css") layer(ts-page);
+@import url("../../../../assets/css/vue/pages/arena.css") layer(pages);
 
 /* Canvas-first atelier. The existing navigation and site tokens own the shell. */
-@layer ts-editorial {
+@layer pages {
 body .page.arena-page.pixel-workspace {
   display: block; width: 100%; max-width: none; height: 100%; min-height: 0;
-  margin: 0; padding: 104px 24px 16px; overflow: visible; color: var(--ts-editorial-ink);
-  background: none; --pw-line: var(--ts-editorial-line); --pw-surface: var(--ts-editorial-surface);
-  --pw-soft: var(--ts-editorial-soft); --pw-muted: var(--ts-editorial-muted);
+  margin: 0; padding: 104px 24px 16px; overflow: visible; color: var(--pages-ink);
+  background: none; --pw-line: var(--pages-line); --pw-surface: var(--pages-surface);
+  --pw-soft: var(--pages-soft); --pw-muted: var(--pages-muted);
 }
-.pixel-workspace .pw-workbench { display: flex; flex-direction: column; height: 100%; min-height: 420px; overflow: hidden; border: 1px solid var(--pw-line); border-radius: var(--ts-radius-lg, 20px); background: var(--pw-surface); box-shadow: var(--ts-editorial-shadow); }
+.pixel-workspace .pw-workbench { display: flex; flex-direction: column; height: 100%; min-height: 420px; overflow: hidden; border: 1px solid var(--pw-line); border-radius: var(--ts-radius-lg, 20px); background: var(--pw-surface); box-shadow: var(--pages-shadow); }
 .pixel-workspace :is(button, summary, input, select, a):focus-visible, .pw-dialog :is(button, a, input, textarea, select):focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
 .pixel-workspace :is(button, label.pw-import), .pw-dialog button { font: inherit; cursor: pointer; }
 .pixel-workspace :is(.ghost-btn, .primary-btn, .icon-btn), .pw-dialog :is(.ghost-btn, .primary-btn, .icon-btn) {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 8px 13px;
-  width: auto; height: auto; aspect-ratio: auto; border: 1px solid var(--pw-line, var(--ts-editorial-line)); border-radius: var(--ts-radius-button, 999px);
-  background: transparent; color: var(--ts-editorial-ink); font-size: 12px; font-weight: 500; white-space: nowrap; line-height: 1.3; box-shadow: none;
+  width: auto; height: auto; aspect-ratio: auto; border: 1px solid var(--pw-line, var(--pages-line)); border-radius: var(--ts-radius-button, 999px);
+  background: transparent; color: var(--pages-ink); font-size: 12px; font-weight: 500; white-space: nowrap; line-height: 1.3; box-shadow: none;
 }
-.pixel-workspace :is(.ghost-btn, .icon-btn):hover, .pw-dialog :is(.ghost-btn, .icon-btn):hover { color: var(--ts-accent); background: var(--pw-soft, var(--ts-editorial-soft)); }
+.pixel-workspace :is(.ghost-btn, .icon-btn):hover, .pw-dialog :is(.ghost-btn, .icon-btn):hover { color: var(--ts-accent); background: var(--pw-soft, var(--pages-soft)); }
 .pixel-workspace .primary-btn, .pw-dialog .primary-btn { color: var(--ts-unified-primary-text); background: var(--ts-unified-primary-bg); border-color: transparent; }
 .pixel-workspace .primary-btn:hover, .pw-dialog .primary-btn:hover { color: var(--ts-unified-primary-text); background: var(--ts-unified-primary-bg-hover); }
 .pixel-workspace :is(button, input):disabled, .pw-dialog button:disabled { opacity: .38; cursor: not-allowed; }
@@ -24,7 +24,7 @@ body .page.arena-page.pixel-workspace {
 .pw-document-name, .pw-document-name > button { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .pw-document-name { flex: 1 1 180px; }
 .pw-document-name > button { border: 0; padding: 0; background: none; color: inherit; }
-.pixel-workspace .pw-document-name h1 { margin: 0; color: var(--ts-editorial-ink); background: none; -webkit-text-fill-color: currentColor; font: inherit; font-weight: 650; font-size: 16px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 240px; }
+.pixel-workspace .pw-document-name h1 { margin: 0; color: var(--pages-ink); background: none; -webkit-text-fill-color: currentColor; font: inherit; font-weight: 650; font-size: 16px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 240px; }
 .pw-document-icon { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 12px; background: var(--pw-soft); color: var(--ts-accent); }
 .pw-draft-status { display: inline-flex; align-items: center; gap: 4px; color: var(--pw-muted); font-size: 11px; white-space: nowrap; margin-left: 8px; }
 .pw-document-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; min-width: 0; }
@@ -84,7 +84,7 @@ body .pixel-workspace:not(.is-controls-open) .arena-controls, body .pixel-worksp
 .pw-native-color { position: relative; width: 34px; height: 34px; border-radius: 10px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--pw-line); cursor: pointer; }
 .pw-native-color input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .pw-hex-field { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; border: 1px solid var(--pw-line); border-radius: 12px; padding: 8px; color: var(--pw-muted); font: 11px ui-monospace, monospace; }
-.pixel-workspace .pw-hex-field input { width: 100%; min-width: 0; min-height: 0; height: 18px; border: 0; padding: 0; border-radius: 0; outline: 0; color: var(--ts-editorial-ink); background: transparent; font: inherit; }
+.pixel-workspace .pw-hex-field input { width: 100%; min-width: 0; min-height: 0; height: 18px; border: 0; padding: 0; border-radius: 0; outline: 0; color: var(--pages-ink); background: transparent; font: inherit; }
 .pw-hex-field small { font-size: 9px; opacity: .6; }
 /* These gradients are the functional saturation/value and hue input surfaces. */
 .pw-color-plane { height: 126px; position: relative; border-radius: 10px; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); touch-action: none; cursor: crosshair; border: 1px solid var(--pw-line); }
@@ -94,7 +94,7 @@ body .pixel-workspace:not(.is-controls-open) .arena-controls, body .pixel-worksp
 .pixel-workspace input.pw-hue { display: block; position: absolute; inset: -11px 0 auto; width: 100%; min-height: 32px !important; height: 32px !important; margin: 0; opacity: 0; cursor: pointer; }
 .pw-hue-track:focus-within { outline: 2px solid var(--ts-accent); outline-offset: 4px; }
 .pw-property-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--pw-muted); font-size: 11px; margin: 18px 0 12px; }
-.pw-property-label strong { color: var(--ts-editorial-ink); font-size: 12px; font-weight: 600; }
+.pw-property-label strong { color: var(--pages-ink); font-size: 12px; font-weight: 600; }
 .pw-property-label > span:last-child:not(:first-child) { font-size: 9px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 body .pixel-workspace .pixel-palette.pw-palette { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 0; border: 0; background: none; }
 body .pixel-workspace .pw-palette .pixel-swatch { display: grid; place-items: center; width: 100%; height: 29px; min-height: 29px; padding: 0; border: 1px solid rgb(110 110 130 / 15%); border-radius: 9px; aspect-ratio: auto; box-shadow: none; color: #fff; text-shadow: 0 1px 1px #000; }
@@ -125,23 +125,23 @@ body .pixel-workspace .pw-palette .pixel-swatch::after { display: none; }
 .pw-navigator .pixel-canvas-renderer, .pw-dialog-preview .pixel-canvas-renderer { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: contain; image-rendering: pixelated; }
 .pw-navigator p { margin: 8px 0 0; text-align: right; color: var(--pw-muted); font: 9px ui-monospace, monospace; }
 .pixel-workspace .pw-properties-scrim, .pw-mobile-hint { display: none; }
-.pw-dialog { width: 440px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 48px); padding: 24px; border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-lg, 20px); color: var(--ts-editorial-ink); background: var(--ts-editorial-surface); box-shadow: var(--ts-shadow-lg); overflow-y: auto; overscroll-behavior: contain; }
+.pw-dialog { width: 440px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 48px); padding: 24px; border: 1px solid var(--pages-line); border-radius: var(--ts-radius-lg, 20px); color: var(--pages-ink); background: var(--pages-surface); box-shadow: var(--ts-shadow-lg); overflow-y: auto; overscroll-behavior: contain; }
 .pw-dialog:not([open]) { display: none; }
 .pw-dialog::backdrop { background: rgb(12 12 24 / 40%); }
 .pw-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .pw-dialog h2 { margin: 0; color: inherit; font-size: 19px; font-weight: 600; }
-.pw-dialog p { color: var(--ts-editorial-muted); font-size: 12px; line-height: 1.8; }
+.pw-dialog p { color: var(--pages-muted); font-size: 12px; line-height: 1.8; }
 .pw-dialog label { display: grid; gap: 8px; margin-top: 16px; font-size: 12px; }
-.pw-dialog :is(input, textarea, select) { width: 100%; border: 1px solid var(--ts-editorial-line); border-radius: 12px; padding: 10px 12px; background: var(--ts-editorial-surface); color: inherit; font: inherit; }
+.pw-dialog :is(input, textarea, select) { width: 100%; border: 1px solid var(--pages-line); border-radius: 12px; padding: 10px 12px; background: var(--pages-surface); color: inherit; font: inherit; }
 .pw-dialog footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.pw-dialog-preview { background: var(--ts-editorial-soft); padding: 12px; border-radius: 14px; }
+.pw-dialog-preview { background: var(--pages-soft); padding: 12px; border-radius: 14px; }
 .pw-gallery-dialog { width: min(1100px, calc(100vw - 48px)); padding: 0; }
-body .pw-gallery-dialog .arena-gallery { display: block; position: relative; inset: auto; width: auto; height: auto; max-height: none; margin: 0; padding: 28px; border: 0; border-radius: 0; overflow: visible; background: var(--ts-editorial-surface); color: var(--ts-editorial-ink); box-shadow: none; }
-body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bottom: 1px solid var(--ts-editorial-line); flex-wrap: wrap; }
+body .pw-gallery-dialog .arena-gallery { display: block; position: relative; inset: auto; width: auto; height: auto; max-height: none; margin: 0; padding: 28px; border: 0; border-radius: 0; overflow: visible; background: var(--pages-surface); color: var(--pages-ink); box-shadow: none; }
+body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bottom: 1px solid var(--pages-line); flex-wrap: wrap; }
 .pw-gallery-dialog .pw-gallery-close { position: absolute; right: 18px; top: 20px; width: 36px; padding: 0; }
 .pw-gallery-dialog .pixel-gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
-.pw-gallery-dialog .pixel-art-card { background: var(--ts-editorial-surface); border-color: var(--ts-editorial-line); border-radius: 18px; overflow: hidden; }
-.pw-gallery-dialog .pixel-art-body { color: var(--ts-editorial-ink); }
+.pw-gallery-dialog .pixel-art-card { background: var(--pages-surface); border-color: var(--pages-line); border-radius: 18px; overflow: hidden; }
+.pw-gallery-dialog .pixel-art-body { color: var(--pages-ink); }
 .pw-gallery-dialog .pixel-art-body :is(h3, p, span, time) { color: inherit; }
 .pw-gallery-dialog .pixel-art-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; padding: 12px; }
 .pw-gallery-dialog .pixel-art-actions .icon-btn { min-height: 34px; width: auto; height: auto; aspect-ratio: auto; padding: 7px 9px; font-size: 11px; }
@@ -213,25 +213,25 @@ body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bot
   @keyframes pixel-dialog-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 }
 }
-@layer ts-editorial {
+@layer pages {
 .pixel-workspace .pw-brush-size input[type="range"] { min-height: 20px; height: 20px; padding: 0; border: 0; }
 }
 
-@layer ts-editorial {
-.pw-export-preview { display: block; max-width: 100%; max-height: 55dvh; width: 100%; height: auto; object-fit: contain; image-rendering: pixelated; border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-md, 16px); }
-.pw-export-dialog p { font-size: 13px; line-height: 1.7; color: var(--ts-editorial-muted); }
+@layer pages {
+.pw-export-preview { display: block; max-width: 100%; max-height: 55dvh; width: 100%; height: auto; object-fit: contain; image-rendering: pixelated; border: 1px solid var(--pages-line); border-radius: var(--ts-radius-md, 16px); }
+.pw-export-dialog p { font-size: 13px; line-height: 1.7; color: var(--pages-muted); }
 }
-@layer ts-editorial {
+@layer pages {
 .pw-gallery-dialog .arena-gallery-tools, .pw-gallery-dialog .arena-gallery-sort { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; width: auto; }
 .pw-gallery-dialog .arena-gallery-sort .chip { width: auto; min-width: 60px; min-height: 36px; padding: 7px 15px; border-radius: var(--ts-radius-button, 999px); }
 .pw-gallery-dialog .pixel-art-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .pw-gallery-dialog .pixel-art-actions .icon-btn { width: auto; min-width: 0; min-height: 36px; height: auto; aspect-ratio: auto; padding: 7px 10px; flex: 0 0 auto; border-radius: var(--ts-radius-button, 999px); font-size: 12px; gap: 5px; }
 }
-@layer ts-editorial {
+@layer pages {
 /* Keep every property reachable above the site's floating companion. */
 .pw-properties::after { content: ''; display: block; height: 96px; }
 }
-@layer ts-components {
+@layer pages {
 @media (max-width: 760px) {
   /* The shared button component sets display in this later layer. */
   .pixel-workspace .pw-context .pw-fit-top { display: none; }

@@ -10,7 +10,7 @@ body .page.payments-page { width: min(1120px, 100%); margin: 0 auto; padding: 11
 .payments-heading p { color: var(--ts-muted); margin: 0; }
 .payments-page .eyebrow { font-size: 11px; letter-spacing: .1em; color: var(--ts-accent); }
 .payment-heading-mark { display: grid; place-items: center; flex: 0 0 90px; height: 90px; color: var(--ts-accent); border: 1px solid var(--ts-border); border-radius: 50%; background: var(--ts-accent-soft); }
-body .page.payments-page .panel { min-width: 0; width: 100%; margin: 0; border: 1px solid var(--ts-border); border-radius: 24px; padding: clamp(20px, 3.5vw, 32px); background: var(--ts-readable-panel-bg, var(--ts-surface-strong)); box-shadow: var(--ts-editorial-shadow); }
+body .page.payments-page .panel { min-width: 0; width: 100%; margin: 0; border: 1px solid var(--ts-border); border-radius: 24px; padding: clamp(20px, 3.5vw, 32px); background: var(--ts-readable-panel-bg, var(--ts-surface-strong)); box-shadow: var(--pages-shadow); }
 .payments-page section, .payments-page details { scroll-margin-top: 110px; }
 .payment-section-nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px; border: 1px solid var(--ts-border); border-radius: 18px; background: var(--ts-surface); }
 .payment-section-nav a { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 14px; border-radius: 12px; color: var(--ts-text); font-size: 14px; text-decoration: none; white-space: nowrap; }

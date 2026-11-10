@@ -2,14 +2,14 @@
 @import './drift-lantern-film.css';
 
 .drift-scene-shell .page.drift-page {
-    --drift-scene-height: clamp(610px, calc(100svh - var(--drift-nav-clearance)), 940px);
+    --drift-scene-height: clamp(610px, calc(100svh - var(--header-height)), 940px);
     position: relative;
     isolation: isolate;
     max-width: none;
     width: 100%;
     margin: 0;
     padding: var(--drift-nav-clearance) 0 0;
-    color: var(--ts-editorial-ink);
+    color: var(--pages-ink);
     transition-property: none;
 }
 
@@ -18,6 +18,7 @@
 
 .drift-stage {
     position: relative;
+    z-index: 2;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(340px, .78fr);
     align-items: end;
@@ -37,8 +38,8 @@
 }
 
 .drift-identity {
-    --ts-editorial-ink: #fff2de;
-    --ts-editorial-muted: #f1e6d8;
+    --pages-ink: #fff2de;
+    --pages-muted: #f1e6d8;
     --ts-accent: #ffe1b3;
     align-self: start;
     max-width: 455px;
@@ -52,13 +53,13 @@
 .drift-eyebrow span { margin: 0 .35em; opacity: .53; }
 .drift-page .drift-identity h1 {
     margin-top: 10px;
-    color: var(--ts-editorial-ink);
+    color: var(--pages-ink);
     font: 600 clamp(2.7rem, 4.7vw, 4.9rem)/1.12 var(--ts-panel-serif);
     letter-spacing: .08em;
 }
 .drift-identity h1 + p {
     margin-top: 13px;
-    color: var(--ts-editorial-muted);
+    color: var(--pages-muted);
     font: 500 clamp(.95rem, 1.45vw, 1.25rem)/1.65 var(--ts-panel-serif);
     letter-spacing: .05em;
 }
@@ -69,9 +70,9 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
     padding: 4px;
-    border: 1px solid var(--ts-editorial-line);
+    border: 1px solid var(--pages-line);
     border-radius: var(--ts-radius-card);
-    background: var(--ts-editorial-surface);
+    background: var(--pages-surface);
 }
 .drift-page :is(button, .drift-primary) {
     display: inline-flex;
@@ -81,10 +82,10 @@
     min-width: 0;
     min-height: 44px;
     padding: 7px 14px;
-    border: 1px solid var(--ts-editorial-line);
+    border: 1px solid var(--pages-line);
     border-radius: var(--ts-radius-control);
-    background: var(--ts-editorial-soft);
-    color: var(--ts-editorial-ink);
+    background: var(--pages-soft);
+    color: var(--pages-ink);
     font: inherit;
     font-size: .86rem;
     line-height: 1.35;
@@ -99,7 +100,7 @@
 }
 .drift-page .drift-tabs button { padding: 5px 4px; border-color: transparent; background: transparent; }
 .drift-page .drift-tabs button[aria-selected="true"] {
-    border-color: color-mix(in srgb, var(--ts-accent) 50%, var(--ts-editorial-line));
+    border-color: color-mix(in srgb, var(--ts-accent) 50%, var(--pages-line));
     background: var(--ts-accent-soft);
     color: var(--ts-accent);
 }
@@ -108,9 +109,9 @@
     display: grid;
     gap: 14px;
     padding: clamp(16px, 2.4vw, 26px);
-    border: 1px solid var(--ts-editorial-line);
+    border: 1px solid var(--pages-line);
     border-radius: var(--ts-radius-card);
-    background: var(--ts-panel-finish) var(--ts-editorial-surface);
+    background: var(--ts-panel-finish) var(--pages-surface);
     box-shadow: var(--ts-elevation-raised);
 }
 .drift-panel-heading {
@@ -120,14 +121,14 @@
     gap: 12px;
 }
 .drift-page :is(.drift-panel-heading h2, .drift-dialog-header h2) {
-    color: var(--ts-editorial-ink);
+    color: var(--pages-ink);
     font: 600 clamp(1.35rem, 2.4vw, 1.8rem)/1.25 var(--ts-panel-serif);
     letter-spacing: .04em;
 }
 .drift-panel-heading h2:focus { outline: 0; }
 .drift-panel-heading p {
     margin-top: 5px;
-    color: var(--ts-editorial-muted);
+    color: var(--pages-muted);
     font-size: .83rem;
     line-height: 1.6;
 }
@@ -135,7 +136,7 @@
     padding: 9px 12px;
     border-radius: 8px;
     background: var(--ts-accent-soft);
-    color: var(--ts-editorial-ink);
+    color: var(--pages-ink);
     font-size: .83rem;
     line-height: 1.55;
 }
@@ -155,10 +156,10 @@
     display: grid;
     gap: 6px;
     padding: 12px 13px 7px;
-    border: 1px solid var(--ts-editorial-line);
+    border: 1px solid var(--pages-line);
     border-radius: var(--ts-radius-control);
-    background: var(--ts-editorial-low);
-    color: var(--ts-editorial-ink);
+    background: var(--pages-low);
+    color: var(--pages-ink);
 }
 .drift-writing-paper:focus-within { border-color: var(--ts-accent); }
 .drift-writing-paper label { color: var(--ts-accent); font-size: .77rem; line-height: 1.4; }
@@ -169,15 +170,15 @@
     width: 100%;
     padding: 2px 0;
     border: 0;
-    background: var(--ts-editorial-low);
+    background: var(--pages-low);
     box-shadow: none;
-    color: var(--ts-editorial-ink);
+    color: var(--pages-ink);
     font: 500 16px/1.65 var(--ts-panel-serif);
     resize: vertical;
 }
 .drift-writing-paper textarea:focus-visible { outline: 0; }
-.drift-writing-paper textarea::placeholder { color: var(--ts-editorial-muted); opacity: 1; }
-.drift-writing-paper small { justify-self: end; color: var(--ts-editorial-muted); font-size: .72rem; }
+.drift-writing-paper textarea::placeholder { color: var(--pages-muted); opacity: 1; }
+.drift-writing-paper small { justify-self: end; color: var(--pages-muted); font-size: .72rem; }
 
 .drift-compose-actions, .drift-letter-actions, .drift-sea-actions {
     display: flex;
@@ -199,16 +200,16 @@
     gap: 7px;
 }
 .drift-workspace-foot .drift-daily-link { margin-inline-end: auto; min-height: 36px; padding: 5px 7px; }
-.drift-rules, .drift-letter-options, .drift-translation { color: var(--ts-editorial-muted); font-size: .79rem; line-height: 1.65; }
+.drift-rules, .drift-letter-options, .drift-translation { color: var(--pages-muted); font-size: .79rem; line-height: 1.65; }
 .drift-rules summary { min-height: 36px; padding: 7px 6px; cursor: pointer; }
 .drift-rules[open] { width: 100%; }
-.drift-rules p { padding: 8px 9px; background: var(--ts-editorial-low); border-radius: 7px; }
+.drift-rules p { padding: 8px 9px; background: var(--pages-low); border-radius: 7px; }
 .drift-prompt-context {
     padding: 9px 12px;
     border-left: 2px solid var(--ts-accent);
     border-radius: 0 7px 7px 0;
-    background: var(--ts-editorial-low);
-    color: var(--ts-editorial-muted);
+    background: var(--pages-low);
+    color: var(--pages-muted);
     font-size: .83rem;
     line-height: 1.55;
     overflow-wrap: anywhere;
@@ -229,22 +230,22 @@
     width: 100%;
     padding: 10px;
     text-align: start;
-    background: var(--ts-editorial-low);
+    background: var(--pages-low);
 }
 .drift-page .drift-list-item.is-new { border-color: var(--ts-accent); background: var(--ts-accent-soft); }
 .drift-list-copy { display: grid; gap: 3px; width: 100%; min-width: 0; }
 .drift-list-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 3px 7px; }
 .drift-list-meta small { color: var(--ts-accent); font-size: .69rem; }
 .drift-shelf-bottle { width: 24px; height: 36px; }
-.drift-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ts-editorial-ink); font: 500 .98rem/1.4 var(--ts-panel-serif); }
-.drift-list-copy time, .drift-daily-badge { color: var(--ts-editorial-muted); font-size: .68rem; }
+.drift-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pages-ink); font: 500 .98rem/1.4 var(--ts-panel-serif); }
+.drift-list-copy time, .drift-daily-badge { color: var(--pages-muted); font-size: .68rem; }
 .drift-pagination, .drift-pagination-actions, .drift-page-jump {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
 }
-.drift-pagination { gap: 8px; color: var(--ts-editorial-muted); font-size: .8rem; }
+.drift-pagination { gap: 8px; color: var(--pages-muted); font-size: .8rem; }
 .drift-pagination p { flex: 1 0 max-content; }
 .drift-page :is(.drift-pagination-actions, .drift-page-jump) button { padding-inline: 10px; }
 .drift-page .drift-page-jump input {
@@ -259,10 +260,10 @@
     align-self: start;
     margin-top: clamp(65px, 19svh, 180px);
 }
-.drift-empty { display: grid; gap: 8px; justify-items: start; padding: 9px 0; color: var(--ts-editorial-muted); font-size: .82rem; line-height: 1.6; }
+.drift-empty { display: grid; gap: 8px; justify-items: start; padding: 9px 0; color: var(--pages-muted); font-size: .82rem; line-height: 1.6; }
 .drift-empty svg { width: 25px; height: 34px; }
 .drift-empty button svg { width: 16px; height: 16px; }
-.drift-empty h3 { color: var(--ts-editorial-ink); font: 600 1.05rem var(--ts-panel-serif); }
+.drift-empty h3 { color: var(--pages-ink); font: 600 1.05rem var(--ts-panel-serif); }
 
 .drift-bottle-dialog {
     width: min(580px, calc(100% - 24px));
@@ -270,10 +271,10 @@
     margin: auto;
     padding: 0;
     overflow: auto;
-    border: 1px solid var(--ts-editorial-line);
+    border: 1px solid var(--pages-line);
     border-radius: var(--ts-radius-card);
-    background: var(--ts-panel-finish) var(--ts-editorial-surface);
-    color: var(--ts-editorial-ink);
+    background: var(--ts-panel-finish) var(--pages-surface);
+    color: var(--pages-ink);
     box-shadow: var(--ts-elevation-overlay);
 }
 .drift-bottle-dialog[open] { display: flex; flex-direction: column; }
@@ -304,7 +305,7 @@
     align-items: center;
     gap: 10px;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--ts-editorial-line);
+    border-bottom: 1px solid var(--pages-line);
 }
 .drift-dialog-header .drift-eyebrow { margin-bottom: 5px; }
 .drift-dialog-notice { margin: 8px 16px; }
@@ -313,20 +314,20 @@
 .drift-letter-byline > svg { width: 22px; height: 33px; }
 .drift-letter-byline div { flex: 1; }
 .drift-letter-byline time { display: block; }
-.drift-bottle-dialog time { color: var(--ts-editorial-muted); font-size: .74rem; }
+.drift-bottle-dialog time { color: var(--pages-muted); font-size: .74rem; }
 .drift-paper, .drift-reply {
     margin-top: 11px;
     padding: 13px 14px;
     border-radius: var(--ts-radius-control);
-    background: var(--ts-editorial-low);
-    border: 1px solid var(--ts-editorial-line);
+    background: var(--pages-low);
+    border: 1px solid var(--pages-line);
 }
-.drift-content { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ts-editorial-ink); font: 500 1rem/1.75 var(--ts-panel-serif); }
+.drift-content { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pages-ink); font: 500 1rem/1.75 var(--ts-panel-serif); }
 .drift-reply header { justify-content: space-between; flex-wrap: wrap; margin-bottom: 5px; }
 .drift-letter-status { color: var(--ts-accent); font-size: .75rem; }
-.drift-page .drift-thread-note { margin-top: 8px; color: var(--ts-editorial-muted); font-size: .8rem; }
+.drift-page .drift-thread-note { margin-top: 8px; color: var(--pages-muted); font-size: .8rem; }
 .drift-correspondence { margin-top: 17px; }
-.drift-correspondence h3 { color: var(--ts-editorial-ink); font-size: .92rem; }
+.drift-correspondence h3 { color: var(--pages-ink); font-size: .92rem; }
 .drift-correspondence h3 small { margin-inline-start: 8px; color: var(--ts-accent); }
 .drift-bottle-dialog details { margin-top: 12px; }
 .drift-bottle-dialog summary { cursor: pointer; padding: 6px 0; }
@@ -336,8 +337,8 @@
 .drift-found-glow { display: grid; width: 110px; height: 110px; place-items: center; background: radial-gradient(var(--ts-accent-soft), transparent 68%); }
 .drift-found-glow svg { width: 36px; height: 63px; }
 .drift-reader-footer, .drift-letter-form { padding: 9px 20px 13px; }
-.drift-reply-context { margin: 0; padding: 8px 10px; border-inline-start: 2px solid var(--ts-editorial-line); max-height: 80px; overflow: auto; color: var(--ts-editorial-muted); }
-.drift-privacy { padding: 0 20px 13px; color: var(--ts-editorial-muted); font-size: .72rem; }
+.drift-reply-context { margin: 0; padding: 8px 10px; border-inline-start: 2px solid var(--pages-line); max-height: 80px; overflow: auto; color: var(--pages-muted); }
+.drift-privacy { padding: 0 20px 13px; color: var(--pages-muted); font-size: .72rem; }
 body:has(.drift-bottle-dialog[open]) { overflow: hidden; }
 body:has(.drift-bottle-dialog[open]) .site-music-drawer { visibility: hidden; }
 
@@ -356,7 +357,7 @@ body:has(.drift-bottle-dialog[open]) .site-music-drawer { visibility: hidden; }
     .drift-page[data-tab="bottles"] .drift-workspace { margin-top: 0; }
     .drift-page .drift-identity h1 { font-size: clamp(2rem, 8.5vw, 3rem); }
     .drift-identity h1 + p { margin-top: 6px; font-size: .88rem; max-width: 330px; text-wrap: pretty; }
-    .drift-scene-shell:has(#drift-panel-write) .site-music-drawer:not(.is-open) { visibility: hidden; }
+
     .drift-page .drift-tabs button { font-size: clamp(.75rem, 3.6vw, .86rem); gap: 4px; }
     .drift-page .drift-tabs button svg { width: 15px; height: 15px; }
     .drift-bottle-dialog :is(.drift-dialog-header, .drift-letter-scroll, .drift-reader-footer, .drift-letter-form) { padding-inline: 14px; }
@@ -386,9 +387,9 @@ body:has(.drift-bottle-dialog[open]) .site-music-drawer { visibility: hidden; }
     height: calc(var(--ts-visual-height, 100dvh) - 12px);
     gap: 7px;
     padding: 8px;
-    border: 1px solid var(--ts-editorial-line);
+    border: 1px solid var(--pages-line);
     border-radius: 13px;
-    background: var(--ts-editorial-surface);
+    background: var(--pages-surface);
     transition-property: none;
 }
 .is-keyboard-open .drift-compose .drift-prompt-context {

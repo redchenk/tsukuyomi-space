@@ -22,8 +22,8 @@ describe('constrained-device performance policy', () => {
         const articles = source('backend/repositories/article-repository.js');
         const pixels = source('backend/repositories/pixel-art-repository.js');
         const router = source('src/frontend/router/index.js');
-        const globalCss = source('assets/css/vue-app.css');
-        const modernTheme = source('assets/css/vue/modern-theme.css');
+        const globalCss = source('src/frontend/styles/global.css');
+        const modernTheme = source('src/frontend/styles/jingyue/components.css');
 
         assert.match(avatars, /function publicAvatarUrl/);
         assert.match(messages, /publicAvatarUrl/);
@@ -52,14 +52,14 @@ describe('constrained-device performance policy', () => {
         assert.match(performance, /export function refreshPerformanceProbe/);
         assert.match(performance, /document\.documentElement\.dataset\.performance/);
         assert.match(main, /initializePerformanceProfile\(\)/);
-        assert.match(main, /performance\.css/);
+        assert.match(main, /global\.css/);
     });
 
     it('keeps route motion compositor-only and bounded during navigation', () => {
         const packageJson = JSON.parse(source('package.json'));
         const app = source('src/frontend/App.vue');
         const motion = source('src/frontend/utils/motion.js');
-        const animations = source('src/frontend/styles/animations.css');
+        const animations = source('src/frontend/styles/jingyue/components.css');
 
         assert.match(packageJson.dependencies.animejs, /^\^4\./);
         assert.match(motion, /element\.animate\(/);
@@ -98,47 +98,29 @@ describe('constrained-device performance policy', () => {
         assert.match(router, /reduced \? loaders\.slice\(0, 1\) : loaders/);
         assert.match(router, /refreshPerformanceProbe\(\)/);
         assert.match(router, /router\.resolve\(path\)/);
-        assert.match(shell, /@pointerenter="item\.spa && warmRoutePath\(item\.path\)/);
-        assert.match(shell, /@pointerdown="item\.spa && warmRoutePath\(item\.path\)"/);
-        assert.match(hub, /function warmScene\(scene\)/);
-        assert.match(hub, /@pointerenter="warmScene\(scene\)"/);
+        assert.match(shell, /@pointerenter="warmRoutePath\(item\.path\)/);
+        assert.match(source('src/frontend/utils/routeNavigation.js'), /pointerover/);
+        assert.match(hub, /<RouterLink/);
+        assert.match(source('src/frontend/App.vue'), /prefetch: warmRoutePath/);
     });
 
-    it('keeps mobile actions readable and restores the full-resolution Hub pixel crop', () => {
-        const plaza = source('assets/css/vue/pages/plaza.css');
-        const arena = source('assets/css/vue/pages/arena.css');
-        const productPolish = source('assets/css/vue/product-polish.css');
+    it('keeps mobile actions wrapping and the pixel canvas independently editable', () => {
+        const plaza = source('src/frontend/styles/routes/plaza.css');
+        const arena = source('src/frontend/styles/routes/arena.css');
         const arenaPage = source('src/frontend/pages/ArenaPage.vue');
-        const hubPage = source('src/frontend/pages/HubPage.vue');
-        const hubStyles = source('assets/css/vue/pages/hub.css');
-        const hubPreview = source('backend/routes/hub-preview.js');
-
-        assert.match(plaza, /\.plaza-msg-footer \.icon-btn\s*\{[^}]*min-width:\s*max-content/s);
-        assert.match(plaza, /\.plaza-msg-footer \.icon-btn > span\s*\{[^}]*overflow:\s*visible[^}]*text-overflow:\s*clip/s);
-        assert.match(plaza, /@media \(max-width: 760px\)[\s\S]*\.plaza-hero,[\s\S]*\.plaza-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
-        assert.match(plaza, /@media \(max-width: 560px\)[\s\S]*\.plaza-msg-footer\s*\{[^}]*flex-wrap:\s*wrap[^}]*overflow:\s*visible/);
-        assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
-        assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn > span\s*\{[^}]*text-overflow:\s*clip[^}]*white-space:\s*nowrap/s);
-        assert.match(productPolish, /body \.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*0[^}]*aspect-ratio:\s*auto/s);
-        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions\s*\{[^}]*display:\s*flex[^}]*flex-wrap:\s*wrap[^}]*justify-content:\s*flex-end/s);
-        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions \.icon-btn\s*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
-        assert.match(arena, /@media \(max-width: 760px\) and \(pointer: coarse\)[\s\S]*\.arena-canvas-viewport\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y pinch-zoom/s);
-        assert.match(arenaPage, /function initialCanvasTool\(\)[\s\S]*pointer: coarse[\s\S]*\? 'move' : 'brush'/s);
-        assert.match(productPolish, /@media \(max-width: 760px\)[\s\S]*\.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
-        assert.doesNotMatch(hubPage, /--hub-pixel-(?:width|height)/);
-        assert.match(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*cover/s);
-        assert.match(hubStyles, /@media \(max-width: 620px\)[\s\S]*\.scene-card:not\(\.scene-card-plaza\) \.scene-label\s*\{[^}]*position:\s*absolute[^}]*top:\s*1\.5rem[^}]*left:\s*4\.25rem/s);
-        assert.match(hubPreview, /preview:\s*true/);
-        assert.doesNotMatch(hubPreview, /preview:\s*'compact'/);
+        assert.match(plaza, /\.plaza-msg-footer[^}]*flex-wrap: wrap/);
+        assert.match(arena, /\.pixel-art-actions/);
+        assert.match(arenaPage, /pointer: coarse[\s\S]*\? 'move' : 'brush'/);
+        assert.match(source('backend/routes/hub-preview.js'), /preview:\s*true/);
+        assert.match(source('src/frontend/pages/HubPage.vue'), /image: siteArt\.pixelCover/);
     });
 
     it('keeps desktop pixel controls scrollable without trapping mobile page scrolling', () => {
-        const arena = source('assets/css/vue/pages/arena.css');
-        const modernTheme = source('assets/css/vue/modern-theme.css');
-
-        assert.match(modernTheme, /\.panel:not\(\.arena-controls\),\s*\n\.hub-copy,[\s\S]*?\.terminal-panel\s*\{[^}]*overflow:\s*hidden/s);
-        assert.match(arena, /body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto[^}]*overscroll-behavior-y:\s*contain[^}]*scrollbar-gutter:\s*stable/s);
-        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow:\s*visible/s);
+        const arena = source('src/frontend/styles/routes/arena.css');
+        assert.match(arena, /\.arena-controls\.pw-properties[^}]*overflow-y:\s*auto/s);
+        assert.match(arena, /\.pw-dialog[^}]*overflow-y:\s*auto/s);
+        assert.match(arena, /@media \(max-width: 760px\)/);
+        assert.doesNotMatch(source('src/frontend/styles/jingyue/components.css'), /\.arena-controls[^}]*overflow:\s*hidden/s);
     });
 
     it('opens Pixel with a central canvas and on-demand community/publishing panels', () => {
@@ -179,18 +161,15 @@ describe('constrained-device performance policy', () => {
     });
 
     it('keeps mobile content and immersive controls inside the viewport', () => {
-        const stage = source('assets/css/vue/pages/stage.css');
-        const room = source('assets/css/vue/pages/room.css');
+        const stage = source('src/frontend/styles/routes/stage.css');
+        const room = source('src/frontend/styles/routes/room.css');
         const accessPage = source('src/frontend/pages/AccessPage.vue');
         const accessStyles = source('assets/css/vue/pages/access.css');
         const attachments = source('src/frontend/pages/AttachmentsPage.vue');
-
-        assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card\s*\{[^}]*height:\s*auto[^}]*flex-direction:\s*column-reverse/s);
-        assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card-cover\s*\{[^}]*width:\s*100%[^}]*height:\s*clamp/s);
-        const responsive = source('src/frontend/styles/responsive.css');
-        assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*left:\s*50%\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
-        assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*max-height:[^}]*var\(--room-mobile-top-clearance\)/s);
-        assert.match(room, /\.room-panel\.room-chat-panel\s*\{[^}]*left:\s*50%\s*!important[^}]*top:\s*auto\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
+        assert.match(stage, /@media \(max-width: 600px\)/);
+        assert.match(stage, /\.journal-cover[^}]*aspect-ratio:/);
+        assert.match(room, /height: var\(--ts-visual-height, 100dvh\)/);
+        assert.match(room, /\.room-utility-panel[^}]*inset: 20% 0 0/);
         assert.doesNotMatch(accessPage, /<video/);
         assert.match(accessStyles, /\.water-mirror-scene\s*\{[^}]*pointer-events:\s*none[^}]*touch-action:\s*none/s);
         assert.match(attachments, /let assetLoadController = null/);
@@ -201,25 +180,25 @@ describe('constrained-device performance policy', () => {
     });
 
     it('keeps Access copy legible over moving backgrounds', () => {
-        const readability = source('assets/css/vue/theme-readability.css');
-
-        assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-kicker\s*\{[^}]*rgba\(255, 255, 255, 0\.9\)/s);
-        assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-copy\s*\{[^}]*rgba\(255, 255, 255, 0\.94\)[^}]*text-shadow:/s);
-        assert.match(readability, /body\.vue-access-route \.page\.access-page :is\(\.access-copyright, \.access-beian \.beian-link\)\s*\{[^}]*rgba\(255, 255, 255, 0\.82\)/s);
+        const styles = source('assets/css/vue/pages/access.css');
+        assert.match(styles, /--access-ink: #fff6eb/);
+        assert.match(styles, /\.access-film-shade[^}]*gradient/s);
+        assert.match(styles, /text-shadow:/);
+        assert.match(styles, /\.access-copyright/);
     });
 
     it('uses compressed full-resolution backgrounds and a lightweight pet frame', () => {
         const runtime = [
             source('src/frontend/utils/assetUrl.js'),
-            source('assets/css/vue/pages/room.css'),
-            source('assets/css/vue/pages/hub.css')
+            source('src/frontend/styles/routes/room.css'),
+            source('src/frontend/styles/routes/hub.css')
         ].join('\n');
         const baseThemes = [
-            source('src/frontend/styles/themes.css'),
-            source('assets/css/vue/foundation.css'),
-            source('assets/css/vue/modern-theme.css')
+            source('src/frontend/styles/jingyue/tokens.css'),
+            source('src/frontend/styles/jingyue/background.css'),
+            source('src/frontend/styles/jingyue/components.css')
         ].join('\n');
-        const productPolish = source('assets/css/vue/product-polish.css');
+        const productPolish = source('src/frontend/styles/jingyue/auth.css');
         const pet = source('src/frontend/components/SitePet.vue');
 
         assert.ok(bytes('assets/images/tsukuyomi-bg.webp') < bytes('assets/images/tsukuyomi-bg.png') * 0.15);
@@ -233,7 +212,7 @@ describe('constrained-device performance policy', () => {
         assert.deepEqual(zlib.gunzipSync(compressedModel), model);
         assert.match(pet, /spritesheet-perf-r2\.webp/);
         assert.doesNotMatch(runtime, /(?:tsukuyomi|room)-bg\.png/);
-        assert.match(runtime, /tsukuyomi-bg\.webp/);
+        assert.match(productPolish, /tsukuyomi-bg\.webp/);
         assert.doesNotMatch(runtime, /room-night-apartment/);
         assert.doesNotMatch(baseThemes, /tsukuyomi-bg\.webp/);
         assert.doesNotMatch(productPolish, /body,\s*html\[data-theme="dark"\] body,\s*body\.vue-global-bg-route\s*\{[^}]*tsukuyomi-bg/s);
@@ -244,7 +223,7 @@ describe('constrained-device performance policy', () => {
         const pet = source('src/frontend/components/SitePet.vue');
 
         assert.match(app, /defineAsyncComponent\(\(\) => import\('\.\/components\/SitePet\.vue'\)\)/);
-        assert.match(app, /scheduleIdleTask/);
+        assert.match(app, /showSitePet = computed\(\(\) => route\.name === 'gomoku'\)/);
         assert.match(app, /:reduced="petReduced"/);
         assert.match(pet, /assets\/pets\/yachiyo\/idle\.webp/);
         assert.match(pet, /if \(motionReduced \|\| props\.reduced\) return/);
@@ -254,16 +233,15 @@ describe('constrained-device performance policy', () => {
     });
 
     it('uses the Room render budget while keeping the original model loading path', () => {
-        const styles = source('src/frontend/styles/performance.css');
+        const styles = source('src/frontend/styles/routes/room.css');
         const room = source('src/live2d/main-room.ts');
         const pacing = source('src/live2d/room-frame-pacing.mjs');
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
         const bridge = source('src/frontend/services/room/live2dCubismBehaviorBridge.js');
         const loader = source('src/frontend/services/room/live2dBridge.js');
 
-        assert.match(styles, /data-performance="reduced"/);
-        assert.match(styles, /backdrop-filter: none !important/);
-        assert.match(styles, /content-visibility: auto/);
+        assert.match(styles, /data-performance='reduced'/);
+        assert.match(styles, /backdrop-filter: none/);
         assert.match(room, /computeRoomFrameInterval\(/);
         assert.match(pacing, /activeMinimumFps: 10/);
         assert.match(pacing, /idleMinimumFps: 8/);

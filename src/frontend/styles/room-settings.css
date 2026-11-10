@@ -1,8 +1,8 @@
 /* Room settings uses the site's shared palette, typography and pill buttons. */
 .content-shell .room-settings-page {
-  --settings-surface: var(--ts-editorial-surface, var(--panel-strong));
-  --settings-soft: var(--ts-editorial-soft, var(--ts-bg-soft));
-  --settings-line: var(--ts-editorial-line, var(--line));
+  --settings-surface: var(--pages-surface, var(--panel-strong));
+  --settings-soft: var(--pages-soft, var(--ts-bg-soft));
+  --settings-line: var(--pages-line, var(--line));
   max-width: 1600px;
   margin: 0 auto;
   padding-bottom: 150px;
@@ -252,7 +252,7 @@
   border: 1px solid var(--settings-line);
   border-radius: var(--ts-radius-card);
   background: var(--settings-surface);
-  box-shadow: var(--ts-editorial-shadow);
+  box-shadow: var(--pages-shadow);
   display: grid;
   gap: 24px;
   min-width: 0;
@@ -1023,8 +1023,8 @@
   border-radius: var(--ts-radius-pill);
   padding: 5px 10px;
   font-size: 12px;
-  background: var(--ts-editorial-soft);
-  color: var(--ts-editorial-muted);
+  background: var(--pages-soft);
+  color: var(--pages-muted);
 }
 .room-test-status.success {
   color: var(--ts-cyan);
@@ -1046,10 +1046,10 @@
   max-height: 80dvh;
   overflow: auto;
   padding: 26px;
-  border: 1px solid var(--ts-editorial-line);
+  border: 1px solid var(--pages-line);
   border-radius: var(--ts-radius-card);
-  background: var(--ts-editorial-surface);
-  color: var(--ts-editorial-ink);
+  background: var(--pages-surface);
+  color: var(--pages-ink);
   box-shadow: var(--ts-shadow-lg);
 }
 .room-test-dialog-head {
@@ -1062,7 +1062,7 @@
   display: block;
   margin-top: 18px;
   font-size: 11px;
-  color: var(--ts-editorial-muted);
+  color: var(--pages-muted);
 }
 .room-test-modal-card h3 {
   margin: 8px 0 14px;
@@ -1079,8 +1079,8 @@
   overflow: auto;
   padding: 16px;
   border-radius: var(--ts-radius-control);
-  background: var(--ts-editorial-soft);
-  color: var(--ts-editorial-ink);
+  background: var(--pages-soft);
+  color: var(--pages-ink);
   font: 12px/1.7 monospace;
 }
 .room-test-modal-card button {

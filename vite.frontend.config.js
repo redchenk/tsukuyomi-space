@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { interfaceLocalization } from './scripts/i18n-plugin.mjs';
 import { fileURLToPath, URL } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 const frontendRoot = fileURLToPath(new URL('./src/frontend', import.meta.url));
@@ -126,11 +126,14 @@ export default defineConfig(({ mode }) => {
         allow: [projectRoot]
       },
       proxy: {
-        '^/api(?!/client\\.js(?:\\?|$))': 'http://127.0.0.1:3000',
-        '/lib': 'http://127.0.0.1:3000',
-        '/models': 'http://127.0.0.1:3000',
-        '/assets': 'http://127.0.0.1:3000',
-        '/live2d-core.js': 'http://127.0.0.1:3000'
+        '^/api(?!/[^?]+\\.(?:js|mjs)(?:\\?|$))': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000'),
+        '/lib': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000'),
+        '/models': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000'),
+        '/assets': {
+          target: process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000',
+          bypass(req) { if (existsSync(frontendRoot + decodeURIComponent(req.url.split('?')[0]))) return req.url; }
+        },
+        '/live2d-core.js': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000')
       }
     },
     build: {

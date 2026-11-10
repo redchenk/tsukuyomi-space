@@ -1,6 +1,5 @@
 <script setup>
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, shallowRef, watch } from 'vue';
-import { installSmoothScroll } from './utils/smoothScroll';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
@@ -12,7 +11,7 @@ import { startSeasonTracking } from './composables/useSeasonTheme';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
-import { animateRouteEnter, animateRouteLeave, cancelRouteMotion } from './utils/motion';
+import { animateRouteEnter, cancelRouteMotion } from './utils/motion';
 import { focusRouteHeading, installRouteLinks, routeViewKey } from './utils/routeNavigation';
 import { loadAccessPage, warmRoutePath } from './router';
 import { useAccessTransition } from './composables/useAccessTransition';
@@ -23,8 +22,7 @@ import './styles/access-transition.css';
 import { forcedSiteLanguage } from './utils/siteVariant';
 import {
   getPerformanceProfile,
-  PERFORMANCE_PROFILE_EVENT,
-  scheduleIdleTask
+  PERFORMANCE_PROFILE_EVENT
 } from './utils/performance';
 
 const AccessPage = defineAsyncComponent(loadAccessPage);
@@ -40,7 +38,6 @@ const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') === 'dark' ? 'dark' : 'light');
 let stopSeasonTracking;
-let stopSmoothScroll;
 const user = ref(null);
 const routeCacheIdentity = computed(() => `${user.value?.scope || 'user'}:${user.value?.id || 'guest'}:${user.value?.role || ''}`);
 const routeCacheInclude = ref(['CachedRouteFrame']);
@@ -60,15 +57,12 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
   : lang.value === 'en' ? 'Loading page' : '页面加载中');
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const {
-  gate: accessGate, phase: entryPhase, cinematic: entryCinematic, fromAccess: entryFromAccess,
+  gate: accessGate, phase: entryPhase, cinematic: entryCinematic,
   failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
-  enter: enterSpace, startDirect: startDirectEntry, skip: skipEntry
+  enter: enterSpace, skip: skipEntry
 } = useAccessTransition({
-  route, router, onEntrySound: () => music.startEntryMusic(), onEntered: clicked => {
-    if (clicked) {
-      try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
-    }
-    petReady.value = true;
+  route, router, onEntrySound: () => music.startEntryMusic(), onEntered: () => {
+    try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
     focusRouteHeading(document.querySelector('[data-route-name="hub"]'));
     loadVisitPopup();
   }
@@ -82,12 +76,9 @@ const entryActive = computed(() => entryPhase.value !== 'idle');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isRoomRoute = computed(() => route.name === 'room' || route.name === 'roomShared');
-const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
-const hasGlobalBackground = computed(() => !isAccessRoute.value && !isRoomRoute.value);
-const showSitePet = computed(() => Boolean(route.name)
-  && !['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'roomSettings', 'kaguyaRun'].includes(route.name));
+const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value || isRoomRoute.value);
+const showSitePet = computed(() => route.name === 'gomoku');
 const performanceProfile = ref(getPerformanceProfile());
-const petReady = ref(false);
 const petReduced = computed(() => performanceProfile.value === 'reduced');
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
@@ -111,7 +102,6 @@ let lastTrustedAuthAt = 0;
 let routeProgressTimer = 0;
 let refreshUserRun = 0;
 let initialRouteReady = false;
-let cancelPetWarmup = null;
 let removeRouteProgressGuard = null;
 let removeRouteProgressHook = null;
 let removeRouteErrorHook = null;
@@ -300,15 +290,7 @@ function enterRoute(element, done) {
   });
 }
 
-function leaveRoute(element, done) {
-  if (routeMotionImmediate) {
-    cancelRouteMotion(element);
-    // Let Vue install the out-in placeholder before completing an instant leave.
-    queueMicrotask(done);
-    return;
-  }
-  animateRouteLeave(element, done);
-}
+function leaveRoute(element, done) { cancelRouteMotion(element); done(); }
 
 async function logout() {
   await logoutSession();
@@ -374,20 +356,8 @@ function handleVisibilityChange() {
   refreshUser();
 }
 
-function scheduleSitePet() {
-  cancelPetWarmup?.();
-  cancelPetWarmup = scheduleIdleTask(() => {
-    petReady.value = true;
-    cancelPetWarmup = null;
-  }, {
-    delay: performanceProfile.value === 'reduced' ? 900 : 1800,
-    timeout: performanceProfile.value === 'reduced' ? 1400 : 3500
-  });
-}
-
 function handlePerformanceProfile(event) {
   performanceProfile.value = event.detail?.profile || getPerformanceProfile();
-  if (!petReady.value) scheduleSitePet();
 }
 
 provide('siteMusic', music);
@@ -400,10 +370,6 @@ watch(() => user.value?.id || '', () => music.resetAccount());
 
 watch(isAccessRoute, (next) => {
   document.body.classList.toggle('vue-access-route', next);
-}, { immediate: true });
-
-watch(hasGlobalBackground, (next) => {
-  document.body.classList.toggle('vue-global-bg-route', next);
 }, { immediate: true });
 
 watch(isLive2DRoute, (next) => {
@@ -426,12 +392,10 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
-  stopSmoothScroll = installSmoothScroll(router);
   // Access waits for its poster; Room hands boot off to its own asset splash.
   // Other direct routes are ready once the initial route has rendered.
   router.isReady().then(async () => {
     await nextTick();
-    if (startDirectEntry()) return;
     if (!isAccessRoute.value && !isRoomRoute.value) window.dispatchEvent(new Event('tsukuyomi:entry-ready'));
   });
   stopSeasonTracking = startSeasonTracking();
@@ -443,18 +407,15 @@ onMounted(() => {
   });
   removeRouteErrorHook = router.onError(() => { routeHistory.cancel(); finishRouteProgress(); });
   applyPublicSettings();
-  scheduleSitePet();
   window.addEventListener('pageshow', handlePageShow);
   window.addEventListener(PERFORMANCE_PROFILE_EVENT, handlePerformanceProfile);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
-  stopSmoothScroll?.();
   stopSeasonTracking?.();
   if (typeof window === 'undefined') return;
   window.clearTimeout(routeProgressTimer);
-  cancelPetWarmup?.();
   removeRouteProgressGuard?.();
   removeRouteProgressHook?.();
   removeRouteErrorHook?.();
@@ -468,11 +429,11 @@ onUnmounted(() => {
 <template>
   <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
     :data-phase="entryPhase" :data-cinematic="entryCinematic || undefined"
-    :data-water-mirror="(entryCinematic && entryFromAccess) || undefined" :inert="entryPhase === 'revealing'">
-    <AccessPage v-if="isAccessRoute || entryFromAccess" :t="t" :entering="entryActive" :cinematic="entryCinematic" :entry-failed="entryFailed"
+    :data-water-mirror="entryCinematic || undefined" :inert="entryPhase === 'revealing'">
+    <AccessPage :t="t" :entering="entryActive" :cinematic="entryCinematic" :entry-failed="entryFailed"
       :inert="entryCinematic"
       @enter="enterSpace" @warm="warmRoutePath('/hub')" />
-    <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" :from-access="entryFromAccess"
+    <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" from-access
       :waiting="entryWaiting" :progress="entryProgress" @skip="skipEntry" />
   </div>
   <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang" :t="t"
@@ -498,7 +459,7 @@ onUnmounted(() => {
     <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute }">
       <RouterView v-slot="{ Component, route: viewRoute }">
         <Transition
-          mode="out-in"
+
           :css="false"
           @enter="enterRoute"
           @leave="leaveRoute"
@@ -537,7 +498,7 @@ onUnmounted(() => {
     aria-busy="true"
   ><span aria-hidden="true"></span></div>
 
-  <SitePet v-if="showSitePet && (petReady || entryActive || route.name === 'gomoku') && !roomEntryActive"
+  <SitePet v-if="showSitePet && !roomEntryActive"
     :lang="lang" :route-name="route.name" :reduced="petReduced" :entry-active="entryActive" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">

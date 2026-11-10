@@ -1,4 +1,4 @@
-@import url("../../../../assets/css/vue/pages/terminal.css") layer(ts-page);
+@import url("../../../../assets/css/vue/pages/terminal.css") layer(pages);
 @import url("../../../../assets/css/vue/pages/terminal-workspace.css");
 
 .terminal-panel .manager-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin: .25rem 0 1rem; }

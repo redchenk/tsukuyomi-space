@@ -1,7 +1,7 @@
-@import url("../room-settings.css") layer(ts-editorial);
+@import url("../room-settings.css") layer(pages);
 
 /* Override the shared single-line button skin at its own cascade layer. */
-@layer ts-components {
+@layer pages {
   .room-settings-page .settings-providers .ghost-btn,
   .room-settings-page .runtime-level-row > button {
     max-width: 100%;

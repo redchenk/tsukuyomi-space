@@ -1,518 +1,92 @@
 <script setup>
-import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
-import { nameInitial } from '../utils/userName.mjs';
+import { RouterLink } from 'vue-router';
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { createArticleDiscoveryTracker } from '../services/articleDiscovery.mjs';
-import { getAuthToken } from '../api/client';
-import TsIcon from '../components/TsIcon.vue';
+import { loadStageArticles, STAGE_PAGE_SIZE } from '../services/stageArticles';
+import { useArticleCategories } from '../composables/useArticleCategories';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
-import { readingTimeLabel } from '../utils/reading';
 import { formatDateMinute } from '../utils/time';
-import { useArticleCategories } from '../composables/useArticleCategories';
-import { loadStageArticles, STAGE_PAGE_SIZE } from '../services/stageArticles';
-
-const props = defineProps({
-  lang: { type: String, default: 'zh' },
-  t: { type: Object, required: true }
-});
-
-const emit = defineEmits(['go']);
-const route = useRoute();
-const router = useRouter();
+import { createArticleDiscoveryTracker } from '../services/articleDiscovery.mjs';
+import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
+import { readingTimeLabel } from '../utils/reading';
+import { nameInitial } from '../utils/userName.mjs';
+import TsIcon from '../components/TsIcon.vue';
+const props = defineProps({ lang: { type: String, default: 'zh' }, t: Object });
+const route = useRoute(), router = useRouter();
 const { hydrateUserLevels, userLevel } = useUserLevels();
-
-const articles = ref([]);
-const articlesLoading = ref(true);
-const articlesError = ref('');
-const articlePagination = ref({ page: 1, limit: STAGE_PAGE_SIZE, total: 0, totalPages: 1 });
-const stageCategory = ref('all');
-const stageSearch = ref('');
-const stagePage = ref(1);
-const stageOrder = ref('featured');
-const recommendationSnapshot = ref('');
+const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
+const { categories } = useArticleCategories({ enabled: computed(() => route.name === 'stage') });
+const articles = ref([]), loading = ref(true), loadingMore = ref(false), error = ref(''), search = ref('');
+const page = ref(1), total = ref(0), totalPages = ref(1);
+const category = computed(() => String(route.query.category || ''));
+const order = computed(() => ['daily', 'featured'].includes(route.query.sort) ? route.query.sort : 'latest');
+const querySearch = computed(() => String(route.query.q || ''));
+let revision = 0, timer = 0, snapshot = '', loadedAt = 0, active = true;
 const stageGrid = ref(null);
-let discoveryTracker;
-
-const recommendationDate = ref('');
-const stageSortCopy = computed(() => ({ zh: ['精选优先', '每日推荐', '最新优先', '编辑推荐'], ja: ['おすすめ順', '今日のおすすめ', '新着順', '編集部おすすめ'], en: ['Featured first', 'Daily picks', 'Latest first', 'Editor pick'] }[props.lang]));
-const stageRankingCopy = computed(() => ({
-  zh: { hint: '参考内容与真实曝光反馈，给新作、低曝光作品和优质旧文留出位置；任务帖后置。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
-  ja: { hint: '内容と実際の表示後の反応を参考に、新作・未発見の作品・良質な過去作を紹介。タスク投稿は後方に表示します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
-  en: { hint: 'Content and feedback after real exposure make room for new, less-seen and valuable older work. Task posts appear later.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
-}[props.lang]));
-let applyingStageQuery = false;
-const { categories: articleCategories, revision: categoryRevision } = useArticleCategories({ enabled: computed(() => route.name === 'stage') });
-const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
-let stageMounted = false;
-let stageReloadTimer = 0;
-let stageRequestRevision = 0;
-let stageLoadedAt = 0;
-let stageLoadedRequest = '';
-
-const stagePageCopy = computed(() => props.lang === 'en' ? {
-  resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
-  pageSize: '6 per page', prevPage: 'Previous', nextPage: 'Next', jumpToPage: 'Go to page', pageNumber: 'Page number', jump: 'Go', rangeUnit: 'articles'
-} : props.lang === 'ja' ? { resultUnit: '件', showing: '表示中', page: '', pageSuffix: 'ページ', totalPages: '全', pageSize: '6 件ずつ', prevPage: '前へ', nextPage: '次へ', jumpToPage: 'ページへ', pageNumber: 'ページ番号', jump: '移動', rangeUnit: '件' } : {
-  resultUnit: '\u7bc7',
-  showing: '\u5f53\u524d',
-  page: '\u7b2c',
-  pageSuffix: '\u9875',
-  totalPages: '\u5171',
-  pageSize: '\u6bcf\u9875 6 \u7bc7',
-  prevPage: '\u4e0a\u4e00\u9875',
-  nextPage: '\u4e0b\u4e00\u9875',
-  jumpToPage: '\u8df3\u5230\u7b2c',
-  pageNumber: '页码',
-  jump: '跳转',
-  rangeUnit: '\u7bc7'
-});
-
-const filteredArticles = computed(() => articles.value);
-const stageTotalArticles = computed(() => articlePagination.value.total);
-const stageTotalPages = computed(() => Math.max(1, articlePagination.value.totalPages));
-const stageCurrentPage = computed(() => Math.min(Math.max(stagePage.value, 1), stageTotalPages.value));
-const stagePageStart = computed(() => stageTotalArticles.value
-  ? (stageCurrentPage.value - 1) * STAGE_PAGE_SIZE + 1
-  : 0);
-const stagePageEnd = computed(() => Math.min(stageCurrentPage.value * STAGE_PAGE_SIZE, stageTotalArticles.value));
-
-const pagedArticles = computed(() => filteredArticles.value);
-
-const stagePageItems = computed(() => {
-  const total = stageTotalPages.value;
-  const current = stageCurrentPage.value;
-  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-
-  const pages = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  if (start > 2) pages.push('gap-left');
-  for (let page = start; page <= end; page += 1) pages.push(page);
-  if (end < total - 1) pages.push('gap-right');
-  pages.push(total);
-  return pages;
-});
-
-const stageResultSummary = computed(() => props.lang === 'en'
-  ? `${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.value.resultUnit}`
-  : `\u5171 ${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.value.resultUnit}`);
-const stageRangeSummary = computed(() => stageTotalArticles.value
-  ? `${stagePageCopy.value.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.value.rangeUnit}`
-  : '');
-const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
-const stageReturnPath = computed(() => {
-  const params = new URLSearchParams();
-  if (stageOrder.value !== 'featured') params.set('sort', stageOrder.value);
-  if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
-  if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
-  const search = stageSearch.value.trim();
-  if (search) params.set('q', search);
-  const query = params.toString();
-  return query ? `/stage?${query}` : '/stage';
-});
-
-function queryValue(value) {
-  if (Array.isArray(value)) return value[0] || '';
-  return value || '';
+const discoveryTracker = createArticleDiscoveryTracker();
+const discoveryContext = () => ({ page: page.value, limit: STAGE_PAGE_SIZE, category: category.value, search: querySearch.value, sort: order.value, snapshot });
+async function trackVisibleArticles() {
+  await nextTick();
+  if (active && !error.value) void discoveryTracker.start(stageGrid.value, discoveryContext());
 }
-
-function queryPage(value) {
-  const page = Number(queryValue(value));
-  return Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1;
+const author = article => article.author_nickname || article.author_username || article.author || tr('月下旅人', 'Moonlit traveler');
+const publishedAt = article => article?.published_at || article?.created_at || article?.publish_date;
+const date = article => formatDateMinute(publishedAt(article), props.lang === 'en' ? 'en-US' : props.lang === 'ja' ? 'ja-JP' : 'zh-CN');
+const articlePath = article => `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}?from=${encodeURIComponent(route.fullPath)}`;
+function setFilter(key, value) {
+  const query = { ...route.query }; delete query.page;
+  if (!value || key === 'sort' && value === 'latest') delete query[key]; else query[key] = value;
+  router.replace({ path: '/stage', query });
 }
-
-function applyStageQuery(query = {}) {
-  applyingStageQuery = true;
-  stageOrder.value = ['featured', 'daily', 'latest'].includes(queryValue(query.sort)) ? queryValue(query.sort) : 'featured';
-  const category = queryValue(query.category);
-  stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
-  stageSearch.value = String(queryValue(query.q)).slice(0, 120);
-  stagePage.value = queryPage(query.page);
-  nextTick(() => {
-    applyingStageQuery = false;
-  });
-}
-
-function syncStageUrl() {
-  if (applyingStageQuery || route.name !== 'stage') return;
-  const nextPath = stageReturnPath.value;
-  if (route.fullPath === nextPath) return;
-  // Keep router state in sync so entering /stage resets a previous sort/filter.
-  router.replace(nextPath);
-}
-
-function stageCategoryLabel(category) {
-  const map = {
-    all: props.t.filterAll,
-    '\u516c\u544a': props.t.filterAnnouncement,
-    '\u4f20\u8bf4': props.t.filterLegend,
-    '\u6280\u672f': props.t.filterTechnology,
-    '\u4e8c\u521b': props.t.filterFanwork,
-    '\u5176\u4ed6': props.t.filterOther
-  };
-  return map[category] || category;
-}
-
-function stageCategoryName(article) {
-  // Numeric identifiers survive overseas content translation.
-  return articleCategories.value.find((item) => item.id === article.category_id)?.name || article.category;
-}
-
-function reconcileArticleCategories(list) {
-  if (!categoryRevision.value) return list;
-  return list.map((article) => categories.value.includes(stageCategoryName(article)) ? article
-    : { ...article, category_id: articleCategories.value.find((item) => item.name === '\u5176\u4ed6')?.id, category: props.t.filterOther });
-}
-
-function stageFormatNumber(value) {
-  return Number(value || 0).toLocaleString(props.lang === 'en' ? 'en-US' : 'zh-CN');
-}
-
-function stageSetPage(page, { scroll = true } = {}) {
-  const numericPage = Number(page);
-  if (!Number.isFinite(numericPage)) return;
-  const nextPage = Math.min(Math.max(Math.trunc(numericPage), 1), stageTotalPages.value);
-  if (nextPage === stagePage.value) return;
-  stagePage.value = nextPage;
-  if (!scroll) return;
-  nextTick(() => {
-    document.querySelector('.stage-list-region')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  });
-}
-
-function stageJumpToPage(event) {
-  const form = event.currentTarget;
-  stageSetPage(form.elements.page.valueAsNumber);
-  form.reset();
-}
-
-function isStagePageGap(item) {
-  return typeof item === 'string';
-}
-
-function stageArticleRequest() {
-  return {
-    page: stagePage.value,
-    limit: STAGE_PAGE_SIZE,
-    sort: stageOrder.value,
-    snapshot: recommendationSnapshot.value,
-    category: stageCategory.value === 'all' ? '' : stageCategory.value,
-    search: stageSearch.value
-  };
-}
-
-async function loadArticles({ background = false } = {}) {
-  const requestRevision = ++stageRequestRevision;
-  const options = stageArticleRequest();
-  if (!background) articlesLoading.value = true;
-  articlesError.value = '';
+async function load(more = false) {
+  if (more && (loadingMore.value || page.value >= totalPages.value)) return;
+  const run = ++revision;
+  const requestPage = more ? page.value + 1 : Math.max(1, Number.parseInt(route.query.page, 10) || 1);
+  if (more) loadingMore.value = true;
+  else { loading.value = true; snapshot = ''; }
+  error.value = '';
   try {
-    const result = await loadStageArticles(options);
-    if (requestRevision !== stageRequestRevision) return;
-    articles.value = reconcileArticleCategories(result.articles);
-    recommendationSnapshot.value = result.recommendationSnapshot || '';
-    articlePagination.value = result.pagination;
-    recommendationDate.value = result.recommendationDate;
-    stageLoadedAt = Date.now();
-    stageLoadedRequest = JSON.stringify(stageArticleRequest());
-    if (stagePage.value > result.pagination.totalPages) {
-      stagePage.value = result.pagination.totalPages;
-      return;
-    }
-    hydrateUserLevels(result.articles.map((article) => article.author_id)).catch(() => {});
-  } catch (error) {
-    if (requestRevision !== stageRequestRevision) return;
-    if (error.status === 409 && recommendationSnapshot.value) { recommendationSnapshot.value = ''; stagePage.value = 1; scheduleArticleReload(); return; }
-    if (background) return;
-    articles.value = [];
-    articlePagination.value = { page: 1, limit: STAGE_PAGE_SIZE, total: 0, totalPages: 1 };
-    articlesError.value = error.message || props.t.loadFailed;
-  } finally {
-    if (requestRevision === stageRequestRevision) {
-      articlesLoading.value = false;
-      await nextTick();
-      if (stageMounted && !articlesError.value) {
-        discoveryTracker ||= createArticleDiscoveryTracker();
-        void discoveryTracker.start(stageGrid.value, stageArticleRequest());
-      }
-    }
-  }
+    const result = await loadStageArticles({ page: requestPage, limit: STAGE_PAGE_SIZE, category: category.value, search: querySearch.value, sort: order.value, snapshot });
+    if (run !== revision) return;
+    const existing = more ? articles.value : [];
+    articles.value = [...new Map([...existing, ...result.articles].map(article => [article.id, article])).values()];
+    page.value = result.pagination.page; total.value = result.pagination.total; totalPages.value = result.pagination.totalPages;
+    snapshot = result.recommendationSnapshot; loadedAt = Date.now();
+    hydrateUserLevels(result.articles.map(article => article.author_id)).catch(() => {});
+  } catch (cause) {
+    if (run !== revision) return;
+    if (more && cause.status === 409) { snapshot = ''; return load(false); }
+    error.value = cause.message || tr('文章暂时未能加载，请重试。', 'Unable to load stories. Please try again.');
+    if (!more) articles.value = [];
+  } finally { if (run === revision) { loading.value = false; loadingMore.value = false; trackVisibleArticles(); } }
 }
-
-function scheduleArticleReload(delay = 0) {
-  if (!stageMounted) return;
-  window.clearTimeout(stageReloadTimer);
-  stageReloadTimer = window.setTimeout(loadArticles, delay);
-}
-
-function checkEditorAuth(event) {
-  if (getAuthToken()) return;
-  event.preventDefault();
-  alert(props.t.loginRequired);
-  emit('go', '/login');
-}
-
-function articlePath(article) {
-  const basePath = `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
-  const params = new URLSearchParams({ from: stageReturnPath.value });
-  return `${basePath}?${params.toString()}`;
-}
-
-function stageAuthorName(article) {
-  return article.author_nickname || article.author_username || 'admin';
-}
-
-function stageAuthorInitial(article) {
-  return nameInitial(stageAuthorName(article));
-}
-
-function stageAuthorAlt(article) {
-  return `${stageAuthorName(article)} avatar`;
-}
-
-function stagePublishedAt(article) {
-  return article?.published_at || article?.created_at || article?.publish_date || '';
-}
-
-function stagePublishedTime(article) {
-  return formatDateMinute(stagePublishedAt(article), props.lang === 'en' ? 'en-US' : 'zh-CN');
-}
-
-function stageOpenAuthor(article) {
-  const username = String(article?.author_username || '').trim();
-  if (!username) return;
-  emit('go', `/users/${encodeURIComponent(username)}`);
-}
-
-watch([stagePage, stageCategory, stageSearch, stageOrder], (nextValues, previousValues) => {
-  if (applyingStageQuery) return;
-  const [, nextCategory, nextSearch, nextOrder] = nextValues;
-  const [, previousCategory, previousSearch, previousOrder] = previousValues;
-  const filtersChanged = nextCategory !== previousCategory || nextSearch !== previousSearch || nextOrder !== previousOrder;
-  if (filtersChanged) recommendationSnapshot.value = '';
-  if (filtersChanged && stagePage.value !== 1) {
-    stagePage.value = 1;
-    return;
-  }
-  scheduleArticleReload(nextSearch !== previousSearch ? 250 : 0);
-});
-watch([stagePage, stageCategory, stageSearch, stageOrder], syncStageUrl);
-watch(stageTotalPages, (total) => {
-  if (stagePage.value > total) stagePage.value = total;
-  if (stagePage.value < 1) stagePage.value = 1;
-});
-watch(() => route.query, (query) => {
+watch(search, value => { clearTimeout(timer); if (value !== querySearch.value) timer = setTimeout(() => setFilter('q', value.trim()), 250); });
+watch(() => [category.value, order.value, querySearch.value, route.query.page, props.lang], () => {
   if (route.name !== 'stage') return;
-  applyStageQuery(query);
-  nextTick(() => {
-    if (JSON.stringify(stageArticleRequest()) !== stageLoadedRequest) scheduleArticleReload();
-  });
+  search.value = querySearch.value; load();
 });
-applyStageQuery(route.query);
-watch(categoryRevision, () => {
-  if (!categories.value.includes(stageCategory.value)) stageCategory.value = 'all';
-  articles.value = reconcileArticleCategories(articles.value);
-});
-onMounted(() => {
-  stageMounted = true;
-  loadArticles();
-});
-onActivated(() => {
-  stageMounted = true;
-  if (stageGrid.value) {
-    discoveryTracker ||= createArticleDiscoveryTracker();
-    void discoveryTracker.start(stageGrid.value, stageArticleRequest());
-  }
-  window.clearTimeout(stageReloadTimer);
-  if (stagePage.value === 1 && Date.now() - stageLoadedAt > 30000) recommendationSnapshot.value = '';
-  const changed = JSON.stringify(stageArticleRequest()) !== stageLoadedRequest;
-  if (!articlesLoading.value && (changed || Date.now() - stageLoadedAt > 30000)) {
-    loadArticles({ background: !changed });
-  }
-});
-onDeactivated(() => {
-  stageMounted = false;
-  discoveryTracker?.stop();
-  window.clearTimeout(stageReloadTimer);
-});
-onBeforeUnmount(() => {
-  stageMounted = false;
-  discoveryTracker?.destroy();
-  stageRequestRevision += 1;
-  window.clearTimeout(stageReloadTimer);
-});
-useContentTranslationRefresh(() => loadArticles());
+onMounted(() => { search.value = querySearch.value; load(); });
+onActivated(() => { active = true; if (loadedAt && Date.now() - loadedAt > 30000) load(); else if (loadedAt) trackVisibleArticles(); });
+onDeactivated(() => { active = false; discoveryTracker.stop(); clearTimeout(timer); });
+onBeforeUnmount(() => { active = false; discoveryTracker.destroy(); revision++; clearTimeout(timer); });
+useContentTranslationRefresh(() => load());
 </script>
 
 <template>
-  <main class="page stage-page" :aria-busy="articlesLoading">
-    <header class="stage-header">
-      <h1 class="section-title">{{ t.stageTitle }}</h1>
-      <p class="section-subtitle">{{ t.stageSubtitle }}</p>
-      <details class="stage-about">
-        <summary>{{ lang === 'en' ? 'About the stage' : lang === 'ja' ? 'ステージについて' : '关于主舞台' }}</summary>
-        <p class="stage-seo-intro">{{ lang === 'en'
-        ? 'The Main Stage brings together articles, announcements, technical notes, fan works and creative journals about Live2D, AI characters, personal websites and ongoing projects.'
-        : '主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、个人网站开发、二次元网页设计和日常项目复盘。' }}</p>
-      </details>
-    </header>
-
-    <div class="stage-controls">
-      <div class="search-box">
-        <TsIcon class="stage-search-icon" name="search" :size="17" />
-        <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="stage-page-stagesearch-query" v-model="stageSearch" type="search" :aria-label="t.searchPlaceholder" :placeholder="t.searchPlaceholder">
-      </div>
-      <a href="/editor" class="stage-new-btn" @click="checkEditorAuth">
-        <TsIcon name="penLine" :size="17" />
-        <span>{{ t.newPost }}</span>
-      </a>
+  <main class="page stage-page" :aria-busy="loading || loadingMore">
+    <header class="stage-heading"><div><span class="eyebrow">THE JOURNAL</span><h1 class="section-title">{{ tr('主舞台', 'The journal', 'メインステージ') }}<span class="title-dot">.</span></h1><p class="section-subtitle">{{ tr('故事、创作与生活的切片。每一种表达，都有自己的光。', 'Stories, creations, and everyday discoveries. Every voice has its own light.') }}</p></div><RouterLink to="/editor" class="ghost-btn"><TsIcon name="penLine" :size="17" />{{ tr('写点什么', 'Write a story', '書いてみる') }}</RouterLink></header>
+    <div class="journal-toolbar"><div class="journal-tabs" :aria-label="tr('文章分类', 'Categories')"><button :aria-pressed="!category" @click="setFilter('category', '')">{{ tr('全部', 'All') }}</button><button v-for="item in categories" :key="item.id" :aria-pressed="category === item.name" @click="setFilter('category', item.name)">{{ item.name }}</button></div><div class="journal-tools"><label class="journal-search"><TsIcon name="search" :size="17" /><input v-model="search" type="search" :aria-label="t.searchPlaceholder" :placeholder="tr('搜索文章…', 'Search stories…')"></label><select :value="order" :aria-label="tr('文章排序', 'Sort stories')" @change="setFilter('sort', $event.target.value)"><option value="latest">{{ tr('最新发布', 'Latest') }}</option><option value="featured">{{ tr('编辑精选', 'Featured') }}</option><option value="daily">{{ tr('每日推荐', 'Daily picks') }}</option></select></div></div>
+    <div class="journal-result-line"><span>{{ category || tr('所有故事', 'All stories') }}</span><span>{{ total }} {{ tr('篇文字', 'stories') }}</span></div>
+    <LoadingSkeleton v-if="loading" variant="stage" :count="3" :label="t.loading" />
+    <div v-else-if="!articles.length && !error" class="empty-state"><p>{{ tr('这里还没有找到故事。换一个关键词试试。', 'No stories found. Try another search.') }}</p><button v-if="category || search" class="ghost-btn" @click="router.replace('/stage')">{{ tr('浏览全部文章', 'See all stories') }}</button></div>
+    <div v-else ref="stageGrid" class="journal-list">
+      <article v-for="article in articles" :key="article.id" :data-article-id="article.id" class="journal-row">
+        <div class="journal-copy"><div class="journal-meta"><span>{{ article.category }}</span><span v-if="article.pinned_at" class="journal-pinned"><TsIcon name="sparkles" :size="13" />{{ tr('精选', 'Featured') }}</span><span>{{ readingTimeLabel(article, lang) }}</span></div><RouterLink :to="articlePath(article)" class="journal-title"><h2>{{ article.title }}</h2></RouterLink><p class="journal-excerpt">{{ article.excerpt }}</p><div class="journal-byline"><RouterLink v-if="article.author_username" :to="`/users/${encodeURIComponent(article.author_username)}`" class="journal-author"><span class="journal-avatar"><img v-if="article.author_avatar" :src="article.author_avatar" alt="" loading="lazy"><span v-else>{{ nameInitial(author(article)) }}</span></span>{{ author(article) }}</RouterLink><span v-else>{{ author(article) }}</span><UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact :show-title="false" /><time :datetime="publishedAt(article)">{{ date(article) }}</time><span class="journal-engagement"><TsIcon name="eye" :size="14" />{{ article.view_count || 0 }}<TsIcon name="heart" :size="14" />{{ article.like_count || 0 }}</span></div></div>
+        <RouterLink v-if="article.cover_image" class="journal-cover" :to="articlePath(article)" :aria-label="article.title"><img :src="article.cover_image" alt="" loading="lazy" width="400" height="260"></RouterLink>
+      </article>
     </div>
-
-    <div class="stage-filter-row">
-    <div class="stage-filters">
-      <button
-        v-for="category in categories"
-        :key="category"
-        class="filter-btn"
-        :class="{ active: stageCategory === category }"
-        :aria-pressed="stageCategory === category"
-        type="button"
-        @click="stageCategory = category"
-      >
-        {{ stageCategoryLabel(category) }}
-      </button>
-    </div>
-      <div v-segmented class="stage-order" :aria-label="lang === 'en' ? 'Sort articles' : lang === 'ja' ? '記事の並び順' : '文章排序'">
-        <button v-for="(order, index) in ['featured', 'daily', 'latest']" :key="order" type="button" :aria-pressed="stageOrder === order" @click="stageOrder = order">{{ stageSortCopy[index] }}</button>
-      </div>
-    </div>
-    <p v-if="stageOrder !== 'latest'" class="stage-ranking-hint"><span v-if="recommendationDate">{{ recommendationDate }} · </span>{{ stageRankingCopy.hint }}</p>
-    <div v-if="!articlesLoading && filteredArticles.length" class="stage-result-strip">
-      <div>
-        <span class="stage-result-count">{{ stageResultSummary }}</span>
-        <span>{{ stageRangeSummary }}</span>
-      </div>
-      <div class="stage-result-page">
-        <span>{{ stagePageSummary }}</span>
-        <small>{{ stagePageCopy.pageSize }}</small>
-      </div>
-    </div>
-
-    <LoadingSkeleton v-if="articlesLoading" variant="stage" :count="6" :label="t.loading" />
-    <div v-else-if="articlesError" class="stage-status error" role="alert">{{ articlesError }}</div>
-    <div v-else-if="!filteredArticles.length" class="stage-status">{{ t.noArticles }}</div>
-    <div v-else class="stage-list stage-list-region" ref="stageGrid">
-      <a
-        v-for="(article, articleIndex) in pagedArticles"
-        :key="article.id" :data-article-id="article.id"
-        :href="articlePath(article)"
-        class="stage-card"
-        @click.prevent="$emit('go', articlePath(article))"
-      >
-        <div class="stage-card-body">
-          <div class="stage-card-meta">
-            <span v-if="article.pinned_at" class="stage-featured-label">{{ stageSortCopy[3] }}</span>
-            <span class="tag">{{ article.category }}</span>
-            <span
-              class="tag tag-author stage-author stage-author-link"
-              role="link"
-              tabindex="0"
-              @click.stop.prevent="stageOpenAuthor(article)"
-              @keydown.enter.stop.prevent="stageOpenAuthor(article)"
-            >
-              <span class="stage-author-avatar">
-                <img v-if="article.author_avatar" :src="article.author_avatar" :alt="stageAuthorAlt(article)" loading="lazy" decoding="async">
-                <span v-else>{{ stageAuthorInitial(article) }}</span>
-              </span>
-              <span>{{ stageAuthorName(article) }}</span>
-              <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact :show-title="false" />
-            </span>
-          </div>
-          <h3 class="stage-card-title">{{ article.title }}</h3>
-          <p class="stage-card-excerpt">{{ article.excerpt }}</p>
-          <div class="stage-card-details">
-            <div class="stage-engagement">
-              <span v-for="metric in [{ field: 'view_count', icon: 'eye', label: stageRankingCopy.views }, { field: 'like_count', icon: 'heart', label: stageRankingCopy.likes }, { field: 'bookmark_count', icon: 'bookmark', label: stageRankingCopy.bookmarks }]" :key="metric.field" :aria-label="`${stageFormatNumber(article[metric.field])} ${metric.label}`" :title="metric.label">
-                <TsIcon :name="metric.icon" :size="14" aria-hidden="true" />
-                {{ stageFormatNumber(article[metric.field]) }}
-              </span>
-            </div>
-            <div class="stage-card-footer">
-              <span v-if="readingTimeLabel(article, lang)" class="read-time">{{ readingTimeLabel(article, lang) }}</span>
-              <time class="stage-publish-time" :datetime="stagePublishedAt(article)">
-                <TsIcon name="calendar" :size="14" />
-                <span>{{ stagePublishedTime(article) }}</span>
-              </time>
-            </div>
-          </div>
-        </div>
-        <div v-if="article.cover_image" class="stage-card-cover">
-          <img
-            :src="article.cover_image"
-            alt=""
-            class="stage-cover-img"
-            data-image-bloom
-            :loading="articleIndex === 0 ? 'eager' : 'lazy'"
-            decoding="async"
-            :fetchpriority="articleIndex === 0 ? 'high' : 'auto'"
-          >
-        </div>
-      </a>
-      <nav v-if="stageTotalPages > 1" class="stage-pagination" aria-label="Stage articles pagination">
-        <div class="stage-pagination-info">{{ stagePageSummary }}</div>
-        <div class="stage-pagination-controls">
-          <button
-            class="stage-page-btn stage-page-nav"
-            type="button"
-            :disabled="stageCurrentPage <= 1"
-            @click="stageSetPage(stageCurrentPage - 1)"
-          >
-            <TsIcon name="arrowLeft" :size="16" />
-            <span>{{ stagePageCopy.prevPage }}</span>
-          </button>
-          <template v-for="item in stagePageItems" :key="item">
-            <span v-if="isStagePageGap(item)" class="stage-page-gap">...</span>
-            <button
-              v-else
-              class="stage-page-btn"
-              :class="{ active: item === stageCurrentPage }"
-              type="button"
-              :aria-current="item === stageCurrentPage ? 'page' : undefined"
-              :aria-label="`${stagePageCopy.jumpToPage} ${item}`"
-              @click="stageSetPage(item)"
-            >
-              {{ item }}
-            </button>
-          </template>
-          <button
-            class="stage-page-btn stage-page-nav"
-            type="button"
-            :disabled="stageCurrentPage >= stageTotalPages"
-            @click="stageSetPage(stageCurrentPage + 1)"
-          >
-            <span>{{ stagePageCopy.nextPage }}</span>
-            <TsIcon name="arrowRight" :size="16" />
-          </button>
-        </div>
-        <form class="stage-page-jump" @submit.prevent="stageJumpToPage">
-          <input
-            class="stage-page-input"
-            type="number"
-            name="page"
-            min="1"
-            :max="stageTotalPages"
-            required
-            inputmode="numeric"
-            enterkeyhint="go"
-            autocomplete="off"
-            :aria-label="stagePageCopy.pageNumber"
-            :placeholder="`1–${stageTotalPages}`"
-          >
-          <button class="stage-page-btn" type="submit">{{ stagePageCopy.jump }}</button>
-        </form>
-      </nav>
-    </div>
+    <div v-if="error" class="journal-error" role="alert"><p>{{ error }}</p><button class="ghost-btn" @click="load(Boolean(articles.length))">{{ tr('重新加载', 'Try again') }}</button></div>
+    <footer v-if="!loading && articles.length" class="journal-pagination"><span>{{ tr('已读到这里', 'You’re here') }} · {{ articles.length }} / {{ total }}</span><button v-if="page < totalPages" class="ghost-btn" :disabled="loadingMore" @click="load(true)">{{ loadingMore ? tr('正在加载…', 'Loading…') : tr('再读一些', 'More stories') }}<TsIcon :name="loadingMore ? 'loader' : 'arrowDown'" :size="17" /></button><p v-else>{{ tr('暂时读到这里，新的故事还在路上。', 'That’s all for now. More stories are on their way.') }}</p></footer>
   </main>
 </template>

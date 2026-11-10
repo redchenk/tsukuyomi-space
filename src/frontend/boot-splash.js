@@ -1,5 +1,8 @@
 // A small independent entry point paints before the Vue/router bundle is ready.
 const splash = document.getElementById('boot-splash');
+// Access starts on the Seedance poster, without a separate logo animation.
+const waterMirrorBoot = /^\/(?:access\/?)?$/.test(window.location.pathname);
+if (waterMirrorBoot && splash) splash.dataset.scene = 'water-mirror';
 // Count the readable brand moment from a painted frame, not script execution.
 // Cached assets or a busy startup must not consume it before the user sees it.
 const paintedAt = new Promise(resolve => {
@@ -21,8 +24,8 @@ function completeBootSplash(event) {
   if (dismissed) return;
   dismissed = true;
   window.clearTimeout(watchdog);
-  if (event?.detail?.handoff) {
-    // The room splash is already painted underneath and now owns readiness.
+  if (waterMirrorBoot || event?.detail?.handoff) {
+    // The matching Access scene or Room splash is already painted underneath.
     splash?.remove();
     document.getElementById('app')?.removeAttribute('inert');
     return;

@@ -50,7 +50,8 @@
     "test:model-runtime": "node --test tests/room-model-runtime.test.js tests/room-model-catalog.test.js tests/room-model-catalog-api.test.js tests/llm-agent-protocol.test.js tests/frontend-room-settings.test.js tests/frontend-room-diary.test.js tests/frontend-room-diary-flow.test.js",
     "build:knowledge": "node scripts/build-site-knowledge.cjs",
     "test:knowledge": "node scripts/build-site-knowledge.cjs --check && node --test tests/site-knowledge.test.cjs tests/frontend-site-knowledge.test.mjs && python3 -m unittest discover -s tests -p \"site_knowledge_test.py\"",
-    "test:payments": "node --test tests/payments.test.js"
+    "test:payments": "node --test tests/payments.test.js",
+    "preview:ui": "npm run build:web && node scripts/preview-ui.cjs"
   },
   "keywords": [
     "tsukuyomi",
@@ -80,7 +81,6 @@
     "jsonc-parser": "3.3.1",
     "jsonwebtoken": "^9.0.2",
     "katex": "^0.16.47",
-    "lenis": "1.3.27",
     "markdown-it": "^15.0.2",
     "markdown-it-abbr": "^2.0.0",
     "markdown-it-container": "^4.0.0",

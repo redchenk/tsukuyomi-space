@@ -1,4 +1,4 @@
-@layer ts-page {
+@layer pages {
 .growth-page {
   min-height: 100vh;
   padding: 110px clamp(1rem, 2vw, 2rem) 2rem;
@@ -84,7 +84,7 @@
 .growth-history,
 .growth-path {
   border: 1px solid rgba(191, 224, 255, 0.15);
-  background: var(--ts-editorial-surface);
+  background: var(--pages-surface);
   box-shadow: 0 18px 48px rgba(2, 8, 18, 0.16);
   backdrop-filter: blur(18px) saturate(1.16);
   -webkit-backdrop-filter: blur(18px) saturate(1.16);
@@ -260,7 +260,7 @@ html[data-theme="dark"] .growth-error {
   border-radius: 16px;
   color: inherit;
   text-align: left;
-  background: var(--ts-editorial-surface);
+  background: var(--pages-surface);
   font: inherit;
   cursor: pointer;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
@@ -340,7 +340,7 @@ html[data-theme="dark"] .growth-error {
   padding: 0.75rem 0.85rem;
   border: 1px solid rgba(190, 224, 255, 0.13);
   border-radius: 12px;
-  background: var(--ts-editorial-soft);
+  background: var(--pages-soft);
 }
 
 .growth-invite-code span {
@@ -442,7 +442,7 @@ html[data-theme="dark"] .growth-error {
   border: 1px solid rgba(191, 224, 255, 0.1);
   border-radius: 12px;
   opacity: 1;
-  background: var(--ts-editorial-soft);
+  background: var(--pages-soft);
 }
 
 .growth-level-step.reached {

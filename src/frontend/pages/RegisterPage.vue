@@ -1,4 +1,5 @@
 <script setup>
+import "../styles/jingyue/auth.css";
 import { computed, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
@@ -189,7 +190,7 @@ async function startQQLogin() {
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="registerPassword" id="registerPassword" v-model="register.password" required minlength="8" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
-                <button class="auth-password-toggle" type="button" :aria-pressed="showPassword" @click="showPassword = !showPassword">
+                <button class="auth-password-toggle" type="button" :aria-pressed="showPassword" :aria-label="showPassword ? t.hidePassword : t.showPassword" @click="showPassword = !showPassword">
                   <TsIcon :name="showPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
@@ -199,7 +200,7 @@ async function startQQLogin() {
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="registerConfirm" id="registerConfirm" v-model="register.confirmPassword" required minlength="6" :type="showConfirmPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
-                <button class="auth-password-toggle" type="button" :aria-pressed="showConfirmPassword" @click="showConfirmPassword = !showConfirmPassword">
+                <button class="auth-password-toggle" type="button" :aria-pressed="showConfirmPassword" :aria-label="showConfirmPassword ? t.hidePassword : t.showPassword" @click="showConfirmPassword = !showConfirmPassword">
                   <TsIcon :name="showConfirmPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
