@@ -82,6 +82,7 @@ for (const width of [1440, 390]) {
 }
 
 test('automatic hemisphere, refresh and an actual 18:00 timer update the same Room', async ({ page }) => {
+  await page.addInitScript(key => { if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ version: 1, mode: 'auto', hemisphere: 'north' })); }, seasonKey);
   await page.clock.install({ time: new Date('2026-10-06T17:59:58+08:00') });
   await page.clock.pauseAt(new Date('2026-10-06T17:59:58+08:00'));
   await page.goto('/room');

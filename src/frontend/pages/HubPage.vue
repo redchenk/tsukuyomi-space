@@ -1,710 +1,105 @@
 <script setup>
-import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
-import { contentTranslationMode } from '../services/contentTranslation';
-import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref } from 'vue';
-import { apiFetch, authFetch, authHeaders, getSession, loadPublicSettings, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
-import BeianLink from '../components/BeianLink.vue';
-import CountUpValue from '../components/CountUpValue.vue';
-import PixelCanvasCells from '../components/PixelCanvasCells.vue';
+import { RouterLink } from 'vue-router';
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { apiFetch, loadPublicSettings, parseResponse } from '../api/client';
+import { loadStageArticles } from '../services/stageArticles';
+import { announcementContent, noticeSummary } from '../../../shared/notice-markdown.mjs';
+import { siteArt } from '../data/siteArt';
+import { activeSeason } from '../composables/useSeasonTheme';
+import { storeRoomEntryDraft } from '../services/roomEntryDraft.mjs';
 import TsIcon from '../components/TsIcon.vue';
 import NoticeMarkdown from '../components/NoticeMarkdown.vue';
-import { announcementContent, noticeSummary } from '../../../shared/notice-markdown.mjs';
-import { warmRoutePath } from '../router';
-import { compareAppDate, formatDateOnly } from '../utils/time';
-import { applyGrowthResult } from '../services/userGrowth';
-import { siteArt } from '../data/siteArt';
-
-const props = defineProps({
-  lang: { type: String, default: 'zh' },
-  t: { type: Object, required: true }
-});
-
+import wikiArt from '../assets/navigation/wiki-study.webp';
+import gameArt from '../assets/navigation/kaguya-run.webp';
+import driftArt from '../assets/drift/lantern/lake-wide.webp';
+const props = defineProps({ lang: { type: String, default: 'zh' }, t: Object });
 const emit = defineEmits(['go']);
-const hubCopy = computed(() => ({
-  zh: { hero: '给日常留一点月光。与八千代聊天，读故事、看创作，遇见同频的人。', welcome: '与你相遇，在月光之下', room: '进入私人居所', browse: '发现创作', latest: '月下新鲜事', desc: '读一篇文章，发现一份创作，留下今天的问候。', notice: '站内公告', expand: '展开阅读', stats: '一起留下的足迹' },
-  ja: { hero: '日々に、少しの月明かりを。八千代と話し、物語や作品を楽しもう。', welcome: '月明かりの下で、あなたと', room: 'プライベートルームへ', browse: '作品を探す', latest: '月の下の新着', desc: '記事を読み、作品に出会い、今日の挨拶を。', notice: 'お知らせ', expand: '続きを読む', stats: 'みんなの足跡' },
-  en: { hero: 'Make room for a little moonlight. Talk with Yachiyo, discover stories and share what inspires you.', welcome: 'A little closer, under the moon', room: 'Enter the Room', browse: 'Explore creations', latest: 'Under the moon', desc: 'A new story, a little inspiration, a hello from the community.', notice: 'Community notice', expand: 'Read more', stats: 'The moments we share' }
-}[props.lang] || {}));
-const isEnglish = computed(() => props.lang === 'en');
-
-const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v5';
-const HUB_PREVIEW_TTL_MS = 30000;
-const HUB_PREVIEW_TIMEOUT_MS = 8000;
-const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
-const fallbackPixelPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
-const decodedPixelPreviews = new WeakMap();
-let hubPreviewCache = readHubPreviewCache();
-let previewFrame = 0;
-let hubPreviewPending = false;
-let hubPreviewRequestId = 0;
-let hubPreviewController;
-let hubWasDeactivated = false;
-
-function readHubPreviewCache() {
-  if (typeof sessionStorage === 'undefined') return null;
-  try {
-    const parsed = JSON.parse(sessionStorage.getItem(`${HUB_PREVIEW_CACHE_KEY}:${contentTranslationMode()}`) || 'null');
-    if (!parsed || typeof parsed !== 'object') return null;
-    return {
-      latestArticle: parsed.latestArticle || null,
-      latestGalleryImage: parsed.latestGalleryImage || null,
-      latestPixelArtwork: parsed.latestPixelArtwork || null,
-      plazaMessages: Array.isArray(parsed.plazaMessages) ? parsed.plazaMessages : [],
-      siteStats: parsed.siteStats || null,
-      cachedAt: Number(parsed.cachedAt || 0)
-    };
-  } catch (_) {
-    return null;
-  }
-}
-
-function writeHubPreviewCache(payload) {
-  hubPreviewCache = {
-    latestArticle: payload.latestArticle || null,
-    latestGalleryImage: payload.latestGalleryImage || null,
-    latestPixelArtwork: payload.latestPixelArtwork || null,
-    plazaMessages: Array.isArray(payload.plazaMessages) ? payload.plazaMessages : [],
-    siteStats: payload.siteStats || null,
-    cachedAt: Date.now()
-  };
-  if (typeof sessionStorage === 'undefined') return;
-  try {
-    sessionStorage.setItem(`${HUB_PREVIEW_CACHE_KEY}:${contentTranslationMode()}`, JSON.stringify(hubPreviewCache));
-  } catch (_) {}
-}
-
-const latestArticle = ref(hubPreviewCache?.latestArticle || null);
-const latestGalleryImage = ref(hubPreviewCache?.latestGalleryImage || null);
-const latestPixelArtwork = ref(hubPreviewCache?.latestPixelArtwork || null);
-const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
-const siteStats = ref(hubPreviewCache?.siteStats || null);
-const previewLoading = ref(!hubPreviewCache);
-const previewError = ref('');
-const renderedPixelArtworkId = ref('');
-// Keep the notice slot empty until settings resolve, so the bundled default
-// never flashes before the administrator's current announcement.
-const visitPopupPreview = ref(null);
-const plazaQuick = reactive({
-  content: '',
-  loading: false,
-  message: '',
-  messageType: 'success'
-});
-
-function handleStatsUpdated(event) {
-  const nextStats = event?.detail;
-  if (!nextStats || typeof nextStats !== 'object') return;
-  siteStats.value = nextStats;
-  writeHubPreviewCache({
-    latestArticle: latestArticle.value,
-    latestGalleryImage: latestGalleryImage.value,
-    latestPixelArtwork: latestPixelArtwork.value,
-    plazaMessages: plazaMessages.value,
-    siteStats: nextStats
-  });
-}
-
-const sceneLinks = computed(() => [
-  {
-    href: '/plaza',
-    name: props.t.plaza,
-    desc: plazaMessages.value.length
-      ? (isEnglish.value ? `${plazaMessages.value.length} recent messages` : `${plazaMessages.value.length} 条最近留言`)
-      : (isEnglish.value ? 'Connect, share and discover' : '交流、分享、发现'),
-    code: 'Plaza',
-    icon: 'plaza',
-    tone: 'cyan',
-    spa: true,
-    image: '',
-    label: isEnglish.value ? 'Quick message' : '快速留言',
-    kind: 'plaza'
-  },
-  {
-    href: '/stage',
-    name: latestArticle.value?.title || props.t.stage,
-    desc: latestArticle.value?.excerpt || (isEnglish.value ? 'Notes, creations and knowledge' : '记录、创作、知识'),
-    code: isEnglish.value ? englishArticleCategory(latestArticle.value?.category) : (latestArticle.value?.category || 'Stage'),
-    icon: 'book',
-    tone: 'blue',
-    spa: true,
-    image: latestArticle.value?.cover_image || latestArticle.value?.cover_image_url || siteArt.articleCover,
-    author: latestArticle.value?.author || '',
-    avatar: latestArticle.value?.avatar || '',
-    date: latestArticle.value?.published_at || latestArticle.value?.publish_date || latestArticle.value?.created_at,
-    label: props.t.stage
-  },
-  {
-    href: '/gallery',
-    name: latestGalleryImage.value?.title || (latestGalleryImage.value ? (isEnglish.value ? 'Latest gallery image' : '最新图库影像') : props.t.gallery),
-    desc: latestGalleryImage.value
-      ? (isEnglish.value ? `Published ${formatGalleryDate(latestGalleryImage.value) || 'recently'}` : `发布于 ${formatGalleryDate(latestGalleryImage.value) || '近期'}`)
-      : (isEnglish.value ? 'Public images, illustrations and visual records' : '公开影像、插画与站点视觉记录'),
-    code: 'Gallery',
-    icon: 'image',
-    tone: 'gold',
-    spa: true,
-    image: galleryImageUrl(latestGalleryImage.value) || siteArt.galleryCover,
-    author: latestGalleryImage.value?.author || '',
-    avatar: latestGalleryImage.value?.avatar || '',
-    date: latestGalleryImage.value?.created_at,
-    label: props.t.gallery
-  },
-  {
-    href: '/pixel',
-    name: latestPixelArtwork.value?.title || props.t.arena || '月光像素工坊',
-    desc: latestPixelArtwork.value
-      ? (isEnglish.value
-        ? `Published by ${latestPixelArtwork.value.author_nickname || latestPixelArtwork.value.author || 'Guest'} on ${formatPixelDate(latestPixelArtwork.value) || 'a recent date'}`
-        : `${latestPixelArtwork.value.author_nickname || latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`)
-      : (isEnglish.value ? 'Draw, publish and like moonlit pixel art' : '绘制、发布、点赞月光像素画'),
-    code: latestPixelArtwork.value ? `${artworkWidth(latestPixelArtwork.value)}x${artworkHeight(latestPixelArtwork.value)}` : 'Arena',
-    icon: 'palette',
-    tone: 'pink',
-    spa: true,
-    image: siteArt.pixelCover,
-    author: latestPixelArtwork.value?.author_nickname || latestPixelArtwork.value?.author || '',
-    avatar: latestPixelArtwork.value?.avatar || '',
-    date: latestPixelArtwork.value?.created_at,
-    label: latestPixelArtwork.value ? (isEnglish.value ? 'Latest pixel art' : '最新像素画') : props.t.arena,
-    kind: 'arena',
-    artwork: latestPixelArtwork.value
-  }
+const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
+const draft = ref(''), draftError = ref(''), content = ref(null), articles = ref([]), notice = ref(null), loading = ref(true), error = ref('');
+const suggestions = computed(() => [tr('今天过得怎么样？', 'How was your day?', '今日はどうだった？'), tr('想和你聊聊天', 'I just want to talk', 'お話ししたい'), tr('给我一点鼓励', 'A little encouragement', '少し励まして')]);
+const season = computed(() => ({ spring: ['春日来信', 'SPRING'], summer: ['夏夜晚风', 'SUMMER'], autumn: ['秋月来信', 'AUTUMN'], winter: ['冬日灯火', 'WINTER'] }[activeSeason.value]));
+const featured = computed(() => content.value?.article || articles.value[0]);
+const latest = computed(() => articles.value.filter(article => article.id !== featured.value?.id).slice(0, 4));
+const places = computed(() => [
+  { path: '/gallery', title: tr('光影收藏', 'Collected light'), label: tr('图库', 'GALLERY'), desc: tr('收藏那些让人停留的瞬间。', 'A place for images that stay with you.'), image: content.value?.gallery?.url || siteArt.galleryCover },
+  { path: '/pixel', title: tr('像素里的宇宙', 'Little pixel worlds'), label: tr('像素画工坊', 'PIXEL STUDIO'), desc: tr('一格一格，把想象画成真。', 'Give your imagination a little room.'), image: siteArt.pixelCover },
+  { path: '/wiki', title: tr('走进月读世界', 'The world of Tsukuyomi'), label: tr('百科', 'WIKI'), desc: tr('人物、音乐，还有故事的另一面。', 'Characters, music and untold stories.'), image: wikiArt },
+  { path: '/game', title: tr('一起玩一会儿', 'A little time to play'), label: tr('游戏中心', 'PLAY'), desc: tr('暂时放下忙碌，来一局吧。', 'Take a break. Share a game.'), image: gameArt }
 ]);
-
-const orderedSceneLinks = computed(() => [sceneLinks.value[1], sceneLinks.value[2], sceneLinks.value[3], sceneLinks.value[0]]);
-
-const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 3));
-
-function formatHubNumber(value) {
-  return Number(value || 0).toLocaleString(isEnglish.value ? 'en-US' : 'zh-CN');
-}
-
-function formatHubUptime(seconds = 0) {
-  const total = Math.max(0, Math.floor(Number(seconds) || 0));
-  const days = Math.floor(total / 86400);
-  const hours = Math.floor((total % 86400) / 3600);
-  if (days) return isEnglish.value ? `${days}d ${hours}h` : `${days}天${hours}时`;
-  return isEnglish.value ? `${hours || 1}h` : `${hours || 1}小时`;
-}
-
-function galleryImageUrl(asset) {
-  return asset?.url || asset?.access_url || asset?.display_url || '';
-}
-
-function formatGalleryDate(asset) {
-  const value = asset?.created_at || asset?.updated_at;
-  return value ? String(value).slice(0, 10) : '';
-}
-
-function formatPixelDate(artwork) {
-  const value = artwork?.created_at || artwork?.updated_at;
-  return value ? String(value).slice(0, 10) : '';
-}
-
-function artworkDimension(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function artworkWidth(artwork) {
-  return artworkDimension(artwork?.width ?? artwork?.size, 96);
-}
-
-function artworkHeight(artwork) {
-  return artworkDimension(artwork?.height ?? artwork?.size, 54);
-}
-
-function artworkPalette(artwork) {
-  return Array.isArray(artwork?.palette) && artwork.palette.length ? artwork.palette : fallbackPixelPalette;
-}
-
-function artworkPixels(artwork) {
-  if (Array.isArray(artwork?.pixels)) return artwork.pixels;
-  if (!artwork || typeof artwork.pixels_base64 !== 'string' || !artwork.pixels_base64) return [];
-  if (decodedPixelPreviews.has(artwork)) return decodedPixelPreviews.get(artwork);
-  try {
-    const bytes = atob(artwork.pixels_base64);
-    const pixels = Array.from(bytes, value => value.charCodeAt(0) - 1);
-    decodedPixelPreviews.set(artwork, pixels);
-    return pixels;
-  } catch (_) {
-    return [];
+const articlePath = article => article?.id ? `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}` : '/stage';
+const date = value => String(value || '').slice(0, 10).replaceAll('-', '.');
+const author = article => article?.author_nickname || article?.author_username || article?.author || tr('月下旅人', 'Moonlit traveler');
+let loadedAt = 0, requestId = 0;
+async function load() {
+  const run = ++requestId;
+  loading.value = !content.value; error.value = '';
+  const results = await Promise.allSettled([
+    apiFetch('/api/hub-preview', { headers: { Accept: 'application/json' } }).then(parseResponse),
+    loadStageArticles({ sort: 'latest', limit: 6 }),
+    loadPublicSettings()
+  ]);
+  if (run !== requestId) return;
+  if (results[0].status === 'fulfilled' && results[0].value.success) content.value = results[0].value.data;
+  else error.value = tr('最新内容暂时未能加载。', 'The latest content could not be loaded.');
+  if (results[1].status === 'fulfilled') articles.value = results[1].value.articles;
+  if (results[2].status === 'fulfilled') {
+    const settings = results[2].value, text = announcementContent(settings);
+    notice.value = text ? { content: text, title: noticeSummary(text) } : null;
   }
+  loading.value = false; loadedAt = Date.now();
 }
-
-function artworkBackground(artwork) {
-  return artwork?.background_color || artwork?.backgroundColor || '#0b1020';
+function enterRoom(text = draft.value) {
+  draftError.value = '';
+  if (!storeRoomEntryDraft(text)) { draftError.value = tr('浏览器暂时无法保存草稿，请进入房间后输入。', 'Draft storage is unavailable. Please type in the room.'); return; }
+  emit('go', '/room');
 }
-
-function pixelPreviewLoaded(artwork) {
-  return Boolean(artwork?.id && renderedPixelArtworkId.value === String(artwork.id));
-}
-
-function markPixelPreviewLoaded(artwork) {
-  renderedPixelArtworkId.value = String(artwork?.id || '');
-}
-
-function applyHubPreviewCache(cache) {
-  if (!cache) return;
-  latestArticle.value = cache.latestArticle || null;
-  latestGalleryImage.value = cache.latestGalleryImage || null;
-  latestPixelArtwork.value = cache.latestPixelArtwork || null;
-  plazaMessages.value = Array.isArray(cache.plazaMessages) ? cache.plazaMessages : [];
-  siteStats.value = cache.siteStats || null;
-}
-
-const stats = computed(() => [
-  { label: isEnglish.value ? 'Visits today' : '今日访问', value: formatHubNumber(siteStats.value?.todayViews) },
-  { label: isEnglish.value ? 'Total visits' : '总访问', value: formatHubNumber(siteStats.value?.totalViews) },
-  { label: isEnglish.value ? 'Registered users' : '注册用户', value: formatHubNumber(siteStats.value?.users) },
-  { label: isEnglish.value ? 'Articles' : '站内文章', value: formatHubNumber(siteStats.value?.articles) },
-  { label: isEnglish.value ? 'Plaza messages' : '广场留言', value: formatHubNumber(siteStats.value?.messages) },
-  { label: isEnglish.value ? 'Uptime' : '运行时间', value: siteStats.value?.uptime ? formatHubUptime(siteStats.value.uptime) : '--' }
-]);
-
-function englishArticleCategory(value) {
-  const category = String(value || '').trim();
-  return ({ 公告: 'Announcement', 传说: 'Lore', 技术: 'Technology', 二创: 'Fan work', 其他: 'Other' })[category] || category || 'Stage';
-}
-
-function openScene(scene, event) {
-  if (scene.kind === 'plaza' && event?.target?.closest?.('form, input, textarea, button, a')) return;
-  if (scene.spa) {
-    event?.preventDefault?.();
-    emit('go', scene.href);
-    return;
-  }
-  window.location.href = scene.href;
-}
-
-function warmScene(scene) {
-  if (scene?.spa) warmRoutePath(scene.href);
-}
-
-async function loadHubPreviewFast({ force = false } = {}) {
-  if (hubPreviewPending) return;
-  const cached = hubPreviewCache || readHubPreviewCache();
-  if (cached) applyHubPreviewCache(cached);
-  previewLoading.value = !cached;
-  previewError.value = '';
-  if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) return;
-  hubPreviewPending = true;
-  const requestId = ++hubPreviewRequestId;
-  const mode = contentTranslationMode();
-  const controller = new AbortController();
-  hubPreviewController = controller;
-  const timeout = window.setTimeout(() => controller.abort(), HUB_PREVIEW_TIMEOUT_MS);
-  try {
-    const response = await apiFetch(`/api/hub-preview?_=${Date.now().toString(36)}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    const result = await parseResponse(response);
-    if (requestId !== hubPreviewRequestId || mode !== contentTranslationMode()) return;
-    if (!result.success || !result.data) throw new Error(result.message || 'Hub content unavailable');
-    latestArticle.value = result.data.article || null;
-    latestGalleryImage.value = result.data.gallery || null;
-    latestPixelArtwork.value = result.data.pixel || null;
-    plazaMessages.value = Array.isArray(result.data.messages) ? result.data.messages : [];
-    siteStats.value = result.data.stats || siteStats.value;
-    writeHubPreviewCache({
-      latestArticle: latestArticle.value,
-      latestGalleryImage: latestGalleryImage.value,
-      latestPixelArtwork: latestPixelArtwork.value,
-      plazaMessages: plazaMessages.value,
-      siteStats: siteStats.value
-    });
-  } catch (error) {
-    if (requestId !== hubPreviewRequestId || mode !== contentTranslationMode()) return;
-    if (!cached) previewError.value = error.name === 'AbortError' ? '内容读取超时，请重试' : (error.message || '内容读取失败');
-  } finally {
-    window.clearTimeout(timeout);
-    if (requestId === hubPreviewRequestId) {
-      hubPreviewPending = false;
-      previewLoading.value = false;
-    }
-  }
-}
-
-async function loadHubPreview(options = {}) {
-  const force = options.force === true;
-  const cached = hubPreviewCache || readHubPreviewCache();
-  if (cached) applyHubPreviewCache(cached);
-  if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) {
-    previewLoading.value = false;
-    loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false })
-      .then((nextSiteStats) => {
-        if (!nextSiteStats) return;
-        siteStats.value = nextSiteStats;
-        writeHubPreviewCache({
-          latestArticle: latestArticle.value,
-          latestGalleryImage: latestGalleryImage.value,
-          latestPixelArtwork: latestPixelArtwork.value,
-          plazaMessages: plazaMessages.value,
-          siteStats: nextSiteStats
-        });
-      })
-      .catch(() => {});
-    return;
-  }
-
-  previewLoading.value = true;
-  previewError.value = '';
-  try {
-    loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false })
-      .then((nextSiteStats) => {
-        if (!nextSiteStats) return;
-        siteStats.value = nextSiteStats;
-        writeHubPreviewCache({
-          latestArticle: latestArticle.value,
-          latestGalleryImage: latestGalleryImage.value,
-          latestPixelArtwork: latestPixelArtwork.value,
-          plazaMessages: plazaMessages.value,
-          siteStats: nextSiteStats
-        });
-      })
-      .catch(() => {});
-
-    const [articleResponse, messageResponse, galleryResponse, pixelResponse] = await Promise.all([
-      apiFetch('/api/articles?limit=12'),
-      apiFetch('/api/messages/plaza/latest'),
-      apiFetch('/api/assets/gallery/public?limit=1'),
-      apiFetch('/api/pixel-art/preview?sort=latest', { cache: 'no-store' })
-    ]);
-    const [articleResult, messageResult, galleryResult, pixelResult] = await Promise.all([
-      parseResponse(articleResponse),
-      parseResponse(messageResponse),
-      parseResponse(galleryResponse),
-      parseResponse(pixelResponse)
-    ]);
-    if (![articleResult, messageResult, galleryResult, pixelResult].some((result) => result.success)) {
-      throw new Error(isEnglish.value ? 'Unable to load the latest Hub content' : '大厅最新内容读取失败');
-    }
-    const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
-    const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
-    const galleryAssets = galleryResult.success && Array.isArray(galleryResult.data?.assets) ? galleryResult.data.assets : [];
-    const pixelArtworks = pixelResult.success && Array.isArray(pixelResult.data) ? pixelResult.data : [];
-
-    const nextLatestArticle = [...articles]
-      .sort((a, b) => compareAppDate(b.created_at || b.updated_at, a.created_at || a.updated_at))[0] || null;
-    const nextLatestGalleryImage = galleryAssets[0] || null;
-    const nextLatestPixelArtwork = pixelArtworks[0] || null;
-    const nextPlazaMessages = [...messages]
-      .filter((item) => !item.parent_id)
-      .sort((a, b) => compareAppDate(b.created_at, a.created_at));
-
-    latestArticle.value = nextLatestArticle;
-    latestGalleryImage.value = nextLatestGalleryImage;
-    latestPixelArtwork.value = nextLatestPixelArtwork;
-    plazaMessages.value = nextPlazaMessages;
-    writeHubPreviewCache({
-      latestArticle: nextLatestArticle,
-      latestGalleryImage: nextLatestGalleryImage,
-      latestPixelArtwork: nextLatestPixelArtwork,
-      plazaMessages: nextPlazaMessages,
-      siteStats: siteStats.value
-    });
-  } catch (error) {
-    if (!cached) {
-      latestArticle.value = null;
-      latestGalleryImage.value = null;
-      latestPixelArtwork.value = null;
-      plazaMessages.value = [];
-      siteStats.value = null;
-    previewError.value = error.message || (isEnglish.value ? 'Unable to load the latest Hub content' : '大厅最新内容读取失败');
-    }
-  } finally {
-    previewLoading.value = false;
-  }
-}
-
-async function submitPlazaQuick() {
-  const content = plazaQuick.content.trim();
-  plazaQuick.message = '';
-  if (!content) {
-    plazaQuick.messageType = 'error';
-    plazaQuick.message = isEnglish.value ? 'Message cannot be empty' : '留言不能为空';
-    return;
-  }
-  if (!getSession()) {
-    emit('go', '/login');
-    return;
-  }
-  plazaQuick.loading = true;
-  try {
-    const response = await authFetch('/api/messages', {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ content })
-    });
-    const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || (isEnglish.value ? 'Unable to publish' : '发布失败'));
-    if (result.growth) applyGrowthResult(result.growth);
-    if (result.data?.id) {
-      plazaMessages.value = [
-        { ...result.data, article_id: result.data.article_id || null },
-        ...plazaMessages.value.filter((item) => item.id !== result.data.id)
-      ];
-      if (siteStats.value) {
-        siteStats.value = {
-          ...siteStats.value,
-          messages: Number(siteStats.value.messages || 0) + 1
-        };
-        setPublicStatsCache(siteStats.value);
-      }
-    }
-    plazaQuick.content = '';
-    plazaQuick.messageType = 'success';
-    plazaQuick.message = isEnglish.value ? 'Published' : '已发布';
-    writeHubPreviewCache({
-      latestArticle: latestArticle.value,
-      latestGalleryImage: latestGalleryImage.value,
-      latestPixelArtwork: latestPixelArtwork.value,
-      plazaMessages: plazaMessages.value,
-      siteStats: siteStats.value
-    });
-    await loadHubPreviewFast();
-  } catch (error) {
-    plazaQuick.messageType = 'error';
-    plazaQuick.message = error.message || (isEnglish.value ? 'Unable to publish' : '发布失败');
-  } finally {
-    plazaQuick.loading = false;
-  }
-}
-
-async function loadVisitPopupPreview() {
-  try {
-    const mode = contentTranslationMode();
-    const settings = await loadPublicSettings();
-    if (mode !== contentTranslationMode()) return;
-    const content = announcementContent(settings);
-    const title = content && content === String(settings.siteAnnouncement || '').trim()
-      ? noticeSummary(content)
-      : String(settings.visitPopupTitle || '').trim();
-    visitPopupPreview.value = {
-      title: isEnglish.value && title === '欢迎来到月读空间'
-        ? 'Welcome to Tsukuyomi Space'
-        : (title || (isEnglish.value ? 'Welcome to Tsukuyomi Space' : '欢迎来到月读空间')),
-      content: isEnglish.value && content === '首次访问弹窗尚未配置内容。'
-        ? 'The first-visit notice has not been configured yet.'
-        : (content || (isEnglish.value ? 'The first-visit notice has not been configured yet.' : '首次访问弹窗尚未配置内容。'))
-    };
-  } catch (_) {
-    visitPopupPreview.value = {
-      title: isEnglish.value ? 'First-visit notice' : '首访弹窗',
-      content: isEnglish.value ? 'The notice is temporarily unavailable.' : '弹窗内容暂时无法读取。'
-    };
-  }
-}
-
-useContentTranslationRefresh(() => {
-  hubPreviewController?.abort();
-  hubPreviewRequestId += 1;
-  hubPreviewPending = false;
-  hubPreviewCache = readHubPreviewCache();
-  applyHubPreviewCache(hubPreviewCache || {});
-  loadHubPreviewFast({ force: true });
-  loadVisitPopupPreview();
-});
-
-onMounted(() => {
-  loadVisitPopupPreview();
-  if (typeof window === 'undefined') {
-    loadHubPreviewFast();
-    return;
-  }
-  window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
-  previewFrame = window.requestAnimationFrame(() => {
-    previewFrame = 0;
-    loadHubPreviewFast();
-  });
-});
-
-onActivated(() => {
-  window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
-  if (hubWasDeactivated) {
-    loadHubPreviewFast();
-    loadVisitPopupPreview();
-  }
-});
-onDeactivated(() => {
-  hubWasDeactivated = true;
-  window.removeEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
-  window.cancelAnimationFrame(previewFrame);
-  previewFrame = 0;
-});
-
-onBeforeUnmount(() => {
-  hubPreviewRequestId += 1;
-  hubPreviewController?.abort();
-  if (typeof window !== 'undefined') {
-    window.removeEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
-    window.cancelAnimationFrame(previewFrame);
-  }
-});
+onMounted(load);
+onActivated(() => { if (loadedAt && Date.now() - loadedAt > 30000) load(); });
+onBeforeUnmount(() => { requestId++; });
+watch(() => props.lang, load);
 </script>
 
 <template>
-  <main class="page hub" :aria-busy="previewLoading">
-    <section class="hub-showcase">
-      <div class="hub-hero-panel">
-        <div class="hub-hero-copy">
-          <span class="hub-kicker">TSUKUYOMI · A MOONLIT COMMUNITY</span>
-          <p class="hub-welcome">{{ hubCopy.welcome }}</p>
-          <h1 class="section-title">{{ t.brand }}</h1>
-          <p class="hub-en-title">Tsukuyomi Space</p>
-          <p class="section-subtitle">{{ hubCopy.hero }}</p>
-          <div class="hub-actions">
-            <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">
-              <TsIcon name="moon" :size="17" />
-              <span>{{ hubCopy.room }}</span>
-            </a>
-            <a href="/stage" class="ghost-btn hub-secondary" @click.prevent="$emit('go', '/stage')">{{ hubCopy.browse }}<TsIcon name="arrowRight" :size="17" /></a>
-          </div>
-        </div>
-
-        <figure class="hub-character" :aria-label="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'">
-          <picture>
-            <img :src="siteArt.hero" :alt="isEnglish ? 'Yachiyo beneath a red parasol by the moonlit lake' : '红伞下，坐在月光湖畔的八千代'" width="1672" height="941" loading="eager" decoding="async" fetchpriority="high">
-          </picture>
-        </figure>
+  <main class="hub" :aria-busy="loading">
+    <section class="home-hero" aria-labelledby="home-title">
+      <img class="home-hero-art" :src="siteArt.hero" :alt="tr('月光湖畔的八千代', 'Yachiyo by the moonlit lake')" width="1672" height="941" fetchpriority="high">
+      <div class="hero-shade" aria-hidden="true"></div>
+      <div class="home-hero-content">
+        <p class="hero-eyebrow"><span></span> A LITTLE MOONLIGHT, JUST FOR YOU</p>
+        <h1 id="home-title">{{ tr('给日常', 'A little light,', '日々に、') }}<br>{{ tr('留一点月光。', 'a little closer.', '月明かりを。') }}</h1>
+        <p class="hero-description">{{ tr('故事、灵感，还有一直等你的八千代。', 'Stories, little discoveries, and Yachiyo waiting for you.', '物語とひらめき、そしてあなたを待つ八千代。') }}<br>{{ tr('在这里，慢一点也没关系。', 'There’s no hurry here.', 'ここでは、ゆっくりでいい。') }}</p>
+        <form class="hero-composer" @submit.prevent="enterRoom()">
+          <TsIcon name="message" :size="21" />
+          <label class="sr-only" for="home-chat">{{ tr('和八千代说点什么', 'Say something to Yachiyo') }}</label>
+          <input id="home-chat" v-model="draft" maxlength="2000" autocomplete="off" :placeholder="tr('和八千代说点什么…', 'Say something to Yachiyo…', '八千代に話しかけて…')">
+          <button type="submit" :aria-label="tr('带着这句话进入房间', 'Enter the room with your message')"><TsIcon name="arrowRight" :size="22" /></button>
+        </form>
+        <p v-if="draftError" class="hero-draft-error" role="alert">{{ draftError }}</p>
+        <div class="hero-suggestions"><button v-for="text in suggestions" :key="text" @click="enterRoom(text)">{{ text }}<TsIcon name="arrowUpRight" :size="13" /></button></div>
       </div>
+      <div class="hero-footnote"><span>{{ lang === 'en' ? season[1] : season[0] }} <i></i> {{ tr('月见八千代', 'TSUKIMI YACHIYO') }}</span><a href="#under-the-moon">{{ tr('向下，发现更多', 'A little more to discover') }}<TsIcon name="chevronDown" :size="17" /></a></div>
     </section>
 
-    <details class="hub-notice" :aria-busy="!visitPopupPreview">
-      <summary @click="!visitPopupPreview && $event.preventDefault()"><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview?.title || '' }}</strong><small>{{ visitPopupPreview ? hubCopy.expand : '' }} <TsIcon v-if="visitPopupPreview" name="chevronDown" :size="15" /></small></summary>
-      <NoticeMarkdown v-if="visitPopupPreview" class="hub-notice-content" :content="visitPopupPreview.content" />
-    </details>
-
-    <section class="hub-grid-wrap">
-      <div class="hub-section-head">
-        <div>
-          <h2>{{ hubCopy.latest }}</h2>
-          <span>{{ hubCopy.desc }}</span>
+    <div class="home-content">
+      <details v-if="notice" class="home-notice"><summary><span class="notice-label"><TsIcon name="bell" :size="16" />{{ tr('月读公告', 'NOTICE') }}</span><span class="notice-title">{{ notice.title }}</span><span class="notice-more">{{ tr('展开', 'Read') }}<TsIcon name="chevronDown" :size="16" /></span></summary><NoticeMarkdown class="home-notice-content" :content="notice.content" /></details>
+      <section id="under-the-moon" class="home-section home-journal" aria-labelledby="journal-title">
+        <header class="home-section-heading"><div><span class="eyebrow">01 — UNDER THE MOON</span><h2 id="journal-title">{{ tr('月下新鲜事', 'Under the moon', '月の下の新着') }}</h2><p>{{ tr('把值得记录的日常，变成值得阅读的故事。', 'Everyday moments, made into stories worth keeping.') }}</p></div><RouterLink to="/stage" class="ghost-btn">{{ tr('全部文章', 'All stories') }}<TsIcon name="arrowRight" :size="18" /></RouterLink></header>
+        <LoadingSkeleton v-if="loading" variant="hub" :count="2" :label="t.loading" />
+        <div v-else-if="error && !content" class="home-error" role="alert">{{ error }}<button class="ghost-btn" @click="load">{{ tr('重试', 'Try again') }}</button></div>
+        <div v-else class="home-stories">
+          <RouterLink class="featured-story" :to="articlePath(featured)"><div class="media-frame"><img :src="featured?.cover_image || siteArt.articleCover" alt="" loading="lazy" width="960" height="540"></div><span class="story-category">{{ featured?.category || tr('月读手记', 'JOURNAL') }}</span><h3>{{ featured?.title || tr('每一个故事，都值得被看见。', 'Every story deserves a little light.') }}</h3><p>{{ featured?.excerpt || tr('在主舞台，读故事、分享创作与生活中的发现。', 'Stories, creations and discoveries from our community.') }}</p><div class="story-byline"><span>{{ author(featured) }}</span><i>·</i><time>{{ date(featured?.published_at || featured?.created_at) }}</time></div></RouterLink>
+          <div class="latest-stories"><div class="latest-label"><span>{{ tr('最近写下', 'RECENT STORIES') }}</span><span>JOURNAL ↗</span></div><RouterLink v-for="(article, index) in latest" :key="article.id" class="latest-story" :to="articlePath(article)"><span class="story-number">0{{ index + 1 }}</span><div><span class="story-category">{{ article.category }}</span><h3>{{ article.title }}</h3><p>{{ author(article) }} <i>·</i> {{ date(article.published_at || article.created_at) }}</p></div><TsIcon name="arrowUpRight" :size="18" /></RouterLink><RouterLink v-if="!latest.length" to="/stage" class="text-link">{{ tr('去主舞台发现更多故事', 'Discover more stories') }}<TsIcon name="arrowRight" :size="18" /></RouterLink></div>
         </div>
-        <a href="/stage" class="hub-all-posts" @click.prevent="$emit('go', '/stage')">{{ hubCopy.browse }} <TsIcon name="arrowRight" :size="16" /></a>
-      </div>
-      <div class="scene-grid" :aria-busy="previewLoading">
-        <LoadingSkeleton v-if="previewLoading" variant="hub" :count="4" :label="isEnglish ? 'Loading the latest Hub content' : '正在读取大厅最新内容'" />
-        <div v-else-if="previewError" class="hub-preview-error" role="alert">{{ previewError }}</div>
-        <template v-else>
-        <component
-          :is="scene.kind === 'plaza' ? 'section' : 'a'"
-          v-for="scene in orderedSceneLinks"
-          :key="scene.href"
-          class="scene-card"
-          :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza', 'scene-card-arena': scene.kind === 'arena' }]"
-          :href="scene.kind === 'plaza' ? undefined : scene.href"
-          :data-route="scene.kind === 'plaza' ? undefined : scene.href"
-          :aria-labelledby="scene.kind === 'plaza' ? 'hub-plaza-title' : undefined"
-          @click="scene.kind !== 'plaza' && openScene(scene, $event)"
-          @pointerenter="warmScene(scene)"
-          @focus="warmScene(scene)"
-          @pointerdown="warmScene(scene)"
-          @keydown.enter="scene.kind !== 'plaza' && openScene(scene, $event)"
-          @keydown.space="scene.kind !== 'plaza' && openScene(scene, $event)"
-          >
-          <img
-            v-if="scene.kind !== 'plaza' && !(scene.kind === 'arena' && scene.artwork)"
-            class="scene-card-media"
-            :src="scene.image"
-            alt=""
-            loading="lazy"
-            decoding="async"
-            data-image-bloom
-          >
-          <span
-            v-if="scene.kind === 'arena' && scene.artwork"
-            class="hub-arena-cover"
-            :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }"
-            aria-hidden="true"
-          >
-            <PixelCanvasCells
-              :pixels="artworkPixels(scene.artwork)"
-              :palette="artworkPalette(scene.artwork)"
-              :width="artworkWidth(scene.artwork)"
-              :height="artworkHeight(scene.artwork)"
-              :cell-size="1"
-              :background-color="artworkBackground(scene.artwork)"
-              :show-grid="false"
-              :interactive="false"
-              :aria-label="scene.name"
-              data-image-bloom
-              :data-image-state="pixelPreviewLoaded(scene.artwork) ? 'loaded' : 'pending'"
-              @rendered="markPixelPreviewLoaded(scene.artwork)"
-            />
-          </span>
-          <span v-if="scene.kind !== 'plaza'" class="scene-top">
-            <span class="scene-icon" aria-hidden="true">
-              <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
-            </span>
-            <span class="scene-code">{{ scene.code }}</span>
-          </span>
-          <header v-else class="hub-plaza-header">
-            <div class="hub-plaza-heading">
-              <span class="scene-icon" aria-hidden="true"><TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" /></span>
-              <div>
-                <h3 id="hub-plaza-title" class="hub-plaza-title">{{ scene.name }}</h3>
-                <p class="hub-plaza-intro">{{ isEnglish ? 'Small moments, shared under the moon.' : '分享此刻，也遇见同频的人。' }}</p>
-              </div>
-            </div>
-            <a class="hub-plaza-more" :href="scene.href" @click.prevent="$emit('go', scene.href)">{{ isEnglish ? 'Visit Plaza' : '逛逛广场' }} <TsIcon name="arrowRight" :size="16" /></a>
-          </header>
-          <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
-          <span v-if="scene.kind !== 'plaza'" class="scene-main">
-            <span class="scene-name">{{ scene.name }}</span>
-            <span class="scene-desc">{{ scene.desc }}</span>
-          </span>
-          <div v-else class="scene-main plaza-card-body">
-            <span v-if="!plazaPreviewMessages.length" class="scene-desc">{{ isEnglish ? 'No messages yet. Leave the first greeting.' : '还没有留言，写下第一句问候。' }}</span>
-            <div v-else class="hub-plaza-list">
-              <a v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message" :href="scene.href" @click.prevent="$emit('go', scene.href)">
-                <span class="hub-plaza-author">
-                  <span class="hub-plaza-avatar" aria-hidden="true">
-                    <span>{{ [...(msg.author_nickname || msg.author || (isEnglish ? 'Guest' : '访客'))][0] }}</span>
-                    <img v-if="msg.avatar" :src="msg.avatar" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true">
-                  </span>
-                  <strong>{{ msg.author_nickname || msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
-                </span>
-                <p class="hub-plaza-content">{{ msg.content }}</p>
-              </a>
-            </div>
-            <form class="hub-plaza-form" :aria-busy="plazaQuick.loading" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
-              <label class="hub-plaza-form-label" for="hub-plaza-input">{{ isEnglish ? 'Leave a greeting' : '留一句问候' }}</label>
-              <input id="hub-plaza-input" v-model="plazaQuick.content" type="text" :placeholder="isEnglish ? 'What would you like to share today?' : '今天有什么想和大家分享的？'">
-              <button
-                class="hub-plaza-submit"
-                type="submit"
-                :disabled="plazaQuick.loading"
-                :aria-busy="plazaQuick.loading"
-                :aria-label="plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送')"
-                :title="plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送')"
-              >
-                <TsIcon :name="plazaQuick.loading ? 'loader' : 'send'" :size="15" />
-                <span>{{ plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送') }}</span>
-              </button>
-              <span v-if="plazaQuick.loading" class="ts-visually-hidden" role="status">{{ isEnglish ? 'Sending' : '发送中' }}</span>
-            </form>
-            <span v-if="plazaQuick.message" class="hub-plaza-feedback" :class="plazaQuick.messageType" :role="plazaQuick.messageType === 'error' ? 'alert' : 'status'">{{ plazaQuick.message }}</span>
-          </div>
-          <span v-if="scene.kind !== 'plaza' && (scene.author || scene.date)" class="scene-meta">
-            <span v-if="scene.author" class="scene-author">
-              <img v-if="scene.avatar" :src="scene.avatar" alt="" width="28" height="28" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true">
-              <span>{{ scene.author }}</span>
-            </span>
-            <time v-if="scene.date" :datetime="scene.date">{{ formatDateOnly(scene.date, isEnglish ? 'en-CA' : 'zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }}</time>
-          </span>
-        </component>
-        </template>
-      </div>
-    </section>
-    <footer class="hub-community-footer">
-      <h2>{{ hubCopy.stats }}</h2>
-      <div class="hub-stat-grid" :aria-busy="previewLoading">
-        <div v-for="item in stats" :key="item.label"><strong><CountUpValue :value="item.value" /></strong><span>{{ item.label }}</span></div>
-      </div>
-      <BeianLink />
-    </footer>
+      </section>
+      <section class="home-section home-discover" aria-labelledby="discover-title">
+        <header class="home-section-heading"><div><span class="eyebrow">02 — WANDER A LITTLE</span><h2 id="discover-title">{{ tr('随心逛逛', 'Follow your curiosity', '気ままに歩こう') }}</h2></div><p>{{ tr('喜欢的事，都能在这里找到一席之地。', 'A little space for everything you love.') }}</p></header>
+        <div class="discovery-grid"><RouterLink v-for="place in places" :key="place.path" :to="place.path" class="discovery-item"><div class="media-frame"><img :src="place.image" alt="" loading="lazy" width="480" height="600"><span>{{ place.label }}</span></div><div class="discovery-title"><h3>{{ place.title }}</h3><TsIcon name="arrowUpRight" :size="19" /></div><p>{{ place.desc }}</p></RouterLink></div>
+      </section>
+      <section class="home-section home-community" aria-labelledby="community-title">
+        <div class="community-intro"><span class="eyebrow">03 — SMALL MOMENTS, SHARED</span><h2 id="community-title">{{ tr('月光下的声音', 'Meet under the moon') }}</h2><p>{{ tr('今天的小事、想分享的心情，', 'Small moments, little thoughts,') }}<br>{{ tr('总有人愿意听。', 'and someone who’s here to listen.') }}</p><RouterLink to="/plaza" class="primary-btn">{{ tr('去广场坐坐', 'Visit the plaza') }}<TsIcon name="arrowRight" :size="16" /></RouterLink></div>
+        <div class="home-messages"><RouterLink v-for="message in (content?.messages || []).slice(0, 3)" :key="message.id" to="/plaza" class="home-message"><span class="message-avatar"><img v-if="message.avatar" :src="message.avatar" alt="" loading="lazy"><span v-else>{{ [...(message.author_nickname || message.author || '月')][0] }}</span></span><div><div class="message-byline"><strong>{{ message.author_nickname || message.author }}</strong><time>{{ date(message.created_at) }}</time></div><p>{{ message.content }}</p></div></RouterLink><p v-if="!content?.messages?.length" class="empty-state">{{ tr('安静的广场，等你留下第一句问候。', 'A quiet plaza, waiting for your first hello.') }}</p></div>
+      </section>
+      <RouterLink to="/drift" class="home-letter"><img :src="driftArt" alt="" loading="lazy"><div><span class="eyebrow">A LETTER TO SOMEONE, SOMEWHERE</span><h2>{{ tr('把心事，交给星海。', 'Let a little thought drift away.') }}</h2><p>{{ tr('写一封信，让月光带它去遇见一个陌生人。', 'Write a letter. Let the moon find someone to read it.') }}</p></div><span class="letter-arrow"><TsIcon name="arrowUpRight" :size="28" /></span></RouterLink>
+    </div>
   </main>
 </template>

@@ -1,1 +1,7 @@
-@import "../../../assets/css/vue-app.css";
+@layer reset, tokens, components, pages;
+@import './jingyue/reset.css' layer(reset);
+@import './jingyue/tokens.css' layer(tokens);
+@import './jingyue/components.css' layer(components);
+@import './jingyue/shell.css' layer(components);
+@import './jingyue/background.css' layer(components);
+@import './loading-states.css' layer(components);

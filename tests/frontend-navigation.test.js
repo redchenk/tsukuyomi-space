@@ -208,7 +208,7 @@ describe('frontend navigation routes', () => {
 
         assert.match(shell, /class="site-preference-button"/);
         assert.match(shell, /<TsIcon name="languages"/);
-        assert.match(shell, /\$emit\('set-lang', alternateLanguage\(lang\)\)/);
+        assert.match(shell, /emit\('set-lang', alternateLanguage\(lang\)\)/);
         assert.match(shell, /lang === 'zh' \? '日本語' : '中文'/);
         assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
@@ -266,24 +266,22 @@ describe('frontend navigation routes', () => {
         const stage = source('src/frontend/pages/StagePage.vue');
         const service = source('src/frontend/services/stageArticles.js');
 
-        assert.match(stage, /const options = stageArticleRequest\(\)/);
-        assert.match(stage, /loadStageArticles\(options\)/);
+        assert.match(stage, /const requestPage = more/);
+        assert.match(stage, /loadStageArticles\(\{ page: requestPage/);
         assert.match(stage, /limit: STAGE_PAGE_SIZE/);
-        assert.match(stage, /category: stageCategory\.value === 'all' \? '' : stageCategory\.value/);
-        assert.match(stage, /search: stageSearch\.value/);
+        assert.match(stage, /category: category\.value/);
+        assert.match(stage, /search: querySearch\.value/);
         assert.doesNotMatch(stage, /while \(page <= totalPages\)/);
         assert.match(service, /const STAGE_PAGE_SIZE = 6/);
         assert.match(service, /params\.set\('q', options\.search\)/);
         assert.match(service, /STAGE_CACHE_MAX_AGE_MS = 30 \* 1000/);
     });
 
-    it('routes the main-stage preview card to the stage index', () => {
+    it('links the story section to Stage and individual previews to their article', () => {
         const hub = source('src/frontend/pages/HubPage.vue');
-        const mainStageCard = hub.match(/\{\s*href: '\/stage',[\s\S]*?label: props\.t\.stage\s*\}/)?.[0] || '';
-
-        assert.match(mainStageCard, /href: '\/stage'/);
-        assert.doesNotMatch(mainStageCard, /\/articles\//);
-        assert.match(hub, /:data-route="scene\.kind === 'plaza' \? undefined : scene\.href"/);
+        assert.match(hub, /<RouterLink to="\/stage" class="ghost-btn">/);
+        assert.match(hub, /class="featured-story" :to="articlePath\(featured\)"/);
+        assert.match(hub, /const articlePath = article => article\?\.id \?/);
     });
 
     it('shows the immutable article publication time to the minute on the stage', () => {
@@ -298,8 +296,7 @@ describe('frontend navigation routes', () => {
         assert.match(adminRepository, /COALESCE\(published_at, CURRENT_TIMESTAMP\)/);
         assert.match(stage, /formatDateMinute/);
         assert.match(stage, /article\?\.published_at \|\| article\?\.created_at \|\| article\?\.publish_date/);
-        assert.match(stage, /<time class="stage-publish-time" :datetime="stagePublishedAt\(article\)">/);
-        assert.match(stage, /TsIcon name="calendar"/);
+        assert.match(stage, /<time :datetime="publishedAt\(article\)">/);
         assert.match(article, /formatPublishedDate\(article\.published_at \|\| article\.created_at \|\| article\.publish_date\)/);
     });
 
@@ -397,13 +394,13 @@ describe('frontend navigation routes', () => {
 
     it('keeps mobile account security and the music playlist readable', () => {
         const userCenterCss = source('src/frontend/styles/routes/user-center.css');
-        const musicCss = source('assets/css/vue/music-player.css');
+        const musicCss = source('src/frontend/styles/jingyue/music.css');
 
         assert.match(userCenterCss, /\.uc-security-grid\s*{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
         assert.match(userCenterCss, /\.uc-security-grid > \*\s*{[\s\S]*?min-width: 0/);
-        assert.match(musicCss, /\.site-music-playlist-drawer select\s*{[\s\S]*?color-scheme: dark/);
+        assert.match(source('src/frontend/styles/jingyue/tokens.css'), /color-scheme: dark/);
         assert.match(musicCss, /\.site-music-playlist-drawer select option\s*{[\s\S]*?background:/);
-        assert.match(musicCss, /html\[data-theme="light"\] \.site-music-playlist-drawer select option/);
+        assert.match(musicCss, /select option[^}]*color: var\(--ink\)/);
     });
 
     it('links the existing Agent OS app from the side navigation with a Lucide icon', () => {
@@ -514,7 +511,7 @@ describe('frontend navigation routes', () => {
         assert.match(arena, /pixels_base64/);
         assert.match(arena, /await loadFullArtwork\(artwork\)/);
         assert.match(hub, /\/api\/hub-preview/);
-        assert.match(hub, /pixels_base64/);
+        assert.doesNotMatch(hub, /\/api\/pixel-art\/gallery/);
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
@@ -556,7 +553,7 @@ describe('frontend navigation routes', () => {
         const arena = source('src/frontend/pages/ArenaPage.vue');
         const article = source('src/frontend/pages/ArticlePage.vue');
         const plaza = source('src/frontend/pages/PlazaPage.vue');
-        const polish = source('assets/css/vue/product-polish.css');
+        const polish = source('src/frontend/styles/jingyue/components.css');
 
         assert.match(arena, /DEFAULT_CANVAS_PRESET = CANVAS_PRESETS\[CANVAS_PRESETS\.length - 1\]/);
         assert.doesNotMatch(arena, /class="arena-size-options"|setCanvasPreset\(/);
@@ -571,12 +568,15 @@ describe('frontend navigation routes', () => {
         assert.match(plaza, /viewer_liked/);
     });
 
-    it('keeps the Hub hero light in light mode while preserving the dark theme artwork', () => {
-        const hub = source('assets/css/vue/pages/hub.css');
-        const polish = source('assets/css/vue/product-polish.css');
-
-        assert.match(hub, /html\[data-theme="light"\] body \.page\.hub \.hub-hero-panel::before\s*\{[\s\S]*rgba\(250, 253, 255, 0\.94\)/);
-        assert.match(polish, /html:not\(\[data-theme="light"\]\) body \.page\.hub \.hub-hero-panel::before/);
+    it('keeps seasonal artwork in sync with the shared background', () => {
+        const hub = source('src/frontend/pages/HubPage.vue');
+        const background = source('src/frontend/styles/jingyue/background.css');
+        const theme = source('src/frontend/composables/useSeasonTheme.js');
+        assert.match(hub, /:src="siteArt\.hero"/);
+        assert.match(background, /var\(--site-background-image\)/);
+        assert.match(theme, /--site-background-light/);
+        assert.match(theme, /--site-background-dark/);
+        assert.match(source('src/frontend/data/seasonBackgrounds.js'), /light:[\s\S]*dark:/);
     });
 
     it('uses path-level cache busting for every mutable public content read', () => {
@@ -641,35 +641,25 @@ describe('notification dock badge', () => {
 });
 
 describe('platform material surfaces', () => {
-    it('maps native material roles without changing control semantics', () => {
-        const appStyles = source('assets/css/vue-app.css');
-        const materials = source('src/frontend/styles/materials.css');
+    it('uses native modal navigation with focus return and accessible controls', () => {
         const shell = source('src/frontend/layouts/AppShell.vue');
-        const main = source('src/frontend/main.js');
-
-        assert.match(appStyles, /materials\.css/);
-        assert.doesNotMatch(shell, /class="site-rail"/);
-        assert.match(shell, /class="site-brand" data-material="header"/);
-        assert.match(shell, /<SiteMorphNavigation/);
-        assert.match(source('src/frontend/components/SiteMorphNavigation.vue'), /class="desktop-navigation" data-material="header"/);
-        assert.match(shell, /class="site-header-tools" data-material="header"/);
-        assert.match(shell, /data-material="popover" role="dialog"/);
-        assert.match(materials, /\[data-material="hud"\]/);
-        assert.match(materials, /html\[data-window-active="false"\] \[data-material\]/);
-        assert.match(main, /document\.documentElement\.dataset\.windowActive/);
-        assert.doesNotMatch(shell, /role="button"[^>]*data-material/);
+        assert.match(shell, /<dialog ref="navigationRef"/);
+        assert.match(shell, /dialog\.showModal\(\)/);
+        assert.match(shell, /lastTrigger\.focus\(\{ preventScroll: true \}\)/);
+        assert.match(shell, /@cancel\.prevent="navOpen = false"/);
+        assert.match(shell, /:aria-expanded="navOpen/);
+        assert.doesNotMatch(shell, /role="button"/);
     });
 
     it('degrades safely for narrow screens and reduced transparency', () => {
-        const materials = source('src/frontend/styles/materials.css');
-
-        assert.match(materials, /@media \(max-width: 860px\)/);
-        assert.match(materials, /\.room-shell \[data-material\]:not\(\[data-material="hud"\]\)[\s\S]*--ts-current-material-filter: none/);
-        assert.match(materials, /\.room-shell \.status-layer\.active[\s\S]*backdrop-filter: none/);
-        assert.match(materials, /prefers-reduced-transparency: reduce/);
-        assert.match(materials, /@supports not \(\(backdrop-filter: blur\(1px\)\)/);
-        assert.match(materials, /overflow-wrap: anywhere/);
-        assert.match(materials, /\[role="dialog"\]\[data-material="popover"\][\s\S]*max-height/);
+        const reset = source('src/frontend/styles/jingyue/reset.css');
+        const components = source('src/frontend/styles/jingyue/components.css');
+        const shell = source('src/frontend/styles/jingyue/shell.css');
+        assert.match(reset, /max-width: calc\(100vw - 32px\)/);
+        assert.match(reset, /max-height: calc\(100dvh - 32px\)/);
+        assert.match(shell, /@media \(max-width: 600px\)/);
+        assert.match(components, /prefers-reduced-transparency: reduce/);
+        assert.match(components, /backdrop-filter: none/);
     });
 });
 
@@ -677,7 +667,7 @@ describe('unified async loading states', () => {
     it('registers shared skeleton and status-loader primitives with resilient geometry', () => {
         const main = source('src/frontend/main.js');
         const styles = source('src/frontend/styles/loading-states.css');
-        const appStyles = source('assets/css/vue-app.css');
+        const appStyles = source('src/frontend/styles/global.css');
         const skeleton = source('src/frontend/components/LoadingSkeleton.vue');
         const statusLoader = source('src/frontend/components/StatusLoader.vue');
 
@@ -715,12 +705,12 @@ describe('unified async loading states', () => {
 
         assert.match(gallery, /:aria-busy="state\.loading \|\| state\.uploading"/);
         assert.match(gallery, /LoadingSkeleton v-if="state\.loading"[\s\S]*v-else-if="state\.loadError"[^>]*role="alert"[\s\S]*v-else-if="!shownImages\.length"/);
-        assert.match(stage, /LoadingSkeleton v-if="articlesLoading"[\s\S]*v-else-if="articlesError"[^>]*role="alert"[\s\S]*v-else-if="!filteredArticles\.length"/);
+        assert.match(stage, /LoadingSkeleton v-if="loading"[\s\S]*v-else-if="!articles\.length && !error"[\s\S]*v-if="error"[^>]*role="alert"/);
         assert.match(notifications, /LoadingSkeleton v-if="inbox\.loading"[\s\S]*v-else-if="inbox\.message"[^>]*role="alert"[\s\S]*v-else-if="!inbox\.items\.length"/);
         assert.match(plaza, /LoadingSkeleton v-if="plaza\.loading"[\s\S]*v-else-if="plaza\.loadError"[^>]*role="alert"[\s\S]*v-else-if="!plazaMessages\.length"/);
         assert.match(userCenter, /LoadingSkeleton v-if="uc\.articleLoading && !uc\.articles\.length"[\s\S]*v-else-if="uc\.articleError && !uc\.articles\.length"[^>]*role="alert"/);
         assert.match(userCenter, /v-if="uc\.articleError && uc\.articles\.length"[^>]*role="alert"/);
-        assert.match(hub, /LoadingSkeleton v-if="previewLoading" variant="hub"[\s\S]*v-else-if="previewError"[^>]*role="alert"/);
+        assert.match(hub, /LoadingSkeleton v-if="loading" variant="hub"[\s\S]*v-else-if="error && !content"[^>]*role="alert"/);
     });
 
     it('loads the notification inbox in bounded server-side pages', () => {

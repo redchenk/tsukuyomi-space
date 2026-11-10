@@ -26,6 +26,8 @@ test('season boundaries use the visitor date rather than UTC or server timezone'
 
 test('all four manual themes override the calendar and automatic seasons use their own artwork', () => {
   const january = new Date(2026, 0, 1);
+  assert.equal(resolveSeason({}, january).artwork, 'spring');
+  assert.equal(resolveSeason({}, new Date(2026, 10, 10)).artwork, 'spring');
   assert.deepEqual(AVAILABLE_SEASONS, ['spring', 'summer', 'autumn', 'winter']);
   for (const mode of AVAILABLE_SEASONS) {
     for (const hemisphere of ['north', 'south']) {
@@ -42,16 +44,16 @@ test('all four manual themes override the calendar and automatic seasons use the
     }
   }
   for (const [month, before, after] of [[2, 'winter', 'spring'], [5, 'spring', 'summer'], [8, 'summer', 'autumn'], [11, 'autumn', 'winter']]) {
-    assert.equal(resolveSeason({}, new Date(2026, month, 0, 23, 59, 59)).artwork, before);
-    assert.equal(resolveSeason({}, new Date(2026, month, 1)).artwork, after);
+    assert.equal(resolveSeason({ mode: 'auto' }, new Date(2026, month, 0, 23, 59, 59)).artwork, before);
+    assert.equal(resolveSeason({ mode: 'auto' }, new Date(2026, month, 1)).artwork, after);
   }
 });
 
 test('malformed, missing, hostile and disabled storage never break theme selection', () => {
-  assert.deepEqual(normalizeSeasonPreference({ mode: '<script>', hemisphere: '<script>', other: 'ignored' }), { version: 1, mode: 'auto', hemisphere: 'north' });
-  assert.equal(readSeasonPreference(null).mode, 'auto');
-  assert.equal(readSeasonPreference({ getItem() { return '{'; } }).mode, 'auto');
-  assert.equal(readSeasonPreference({ getItem() { throw Error('blocked'); } }).mode, 'auto');
+  assert.deepEqual(normalizeSeasonPreference({ mode: '<script>', hemisphere: '<script>', other: 'ignored' }), { version: 1, mode: 'spring', hemisphere: 'north' });
+  assert.equal(readSeasonPreference(null).mode, 'spring');
+  assert.equal(readSeasonPreference({ getItem() { return '{'; } }).mode, 'spring');
+  assert.equal(readSeasonPreference({ getItem() { throw Error('blocked'); } }).mode, 'spring');
   assert.equal(writeSeasonPreference({ setItem() { throw Error('quota'); } }, { mode: 'summer' }), false);
   assert.equal(writeSeasonPreference(null, {}), false);
   let stored;
@@ -97,11 +99,9 @@ test('every seasonal light and dark palette keeps text, actions and status label
     assert.ok(block, `Missing palette: ${selector}`);
     return Object.fromEntries([...block[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(match => [match[1], match[2].trim()]));
   }
-  const tokens = declarations(readCss('../src/frontend/styles/tokens.css'), ':root');
-  const editorial = readCss('../src/frontend/styles/editorial.css');
-  const seasons = readCss('../src/frontend/styles/seasons.css');
-  const light = { ...tokens, ...declarations(editorial, ':root') };
-  const dark = { ...light, ...declarations(editorial, 'html[data-theme="dark"]') };
+  const css = readCss('../src/frontend/styles/jingyue/tokens.css');
+  const light = declarations(css, ':root');
+  const dark = { ...light, ...declarations(css, ":root[data-theme='dark']") };
   function resolve(palette, key) {
     const value = palette[key];
     assert.ok(value, `Missing color: ${key}`);
@@ -109,6 +109,7 @@ test('every seasonal light and dark palette keeps text, actions and status label
     return reference ? resolve(palette, reference[1]) : value;
   }
   function luminance(hex) {
+    if (/^#[\da-f]{3}$/i.test(hex)) hex = '#' + [...hex.slice(1)].map(char => char + char).join('');
     assert.match(hex, /^#[\da-f]{6}$/i);
     const rgb = [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16) / 255);
     const linear = rgb.map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
@@ -122,24 +123,20 @@ test('every seasonal light and dark palette keeps text, actions and status label
   for (const season of AVAILABLE_SEASONS) {
     for (const mode of ['light', 'dark']) {
       const base = mode === 'dark' ? dark : light;
-      const palette = season === 'spring' ? base : {
+      const palette = {
         ...base,
-        ...declarations(seasons, `html[data-season="${season}"]`),
-        ...(mode === 'dark' ? declarations(seasons, `html[data-season="${season}"][data-theme="dark"]`) : {})
+        ...declarations(css, `:root[data-season='${season}']`),
+        ...(mode === 'dark' ? declarations(css, `:root[data-theme='dark'][data-season='${season}']`) : {})
       };
       const label = `${season}/${mode}`;
-      for (const surface of ['bg', 'surface', 'low', 'soft']) {
-        const background = resolve(palette, `--ts-editorial-${surface}`);
-        for (const foreground of ['--ts-editorial-ink', '--ts-editorial-muted', '--ts-status-success', '--ts-status-warning', '--ts-status-danger']) {
+      for (const surface of ['paper', 'surface', 'soft']) {
+        const background = resolve(palette, `--${surface}`);
+        for (const foreground of ['--ink', '--muted', '--success', '--danger', '--accent']) {
           readable(resolve(palette, foreground), background, `${label}: ${foreground} on ${surface}`);
         }
       }
-      const accent = resolve(palette, season === 'spring' ? '--ts-accent' : '--ts-season-accent');
-      const soft = resolve(palette, season === 'spring' ? '--ts-accent-soft' : '--ts-season-accent-soft');
-      readable(accent, soft, `${label}: selected text`);
-      readable(accent, resolve(palette, '--ts-editorial-surface'), `${label}: links`);
-      for (const primary of (season === 'spring' ? ['--ts-gradient-brand', '--ts-gradient-brand-hover'] : ['--ts-season-primary', '--ts-season-primary-hover'])) {
-        readable('#ffffff', resolve(palette, primary), `${label}: filled action ${primary}`);
+      for (const primary of ['--accent', '--accent-hover']) {
+        readable(resolve(palette, '--on-accent'), resolve(palette, primary), `${label}: filled action ${primary}`);
       }
     }
   }

@@ -410,8 +410,8 @@ function endChatStatusLabel() {
         <div v-else-if="generationState.status === 'preparing' && !chat.messages.value.some((message) => message.pending)" class="chat-generation-notice preparing" role="status">{{ generationMessage }}</div>
       </div>
       <div class="room-transcript-fade" aria-hidden="true"></div>
-      </div>
       <button v-if="mobile && readingHistory && hasConversation" class="room-return-latest" type="button" @click="returnToLatest"><TsIcon name="message" :size="14" /><span>回到最新消息</span></button>
+      </div>
       <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
         <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
       </div>

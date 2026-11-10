@@ -468,7 +468,7 @@ test('mobile account security and music playlist remain readable', async ({ page
     expect(Math.abs(layout.formWidth - layout.cardWidth)).toBeLessThan(1);
     expect(layout.pageWidth).toBe(layout.viewportWidth);
 
-    await page.getByRole('button', { name: 'Expand music drawer', exact: true }).click();
+    await page.locator('.header-music').click();
     await page.getByRole('button', { name: 'Playlist', exact: true }).click();
     const playlistStyle = await page.getByRole('combobox', { name: 'Track', exact: true }).evaluate((select) => {
         const optionStyle = getComputedStyle(select.options[0]);
@@ -479,8 +479,8 @@ test('mobile account security and music playlist remain readable', async ({ page
         };
     });
     expect(playlistStyle).toEqual({
-        color: 'rgb(247, 251, 255)',
-        backgroundColor: 'rgb(17, 24, 39)',
+        color: 'rgb(237, 240, 247)',
+        backgroundColor: 'rgb(34, 40, 54)',
         colorScheme: 'dark'
     });
 });

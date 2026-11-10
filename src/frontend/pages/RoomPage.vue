@@ -1,14 +1,13 @@
 <script setup>
+import { takeRoomEntryDraft } from "../services/roomEntryDraft.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, parseResponse } from '../api/client';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
 import RoomDiaryPanel from '../components/room/RoomDiaryPanel.vue';
-import RoomDock from '../components/room/RoomDock.vue';
 import RoomNotePanel from '../components/room/RoomNotePanel.vue';
 import RoomProfilePanel from '../components/room/RoomProfilePanel.vue';
 import RoomStage from '../components/room/RoomStage.vue';
-import RoomWeatherCard from '../components/room/RoomWeatherCard.vue';
 import RoomShareDialog from '../components/room/RoomShareDialog.vue';
 import RoomSetupDialog from '../components/room/RoomSetupDialog.vue';
 import RoomHelpDialog from '../components/room/RoomHelpDialog.vue';
@@ -187,7 +186,13 @@ async function loadSharedConversation() {
   }
 }
 
-onMounted(loadSharedConversation);
+onMounted(() => {
+  loadSharedConversation();
+  if (!props.shareId) {
+    const draft = takeRoomEntryDraft();
+    if (draft) room.chat.input.value = draft;
+  }
+});
 watch(() => props.shareId, loadSharedConversation);
 </script>
 
@@ -206,21 +211,8 @@ watch(() => props.shareId, loadSharedConversation);
     :style="roomStyle"
     :aria-busy="room.loading.active"
   >
+    <a class="room-home-link" :aria-label="lang === 'en' ? 'Back to home' : '返回月读'" href="/hub" @click.prevent="emit('go', '/hub')"><TsIcon name="arrowLeft" :size="18" /><span>{{ lang === 'en' ? 'Back to the moon' : '返回月读' }}</span></a>
     <div class="room-backdrop" aria-hidden="true"></div>
-    <div
-      v-if="['rain', 'storm', 'snow', 'fog', 'cloudy'].includes(room.world.world.value.weather)"
-      class="room-weather-layer"
-      data-room-weather-layer="true"
-      :data-weather="room.world.world.value.weather"
-      aria-hidden="true"
-    >
-      <span
-        v-for="particle in room.world.weatherParticles.value"
-        :key="particle.id"
-        class="room-weather-particle"
-        :style="room.world.particleStyle(particle)"
-      ></span>
-    </div>
 
     <header class="room-mobile-header">
       <details ref="mobileToolsMenu" class="room-tools-disclosure">
@@ -241,13 +233,6 @@ watch(() => props.shareId, loadSharedConversation);
       <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="20" /><span>设置</span></a>
     </header>
     <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" :scene="backdrop.scene.value" @settings="emit('go', '/room/settings')" />
-    <RoomWeatherCard :weather="room.world.weatherCard.value" />
-    <RoomDock
-      :buttons="room.panels.panelButtons"
-      :active-panels="room.panels.activePanels"
-      @toggle="room.panels.togglePanel"
-      @settings="emit('go', '/room/settings')"
-    />
 
     <div class="room-conversation-surface">
       <section class="room-companion-bar" aria-label="角色与房间工具">
@@ -274,7 +259,6 @@ watch(() => props.shareId, loadSharedConversation);
           :panel-style="{}"
           @close="room.panels.closePanel('chatPanel')"
           @focus="mobileRoom && room.panels.bringPanelForward('chatPanel')"
-          @drag-start="mobileRoom && room.panels.startPanelDrag('chatPanel', $event)"
           @share="openConversationShare"
           @growth="emit('go', '/growth')"
           @open-diary="openDiary"
@@ -287,27 +271,24 @@ watch(() => props.shareId, loadSharedConversation);
       <RoomDiaryPanel
         v-if="mobileRoom ? room.panels.activePanels.diaryPanel : desktopPanel === 'diaryPanel'"
         :diary="room.diary"
-        :panel-style="mobileRoom ? room.panels.panelStyle('diaryPanel') : {}"
+        :panel-style="{}"
         @close="closeUtility('diaryPanel')"
         @focus="mobileRoom && room.panels.bringPanelForward('diaryPanel')"
-        @drag-start="mobileRoom && room.panels.startPanelDrag('diaryPanel', $event)"
       />
       <RoomProfilePanel
         v-if="mobileRoom ? room.panels.activePanels.profilePanel : desktopPanel === 'profilePanel'"
         :profile="room.profile.profile"
-        :panel-style="mobileRoom ? room.panels.panelStyle('profilePanel') : {}"
+        :panel-style="{}"
         @close="closeUtility('profilePanel')"
         @focus="mobileRoom && room.panels.bringPanelForward('profilePanel')"
-        @drag-start="mobileRoom && room.panels.startPanelDrag('profilePanel', $event)"
         @save="room.profile.saveProfile()"
       />
       <RoomNotePanel
         v-if="mobileRoom ? room.panels.activePanels.notePanel : desktopPanel === 'notePanel'"
         :note="room.note.note"
-        :panel-style="mobileRoom ? room.panels.panelStyle('notePanel') : {}"
+        :panel-style="{}"
         @close="closeUtility('notePanel')"
         @focus="mobileRoom && room.panels.bringPanelForward('notePanel')"
-        @drag-start="mobileRoom && room.panels.startPanelDrag('notePanel', $event)"
         @save="room.note.saveNote()"
       />
     </Teleport>

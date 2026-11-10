@@ -1,4 +1,5 @@
 <script setup>
+import "../styles/jingyue/auth.css";
 import { computed, onMounted, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
@@ -617,7 +618,7 @@ onMounted(() => {
                   <div class="auth-input-shell has-action">
                     <TsIcon class="auth-field-icon" name="lock" :size="18" />
                     <input name="qqBindPassword" id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
-                    <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
+                    <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" @click="showOAuthPassword = !showOAuthPassword">
                       <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
                     </button>
                   </div>
@@ -698,8 +699,8 @@ onMounted(() => {
           <template v-else>
           <form v-field-validation :aria-busy="login.submitting" @submit.prevent="submitLogin">
             <div class="mode-row">
-              <button class="mode-btn" :class="{ active: login.method === 'password' }" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
-              <button class="mode-btn" :class="{ active: login.method === 'code' }" type="button" @click="setMethod('code')">{{ t.codeLogin }}</button>
+              <button class="mode-btn" :class="{ active: login.method === 'password' }" :aria-pressed="login.method === 'password'" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
+              <button class="mode-btn" :class="{ active: login.method === 'code' }" :aria-pressed="login.method === 'code'" type="button" @click="setMethod('code')">{{ t.codeLogin }}</button>
             </div>
             <div class="form-group">
               <label for="loginAccount">{{ t.account }}</label>
@@ -713,7 +714,7 @@ onMounted(() => {
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="loginPassword" id="loginPassword" v-model="login.password" required :type="showLoginPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
-                <button class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" @click="showLoginPassword = !showLoginPassword">
+                <button class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" :aria-label="showLoginPassword ? t.hidePassword : t.showPassword" @click="showLoginPassword = !showLoginPassword">
                   <TsIcon :name="showLoginPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
@@ -736,6 +737,8 @@ onMounted(() => {
                   <span :role="login.sending.loading ? 'status' : undefined">{{ login.sending.label || t.sendCode }}</span>
                 </button>
               </div>
+              <!-- Keep the password mode's recovery-action row in the layout. -->
+              <div class="auth-form-tools" aria-hidden="true"></div>
             </div>
             <button class="primary-btn" type="submit" :disabled="login.submitting" :aria-busy="login.submitting">{{ t.login }}</button>
             <StatusLoader v-if="login.submitting" :label="isEnglish ? 'Signing in' : '正在登录'" compact />

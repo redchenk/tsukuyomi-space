@@ -1,0 +1,21 @@
+/* One static viewport layer: no scroll listener or backdrop blur. */
+.site-background-shell { isolation: isolate; }
+.site-background-shell:not(.drift-scene-shell)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  height: 100lvh;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--paper) var(--background-edge), transparent),
+      color-mix(in srgb, var(--paper) var(--background-reading), transparent) 20% 80%,
+      color-mix(in srgb, var(--paper) var(--background-edge), transparent)),
+    var(--site-background-image) center / cover no-repeat,
+    var(--paper);
+}
+@media (max-width: 860px) {
+  .site-background-shell { --background-edge: 84%; --background-reading: 92%; }
+  .site-background-shell:not(.drift-scene-shell)::before { background-position: center, 85% top, center; }
+}

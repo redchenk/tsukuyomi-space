@@ -1,69 +1,19 @@
 <script setup>
-import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { computed } from 'vue';
+import { useModalDialog } from '../composables/useModalDialog';
 import TsIcon from './TsIcon.vue';
 import SiteMusicLibrary from './SiteMusicLibrary.vue';
-
-const props = defineProps({
-  music: { type: Object, required: true },
-  lang: { type: String, default: 'zh' }
-});
+import '../styles/jingyue/music.css';
+const props = defineProps({ music: { type: Object, required: true }, lang: { type: String, default: 'zh' } });
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
 const active = computed(() => props.music.playing.value || props.music.playPending.value);
-const visualOpen = ref(props.music.drawer.open);
-const morphing = ref(false);
-const drawerElement = ref(null);
-const panelElement = ref(null);
-let musicTrigger = null;
-function openFromSettings() { musicTrigger = document.activeElement; if (!props.music.drawer.open) props.music.toggleShell(); }
-onMounted(() => window.addEventListener('tsukuyomi:music-open', openFromSettings));
-onBeforeUnmount(() => window.removeEventListener('tsukuyomi:music-open', openFromSettings));
-let epoch = 0;
-let animations = [];
-function cancelMorph() {
-  animations.forEach(animation => animation.cancel()); animations = [];
-  if (panelElement.value) panelElement.value.style.width = '';
-  morphing.value = false;
-}
-// Measure only when toggled, freeze the inner layout and morph its small outer
-// box. No polling, animation-frame loop or observer runs while music is playing.
-watch(() => props.music.drawer.open, async open => {
-  const id = ++epoch;
-  const element = drawerElement.value;
-  const from = element?.getBoundingClientRect();
-  cancelMorph();
-  visualOpen.value = open;
-  if (!open && musicTrigger?.isConnected) { musicTrigger.focus(); musicTrigger = null; }
-  await nextTick();
-  if (id !== epoch || !element || !from) return;
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) return;
-  const target = element.getBoundingClientRect();
-  if (!open) { visualOpen.value = true; await nextTick(); }
-  if (id !== epoch) return;
-  const panel = panelElement.value;
-  panel.style.width = `${open ? target.width : from.width}px`;
-  morphing.value = true;
-  await nextTick();
-  if (id !== epoch) return;
-  const options = { duration: open ? 320 : 260, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' };
-  const baseBottom = open ? target.bottom : from.bottom;
-  const animation = element.animate([
-    { width: `${from.width}px`, height: `${from.height}px`, transform: `translateY(${from.bottom - baseBottom}px)` },
-    { width: `${target.width}px`, height: `${target.height}px`, transform: `translateY(${target.bottom - baseBottom}px)` }
-  ], options);
-  const body = panel.querySelector('.site-music-body');
-  animations = [animation, body.animate(open ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0 }], options)];
-  try { await animation.finished; } catch { return; }
-  if (id !== epoch) return;
-  visualOpen.value = open;
-  await nextTick();
-  if (id === epoch) cancelMorph();
-}, { flush: 'pre' });
-onBeforeUnmount(() => { epoch++; cancelMorph(); });
+const dialog = useModalDialog(() => props.music.drawer.open);
+function closeBackdrop(event) { if (event.target === dialog.value) props.music.toggleShell(); }
 </script>
 
 <template>
-  <div ref="drawerElement" class="site-music-drawer" :class="{ 'is-open': visualOpen, 'is-morphing': morphing, 'is-playing': music.playing.value }">
-    <section ref="panelElement" class="site-music-panel" :data-material="visualOpen ? 'popover' : null" aria-label="Music player">
+  <dialog ref="dialog" class="site-music-drawer" aria-label="音乐播放器" @cancel.prevent="music.toggleShell()" @click="closeBackdrop">
+    <section class="site-music-panel"  aria-label="Music player">
       <div class="site-music-summary">
         <div
           class="music-cover site-music-cover"
@@ -97,7 +47,7 @@ onBeforeUnmount(() => { epoch++; cancelMorph(); });
             <TsIcon :name="active ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
           <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
-            <TsIcon :name="music.drawer.open ? 'chevronUp' : 'audioLines'" :size="17" :stroke-width="2.4" />
+            <TsIcon name="x" :size="17" :stroke-width="2.4" />
             <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
           </button>
         </div>
@@ -107,7 +57,7 @@ onBeforeUnmount(() => { epoch++; cancelMorph(); });
         <span :style="{ width: `${Math.min(100, Math.max(0, music.progress.value / 10))}%` }"></span>
       </div>
 
-      <div v-show="visualOpen" class="site-music-body" :inert="!music.drawer.open" :aria-hidden="!music.drawer.open">
+      <div class="site-music-body" :inert="!music.drawer.open" :aria-hidden="!music.drawer.open">
         <div class="music-progress-row site-music-progress-row">
           <span>{{ music.currentLabel.value }}</span>
           <input
@@ -173,5 +123,5 @@ onBeforeUnmount(() => { epoch++; cancelMorph(); });
         <SiteMusicLibrary :music="music" :lang="lang" />
       </div>
     </section>
-  </div>
+  </dialog>
 </template>

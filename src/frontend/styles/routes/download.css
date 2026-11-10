@@ -10,7 +10,7 @@
   .download-feature-list li, .download-web-link { display: inline-flex; align-items: center; gap: 7px; }
   .download-feature-list svg, .download-web-link { color: var(--ts-accent); }
   .download-web-link { font-size: 13px; text-decoration: none; }
-  .download-app-card { padding: 30px; background: var(--ts-surface-strong); border: 1px solid var(--ts-border); border-radius: 22px; box-shadow: var(--ts-editorial-shadow); }
+  .download-app-card { padding: 30px; background: var(--ts-surface-strong); border: 1px solid var(--ts-border); border-radius: 22px; box-shadow: var(--pages-shadow); }
   .download-app-identity { display: flex; align-items: center; gap: 18px; }
   .download-app-identity img { border-radius: 19px; object-fit: cover; flex: 0 0 76px; }
   .download-app-identity h2 { font-family: var(--ts-font-serif); font-size: 23px; }

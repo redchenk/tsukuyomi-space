@@ -40,7 +40,8 @@ test('site guide grounds instructions and shows source links on desktop and mobi
   await setup(page); let prompt = '', scope;
   await page.route('**/api/knowledge/search', route => { scope = route.request().postDataJSON().scope; return route.fulfill({ json: { success: true, data: { sources: [source], mode: 'hybrid' } } }); });
   await page.route('**/api/chat', route => { prompt = route.request().postDataJSON().systemPrompt; return route.fulfill({ json: { success: true, data: { reply: '先启动语音服务，再填写地址。' } } }); });
-  await page.goto('/hub'); await page.locator('button.site-pet').click();
+  await page.goto('/hub'); await page.locator('.header-account').click();
+  await page.getByRole('button', { name: '八千代使用向导', exact: true }).click();
   await page.locator('.site-guide-form textarea').fill('怎样连接语音？'); await page.locator('.site-guide-form button[type=submit]').click();
   await expect(page.locator('.site-guide-message.assistant')).toContainText('先启动语音服务');
   expect(scope).toBe('guide'); expect(prompt).toContain(source.content);

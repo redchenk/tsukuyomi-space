@@ -20,7 +20,7 @@ for (const width of [360, 390, 430, 768]) {
             for (const path of ['/hub', '/stage', '/plaza', '/gallery', '/pixel', '/room/settings']) {
                 await openPage(page, path, theme);
                 await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-                const toolbar = page.locator('.topbar');
+                const toolbar = page.locator('.site-header');
                 await expect(toolbar).toBeVisible();
                 const box = await toolbar.boundingBox();
                 expect(box.x).toBeGreaterThanOrEqual(0);
@@ -35,9 +35,9 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await openPage(page, '/stage');
     await page.evaluate(() => window.scrollTo({ top: 200, behavior: 'instant' }));
     const scrollY = await page.evaluate(() => window.scrollY);
-    const trigger = page.locator('.site-mobile-navigation-trigger');
+    const trigger = page.locator('.mobile-dock > button');
     await trigger.click();
-    const dialog = page.getByRole('dialog', { name: '更多' });
+    const dialog = page.locator('#site-navigation');
     await expect(dialog).toBeVisible();
     expect(await dialog.evaluate((node) => node.matches(':modal'))).toBe(true);
     await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
@@ -56,18 +56,18 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
-    await expect(trigger).toHaveClass(/active/);
-    await expect(page.locator('.site-brand small')).toHaveText('图库');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('main h1')).toHaveText('图库');
     await trigger.click();
     await page.mouse.click(5, 5);
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
 });
 
-test('navigation fits a landscape viewport and releases the page on desktop resize', async ({ page }) => {
+test('navigation remains usable across landscape and desktop resizing', async ({ page }) => {
     await page.setViewportSize({ width: 740, height: 390 });
     await openPage(page, '/plaza');
-    await page.locator('.site-mobile-navigation-trigger').click();
+    await page.locator('.mobile-dock > button').click();
     const dialog = page.locator('#site-navigation');
     const box = await dialog.boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
@@ -75,32 +75,33 @@ test('navigation fits a landscape viewport and releases the page on desktop resi
     await dialog.getByRole('button', { name: '日本語', exact: true }).scrollIntoViewIfNeeded();
     await expect(dialog.getByRole('button', { name: '日本語', exact: true })).toBeInViewport();
     await page.setViewportSize({ width: 1280, height: 600 });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
-    await page.locator('.desktop-navigation').getByRole('button', { name: '空间', exact: true }).click();
-    const agentLink = page.locator('#site-morph-navigation').getByRole('link', { name: /^Agent OS/ });
+    await page.locator('.desktop-nav button').click();
+    const agentLink = page.locator('#site-navigation').getByRole('link', { name: /^Agent OS/ });
     await agentLink.focus();
     await expect(agentLink).toBeInViewport();
     await page.keyboard.press('Escape');
-    await expect(page.locator('#site-morph-navigation')).not.toBeVisible();
+    await expect(page.locator('#site-navigation')).not.toBeVisible();
     await expect(dialog).not.toBeVisible();
 });
 
 test('mobile content, settings controls and empty states stay compact and usable', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 });
     await openPage(page, '/stage');
-    const firstArticle = page.locator('.stage-card').first();
+    const firstArticle = page.locator('.journal-title').first();
     await expect(firstArticle).toBeVisible();
     expect((await firstArticle.boundingBox()).y).toBeLessThan(500);
-    await page.locator('.stage-about summary').click();
-    await expect(page.locator('.stage-seo-intro')).toBeVisible();
+    await expect(page.locator('.stage-heading .section-subtitle')).toBeVisible();
     await page.route(/\/api\/(?:live\/[^/]+\/)?messages(?:\?|$)/, route => route.fulfill({ json: { success: true, data: { messages: [], activity: [], pagination: { total: 0, totalPages: 1, page: 1 } } } }));
     await page.goto('/plaza');
     await expect(page.locator('.plaza-wall')).toBeVisible();
     expect((await page.locator('.plaza-wall').boundingBox()).y).toBeLessThan(550);
     await expect(page.locator('.ts-empty-title').first()).toHaveCSS('border-top-width', '0px');
     await page.goto('/room/settings?section=llm');
-    await expect(page.locator('.site-brand small')).toHaveText('房间设置');
+    await expect(page.locator('main h1')).toHaveText('房间设置');
     await expect(page.locator('#settings-llm-model')).toHaveCSS('font-size', '16px');
 
     await settingsCategory(page, '语音与朗读');
@@ -140,11 +141,11 @@ test('account pages show their own navigation title on mobile', async ({ page })
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/hub$/);
-    for (const [path, title] of [['/user-center', '用户中心'], ['/notifications', '站内信'], ['/attachments', '附件库']]) {
+    for (const [path, title] of [['/user-center', 'e2e-user'], ['/notifications', '站内信'], ['/attachments', '附件库']]) {
         await page.goto(path);
         await expect(page.locator('#boot-splash')).toHaveCount(0);
     if (path === '/room') await waitForRoom(page);
-        await expect(page.locator('.site-brand small')).toHaveText(title);
+        await expect(page.locator('main h1')).toHaveText(title);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
 });

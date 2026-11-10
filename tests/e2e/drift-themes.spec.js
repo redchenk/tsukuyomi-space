@@ -2,12 +2,12 @@ const { test, expect } = require('../e2e-drift-fixtures.cjs');
 
 async function switchTheme(page, mode) {
     const label = mode === 'dark' ? '切换深色主题' : '切换浅色主题';
-    const toolbar = page.locator('.site-theme-button');
+    const toolbar = page.locator('.header-theme');
     if (await toolbar.isVisible()) await toolbar.click();
     else {
         await page.getByRole('button', { name: '账号菜单', exact: true }).click();
         await page.locator('#site-navigation').getByRole('button', { name: label, exact: true }).click();
-        await page.locator('#site-navigation .site-nav-drawer-head button').click();
+        await page.locator('#site-navigation .menu-heading button').click();
     }
     await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
 }

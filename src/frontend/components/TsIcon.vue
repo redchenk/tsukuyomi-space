@@ -8,6 +8,9 @@ const props = defineProps({
 });
 
 const iconPaths = {
+  arrowUpRight: [['path', { d: 'M7 17 17 7M7 7h10v10' }]],
+  arrowDown: [['path', { d: 'M12 4v16M5 13l7 7 7-7' }]],
+  logOut: [['path', { d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9' }]],
   monitor: [['rect', { x: '2', y: '3', width: '20', height: '14', rx: '2' }], ['path', { d: 'M8 21h8M12 17v4' }]],
   laptop: [['path', { d: 'M20 16V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11M2 16h20l-1 4H3Z' }]],
   smartphone: [['rect', { x: '6', y: '2', width: '12', height: '20', rx: '2' }], ['path', { d: 'M11 18h2' }]],

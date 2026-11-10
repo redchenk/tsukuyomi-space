@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
 
           <section id="world" class="wiki-section" data-wiki-section tabindex="-1">
             <div class="wiki-section-heading"><span>04</span><div><small>GLOSSARY</small><h2>世界观与术语</h2></div></div>
-            <p>点击正文中的蓝紫色词条可快速查看解释；这里保留完整词条位置，方便复制链接和交叉阅读。</p>
+            <p>点击正文中带颜色的词条可快速查看解释；这里保留完整词条位置，方便复制链接和交叉阅读。</p>
             <div class="wiki-term-grid">
               <article v-for="term in localizedWiki.terms.filter((entry) => !entry.id.match(/remember|reply/))" :id="term.target" :key="term.id" class="wiki-term-card" tabindex="-1">
                 <h3>{{ term.label }}</h3>

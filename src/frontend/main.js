@@ -6,21 +6,10 @@ import LoadingSkeleton from './components/LoadingSkeleton.vue';
 import StatusLoader from './components/StatusLoader.vue';
 import { router } from './router';
 import { configureAssetCssVars } from './utils/assetUrl';
-import { installImageBloom } from './utils/imageBloom';
 import { initializePerformanceProfile } from './utils/performance';
 import { uiText, prepareInterfaceLanguage } from './i18n/runtime';
 import { initializeSeasonTheme } from './composables/useSeasonTheme';
 import './styles/global.css';
-import './styles/image-bloom.css';
-import './styles/performance.css';
-import './styles/navigation.css';
-import './styles/navigation-art.css';
-import './styles/material-components.css';
-import './styles/material-pages.css';
-import './styles/seasons.css';
-import 'lenis/dist/lenis.css';
-import './styles/scroll-motion.css';
-import './styles/interaction.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();
@@ -41,9 +30,6 @@ const app = createApp(App);
 app.directive('segmented', segmented);
 app.directive('field-validation', fieldValidation);
 app.config.globalProperties.$ui = uiText;
-// Vue Teleport mounts dialogs beside #app, so observe the whole body to include
-// lightboxes and any future portal content that opts into image bloom.
-if (document.body) installImageBloom(document.body);
 
 app.component('LoadingSkeleton', LoadingSkeleton);
 app.component('StatusLoader', StatusLoader);

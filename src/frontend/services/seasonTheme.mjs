@@ -4,7 +4,8 @@ export const AVAILABLE_SEASONS = Object.freeze(['spring', 'summer', 'autumn', 'w
 export function normalizeSeasonPreference(value) {
   return {
     version: 1,
-    mode: ['auto', ...AVAILABLE_SEASONS].includes(value?.mode) ? value.mode : 'auto',
+    // Sakura is the site's default identity; calendar changes are opt-in.
+    mode: ['auto', ...AVAILABLE_SEASONS].includes(value?.mode) ? value.mode : 'spring',
     hemisphere: value?.hemisphere === 'south' ? 'south' : 'north'
   };
 }

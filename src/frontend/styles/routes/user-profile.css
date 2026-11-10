@@ -1,2 +1,2 @@
-@import url("../../../../assets/css/vue/pages/user-profile.css") layer(ts-page);
-@import url("../account-actions.css") layer(ts-editorial);
+@import url("../../../../assets/css/vue/pages/user-profile.css") layer(pages);
+@import url("../account-actions.css") layer(pages);

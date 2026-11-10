@@ -27,8 +27,8 @@ for (const scenario of [
     await expect(page).toHaveURL(/\/stage/);
     const before = await (await page.request.get('/api/growth/me')).json();
     expect(before.data.today.tasks[2].completed).toBe(false);
-    await page.locator('.stage-controls input[type="search"]').fill('成长任务验收文章');
-    await page.locator('.stage-card[data-article-id="987601"]').click();
+    await page.locator('.journal-search input[type="search"]').fill('成长任务验收文章');
+    await page.locator('.journal-row[data-article-id="987601"] .journal-title').click();
     await expect(page.locator('.article-reader h1')).toHaveText('成长任务验收文章');
     const recorded = page.waitForResponse(response => response.url().includes(`/user/${scenario.endpoint}/987601`) && response.request().method() === 'POST');
     await page.locator('.article-social-actions').getByRole('button', { name: scenario.button }).click();

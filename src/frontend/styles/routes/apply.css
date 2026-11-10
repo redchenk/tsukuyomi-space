@@ -14,7 +14,7 @@
 .apply-points li { display:flex; gap:10px; align-items:center; }
 .apply-points svg { color:var(--ts-accent); flex:none; }
 .apply-text-link { display:inline-flex; gap:10px; align-items:center; font-size:13px; font-weight:600; margin-top:4px; }
-.apply-card { padding:30px; border:1px solid var(--ts-border); border-radius:24px; background:var(--ts-surface-strong); box-shadow:var(--ts-editorial-shadow); min-width:0; }
+.apply-card { padding:30px; border:1px solid var(--ts-border); border-radius:24px; background:var(--ts-surface-strong); box-shadow:var(--pages-shadow); min-width:0; }
 .apply-card h2 { font-family:var(--ts-font-serif); font-size:24px; }
 .apply-page .apply-card-intro { color:var(--ts-muted); font-size:13px; margin:10px 0 22px; }
 .apply-page fieldset { border:0; padding:0; margin:0; min-width:0; }

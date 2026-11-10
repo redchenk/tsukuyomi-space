@@ -7,7 +7,7 @@ const sampleOrder = { id, title: '测试服务', description: '服务内容与�
 const json = data => ({ contentType: 'application/json', body: JSON.stringify({ success: true, data }) });
 async function authenticate(page, administrator = false) {
   const response = await page.request.post(administrator ? '/api/admin/login' : '/api/auth/login', {
-    headers: { Origin: 'http://127.0.0.1:4174', 'X-Requested-With': 'XMLHttpRequest' },
+    headers: { Origin: process.env.E2E_BASE_URL || 'http://127.0.0.1:4174', 'X-Requested-With': 'XMLHttpRequest' },
     data: administrator ? { username: 'admin', password: 'admin-test-password' } : { username: 'e2e-user', password: 'e2e-password' }
   });
   expect(response.status()).toBe(200);

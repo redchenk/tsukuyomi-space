@@ -17,6 +17,25 @@
 .boot-splash-retry { margin-top: 24px; color: #fff5ed; font: 13px/1.5 sans-serif; text-underline-offset: 5px; }
 .boot-splash-retry[hidden] { display: none; }
 .boot-splash[data-stalled] .boot-splash-line::after { animation: none; }
+/* The Access boot cover uses the same frame and crop as its Seedance scene. */
+.boot-splash[data-scene="water-mirror"] { background: #0b112c; transition: none; }
+.boot-splash[data-scene="water-mirror"]::before {
+  content: ''; position: absolute; inset: 0;
+  background: url('../assets/access/water-mirror/water-mirror-poster.webp') center / cover no-repeat;
+}
+.boot-splash[data-scene="water-mirror"] .boot-splash-content { display: none; }
+.boot-splash[data-scene="water-mirror"][data-stalled] .boot-splash-content {
+  display: block; position: relative; border-radius: 16px; background: #0b112cdd;
+}
+.boot-splash[data-scene="water-mirror"] .boot-splash-content > :not(.boot-splash-retry) { display: none; }
+.boot-splash[data-scene="water-mirror"] .boot-splash-retry { margin: 0; }
+@media (max-aspect-ratio: 5/6) {
+  .boot-splash[data-scene="water-mirror"]::before {
+    inset: 57% 0 auto; height: min(65svh, 122vw); translate: 0 -50%;
+    background-position: 33% 50%;
+    mask-image: linear-gradient(180deg, transparent, #000 15%, #000 84%, transparent);
+  }
+}
 @keyframes boot-orbit { to { transform: rotate(360deg); } }
 @keyframes boot-line { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) {

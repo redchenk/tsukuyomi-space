@@ -181,6 +181,7 @@ if (process.env.UI_PREVIEW_FIXTURES === 'true') {
         insertMessage.run('月下旅人', content, 'e2e-user-001', 'approved');
     }
 }
+if (process.env.JINGYUE_PREVIEW === 'true') require('./fixtures/jingyue-preview.cjs')({ db, sourceRoot, fixtureRoot });
 // A separate origin exercises the real 303 redirect, without external DNS or
 // Playwright route interception (which only sees the first URL in a redirect).
 const partnerKey = path.join(dataDir, 'partner-key.pem');
