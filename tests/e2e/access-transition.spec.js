@@ -22,6 +22,10 @@ async function pauseReveal(page) {
 for (const reducedMotion of ['no-preference', 'reduce']) {
   test(`Access reloads keep the Seedance scene without a separate brand animation (${reducedMotion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion });
+    // Inspect the transient cover before Access's 1.2-second recovery timer.
+    // A busy runner may deliver DOMContentLoaded after that timer has fired.
+    await page.clock.install({ time: new Date('2026-11-10T00:00:00Z') });
+    await page.clock.pauseAt(new Date('2026-11-10T00:00:01Z'));
     let releasePoster;
     let poster = new Promise(resolve => { releasePoster = resolve; });
     await page.route('**/*water-mirror-poster*.webp', async route => { await poster; await route.continue(); });
@@ -37,6 +41,7 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
       await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
       poster = new Promise(resolve => { releasePoster = resolve; });
     }
+    await page.clock.resume();
   });
 }
 
