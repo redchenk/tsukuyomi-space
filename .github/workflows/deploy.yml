@@ -1,61 +1,25 @@
-name: Moonlight Door release checks
+name: Moonlight Door scroll regression
 on: workflow_dispatch
 permissions:
   contents: read
-concurrency:
-  group: moonlight-door-release-checks
-  cancel-in-progress: false
 env:
-  ENTRY_CANDIDATE: 5663678f4dee81efa7be6561d96e02f132eac7c4
+  ENTRY_CANDIDATE: 62d7a349210566b7371335ffe3090092546a7ea8
 jobs:
-  build:
-    if: github.ref == 'refs/heads/codex/moonlight-entry-checks'
+  scroll:
+    if: github.ref == 'refs/heads/codex/moonlight-entry-scroll-check'
     runs-on: ubuntu-24.04
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.ENTRY_CANDIDATE }}
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.20.2
-          cache: npm
-      - run: npm ci
-      - name: Run unit and deployment safety checks
+          fetch-depth: 2
+      - name: Verify only the scroll test changed after the build
         run: |
-          python3 -m pip install sqlite-vec==0.1.6
-          npm test
-          python3 -m unittest discover -s tests -p 'deployment_safety_test.py'
-      - name: Build and smoke-test Docker runtime
-        run: |
-          docker build --target runtime -t tsukuyomi-ci:$ENTRY_CANDIDATE .
-          bash tests/docker-smoke.sh tsukuyomi-ci:$ENTRY_CANDIDATE
-      - name: Build domestic and overseas frontend
-        run: |
-          mkdir -p deployment-artifacts/domestic deployment-artifacts/overseas
-          npm run build:web
-          cp -a dist/frontend/. deployment-artifacts/domestic/
-          npm run build:web:overseas
-          cp -a dist/frontend/. deployment-artifacts/overseas/
           test "$(git rev-parse HEAD)" = "$ENTRY_CANDIDATE"
-          git rev-parse HEAD > deployment-artifacts/checked-source.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: production-dist
-          path: deployment-artifacts
-          if-no-files-found: error
-  chromium:
-    if: github.ref == 'refs/heads/codex/moonlight-entry-checks'
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.ENTRY_CANDIDATE }}
-          persist-credentials: false
+          test "$(git rev-parse HEAD^)" = '5663678f4dee81efa7be6561d96e02f132eac7c4'
+          test "$(git diff --name-only HEAD^ HEAD)" = 'tests/e2e/site-background.spec.js'
       - uses: actions/setup-node@v4
         with:
           node-version: 20.20.2
@@ -69,38 +33,4 @@ jobs:
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --project=chromium --project=chromium-mobile --shard=${{ matrix.shard }}/4 --trace=retain-on-failure
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: chromium-failures-${{ matrix.shard }}
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 3
-  webkit:
-    if: github.ref == 'refs/heads/codex/moonlight-entry-checks'
-    runs-on: macos-15
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.ENTRY_CANDIDATE }}
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.20.2
-          cache: npm
-      - run: npm ci
-      - run: npm run build:web
-      - run: npx playwright install webkit
-      - run: npm run test:e2e -- --project=webkit-iphone11 --project=webkit-mobile --workers=2 --shard=${{ matrix.shard }}/3 --trace=retain-on-failure
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: webkit-failures-${{ matrix.shard }}
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 3
+      - run: npm run test:e2e -- --project=chromium --project=chromium-mobile tests/e2e/site-background.spec.js tests/e2e/access-transition.spec.js
