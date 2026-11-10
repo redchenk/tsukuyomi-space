@@ -10,7 +10,7 @@ import subprocess
 import time
 import urllib.request
 
-CANDIDATE = '1732bbc61721cc3e4ecbf8a52fb4f5bb491ccb2e'
+CANDIDATE = 'cf1b10eeef98741daaeaff640ff22985352676ab'
 RELEASE = 'water-mirror-entry'
 stage = Path(__file__).resolve().parent
 site, action, attempt = sys.argv[1:]

@@ -25,18 +25,19 @@ jobs:
           import json, subprocess
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', 'repos/redchenk/tsukuyomi-space/' + path]))
-          sha = '1732bbc61721cc3e4ecbf8a52fb4f5bb491ccb2e'
+          sha = 'cf1b10eeef98741daaeaff640ff22985352676ab'
           old_base = '0a03a7aaf876e0ed22b4216644ea36d5bfb047e7'
           pr = api('pulls/51')
-          run = api('actions/runs/42757386264')
+          run = api('actions/runs/42758077348')
           assert pr['merged'] and pr['head']['sha'] == sha and pr['base']['ref'] == 'main'
           assert run['status'] == 'completed' and run['conclusion'] == 'success'
-          assert run['event'] == 'pull_request' and run['head_sha'] == sha
+          assert run['event'] == 'workflow_dispatch' and run['head_branch'] == 'codex/water-mirror-checks'
+          assert run['head_sha'] == 'c6e57b55f430deaa620438c61256e74862d21dac'
           assert run['path'] == '.github/workflows/deploy.yml'
-          assert any(pull['number'] == 51 for pull in run['pull_requests'])
-          jobs = api('actions/runs/42757386264/jobs?per_page=100')['jobs']
+          jobs = api('actions/runs/42758077348/jobs?per_page=100')['jobs']
           checks = {job['name']: job['conclusion'] for job in jobs}
-          assert checks['check'] == checks['check-webkit'] == 'success'
+          expected = {'build'} | {f'chromium ({i})' for i in range(1, 5)} | {f'webkit ({i})' for i in range(1, 4)}
+          assert set(checks) == expected and all(result == 'success' for result in checks.values())
           main = api('commits/main')
           assert main['sha'] == pr['merge_commit_sha']
           assert [parent['sha'] for parent in main['parents']] == [old_base]
@@ -47,10 +48,12 @@ jobs:
         with:
           name: production-dist
           path: checked-frontend
-          run-id: 42757386264
+          run-id: 42758077348
           github-token: ${{ github.token }}
       - name: Prepare deltas from the checked builds
-        run: python3 .water-mirror-release/pack.py checked-frontend
+        run: |
+          test "$(cat checked-frontend/checked-source.txt)" = 'cf1b10eeef98741daaeaff640ff22985352676ab'
+          python3 .water-mirror-release/pack.py checked-frontend
       - name: Upload domestic delta
         uses: appleboy/scp-action@v0.1.7
         with:
