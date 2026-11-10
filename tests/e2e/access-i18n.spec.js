@@ -13,7 +13,7 @@ async function openSettingsNavigation(page) {
 for (const size of [{width:390,height:844},{width:320,height:568},{width:844,height:390}]) {
  test(`access entry is visible before any gesture at ${size.width}x${size.height}`, async({page})=>{
   await page.setViewportSize(size);
-  await page.route('**/*moon-gate*.mp4',route=>route.abort());
+  await page.route('**/*water-mirror*.mp4',route=>route.abort());
   await page.goto('/');
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   const enter=page.locator('.access-enter');await expect(enter).toBeVisible();await expect(enter).toBeInViewport();

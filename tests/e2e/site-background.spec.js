@@ -24,14 +24,14 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 
     });
 }
 
-test('account pages share the artwork; entry video and Room scene are preserved', async ({ page }) => {
+test('account pages share the artwork; Access and Room have dedicated artwork', async ({ page }) => {
     for (const path of ['/login', '/register', '/stage', '/wiki', '/room/settings']) {
         await page.goto(path);
         await expect(page.locator('.site-global-bg')).toHaveCSS('background-image', /background-(?:light|dark)-[^/]+\.webp/);
     }
     await page.goto('/');
     await expect(page.locator('.site-global-bg')).toHaveCount(0);
-    await expect(page.locator('.access-video')).toHaveAttribute('autoplay', '');
+    await expect(page.locator('.access-film-poster')).toBeVisible();
     await page.locator('.access-enter').click();
     await expect(page).toHaveURL(/\/hub$/);
     await page.goto('/room');

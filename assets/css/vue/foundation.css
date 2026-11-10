@@ -56,27 +56,6 @@ a {
     z-index: 0;
 }
 
-.access-video,
-.access-overlay {
-    position: fixed;
-    inset: 0;
-}
-
-.access-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    opacity: 1;
-    background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%);
-}
-
-.access-overlay {
-    z-index: 1;
-    pointer-events: none;
-    background: linear-gradient(180deg, rgba(45,31,61,0.42) 0%, rgba(26,16,37,0.62) 50%, rgba(15,23,36,0.76) 100%);
-}
-
 .moon {
     position: fixed;
     top: 9vh;

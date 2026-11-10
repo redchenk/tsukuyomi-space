@@ -7,6 +7,7 @@ export const en = {
   accessOpening: 'Opening Tsukuyomi Space',
   accessReload: 'Reload entrance',
   accessRetry: 'Unable to load the page. Reload the entrance and try again.',
+  accessSound: 'Entrance music',
   accessPause: 'Pause background animation',
   accessPlay: 'Play background animation',
   accessCopyright: 'A non-profit fan community. All referenced artwork belongs to its original creators.',

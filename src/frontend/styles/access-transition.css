@@ -243,3 +243,19 @@
     .moon-entry-portrait { top: 7%; height: 83%; width: min(45vw, 450px); }
     .moon-entry-slogan { bottom: max(8%, calc(env(safe-area-inset-bottom) + 15px)); }
 }
+
+@property --access-mist-radius {
+    syntax: '<percentage>';
+    inherits: false;
+    initial-value: -35%;
+}
+.access-gate[data-water-mirror][data-phase="revealing"] {
+    mask-image: radial-gradient(circle farthest-corner at 50% 48%,
+      transparent var(--access-mist-radius), #000 calc(var(--access-mist-radius) + 32%));
+    will-change: mask-image, opacity;
+}
+.is-water-mirror .moon-entry-loading {
+    color: #524059;
+    background: #fff7f1e6;
+    width: max-content; max-width: 82%; margin-inline: auto; padding: 5px 10px; border-radius: 99px;
+}

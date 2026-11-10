@@ -61,10 +61,10 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const {
   gate: accessGate, phase: entryPhase, cinematic: entryCinematic, fromAccess: entryFromAccess,
-  failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
+  canPlayIntro, failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
   enter: enterSpace, startDirect: startDirectEntry, skip: skipEntry
 } = useAccessTransition({
-  route, router, onEntered: clicked => {
+  route, router, onEntrySound: () => music.startEntryMusic(), onEntered: clicked => {
     if (clicked) {
       try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
     }
@@ -463,8 +463,9 @@ onUnmounted(() => {
 
 <template>
   <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
-    :data-phase="entryPhase" :data-cinematic="entryCinematic || undefined" :inert="entryPhase === 'revealing'">
-    <AccessPage v-if="isAccessRoute || entryFromAccess" :t="t" :entering="entryActive" :entry-failed="entryFailed"
+    :data-phase="entryPhase" :data-cinematic="entryCinematic || undefined"
+    :data-water-mirror="(entryCinematic && entryFromAccess) || undefined" :inert="entryPhase === 'revealing'">
+    <AccessPage v-if="isAccessRoute || entryFromAccess" :t="t" :entering="entryActive" :cinematic="entryCinematic" :can-play-intro="canPlayIntro" :entry-failed="entryFailed"
       :inert="entryCinematic"
       @enter="enterSpace" @warm="warmRoutePath('/hub')" />
     <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" :from-access="entryFromAccess"

@@ -63,6 +63,8 @@ export function useRoomMusic() {
   const order = createPlaybackOrder();
   const playIntent = ref(false);
   let playAttempt = 0;
+  let entryFadeFrame = 0;
+  let entryFadeStart = null;
   let destroyed = false;
   const coverUrl = ref('');
   const drawer = reactive({ volume: false, playlist: false, open: false });
@@ -193,6 +195,31 @@ export function useRoomMusic() {
     }
   }
 
+  function finishEntryFade() {
+    cancelAnimationFrame(entryFadeFrame);
+    entryFadeFrame = 0;
+    if (entryFadeStart) audio.removeEventListener('playing', entryFadeStart);
+    entryFadeStart = null;
+    audio.volume = volume.value;
+  }
+
+  function startEntryMusic() {
+    if (destroyed || playIntent.value || playing.value || volume.value === 0 || source.value !== 'local') return;
+    audio.volume = 0;
+    entryFadeStart = () => {
+      const started = performance.now();
+      const fade = now => {
+        const progress = Math.max(0, Math.min((now - started) / 1450, 1));
+        audio.volume = volume.value * progress;
+        if (progress < 1 && !audio.paused) entryFadeFrame = requestAnimationFrame(fade);
+        else finishEntryFade();
+      };
+      entryFadeFrame = requestAnimationFrame(fade);
+    };
+    audio.addEventListener('playing', entryFadeStart, { once: true });
+    void togglePlay().finally(() => { if (!playIntent.value) finishEntryFade(); });
+  }
+
   function next() {
     const index = order.next(trackIndex.value, tracks.length, mode.value);
     if (index !== null) return loadTrack(index, { play: playIntent.value, keepOrder: true });
@@ -237,7 +264,7 @@ export function useRoomMusic() {
 
   function setVolume(value) {
     volume.value = Math.max(0, Math.min(1, Number(value)));
-    audio.volume = volume.value;
+    finishEntryFade();
     localStorage.setItem('roomMusicVolume', String(volume.value));
   }
 
@@ -261,6 +288,7 @@ export function useRoomMusic() {
 
   function destroy() {
     destroyed = true; playIntent.value = false; playAttempt++;
+    finishEntryFade();
     ++loadEpoch;
     cloud.destroy();
     coverController?.abort();
@@ -284,12 +312,14 @@ export function useRoomMusic() {
     playing.value = !audio.paused;
   });
   audio.addEventListener('pause', () => {
+    if (entryFadeFrame || !playIntent.value) finishEntryFade();
     playing.value = false;
   });
   audio.addEventListener('error', () => {
     if (destroyed || !audio.getAttribute('src')) return;
     playIntent.value = false;
     playing.value = false;
+    finishEntryFade();
     loadedTrackIndex = -1;
     playbackError.value = '音频暂时无法加载，请点播放重试或换一首';
   });
@@ -313,6 +343,7 @@ export function useRoomMusic() {
     drawer,
     loadTrack,
     togglePlay,
+    startEntryMusic,
     next,
     prev,
     setVolume,

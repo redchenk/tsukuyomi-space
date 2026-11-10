@@ -1,5 +1,11 @@
 // Cut a hole in the covering surface, keeping the live destination underneath.
-export function animateCircleReveal(element, origin, { short = false } = {}) {
+export function animateCircleReveal(element, origin, { short = false, mist = false } = {}) {
+  if (mist && !short) {
+    return element.animate(
+      [{ '--access-mist-radius': '-35%', opacity: 1 }, { '--access-mist-radius': '108%', opacity: 0 }],
+      { duration: 560, easing: 'cubic-bezier(.25,.55,.38,1)', fill: 'forwards' }
+    );
+  }
   const width = window.innerWidth;
   const height = window.innerHeight;
   const x = Math.max(0, Math.min(width, origin.x));

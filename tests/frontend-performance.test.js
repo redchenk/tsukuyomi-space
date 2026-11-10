@@ -191,9 +191,8 @@ describe('constrained-device performance policy', () => {
         assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*left:\s*50%\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
         assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*max-height:[^}]*var\(--room-mobile-top-clearance\)/s);
         assert.match(room, /\.room-panel\.room-chat-panel\s*\{[^}]*left:\s*50%\s*!important[^}]*top:\s*auto\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
-        assert.match(accessPage, /disablepictureinpicture/);
-        assert.match(accessPage, /disableremoteplayback/);
-        assert.match(accessStyles, /\.access-video\s*\{[^}]*pointer-events:\s*none[^}]*touch-action:\s*none/s);
+        assert.doesNotMatch(accessPage, /<video/);
+        assert.match(accessStyles, /\.water-mirror-scene\s*\{[^}]*pointer-events:\s*none[^}]*touch-action:\s*none/s);
         assert.match(attachments, /let assetLoadController = null/);
         assert.match(attachments, /assetLoadController\?\.abort\(\)/);
         assert.match(attachments, /matchMedia\('\(max-width: 760px\)'\)\.matches \? 18 : 36/);
@@ -201,7 +200,7 @@ describe('constrained-device performance policy', () => {
         assert.match(attachments, /v-if="state\.totalPages > 1" class="attachments-pager"/);
     });
 
-    it('keeps Access copy legible over moving video backgrounds', () => {
+    it('keeps Access copy legible over moving backgrounds', () => {
         const readability = source('assets/css/vue/theme-readability.css');
 
         assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-kicker\s*\{[^}]*rgba\(255, 255, 255, 0\.9\)/s);

@@ -2,6 +2,8 @@
 *.mp4
 !src/frontend/assets/access/moon-gate-desktop-v1.mp4
 !src/frontend/assets/access/moon-gate-mobile-v1.mp4
+!src/frontend/assets/access/water-mirror/water-mirror-enter.mp4
+!src/frontend/assets/access/water-mirror/water-mirror-standby.mp4
 *.mov
 *.avi
 *.zip

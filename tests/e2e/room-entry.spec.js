@@ -49,6 +49,10 @@ test('SPA entry covers route loading, then reveals the same live room and releas
   await enterRoom(page);
   const splash = page.locator('.room-entry-splash');
   await expect(splash).toHaveAttribute('data-phase', 'loading');
+  await expect(splash.locator('.room-entry-poster')).toHaveAttribute('src', /moon-gate-poster/);
+  const film = splash.locator('.room-entry-film');
+  const mobile = await page.evaluate(() => matchMedia('(max-width: 760px)').matches);
+  await expect(film).toHaveAttribute('src', mobile ? /moon-gate-mobile/ : /moon-gate-desktop/);
   await expect(page).toHaveURL(/\/hub$/);
   await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   releaseChunk();
@@ -108,6 +112,7 @@ test('reduced motion fades; resizing and BFCache finish without leaving interact
   await completeRenderer(page);
   const splash = page.locator('.room-entry-splash');
   await expect(splash).toHaveAttribute('data-captured', 'true');
+  await expect(splash.locator('video')).toHaveCount(0);
   const effect = await splash.evaluate(node => {
     const effect = node.getAnimations()[0].effect;
     return { duration: effect.getTiming().duration, circular: effect.getKeyframes().some(frame => frame.clipPath) };
