@@ -49,10 +49,10 @@ test('SPA entry covers route loading, then reveals the same live room and releas
   await enterRoom(page);
   const splash = page.locator('.room-entry-splash');
   await expect(splash).toHaveAttribute('data-phase', 'loading');
-  await expect(splash.locator('.room-entry-poster')).toHaveAttribute('src', /moon-gate-poster/);
-  const film = splash.locator('.room-entry-film');
-  const mobile = await page.evaluate(() => matchMedia('(max-width: 760px)').matches);
-  await expect(film).toHaveAttribute('src', mobile ? /moon-gate-mobile/ : /moon-gate-desktop/);
+  const film = splash.getByRole('dialog', { name: '月光之门' });
+  await expect(film).toBeVisible();
+  await expect(film.locator('.moon-entry-corridor')).toHaveAttribute('src', /moonlight-corridor/);
+  await expect(film.locator('.moon-entry-frame')).toHaveCount(6);
   await expect(page).toHaveURL(/\/hub$/);
   await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   releaseChunk();
@@ -61,6 +61,8 @@ test('SPA entry covers route loading, then reveals the same live room and releas
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   const room = await page.locator('.room-page').elementHandle();
   await completeRenderer(page);
+  await expect.poll(() => film.locator('.moon-entry-portrait').evaluate(el =>
+    Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.3);
   await expect(splash).toHaveAttribute('data-captured', 'true');
   const timing = await splash.evaluate(node => node.getAnimations()[0].effect.getTiming().duration);
   expect(timing).toBe(650);
@@ -76,7 +78,7 @@ test('SPA entry covers route loading, then reveals the same live room and releas
   expect(await page.evaluate(() => window.roomInitCount)).toBe(1);
 });
 
-test('direct loads and full reloads hand the boot splash to Room until readiness', async ({ page }) => {
+test('direct loads and reloads hand off to Room, and skipping still waits for readiness', async ({ page }) => {
   await controlledRenderer(page);
   for (let visit = 0; visit < 2; visit++) {
     if (visit) await page.reload({ waitUntil: 'domcontentloaded' });
@@ -85,6 +87,11 @@ test('direct loads and full reloads hand the boot splash to Room until readiness
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
     await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
+    if (visit) {
+      await page.getByRole('button', { name: '跳过开场' }).press('Escape');
+      await expect(page.getByRole('dialog', { name: '月光之门' })).toHaveCount(0);
+      await expect(page.locator('.room-entry-splash')).toHaveAttribute('data-phase', 'loading');
+    }
     await completeRenderer(page);
     await expect(page.locator('.room-entry-splash')).toHaveCount(0);
   }
@@ -112,7 +119,7 @@ test('reduced motion fades; resizing and BFCache finish without leaving interact
   await completeRenderer(page);
   const splash = page.locator('.room-entry-splash');
   await expect(splash).toHaveAttribute('data-captured', 'true');
-  await expect(splash.locator('video')).toHaveCount(0);
+  await expect(splash.locator('.moonlight-entry')).toHaveCount(0);
   const effect = await splash.evaluate(node => {
     const effect = node.getAnimations()[0].effect;
     return { duration: effect.getTiming().duration, circular: effect.getKeyframes().some(frame => frame.clipPath) };

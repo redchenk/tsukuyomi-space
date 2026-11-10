@@ -1,5 +1,6 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { animateCircleReveal } from '../utils/circleReveal';
+import { playMoonlightEntry } from '../utils/moonlightEntryMotion';
 import { lockPageScroll } from '../utils/pageScrollLock';
 import { routeViewKey } from '../utils/routeNavigation';
 
@@ -8,27 +9,44 @@ const isRoom = route => ['room', 'roomShared'].includes(route.name);
 export function useRoomEntryTransition({ route, router }) {
   const splash = ref(null);
   const phase = ref('idle');
+  const cinematic = ref(false);
+  const loaded = ref(false);
+  const waiting = ref(false);
   const active = computed(() => phase.value !== 'idle');
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const connection = navigator.connection;
+  const motionAllowed = () => !motion.matches && !connection?.saveData;
   let pendingKey;
-  let startedAt = 0;
   let revision = 0;
+  let width;
+  let height;
+  let film;
+  let filmReady;
+  let glare;
   let animation;
   let deadline;
-  let delay;
   let releaseScroll;
-  let ready = false;
   let revealing = false;
+
+  function stopFilm() {
+    film?.dispose();
+    film = null;
+    cinematic.value = false;
+    waiting.value = false;
+  }
 
   function reset() {
     revision++;
     window.clearTimeout(deadline);
-    window.clearTimeout(delay);
     animation?.cancel();
     animation = null;
+    glare?.revert();
+    glare = null;
+    stopFilm();
     releaseScroll?.();
     releaseScroll = null;
     pendingKey = null;
-    ready = false;
+    loaded.value = false;
     revealing = false;
     phase.value = 'idle';
   }
@@ -37,17 +55,33 @@ export function useRoomEntryTransition({ route, router }) {
     const key = routeViewKey(to);
     if (pendingKey === key) return;
     reset();
+    const run = revision;
     pendingKey = key;
-    startedAt = performance.now();
+    width = window.innerWidth;
+    height = window.innerHeight;
     phase.value = 'loading';
+    cinematic.value = motionAllowed() && !document.hidden;
     releaseScroll = lockPageScroll(() => false);
     // Slow connections stay covered, with an escape route instead of a trap.
     deadline = window.setTimeout(() => {
-      if (phase.value === 'loading') phase.value = 'stalled';
+      if (phase.value !== 'loading') return;
+      stopFilm();
+      phase.value = 'stalled';
     }, 20000);
-    nextTick(() => {
-      if (!active.value) return;
+    filmReady = nextTick(async () => {
+      if (run !== revision) return;
       window.dispatchEvent(new CustomEvent('tsukuyomi:entry-ready', { detail: { handoff: true } }));
+      if (!cinematic.value) return;
+      const element = splash.value?.$el;
+      try {
+        film = playMoonlightEntry(element);
+      } catch (_) {
+        stopFilm();
+        return;
+      }
+      element.querySelector('.moon-entry-skip')?.focus({ preventScroll: true });
+      await film.finished;
+      if (run === revision && cinematic.value && !loaded.value) waiting.value = true;
     });
   }
 
@@ -56,17 +90,19 @@ export function useRoomEntryTransition({ route, router }) {
     revealing = true;
     const run = revision;
     window.clearTimeout(deadline);
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    await new Promise(resolve => {
-      delay = window.setTimeout(resolve, Math.max(0, (reduced ? 0 : 450) - (performance.now() - startedAt)));
-    });
+    await filmReady;
     if (run !== revision) return;
+    waiting.value = false;
     await nextTick();
+    if (run !== revision) return;
     const element = splash.value?.$el;
     if (!element) { reset(); return; }
-    const seal = element.querySelector('.boot-splash-seal').getBoundingClientRect();
+    const fullReveal = cinematic.value && !document.hidden;
     phase.value = 'revealing';
-    animation = animateCircleReveal(element, { x: seal.left + seal.width / 2, y: seal.top + seal.height / 2 });
+    if (fullReveal) glare = film.reveal();
+    animation = animateCircleReveal(element, { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+      { short: !fullReveal });
+    if (document.hidden) animation.finish();
     try { await animation.finished; } catch (_) { return; }
     if (run !== revision) return;
     reset();
@@ -74,11 +110,16 @@ export function useRoomEntryTransition({ route, router }) {
     document.querySelector('.room-page')?.focus({ preventScroll: true });
   }
 
+  function showError() {
+    window.clearTimeout(deadline);
+    stopFilm();
+    phase.value = 'error';
+  }
+
   function roomReady({ routeKey, error }) {
     if (routeKey !== pendingKey || !isRoom(route) || !active.value) return;
-    ready = true;
-    window.clearTimeout(deadline);
-    if (error) phase.value = 'error';
+    loaded.value = true;
+    if (error) showError();
     else reveal();
   }
 
@@ -90,34 +131,42 @@ export function useRoomEntryTransition({ route, router }) {
     if (failure && routeViewKey(to) === pendingKey && routeViewKey(route) !== pendingKey) reset();
   });
   const removeError = router.onError((_error, to) => {
-    if (routeViewKey(to) === pendingKey) {
-      window.clearTimeout(deadline);
-      phase.value = 'error';
-    }
+    if (routeViewKey(to) === pendingKey) showError();
   });
   watch(() => routeViewKey(route), () => {
     if (isRoom(route)) start(route);
     else reset();
   }, { immediate: true });
 
-  function finish() { animation?.finish(); }
-  function visibility() { if (document.hidden) finish(); }
+  function skip() {
+    if (animation) animation.finish();
+    else stopFilm();
+  }
+  function resize() {
+    if (animation || Math.abs(window.innerWidth - width) > 36 || Math.abs(window.innerHeight - height) > 100) skip();
+  }
+  function visibility() { if (document.hidden) skip(); }
+  function preference() { if (!motionAllowed()) skip(); }
   function restore(event) {
     if (!event.persisted || !active.value) return;
-    if (animation) finish();
-    else if (ready && phase.value !== 'error') reveal();
+    skip();
+    if (loaded.value && phase.value !== 'error') reveal();
   }
   function retry() { window.location.assign(pendingKey || '/room'); }
   function leave() { reset(); router.push('/hub'); }
-  window.addEventListener('resize', finish);
+  window.addEventListener('resize', resize);
   window.addEventListener('pageshow', restore);
   document.addEventListener('visibilitychange', visibility);
+  motion.addEventListener('change', preference);
+  connection?.addEventListener?.('change', preference);
   onUnmounted(() => {
     reset();
     removeGuard(); removeAfter(); removeError();
-    window.removeEventListener('resize', finish);
+    window.removeEventListener('resize', resize);
     window.removeEventListener('pageshow', restore);
     document.removeEventListener('visibilitychange', visibility);
+    motion.removeEventListener('change', preference);
+    connection?.removeEventListener?.('change', preference);
   });
-  return { splash, phase, active, roomReady, reveal, retry, leave };
+  return { splash, phase, active, cinematic, loaded, waiting, roomReady, reveal, retry, leave, skip };
 }

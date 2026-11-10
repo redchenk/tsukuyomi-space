@@ -26,16 +26,6 @@
 
 .room-entry-splash { overflow: hidden; transition: none; }
 .room-entry-splash[data-phase="revealing"] { will-change: clip-path; pointer-events: none; }
-.room-entry-media, .room-entry-media > :is(img, video), .room-entry-media::after {
-  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
-}
-.room-entry-media > :is(img, video) { display: block; object-fit: cover; }
-.room-entry-film { opacity: 0; }
-.room-entry-film.is-painted { opacity: 1; }
-.room-entry-media::after {
-  content: '';
-  background: radial-gradient(ellipse at center, #10142ca6 0%, #10142c70 45%, #10142c48 100%);
-}
 .room-entry-splash .boot-splash-content { position: relative; }
 .room-entry-detail { margin: 24px 0 0; color: #e9dce4b3; font: 13px/1.7 sans-serif; letter-spacing: .08em; }
 .room-entry-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 22px; }
