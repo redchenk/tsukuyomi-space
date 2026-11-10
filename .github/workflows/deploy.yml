@@ -25,16 +25,28 @@ jobs:
           import json, subprocess
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', 'repos/redchenk/tsukuyomi-space/' + path]))
-          sha = '5663678f4dee81efa7be6561d96e02f132eac7c4'
+          build_sha = '5663678f4dee81efa7be6561d96e02f132eac7c4'
+          sha = '62d7a349210566b7371335ffe3090092546a7ea8'
           pr = api('pulls/50')
           run = api('actions/runs/42725659987')
           assert pr['merged'] and pr['head']['sha'] == sha
-          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['status'] == 'completed' and run['conclusion'] == 'failure' and run['run_attempt'] == 1
           assert run['event'] == 'workflow_dispatch' and run['head_sha'] == '912d3e630959b1abf01c0ef0e2f7bc1a8f0b1704'
           jobs = api('actions/runs/42725659987/jobs?per_page=100')['jobs']
           expected = {'build'} | {f'chromium ({shard})' for shard in range(1, 5)} | {f'webkit ({shard})' for shard in range(1, 4)}
           assert len(jobs) == len(expected) and {job['name'] for job in jobs} == expected
-          assert all(job['conclusion'] == 'success' for job in jobs)
+          assert [(job['name'], job['id'], job['conclusion']) for job in jobs if job['conclusion'] != 'success'] == [
+              ('chromium (3)', 129530520910, 'failure')
+          ]
+          # The original shard only failed scroll assertions that ran before
+          # the intended intro finished. The follow-up covers that test and
+          # the entrance regression, with production files byte-identical.
+          scroll = api('actions/runs/42727370398')
+          assert scroll['status'] == 'completed' and scroll['conclusion'] == 'success'
+          assert scroll['event'] == 'workflow_dispatch' and scroll['head_sha'] == '0bcc9173dd98a7fa16a93879534379529c43f468'
+          changes = api(f'compare/{build_sha}...{sha}')
+          assert changes['status'] == 'ahead' and changes['ahead_by'] == 1
+          assert [item['filename'] for item in changes['files']] == ['tests/e2e/site-background.spec.js']
           assert api('commits/main')['commit']['tree']['sha'] == api('commits/' + sha)['commit']['tree']['sha']
           CHECK
       - name: Download checked builds
