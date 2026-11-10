@@ -7,8 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      environment_release:
-        description: Stage locked dependencies with backup and rollback
+      frontend_only:
+        description: Publish frontend assets while preserving server source and dependencies
         required: false
         default: false
         type: boolean
@@ -137,6 +137,7 @@ jobs:
           path: deployment-artifacts
 
       - name: Create incremental deployment bundle
+        if: ${{ !inputs.frontend_only }}
         shell: bash
         run: |
           cd deployment-source
@@ -174,6 +175,7 @@ jobs:
           overwrite: true
 
       - name: Upload deployment bundle
+        if: ${{ !inputs.frontend_only }}
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -196,15 +198,17 @@ jobs:
             set -eu
             stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
             state=/var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
+            set -- --retire-room-artwork --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle
+            if [ "${{ inputs.frontend_only }}" = true ]; then
+              set -- --frontend-only
+            fi
             bash "$stage/deployment-source/deploy/prepare-lightweight-release.sh" \
               --site domestic --state "$state" \
               --root /var/www/tsukuyomi-space --frontend /var/www/tsukuyomi-space/dist/frontend \
               --artifact "$stage/deployment-artifacts/domestic" \
               --base-url https://yachiyo.hk --resolve yachiyo.hk:443:127.0.0.1 \
-              --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle \
               --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets \
-              --retire-room-artwork \
-              ${{ github.event_name == 'workflow_dispatch' && inputs.environment_release && '--environment-release' || '' }}
+              "$@"
 
       - name: Prepare overseas release
         id: prepare_overseas
@@ -219,12 +223,16 @@ jobs:
             set -eu
             stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
             state=/var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
+            set -- --retire-room-artwork
+            if [ "${{ inputs.frontend_only }}" = true ]; then
+              set -- --frontend-only
+            fi
             bash "$stage/deployment-source/deploy/prepare-lightweight-release.sh" \
               --site overseas --state "$state" \
               --root /opt/1panel/www/sites/tsukuyomi-space.com/frontend --frontend /opt/1panel/www/sites/tsukuyomi-space.com/frontend \
               --artifact "$stage/deployment-artifacts/overseas" \
               --base-url https://tsukuyomi-space.com --resolve tsukuyomi-space.com:443:127.0.0.1 \
-              --retire-room-artwork
+              --commit ${{ github.sha }} "$@"
 
       - name: Activate domestic release
         uses: appleboy/ssh-action@v1.0.3

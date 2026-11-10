@@ -413,6 +413,10 @@ def check_frontend_target(state):
     require(index.is_file() and not index.is_symlink(), 'Frontend index is missing or symlinked')
 
 
+def publishes_code(state):
+    return state['site'] == 'domestic' and not state.get('frontend_only', False)
+
+
 def prepare(args):
     state_dir = Path(args.state).absolute()
     require(not state_dir.exists(), 'Release state already exists; use a new release id')
@@ -420,8 +424,14 @@ def prepare(args):
     frontend = Path(args.frontend).absolute()
     require(root.is_dir() and frontend.is_dir(), 'Existing application/frontend directory is required')
     require((frontend / 'index.html').is_file() and not (frontend / 'index.html').is_symlink(), 'Existing regular index.html is required for rollback')
+    frontend_only = bool(getattr(args, 'frontend_only', False))
+    require(not frontend_only or not any((getattr(args, 'environment_release', False),
+                                         getattr(args, 'brand_artifact', None),
+                                         getattr(args, 'retire_room_artwork', False))),
+            'Frontend-only releases cannot change dependencies or protected resources')
     files = frontend_files(args.artifact, frontend)
     state = dict(format='tsukuyomi-release-v1', site=args.site, root=str(root), frontend=str(frontend), frontend_real=str(frontend.resolve()),
+                 frontend_only=frontend_only, source_commit=getattr(args, 'commit', None),
                  artifact=str(Path(args.artifact).resolve()), state_dir=str(state_dir), status='preparing',
                  extra_resources=args.extra_resource, base_url=args.base_url, resolve=args.resolve,
                  files=files, index_before=sha(frontend / 'index.html'), index_after=sha(Path(args.artifact) / 'index.html'))
@@ -431,7 +441,7 @@ def prepare(args):
     retire_room_artwork = bool(getattr(args, 'retire_room_artwork', False))
     if retire_room_artwork:
         state['retired_artwork'] = dict(files=retired_artwork_files(root))
-    if args.site == 'domestic':
+    if publishes_code(state):
         require(args.bundle and args.commit, 'Domestic release requires a bundle and commit')
         git(root, 'fetch', str(Path(args.bundle).resolve()), 'refs/heads/codex-deploy')
         target = git(root, 'rev-parse', 'FETCH_HEAD').decode().strip()
@@ -473,7 +483,7 @@ def prepare(args):
         if hashes['before'] is not None:
             copy_atomic(root / name, state_dir / 'retired.before' / name)
     (state_dir / 'resources.json').write_text(json.dumps(resource_manifest(root, args.site, args.extra_resource, bool(brand_source), retire_room_artwork), sort_keys=True))
-    if args.site == 'domestic':
+    if publishes_code(state):
         (state_dir / 'server-edits.patch').write_bytes(git(root, 'diff', '--binary', 'HEAD', '--', *state['adopted']) if state['adopted'] else b'')
         index = git(root, 'rev-parse', '--git-path', 'index').decode().strip()
         state['git_index'] = str((root / index).resolve())
@@ -487,6 +497,11 @@ def prepare(args):
 
 def restart(state):
     if state['site'] == 'domestic':
+        if state.get('frontend_only', False):
+            # The API caches the HTML shell. Reload its existing PM2 definition
+            # without replacing source, dependencies or environment settings.
+            subprocess.check_call(['pm2', 'reload', 'tsukuyomi-api'], cwd=state['root'])
+            return
         subprocess.check_call(['pm2', 'startOrReload', 'deploy/ecosystem.config.cjs', '--update-env'], cwd=state['root'])
         subprocess.check_call(['pm2', 'save'], cwd=state['root'])
 
@@ -499,7 +514,7 @@ def activate(state):
     verify_brand(state, 'before')
     verify_retired_artwork(state, 'before')
     frontend_files(state['artifact'], state['frontend_real'])
-    if state['site'] == 'domestic':
+    if publishes_code(state):
         require(git(state['root'], 'rev-parse', 'HEAD').decode().strip() == state['before'], 'Server HEAD changed after preparation')
         check_git(state['root'], state['before'], state['target'], state.get('environment_release', False),
                   bool(state.get('brand')), bool(state.get('retired_artwork')))
@@ -509,7 +524,7 @@ def activate(state):
         require(not any(beneath(name, untracked) for name in state['paths']), 'Incoming code collides with new server files')
     state['status'] = 'activating'
     save(state)
-    if state['site'] == 'domestic':
+    if publishes_code(state):
         # Adopt only byte-identical incoming fixes, preserving existing content.
         for name in state['adopted']:
             require((Path(state['root']) / name).read_bytes() == git(state['root'], 'show', state['target'] + ':' + name), 'Server edit changed after preparation')
@@ -523,10 +538,12 @@ def activate(state):
             copy_atomic(Path(state['artifact']) / name, Path(state['frontend_real']) / name)
     # Publish the entry only after every immutable asset is available.
     copy_atomic(Path(state['artifact']) / 'index.html', Path(state['frontend_real']) / 'index.html')
-    if state['site'] == 'domestic':
+    if publishes_code(state):
         env = dict(os.environ, APP_DIR=state['root'], BUILD_ON_SERVER='false', INSTALL_NGINX_CONFIG='false',
                    HARDEN_OPENRESTY_ORIGIN='false', INSTALL_SERVER_MAINTENANCE='false')
         subprocess.check_call(['bash', 'deploy/deploy.sh', '--code-only'], cwd=state['root'], env=env)
+    elif state.get('frontend_only', False):
+        restart(state)
     state['status'] = 'active'
     save(state)
     verify(state)
@@ -627,7 +644,7 @@ def rollback(state):
             'Refusing rollback over a newer or manually edited frontend entry')
     verify_brand(state, mixed=True)
     verify_retired_artwork(state, mixed=True)
-    if state['site'] == 'domestic':
+    if publishes_code(state):
         head = git(state['root'], 'rev-parse', 'HEAD').decode().strip()
         require(head in (state['before'], state['target']), 'Refusing rollback over a newer server commit')
         if state['paths']:
@@ -663,6 +680,7 @@ def main():
     parser.add_argument('--base-url')
     parser.add_argument('--resolve', default='')
     parser.add_argument('--extra-resource', action='append', default=[])
+    parser.add_argument('--frontend-only', action='store_true', help='Publish built frontend files while preserving the existing server checkout and dependencies')
     parser.add_argument('--environment-release', action='store_true', help='Stage locked dependencies with verbatim rollback of the prior tree')
     parser.add_argument('--brand-artifact', help='Explicitly publish only six approved favicon/manifest/icon files, with hash checks and rollback')
     parser.add_argument('--retire-room-artwork', action='store_true', help='Retire only the two hash-pinned obsolete Room illustrations, with backups and rollback')
