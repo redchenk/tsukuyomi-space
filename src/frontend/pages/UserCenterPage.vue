@@ -9,7 +9,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { apiUrl, authFetch, authHeaders, githubOAuthStartUrl, googleOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
-import googleIconUrl from '../../../assets/icons/google-login.png';
+import googleIconUrl from '../assets/icons/google-login.png';
 import { useGoogleOAuthEnabled } from '../services/googleOAuth';
 const googleOAuthEnabled = useGoogleOAuthEnabled();
 import UserLevelBadge from '../components/UserLevelBadge.vue';

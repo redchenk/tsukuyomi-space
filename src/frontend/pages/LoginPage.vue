@@ -3,7 +3,7 @@ import "../styles/jingyue/auth.css";
 import { computed, onMounted, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
-import googleIconUrl from '../../../assets/icons/google-login.png';
+import googleIconUrl from '../assets/icons/google-login.png';
 import { useGoogleOAuthEnabled } from '../services/googleOAuth';
 const googleOAuthEnabled = useGoogleOAuthEnabled();
 import { uiText } from '../i18n/runtime';
