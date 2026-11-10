@@ -96,8 +96,11 @@ test('the circle reveals a single live Hub that updates and survives the transit
   await entry(page);
   await page.locator('.access-enter').click();
   const gate = page.locator('.access-gate');
+  await expect(gate.getByRole('dialog', { name: '月光之门' })).toBeVisible();
+  await expect(gate.locator('.moon-entry-corridor')).toHaveJSProperty('complete', true);
   await expect(gate).toHaveAttribute('data-captured', 'true');
   await expect(page.locator('.hub')).toHaveCount(1);
+  await expect(page.locator('.hub-actions a')).toHaveCount(2);
   await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   await expect(gate).toHaveCSS('clip-path', /^path\(evenodd/);
   expect(await gate.evaluate(node => node.getAnimations()[0].effect.getTiming().duration)).toBe(650);
@@ -198,7 +201,12 @@ for (const size of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
   });
 }
 
-test('direct Hub visits and full reloads show splash until the app is ready', async ({ page }) => {
+test('the first direct Hub visit plays the entrance and the same tab skips it on reload and re-entry', async ({ page }) => {
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      if (document.querySelector('.moonlight-entry')) document.documentElement.dataset.moonlightPlayed = 'true';
+    }).observe(document, { childList: true, subtree: true });
+  });
   let releaseBundle;
   let bundle = new Promise(resolve => { releaseBundle = resolve; });
   await page.route('**/assets/index-*.js', async route => { await bundle; await route.continue(); });
@@ -206,15 +214,24 @@ test('direct Hub visits and full reloads show splash until the app is ready', as
   await expect(page.locator('#boot-splash')).toBeVisible();
   releaseBundle();
   await expect(page.locator('#boot-splash')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '月光之门' })).toBeVisible();
+  await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   await expect(page.locator('.hub')).toBeVisible();
+  await page.getByRole('button', { name: '跳过开场' }).click();
   await expect(page.locator('#boot-splash, .access-gate')).toHaveCount(0);
+  await expect(page.locator('.hub h1')).toBeFocused();
   bundle = new Promise(resolve => { releaseBundle = resolve; });
   await page.reload({ waitUntil: 'commit' });
   await expect(page.locator('#boot-splash')).toBeVisible();
   releaseBundle();
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.hub')).toBeVisible();
-  await expect(page.locator('.access-gate')).toHaveCount(0);
+  await expect(page.locator('html')).not.toHaveAttribute('data-moonlight-played', 'true');
+  await expect(page.locator('.site-pet-route-hub .site-pet')).toBeEnabled();
+  await entry(page);
+  await page.locator('.access-enter').click();
+  await expect(page.locator('.hub h1')).toBeFocused();
+  await expect(page.locator('html')).not.toHaveAttribute('data-moonlight-played', 'true');
 });
 
 test('a failed application bundle exposes a reload action instead of an endless splash', async ({ page }) => {

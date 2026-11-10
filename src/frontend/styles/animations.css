@@ -60,6 +60,18 @@
     50% { filter: drop-shadow(0 0 10px rgba(174, 242, 255, 0.48)); }
 }
 
+.moonlight-arriving .site-music-handle svg {
+    animation: ts-moonlight-music-arrival 610ms ease-out both;
+    transform-origin: center;
+}
+
+@keyframes ts-moonlight-music-arrival {
+    0% { transform: scaleY(.72); opacity: .48; }
+    35% { transform: scaleY(1.27); filter: drop-shadow(0 0 7px #ffd99e); opacity: 1; }
+    65% { transform: scaleY(.9); }
+    100% { transform: scaleY(1); }
+}
+
 @keyframes ts-glass-breathe {
     0%, 100% {
         box-shadow:
