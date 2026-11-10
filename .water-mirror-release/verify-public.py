@@ -19,7 +19,8 @@ def verify(site, origin):
     assets = {build / ref.decode().lstrip('/') for ref in expected}
     for prefix in ('AccessPage-', 'RoomPage-', 'water-mirror-enter-', 'water-mirror-standby-',
                    'water-mirror-poster-', 'moon-gate-desktop-', 'moon-gate-mobile-', 'moon-gate-poster-'):
-        matches = list((build / 'assets').glob(prefix + '*'))
+        suffix = '*.js' if prefix in ('AccessPage-', 'RoomPage-') else '*'
+        matches = list((build / 'assets').glob(prefix + suffix))
         assert len(matches) == 1, (site, prefix, matches)
         assets.update(matches)
     def check(path):
