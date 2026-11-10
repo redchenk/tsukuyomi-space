@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      environment_release:
+        description: Stage locked dependencies with backup and rollback
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   # PR checks do not touch servers. Only main/deployment runs share the
@@ -197,7 +203,8 @@ jobs:
               --base-url https://yachiyo.hk --resolve yachiyo.hk:443:127.0.0.1 \
               --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle \
               --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets \
-              --retire-room-artwork
+              --retire-room-artwork \
+              ${{ github.event_name == 'workflow_dispatch' && inputs.environment_release && '--environment-release' || '' }}
 
       - name: Prepare overseas release
         id: prepare_overseas
