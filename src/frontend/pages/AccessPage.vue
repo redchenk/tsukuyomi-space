@@ -9,7 +9,6 @@ const props = defineProps({
   t: { type: Object, required: true },
   entering: Boolean,
   cinematic: Boolean,
-  canPlayIntro: Boolean,
   entryFailed: Boolean
 });
 const emit = defineEmits(['enter', 'warm']);
@@ -71,7 +70,6 @@ onBeforeUnmount(() => {
 <template>
   <main class="page center-page access-page" :aria-busy="entering">
     <WaterMirrorScene ref="scene" :allow-motion="motionAllowed"
-      :allow-intro="motionAllowed && (canPlayIntro || cinematic)"
       :moving="motionAllowed && !userPaused && (!entering || cinematic)" @ready="entryReady" />
     <div class="access-content">
       <header class="access-brand">

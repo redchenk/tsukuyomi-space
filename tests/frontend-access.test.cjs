@@ -70,7 +70,7 @@ function access(props, preferences) {
     return state;
 }
 
-function scene(props = { allowMotion: true, allowIntro: true, moving: true }) {
+function scene(props = { allowMotion: true, moving: true }) {
     const state = setup('src/frontend/components/WaterMirrorScene.vue',
         ['idle', 'painted', 'syncIdle', 'onPlaying', 'onError'], props);
     const callbacks = new Map();

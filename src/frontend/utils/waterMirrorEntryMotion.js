@@ -1,12 +1,15 @@
+const START_TIMEOUT_MS = 4500;
+const PLAYBACK_TIMEOUT_MS = 9000;
+
 export function playWaterMirrorEntry(gate) {
   const video = gate?.querySelector('.access-film-intro');
   const idle = gate?.querySelector('.access-film-idle');
   const mist = gate?.querySelector('.access-film-mist');
+  const portrait = window.matchMedia('(max-aspect-ratio: 5/6)').matches;
   let resolve;
   let settled = false;
   let presented = false;
   let frameId;
-  let paintId;
   let deadline;
   let veilTimer;
   const animations = [];
@@ -22,9 +25,8 @@ export function playWaterMirrorEntry(gate) {
     clearTimeout(deadline);
     clearTimeout(veilTimer);
     if (frameId !== undefined) video?.cancelVideoFrameCallback?.(frameId);
-    if (paintId !== undefined) cancelAnimationFrame(paintId);
     video?.removeEventListener('playing', onPlaying);
-    video?.removeEventListener('timeupdate', centerMoon);
+    video?.removeEventListener('timeupdate', onTimeUpdate);
     video?.removeEventListener('ended', onEnded);
     video?.removeEventListener('error', onError);
     video?.pause();
@@ -39,9 +41,10 @@ export function playWaterMirrorEntry(gate) {
   function show() {
     if (settled || presented) return;
     presented = true;
+    if (!portrait) video.removeEventListener('timeupdate', onTimeUpdate);
     idle?.pause();
     clearTimeout(deadline);
-    deadline = setTimeout(onError, 7200);
+    deadline = setTimeout(onError, PLAYBACK_TIMEOUT_MS);
     // Keep the last visible idle pose underneath the new film until the
     // decoder has actually presented it. Both films use the same framing.
     animate(video, [{ opacity: 0 }, { opacity: 1 }], 240, 'ease-in-out');
@@ -50,21 +53,22 @@ export function playWaterMirrorEntry(gate) {
   }
 
   function onPlaying() {
-    if (settled || presented || frameId !== undefined || paintId !== undefined) return;
-    if (typeof video.requestVideoFrameCallback === 'function') {
-      const mark = (_, metadata) => {
-        if (settled) return;
-        if (metadata.mediaTime < .035) frameId = video.requestVideoFrameCallback(mark);
-        else show();
-      };
-      frameId = video.requestVideoFrameCallback(mark);
-    } else paintId = requestAnimationFrame(() => { paintId = requestAnimationFrame(show); });
+    if (settled || presented || frameId !== undefined || typeof video.requestVideoFrameCallback !== 'function') return;
+    const mark = (_, metadata) => {
+      if (settled || presented) return;
+      if (metadata.mediaTime < .035) frameId = video.requestVideoFrameCallback(mark);
+      else show();
+    };
+    frameId = video.requestVideoFrameCallback(mark);
   }
 
-  function centerMoon() {
+  function onTimeUpdate() {
+    // Some browsers do not report presented frames until the video is visible.
+    if (!presented && !video.paused && !video.seeking && video.currentTime >= .04
+      && video.readyState >= video.HAVE_CURRENT_DATA) show();
     const remaining = video.duration - video.currentTime;
-    if (!presented || !Number.isFinite(remaining) || remaining > 1.55) return;
-    video.removeEventListener('timeupdate', centerMoon);
+    if (!portrait || !presented || !Number.isFinite(remaining) || remaining > 1.55) return;
+    video.removeEventListener('timeupdate', onTimeUpdate);
     animate(video, [
       { objectPosition: getComputedStyle(video).objectPosition },
       { objectPosition: '50% 50%' }
@@ -82,13 +86,14 @@ export function playWaterMirrorEntry(gate) {
   else {
     video.muted = true;
     video.addEventListener('playing', onPlaying);
-    if (window.matchMedia('(max-aspect-ratio: 5/6)').matches) {
-      video.addEventListener('timeupdate', centerMoon);
-    }
+    video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('ended', onEnded);
     video.addEventListener('error', onError);
-    deadline = setTimeout(onError, 1700);
-    try { video.play()?.catch(onError); } catch (_) { onError(); }
+    deadline = setTimeout(onError, START_TIMEOUT_MS);
+    try {
+      if (video.currentTime > 0) video.currentTime = 0;
+      video.play()?.catch(onError);
+    } catch (_) { onError(); }
   }
 
   return {

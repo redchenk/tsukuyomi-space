@@ -210,10 +210,10 @@ for (const size of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
   });
 }
 
-test('the first direct Hub visit plays the entrance and the same tab skips it on reload and re-entry', async ({ page }) => {
+test('the automatic Hub intro plays once, but the homepage button still plays the film', async ({ page }) => {
   await page.addInitScript(() => {
     new MutationObserver(() => {
-      if (document.querySelector('.moonlight-entry')) document.documentElement.dataset.moonlightPlayed = 'true';
+      if (document.querySelector('.moonlight-entry.is-direct')) document.documentElement.dataset.moonlightPlayed = 'true';
     }).observe(document, { childList: true, subtree: true });
   });
   let releaseBundle;
@@ -239,8 +239,41 @@ test('the first direct Hub visit plays the entrance and the same tab skips it on
   await expect(page.locator('.site-pet-route-hub .site-pet')).toBeEnabled();
   await entry(page);
   await page.locator('.access-enter').click();
+  const film = page.locator('.access-film-intro');
+  await expect(film).toHaveCSS('opacity', '1');
+  expect(await film.evaluate(video => video.currentTime)).toBeGreaterThan(0);
   await expect(page.locator('.hub h1')).toBeFocused();
   await expect(page.locator('html')).not.toHaveAttribute('data-moonlight-played', 'true');
+});
+
+test('a slow entrance video starts after the old startup timeout', async ({ page }) => {
+  let releaseVideo;
+  const videoReady = new Promise(resolve => { releaseVideo = resolve; });
+  await page.route('**/*water-mirror-enter-*.mp4', async route => {
+    await videoReady;
+    await route.continue();
+  });
+  await page.addInitScript(() => {
+    const original = HTMLVideoElement.prototype.requestVideoFrameCallback;
+    Object.defineProperty(HTMLVideoElement.prototype, 'requestVideoFrameCallback', {
+      configurable: true,
+      get() { return this.classList.contains('access-film-intro') ? undefined : original; }
+    });
+  });
+  await entry(page);
+  await page.locator('.access-enter').click();
+  const gate = page.locator('.access-gate');
+  try {
+    await expect(gate).toHaveAttribute('data-phase', 'loading');
+    // Simulate a first frame arriving after the previous 1.7-second cutoff.
+    await page.waitForTimeout(2200);
+    await expect(gate.locator('.access-film-intro')).toHaveCSS('opacity', '0');
+  } finally {
+    releaseVideo();
+  }
+  await expect(gate.locator('.access-film-intro')).toHaveCSS('opacity', '1');
+  await expect(gate).toHaveCount(0, { timeout: 11000 });
+  await expect(page.locator('.hub h1')).toBeFocused();
 });
 
 test('missing motion videos keeps the matching poster and does not block entry', async ({ page }) => {

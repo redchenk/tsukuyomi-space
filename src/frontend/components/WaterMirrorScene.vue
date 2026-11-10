@@ -4,7 +4,7 @@ import poster from '../assets/access/water-mirror/water-mirror-poster.webp';
 import standby from '../assets/access/water-mirror/water-mirror-standby.mp4';
 import entrance from '../assets/access/water-mirror/water-mirror-enter.mp4';
 
-const props = defineProps({ allowMotion: Boolean, allowIntro: Boolean, moving: Boolean });
+const props = defineProps({ allowMotion: Boolean, moving: Boolean });
 defineEmits(['ready']);
 const idle = ref(null);
 const painted = ref(false);
@@ -39,12 +39,12 @@ function syncIdle() {
 }
 
 function warm() {
-  if (!document.hidden && props.allowIntro) preload.value = 'auto';
+  if (!document.hidden && props.allowMotion) preload.value = 'auto';
 }
 
 function scheduleWarm() {
   clearTimeout(primeTimer);
-  if (props.allowIntro && preload.value !== 'auto') primeTimer = setTimeout(warm, 500);
+  if (props.allowMotion && preload.value !== 'auto') primeTimer = setTimeout(warm, 500);
 }
 
 function onError() {
@@ -53,8 +53,10 @@ function onError() {
 }
 
 watch(() => [props.moving, props.allowMotion], syncIdle, { flush: 'post' });
-watch(() => props.allowMotion, allowed => { if (!allowed) onError(); });
-watch(() => props.allowIntro, scheduleWarm);
+watch(() => props.allowMotion, allowed => {
+  if (!allowed) onError();
+  scheduleWarm();
+});
 onMounted(() => {
   mounted = true;
   document.addEventListener('visibilitychange', syncIdle);
@@ -81,7 +83,7 @@ defineExpose({ warm });
       <video v-if="allowMotion" ref="idle" class="access-film-idle" :class="{ 'is-painted': painted }"
         :src="standby" muted loop playsinline preload="metadata" disablepictureinpicture
         disableremoteplayback tabindex="-1" @playing="onPlaying" @error="onError"></video>
-      <video v-if="allowIntro" class="access-film-intro" :src="entrance" :preload="preload"
+      <video v-if="allowMotion" class="access-film-intro" :src="entrance" :preload="preload"
         muted playsinline disablepictureinpicture disableremoteplayback tabindex="-1"></video>
     </div>
     <div class="access-film-shade"></div>

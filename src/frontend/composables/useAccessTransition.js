@@ -31,7 +31,6 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
   const motionAllowed = () => !motion.matches && !navigator.connection?.saveData;
   let seen = false;
   try { seen = window.sessionStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch (_) {}
-  const canPlayIntro = ref(!seen);
   let directPending = /^\/hub\/?$/.test(window.location.pathname);
   const directIntro = directPending && !seen && motionAllowed();
   const gate = ref(null);
@@ -59,7 +58,7 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
     phase.value = 'idle';
   }
 
-  async function prepareHub(run, clicked, waitForArtwork) {
+  async function prepareHub(run, clicked) {
     const { signal } = run.controller;
     if (clicked) {
       await waitForResource(loadHubPage(), 12000, signal);
@@ -69,7 +68,7 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
       if (failure) throw failure;
     }
     await nextTick();
-    if (current !== run || route.name !== 'hub' || !waitForArtwork) return;
+    if (current !== run || route.name !== 'hub') return;
     progress.value = 77;
     const artwork = document.querySelector('.hub img[fetchpriority="high"]');
     if (artwork?.decode) await waitForResource(artwork.decode(), 900, signal, true);
@@ -80,7 +79,6 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
   }
 
   async function start(clicked, origin) {
-    const alreadySeen = seen;
     const run = {
       controller: new AbortController(),
       width: window.innerWidth,
@@ -91,7 +89,7 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
     current = run;
     phase.value = 'loading';
     fromAccess.value = clicked;
-    cinematic.value = !alreadySeen && motionAllowed() && !run.skipped;
+    cinematic.value = motionAllowed() && !run.skipped;
     failed.value = false;
     progress.value = clicked ? 0 : 55;
 
@@ -104,7 +102,6 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
       if (cinematic.value) {
         if (!clicked) run.film = playMoonlightEntry(gate.value);
         seen = true;
-        canPlayIntro.value = false;
         try { window.sessionStorage.setItem(INTRO_SEEN_KEY, '1'); } catch (_) {}
         gate.value.querySelector('.moon-entry-skip')?.focus({ preventScroll: true });
       }
@@ -112,24 +109,22 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
         if (current === run && progress.value < 100) waiting.value = true;
         return completed;
       });
-      const [, filmCompleted] = await Promise.all([prepareHub(run, clicked, !alreadySeen), prelude]);
+      const [, filmCompleted] = await Promise.all([prepareHub(run, clicked), prelude]);
       if (current !== run || route.name !== 'hub') return;
 
-      if (!alreadySeen) {
-        const fullReveal = cinematic.value && filmCompleted !== false && !run.skipped && !document.hidden;
-        phase.value = 'revealing';
-        if (fullReveal) {
-          run.glare = run.film.reveal?.();
-          run.musicShell = document.querySelector('.entry-destination-preparing');
-          run.musicShell?.classList.add('moonlight-arriving');
-          if (clicked) run.musicShell?.classList.add('water-mirror-arriving');
-        }
-        const center = fullReveal || !origin ? { x: window.innerWidth / 2, y: window.innerHeight / 2 } : origin;
-        run.reveal = animateCircleReveal(gate.value, center, { short: !fullReveal, mist: clicked });
-        if (document.hidden) run.reveal.finish();
-        await run.reveal.finished;
-        if (current !== run) return;
+      const fullReveal = cinematic.value && filmCompleted !== false && !run.skipped && !document.hidden;
+      phase.value = 'revealing';
+      if (fullReveal) {
+        run.glare = run.film.reveal?.();
+        run.musicShell = document.querySelector('.entry-destination-preparing');
+        run.musicShell?.classList.add('moonlight-arriving');
+        if (clicked) run.musicShell?.classList.add('water-mirror-arriving');
       }
+      const center = fullReveal || !origin ? { x: window.innerWidth / 2, y: window.innerHeight / 2 } : origin;
+      run.reveal = animateCircleReveal(gate.value, center, { short: !fullReveal, mist: clicked });
+      if (document.hidden) run.reveal.finish();
+      await run.reveal.finished;
+      if (current !== run) return;
       reset();
       await nextTick();
       onEntered(clicked);
@@ -214,5 +209,5 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
     document.removeEventListener('visibilitychange', onHidden);
     motion.removeEventListener('change', onMotionPreference);
   });
-  return { gate, phase, cinematic, fromAccess, canPlayIntro, failed, progress, waiting, enter, startDirect, skip };
+  return { gate, phase, cinematic, fromAccess, failed, progress, waiting, enter, startDirect, skip };
 }
