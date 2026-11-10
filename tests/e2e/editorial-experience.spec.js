@@ -256,7 +256,7 @@ test('gallery lightbox replaces the list thumbnail with the full image', async (
     await thumbnail.click();
     const fullImage = page.locator('.gallery-viewer-image > img');
     await expect(fullImage).toHaveAttribute('src', '/e2e-gallery-original.svg');
-    await expect(fullImage).toHaveAttribute('data-image-state', 'loaded');
+    await expect(fullImage).toHaveJSProperty('complete', true);
     await expect.poll(() => fullImage.evaluate((node) => node.naturalWidth)).toBe(1600);
 });
 

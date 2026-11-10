@@ -126,7 +126,7 @@ test('a modal closed before rendering never opens late and releases the scroll l
   const c = { ref: value => ({ value }), nextTick: () => tick.promise, document: { activeElement: { isConnected: true, focus: () => focused++ } },
     location: { pathname: '/stage', search: '' }, lockPageScroll: () => () => released++,
     watch: (_, callback) => { c.change = callback; callback(true); }, onBeforeUnmount: callback => { c.cleanup = callback; } };
-  const code = fs.readFileSync(path.join(__dirname, '../src/frontend/composables/useModalDialog.js'), 'utf8').replace(/^import .*;\n/gm, '').replace('export function', 'function');
+  const code = fs.readFileSync(path.join(__dirname, '../src/frontend/composables/useModalDialog.js'), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function');
   vm.runInNewContext(code + '\nthis.useModalDialog = useModalDialog;', c);
   const modal = c.useModalDialog(() => open);
   modal.value = { showModal: () => opened++, close() {} };

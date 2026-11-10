@@ -6,6 +6,7 @@ import { navigationCopy } from '../services/siteNavigation';
 import { alternateLanguage } from '../i18n';
 import { warmRoutePath } from '../router';
 import { lockPageScroll } from '../utils/pageScrollLock';
+import { keepModalFocus } from '../composables/useModalDialog';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import TsIcon from '../components/TsIcon.vue';
 import BeianLink from '../components/BeianLink.vue';
@@ -180,7 +181,7 @@ onUnmounted(() => {
         <a class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
     </header>
-    <dialog ref="navigationRef" id="site-navigation" class="site-navigation-dialog" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="backdrop">
+    <dialog ref="navigationRef" id="site-navigation" class="site-navigation-dialog" @keydown="keepModalFocus($event, navigationRef)" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="backdrop">
       <header class="menu-heading"><div><span class="eyebrow">{{ menuMode === 'account' ? 'YOUR SPACE' : 'TAKE YOUR TIME' }}</span><h2>{{ menuMode === 'account' ? (user?.nickname || copy.account) : copy.exploreTitle }}</h2></div><button class="icon-button" :aria-label="t.closeNavigation" autofocus @click="navOpen = false"><TsIcon name="x" :size="22" /></button></header>
       <template v-if="menuMode === 'explore'">
         <div class="explore-groups"><section v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>

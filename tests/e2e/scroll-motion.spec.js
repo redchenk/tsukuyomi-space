@@ -46,9 +46,10 @@ test('reduced motion leaves reading and native scrolling usable', async ({ page 
 test('search locks the document and releases scrolling and focus on Escape', async ({ page }) => {
   await ready(page);
   await page.evaluate(() => scrollTo(0, 400));
-  const before = await page.evaluate(() => scrollY);
   const trigger = page.locator('.header-search');
-  await trigger.focus(); await trigger.press('Enter');
+  await trigger.evaluate(el => el.focus({ preventScroll: true }));
+  const before = await page.evaluate(() => scrollY);
+  await trigger.press('Enter');
   const search = page.getByRole('dialog', { name: '想找些什么？' });
   await expect(search).toBeVisible();
   await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');

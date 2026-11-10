@@ -22,7 +22,8 @@ const page = ref(1), total = ref(0), totalPages = ref(1);
 const category = computed(() => String(route.query.category || ''));
 const order = computed(() => ['daily', 'featured'].includes(route.query.sort) ? route.query.sort : 'latest');
 const querySearch = computed(() => String(route.query.q || ''));
-let revision = 0, timer = 0, snapshot = '', loadedAt = 0, active = true;
+let revision = 0, timer = 0, snapshot = '', loadedAt = 0, active = true, loadedQuery = '';
+const queryKey = () => JSON.stringify([category.value, order.value, querySearch.value, route.query.page || 1, props.lang]);
 const stageGrid = ref(null);
 const discoveryTracker = createArticleDiscoveryTracker();
 const discoveryContext = () => ({ page: page.value, limit: STAGE_PAGE_SIZE, category: category.value, search: querySearch.value, sort: order.value, snapshot });
@@ -42,6 +43,7 @@ function setFilter(key, value) {
 async function load(more = false, background = false) {
   if (more && (loadingMore.value || page.value >= totalPages.value)) return;
   const run = ++revision;
+  const requestedQuery = queryKey();
   const requestPage = more ? page.value + 1 : Math.max(1, Number.parseInt(route.query.page, 10) || 1);
   if (more) loadingMore.value = true;
   else if (!background) { loading.value = true; snapshot = ''; }
@@ -52,7 +54,7 @@ async function load(more = false, background = false) {
     const existing = more ? articles.value : [];
     articles.value = [...new Map([...existing, ...result.articles].map(article => [article.id, article])).values()];
     page.value = result.pagination.page; total.value = result.pagination.total; totalPages.value = result.pagination.totalPages;
-    snapshot = result.recommendationSnapshot; loadedAt = Date.now();
+    snapshot = result.recommendationSnapshot; loadedAt = Date.now(); loadedQuery = requestedQuery;
     hydrateUserLevels(result.articles.map(article => article.author_id)).catch(() => {});
   } catch (cause) {
     if (run !== revision) return;
@@ -65,7 +67,8 @@ async function load(more = false, background = false) {
 watch(search, value => { clearTimeout(timer); if (value !== querySearch.value) timer = setTimeout(() => setFilter('q', value.trim()), 250); });
 watch(() => [category.value, order.value, querySearch.value, route.query.page, props.lang], () => {
   if (route.name !== 'stage') return;
-  search.value = querySearch.value; load();
+  search.value = querySearch.value;
+  if (!loadedAt || loadedQuery !== queryKey()) load();
 });
 onMounted(() => { search.value = querySearch.value; load(); });
 onActivated(() => { active = true; if (loadedAt && Date.now() - loadedAt > 30000) load(false, true); else if (loadedAt) trackVisibleArticles(); });

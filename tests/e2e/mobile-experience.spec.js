@@ -37,7 +37,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     const scrollY = await page.evaluate(() => window.scrollY);
     const trigger = page.locator('.mobile-dock > button');
     await trigger.click();
-    const dialog = page.getByRole('dialog', { name: '更多' });
+    const dialog = page.locator('#site-navigation');
     await expect(dialog).toBeVisible();
     expect(await dialog.evaluate((node) => node.matches(':modal'))).toBe(true);
     await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');

@@ -37,8 +37,8 @@
 .visit-popup-kicker { font-size: 13px; color: var(--accent); }
 .visit-popup-card h2 { margin: 12px 0 20px; font-family: var(--serif); }
 .visit-popup-card .primary-btn { margin-top: 24px; }
-[data-segmented] { position: relative; }
-.segmented-indicator, .ts-segmented-indicator { position: absolute; pointer-events: none; background: var(--soft); border-radius: var(--r-pill); }
+[data-segmented], .ts-segmented { position: relative; isolation: isolate; }
+.segmented-indicator, .ts-segmented-indicator { position: absolute; top: 0; left: 0; z-index: -1; pointer-events: none; background: var(--soft); border-radius: var(--r-pill); }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
 ::view-transition-group(site-header), ::view-transition-group(mobile-dock) { animation-duration: 0s; }
 @media (max-width: 860px) { .page { padding: 32px 0 56px; } .content-shell { padding-bottom: calc(92px + env(safe-area-inset-bottom)); } }

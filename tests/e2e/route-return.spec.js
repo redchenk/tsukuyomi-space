@@ -1,7 +1,7 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 
 const listing = /\/api\/(?:live\/[^/]+\/)?articles\?/;
-const hubPreview = /\/api\/(?:live\/[^/]+\/)?hub-preview\?/;
+const hubPreview = /\/api\/(?:live\/[^/]+\/)?hub-preview(?:\?|$)/;
 const article = { id: 3, title: '返回导航验收文章', slug: 'moon', author_id: 'e2e-user-001', author_username: 'e2e-user',
     category: '其他', content_format: 'markdown', published_at: '2026-10-08T00:00:00Z',
     content: '## 阅读正文\n\n' + '保留滚动位置和筛选条件。\n\n'.repeat(50) };
@@ -192,7 +192,7 @@ test('cached Stage filters stay visible during a slow or failed refresh', async 
         await expect(page.locator('.journal-tools select')).toHaveValue('daily');
         expect(await page.evaluate(() => document.querySelector('.stage-page') === window.__stageNode)).toBe(true);
     } finally { release(); }
-    await expect(page.locator('.stage-status.error')).toHaveCount(0);
+    await expect(page.locator('.journal-error')).toHaveCount(0);
     await expect(page.locator('.journal-title')).toHaveCount(6);
     expect(calls.lists.length).toBe(1);
 });

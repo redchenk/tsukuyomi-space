@@ -1,6 +1,19 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { lockPageScroll } from '../utils/pageScrollLock';
 
+export function keepModalFocus(event, element) {
+  if (event.key !== 'Tab') return;
+  const controls = [...element.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), summary, textarea:not(:disabled), [tabindex="0"]')]
+    .filter(node => node.checkVisibility ? node.checkVisibility() : node.getClientRects().length);
+  const first = controls[0], last = controls.at(-1);
+  if (!first) { event.preventDefault(); return; }
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === element)) {
+    event.preventDefault(); last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault(); first.focus();
+  }
+}
+
 // Native dialogs make the rest of the page inert and keep Tab inside the modal.
 export function useModalDialog(isOpen) {
   const dialog = ref(null);
@@ -8,18 +21,6 @@ export function useModalDialog(isOpen) {
   let previousFocus;
   let revision = 0;
   let removeKeys;
-  function keepFocus(event) {
-    if (event.key !== 'Tab') return;
-    const controls = [...dialog.value.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')]
-      .filter(node => node.getClientRects().length);
-    const first = controls[0], last = controls.at(-1);
-    if (!first) { event.preventDefault(); return; }
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.value)) {
-      event.preventDefault(); last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus();
-    }
-  }
   function release() {
     removeKeys?.();
     removeKeys = null;
@@ -39,6 +40,7 @@ export function useModalDialog(isOpen) {
     if (run !== revision || !isOpen() || !dialog.value) return;
     dialog.value.showModal();
     const node = dialog.value;
+    const keepFocus = event => keepModalFocus(event, node);
     node.addEventListener('keydown', keepFocus);
     removeKeys = () => node.removeEventListener('keydown', keepFocus);
     dialog.value.querySelector('[data-modal-close], button')?.focus({ preventScroll: true });
