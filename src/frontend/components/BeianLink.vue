@@ -81,9 +81,16 @@ onMounted(async () => {
       target="_blank"
       rel="noreferrer"
     >
-      <img class="mps-beian-icon" :src="mpsIconSrc" alt="" loading="lazy">
+      <img class="mps-beian-icon" :src="mpsIconSrc" alt="" width="14" height="14" loading="lazy">
       <span>{{ beian.mpsText }}</span>
     </a>
     <span v-if="!hasBeian" class="beian-link" aria-hidden="true">&nbsp;</span>
   </span>
 </template>
+
+<style scoped>
+.beian-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-width: 0; }
+.beian-links[aria-hidden='true'] { display: none; }
+.beian-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: inherit; overflow-wrap: anywhere; }
+.mps-beian-icon { width: 14px; height: 14px; flex: 0 0 14px; object-fit: contain; }
+</style>

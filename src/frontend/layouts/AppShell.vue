@@ -204,7 +204,11 @@ onUnmounted(() => {
           </details>
         </nav>
       </div>
-      <div class="footer-bottom"><span>© {{ new Date().getFullYear() }} {{ t.brand }}</span><BeianLink /><div><a href="/privacy">{{ tr('隐私政策', 'Privacy') }}</a><a href="/delete-account">{{ tr('账号注销', 'Delete account') }}</a></div></div>
+      <div class="footer-bottom">
+        <span class="footer-copyright">© {{ new Date().getFullYear() }} {{ t.brand }}</span>
+        <div class="footer-legal"><a href="/privacy">{{ tr('隐私政策', 'Privacy') }}</a><a href="/delete-account">{{ tr('账号注销', 'Delete account') }}</a></div>
+        <BeianLink />
+      </div>
     </footer>
     <nav v-if="showChrome && !keyboardOpen" class="mobile-dock" :aria-label="t.mobilePrimaryNavigation">
       <a v-for="item in dockItems" :key="item.key" :href="item.path" :class="{ 'dock-room': item.key === 'room' }" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><span class="dock-icon"><TsIcon :name="item.icon" :size="22" /></span><span class="dock-label">{{ item.key === 'room' ? tr('八千代', 'Yachiyo') : item.label }}</span></a>
