@@ -61,7 +61,7 @@ const {
   failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
   enter: enterSpace, skip: skipEntry
 } = useAccessTransition({
-  route, router, onEntrySound: () => music.startEntryMusic(), onEntered: () => {
+  route, router, onEntered: () => {
     try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
     focusRouteHeading(document.querySelector('[data-route-name="hub"]'));
     loadVisitPopup();
