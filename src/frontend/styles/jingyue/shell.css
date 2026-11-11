@@ -52,9 +52,10 @@
 .footer-link { display: inline-flex; align-items: center; min-height: 28px; color: var(--muted); font-weight: 400; }
 .site-footer a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .footer-bottom { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 28px; border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); }
-.footer-bottom > .beian-links[aria-hidden='true'] { display: none; }
-.footer-bottom > div:last-child { display: flex; flex-wrap: wrap; gap: 0; color: var(--ink); }
-.footer-bottom > div:last-child a + a { margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.footer-copyright, .footer-legal a { white-space: nowrap; }
+.footer-legal { display: flex; align-items: center; margin-left: auto; color: var(--ink); }
+.footer-legal a + a { margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
+.footer-bottom > .beian-links { flex-basis: 100%; }
 /* Search is lazy-mounted; the native dialog owns focus and Escape. */
 .site-search-dialog { width: min(680px, calc(100vw - 32px)); padding: 0; }
 .site-nav-drawer-head { display: flex; align-items: center; gap: 14px; padding: 20px; border-bottom: 1px solid var(--line); }
@@ -99,6 +100,8 @@
   .footer-link-group ul { padding: 0 12px 12px; }
   .footer-link { min-height: 40px; font-size: 13px; }
   .footer-bottom { border-top: 0; padding-top: 0; flex-direction: column; align-items: start; gap: 12px; }
+  .footer-legal { margin-left: 0; }
+  .footer-bottom > .beian-links { flex-basis: auto; }
 }
 @media (max-width: 380px) { .site-brand { font-size: 18px; gap: 8px; } .site-brand > span { max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 
