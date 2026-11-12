@@ -468,7 +468,8 @@ test('mobile account security and music playlist remain readable', async ({ page
     expect(Math.abs(layout.formWidth - layout.cardWidth)).toBeLessThan(1);
     expect(layout.pageWidth).toBe(layout.viewportWidth);
 
-    await page.locator('.header-music').click();
+    await page.locator('.mobile-dock > button').click();
+    await page.locator('#site-navigation .menu-music').click();
     await page.getByRole('button', { name: 'Playlist', exact: true }).click();
     const playlistStyle = await page.getByRole('combobox', { name: 'Track', exact: true }).evaluate((select) => {
         const optionStyle = getComputedStyle(select.options[0]);
