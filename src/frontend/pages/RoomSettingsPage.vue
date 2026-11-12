@@ -2360,8 +2360,8 @@ function saveMCP(showDialog = true) {
     try {
       if (!endpoint) throw new Error();
       validateMcpEndpoint(endpoint);
-    } catch (_) {
-      showToast('请填写有效的 MCP 端点，或关闭 MCP', 'error');
+    } catch (error) {
+      showToast(error.code === 'MCP_CSP' ? error.message : '请填写有效的 MCP 端点，或关闭 MCP', 'error');
       return false;
     }
   }
@@ -3961,7 +3961,7 @@ onBeforeUnmount(() => {
             /></label>
             <p class="field-hint">
               已启用的搜索与当前图片理解支持模型自主调用，每轮最多 3 次模型请求、4 次工具执行。
-              自定义服务可选 Streamable HTTP，支持初始化、会话头及 JSON/SSE 响应；需要服务允许浏览器 CORS。
+              自定义服务可选 Streamable HTTP，支持初始化、会话头及 JSON/SSE 响应；需要服务允许浏览器 CORS。本机 HTTP 支持 localhost 或 127.0.0.1 的 8790、11434 端口，其他端点请使用 HTTPS。
               REST 桥接保留原 meta.auth 格式；Token Plan 使用本站受限桥接 /api/mcp/token-plan。
               工具失败不会当作成功结果，回复不会在工具调用阶段提前保存。
 

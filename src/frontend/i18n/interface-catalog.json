@@ -5239,10 +5239,6 @@
     "en": "Enabled",
     "ja": "有効"
   },
-  "已启用的搜索与当前图片理解支持模型自主调用，每轮最多 3 次模型请求、4 次工具执行。 自定义服务可选 Streamable HTTP，支持初始化、会话头及 JSON/SSE 响应；需要服务允许浏览器 CORS。 REST 桥接保留原 meta.auth 格式；Token Plan 使用本站受限桥接 /api/mcp/token-plan。 工具失败不会当作成功结果，回复不会在工具调用阶段提前保存。": {
-    "en": "Enabled search and image understanding can be called by the model, with up to 3 model requests and 4 tool executions per turn. Custom services can use Streamable HTTP with initialization, session headers and JSON/SSE responses; browser CORS must be allowed. REST bridges keep the original meta.auth format. Token Plan uses /api/mcp/token-plan. Tool failures are not treated as successes, and replies are not saved early during tool calls.",
-    "ja": "検索と画像理解はモデルが呼び出せます。1 ターン最大 3 回のモデル要求・4 回のツール実行に制限します。カスタムサービスは初期化・セッションヘッダー・JSON/SSE 対応の Streamable HTTP を選べます。ブラウザーの CORS 許可が必要です。REST は従来の meta.auth 形式を維持し、Token Plan は /api/mcp/token-plan を使います。ツールの失敗は成功として扱わず、実行中に返信を先行保存しません。"
-  },
   "已复制": {
     "en": "Copied",
     "ja": "コピーしました"
@@ -13050,5 +13046,29 @@
   "点击正文中带颜色的词条可快速查看解释；这里保留完整词条位置，方便复制链接和交叉阅读。": {
     "en": "Select a colored term in the text to see its definition. Full entries remain here for linking and cross-reference.",
     "ja": "本文中の色付き用語を選ぶと説明を確認できます。リンクのコピーや参照用に、完全な用語一覧をここに掲載しています。"
+  },
+  "已启用的搜索与当前图片理解支持模型自主调用，每轮最多 3 次模型请求、4 次工具执行。 自定义服务可选 Streamable HTTP，支持初始化、会话头及 JSON/SSE 响应；需要服务允许浏览器 CORS。本机 HTTP 支持 localhost 或 127.0.0.1 的 8790、11434 端口，其他端点请使用 HTTPS。 REST 桥接保留原 meta.auth 格式；Token Plan 使用本站受限桥接 /api/mcp/token-plan。 工具失败不会当作成功结果，回复不会在工具调用阶段提前保存。": {
+    "en": "Enabled search and image understanding can be called by the model, with up to 3 model requests and 4 tool executions per turn. Custom services can use Streamable HTTP with initialization, session headers and JSON/SSE responses; browser CORS must be allowed. Local HTTP supports localhost or 127.0.0.1 on ports 8790 and 11434; use HTTPS for other endpoints. REST bridges keep the original meta.auth format. Token Plan uses /api/mcp/token-plan. Tool failures are not treated as successes, and replies are not saved early during tool calls.",
+    "ja": "検索と画像理解はモデルが呼び出せます。1 ターン最大 3 回のモデル要求・4 回のツール実行に制限します。カスタムサービスは初期化・セッションヘッダー・JSON/SSE 対応の Streamable HTTP を選べます。ブラウザーの CORS 許可が必要です。ローカル HTTP は localhost または 127.0.0.1 の 8790・11434 ポートに対応し、その他は HTTPS を使用してください。REST は従来の meta.auth 形式を維持し、Token Plan は /api/mcp/token-plan を使います。ツールの失敗は成功として扱わず、実行中に返信を先行保存しません。"
+  },
+  "传输完成，正在云端保存…": {
+    "en": "Transfer complete, saving to cloud…",
+    "ja": "転送完了、クラウドに保存中…"
+  },
+  "本站允许 localhost 或 127.0.0.1 的 8790、11434 端口连接本机 MCP；其他端点请使用 HTTPS": {
+    "en": "Local MCP allows localhost or 127.0.0.1 on ports 8790 and 11434. Use HTTPS for other endpoints.",
+    "ja": "ローカル MCP は localhost または 127.0.0.1 の 8790・11434 ポートに対応しています。その他は HTTPS を使用してください。"
+  },
+  "浏览器安全策略 CSP 阻止了 MCP 连接，请检查端点地址及本站允许的端口": {
+    "en": "The browser CSP blocked the MCP connection. Check the endpoint and the ports allowed by this site.",
+    "ja": "ブラウザーの CSP が MCP 接続をブロックしました。接続先と許可ポートを確認してください。"
+  },
+  "无法连接 MCP，请检查服务是否启动、CORS 配置和浏览器本地网络访问权限": {
+    "en": "Cannot connect to MCP. Check that the service is running, allows CORS, and has browser local-network permission.",
+    "ja": "MCP に接続できません。サービスの起動状態、CORS 設定、ブラウザーのローカルネットワーク権限を確認してください。"
+  },
+  "图片云同步服务暂不可用，请联系管理员检查存储凭据或权限；原图仍保留在当前消息中": {
+    "en": "Image cloud sync is unavailable. Ask the administrator to check storage credentials or permissions. The original image is still attached to this message.",
+    "ja": "画像のクラウド同期を利用できません。管理者にストレージの認証情報と権限の確認を依頼してください。元の画像はこのメッセージに保持されています。"
   }
 }
