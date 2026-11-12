@@ -36,7 +36,7 @@ for (const [width, account] of [[1280, 'nickname-own-desktop'], [390, 'nickname-
         await expect(accountInfo.locator('dd').nth(0)).toContainText(account);
 
         await page.getByRole('button', { name: '账号菜单', exact: true }).click();
-        await expect(page.locator('#site-navigation .menu-heading h2')).toHaveText(nickname);
+        await expect(page.locator('#site-navigation .ts-sheet-head h2')).toHaveText(nickname);
         await page.goto(`/users/${account}`);
         await expect(page.locator('h1')).toHaveText(nickname);
         await expect(page).toHaveURL(new RegExp(`/users/${account}$`));

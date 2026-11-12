@@ -69,6 +69,8 @@ test('navigation remains usable across landscape and desktop resizing', async ({
     await openPage(page, '/plaza');
     await page.locator('.mobile-dock > button').click();
     const dialog = page.locator('#site-navigation');
+    await expect(dialog).toBeVisible();
+    await dialog.evaluate(node => Promise.allSettled(node.getAnimations().map(animation => animation.finished)));
     const box = await dialog.boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(390);
