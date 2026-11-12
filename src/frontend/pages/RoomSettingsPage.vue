@@ -168,7 +168,11 @@ const setupLlmMode = ref('ollama');
 const officialSupply = reactive({ dashboard: null });
 const llmModeDrafts = new Map();
 const officialSelectedModel = computed(() => officialSupply.dashboard?.models.find(item => item.id === llm.model));
-function openSettingsMusic() { window.dispatchEvent(new CustomEvent('tsukuyomi:music-open')); }
+function openSettingsMusic(event) {
+  // Safari does not focus buttons on tap; retain the opener for modal dismissal.
+  event.currentTarget.focus({ preventScroll: true });
+  window.dispatchEvent(new CustomEvent('tsukuyomi:music-open'));
+}
 function officialMoney(atoms) { return Number(atoms || 0) / 1e9; }
 const setupCloudProvider = ref('openaiChat');
 const route = useRoute();

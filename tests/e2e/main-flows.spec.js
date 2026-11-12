@@ -567,10 +567,10 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.95);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect.poll(async () => (await galleryActionLayout()).actionHeight).toBeLessThanOrEqual(62);
+    await expect.poll(async () => Math.min(...(await galleryActionLayout()).buttonHeights)).toBeGreaterThanOrEqual(44);
     const mobileActions = await galleryActionLayout();
-    expect(mobileActions.actionHeight).toBeLessThanOrEqual(62);
-    expect(mobileActions.buttonHeights.every((height) => height >= 34)).toBe(true);
+    expect(mobileActions.actionHeight).toBeLessThanOrEqual(Math.max(...mobileActions.buttonHeights) + mobileActions.padding + 1);
+    expect(mobileActions.buttonHeights.every((height) => height >= 44)).toBe(true);
     expect(mobileActions.buttonWidthTotal).toBeLessThan(mobileActions.actionWidth * 0.95);
     expect(mobileActions.horizontalOverflow).toBe(false);
 
