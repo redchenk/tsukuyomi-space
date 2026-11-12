@@ -34,6 +34,9 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await page.setViewportSize({ width: 390, height: 844 });
     await openPage(page, '/stage');
     await page.evaluate(() => window.scrollTo({ top: 200, behavior: 'instant' }));
+    await expect(page.locator('.mobile-dock')).toHaveClass(/is-hidden/);
+    await page.evaluate(() => window.scrollTo({ top: 100, behavior: 'instant' }));
+    await expect(page.locator('.mobile-dock')).not.toHaveClass(/is-hidden/);
     const scrollY = await page.evaluate(() => window.scrollY);
     const trigger = page.locator('.mobile-dock > button');
     await trigger.click();
