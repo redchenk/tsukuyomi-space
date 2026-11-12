@@ -1,4 +1,16 @@
 {
+  "这篇故事没有分节标题，可以直接阅读。": {
+    "en": "This story has no headings. You can read it directly.",
+    "ja": "この記事には見出しがありません。そのままお読みください。"
+  },
+  "留言操作": {
+    "en": "Message actions",
+    "ja": "メッセージの操作"
+  },
+  "更多留言操作": {
+    "en": "More message actions",
+    "ja": "その他のメッセージ操作"
+  },
   "编辑参考角色卡": {
     "en": "Edit reference card",
     "ja": "参考カードを編集"
