@@ -48,7 +48,7 @@ test('navigation hands off to search and releases its scroll lock', async ({ pag
 test('mobile navigation keeps download, account and secondary routes reachable', async ({ page }) => {
   await hub(page, 390); await expect(page.locator('.header-download')).toBeVisible();
   await page.locator('.mobile-dock > button').click(); const dialog = page.locator('#site-navigation');
-  await dialog.locator('a[href="/wiki"]').click(); await expect(page).toHaveURL(/\/wiki$/);
+  await dialog.locator('.explore-tiles a[href="/wiki"]').click(); await expect(page).toHaveURL(/\/wiki$/);
   await expect(dialog).not.toBeVisible();
   await page.locator('.header-account').click(); await expect(dialog.locator('a[href="/login"]')).toBeVisible();
   await expect(dialog.locator('a[href="/register"]')).toBeVisible(); await page.keyboard.press('Escape');

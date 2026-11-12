@@ -123,7 +123,12 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/hub$/);
     await navigate(page, '/plaza');
-    const draft = page.locator('.plaza-compose-panel textarea');
+    const draft = page.locator('#plaza-message-input');
+    const openComposer = async () => {
+        const trigger = page.locator('.plaza-compose-trigger');
+        if (await trigger.isVisible()) await trigger.click();
+    };
+    await openComposer();
     await draft.fill('未发布的草稿');
     await settle(page);
     await expect(draft).toBeFocused();
@@ -131,7 +136,12 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await navigate(page, '/gallery');
     await expect(page.locator('.gallery-page')).toHaveAttribute('aria-busy', 'false');
     await page.goBack();
+    await expect(page).toHaveURL(/\/plaza$/);
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    await openComposer();
     await expect(draft).toHaveValue('未发布的草稿');
+    const sheet = page.getByRole('dialog', { name: '今天有什么想分享的？' });
+    if (await sheet.isVisible()) await sheet.locator('[data-modal-close]').click();
     await page.getByRole('button', { name: '账号菜单', exact: true }).click();
     await page.locator('#site-navigation').getByRole('button', { name: '退出', exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
@@ -144,6 +154,7 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/plaza$/);
+    await openComposer();
     await expect(draft).toHaveValue('');
 });
 
@@ -217,7 +228,7 @@ test('a cached Gallery retains filters and cannot open a delayed image modal on 
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     await page.goBack();
     await expect(page).toHaveURL(/\/gallery$/);
-    expect(await page.evaluate(() => document.querySelector('.gallery-page') === window.__galleryNode)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.querySelector('.gallery-page') === window.__galleryNode)).toBe(true);
     await expect(page.locator('.gallery-viewer')).toHaveCount(0);
     expect(lists).toBe(1);
     let requested = false, release;

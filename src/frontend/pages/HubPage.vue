@@ -65,7 +65,7 @@ watch(() => props.lang, load);
       <img class="home-hero-art" :src="siteArt.hero" :alt="tr('月光湖畔的八千代', 'Yachiyo by the moonlit lake')" width="1672" height="941" fetchpriority="high">
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="home-hero-content">
-        <p class="hero-eyebrow"><span></span> A LITTLE MOONLIGHT, JUST FOR YOU</p>
+        <p class="hero-eyebrow"><span></span> {{ tr('留一点月光，给自己', 'A LITTLE MOONLIGHT, JUST FOR YOU', 'あなたのための月明かり') }}</p>
         <h1 id="home-title">{{ tr('给日常', 'A little light,', '日々に、') }}<br>{{ tr('留一点月光。', 'a little closer.', '月明かりを。') }}</h1>
         <p class="hero-description">{{ tr('故事、灵感，还有一直等你的八千代。', 'Stories, little discoveries, and Yachiyo waiting for you.', '物語とひらめき、そしてあなたを待つ八千代。') }}<br>{{ tr('在这里，慢一点也没关系。', 'There’s no hurry here.', 'ここでは、ゆっくりでいい。') }}</p>
         <form class="hero-composer" @submit.prevent="enterRoom()">
@@ -99,7 +99,7 @@ watch(() => props.lang, load);
         <div class="community-intro"><span class="eyebrow">03 — SMALL MOMENTS, SHARED</span><h2 id="community-title">{{ tr('月光下的声音', 'Meet under the moon') }}</h2><p>{{ tr('今天的小事、想分享的心情，', 'Small moments, little thoughts,') }}<br>{{ tr('总有人愿意听。', 'and someone who’s here to listen.') }}</p><RouterLink to="/plaza" class="primary-btn">{{ tr('去广场坐坐', 'Visit the plaza') }}<TsIcon name="arrowRight" :size="16" /></RouterLink></div>
         <div class="home-messages"><RouterLink v-for="message in (content?.messages || []).slice(0, 3)" :key="message.id" to="/plaza" class="home-message"><span class="message-avatar"><img v-if="message.avatar" :src="message.avatar" alt="" loading="lazy"><span v-else>{{ [...(message.author_nickname || message.author || '月')][0] }}</span></span><div><div class="message-byline"><strong>{{ message.author_nickname || message.author }}</strong><time>{{ date(message.created_at) }}</time></div><p>{{ message.content }}</p></div></RouterLink><p v-if="!content?.messages?.length" class="empty-state">{{ tr('安静的广场，等你留下第一句问候。', 'A quiet plaza, waiting for your first hello.') }}</p></div>
       </section>
-      <RouterLink to="/drift" class="home-letter"><img :src="driftArt" alt="" loading="lazy"><div><span class="eyebrow">A LETTER TO SOMEONE, SOMEWHERE</span><h2>{{ tr('把心事，交给星海。', 'Let a little thought drift away.') }}</h2><p>{{ tr('写一封信，让月光带它去遇见一个陌生人。', 'Write a letter. Let the moon find someone to read it.') }}</p></div><span class="letter-arrow"><TsIcon name="arrowUpRight" :size="28" /></span></RouterLink>
+      <RouterLink to="/drift" class="home-letter"><img :src="driftArt" alt="" loading="lazy"><div><span class="eyebrow">{{ tr('写给远方的某个人', 'A LETTER TO SOMEONE, SOMEWHERE', 'どこかの誰かへの手紙') }}</span><h2>{{ tr('把心事，交给星海。', 'Let a little thought drift away.') }}</h2><p>{{ tr('写一封信，让月光带它去遇见一个陌生人。', 'Write a letter. Let the moon find someone to read it.') }}</p></div><span class="letter-arrow"><TsIcon name="arrowUpRight" :size="28" /></span></RouterLink>
     </div>
   </main>
 </template>

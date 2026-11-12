@@ -6,6 +6,23 @@ async function entry(page) {
   await expect(page.locator('.access-enter')).toBeEnabled();
 }
 
+test('entering Tsukuyomi never starts background music', async ({ page }) => {
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play;
+    window.__audioPlayCalls = 0;
+    HTMLMediaElement.prototype.play = function (...args) {
+      if (this.tagName === 'AUDIO') window.__audioPlayCalls++;
+      return play.apply(this, args);
+    };
+  });
+  await entry(page);
+  await page.locator('.access-enter').click();
+  await expect(page.locator('.access-gate')).toHaveCount(0, { timeout: 15000 });
+  await expect(page.locator('.hub h1')).toBeVisible();
+  expect(await page.evaluate(() => window.__audioPlayCalls)).toBe(0);
+  await expect(page.locator('.mini-player')).toHaveCount(0);
+});
+
 async function pauseReveal(page) {
   await page.addInitScript(() => {
     new MutationObserver(() => {

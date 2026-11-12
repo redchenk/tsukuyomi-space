@@ -5,6 +5,7 @@ const IMMERSIVE_PAGES = '.access-page, .auth-page, .room-page, .live2d-page, .ar
 
 function routeMotionDisabled(element) {
   return document.visibilityState === 'hidden'
+    || document.documentElement.dataset.routeTransition === 'active'
     || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     || element.matches(IMMERSIVE_PAGES) || element.querySelector?.(IMMERSIVE_PAGES)
     || typeof element.animate !== 'function';

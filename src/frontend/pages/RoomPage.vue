@@ -36,6 +36,42 @@ const roomStyle = computed(() => ({ ...room.roomStyle.value, ...backdrop.style.v
 const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
 const desktopPanel = ref('chatPanel');
 const panelHostReady = ref(false);
+const detents = ['peek', 'half', 'full'];
+const detent = ref('peek'), dragTop = ref(null), conversationSurface = ref(null);
+let panelDrag = null, suppressDetentClick = false;
+watch(() => room.chat.messages.value.some(message => message.role === 'user'), has => {
+  if (has && detent.value === 'peek') detent.value = 'half';
+}, { immediate: true });
+function cycleDetent() {
+  if (suppressDetentClick) { suppressDetentClick = false; return; }
+  detent.value = detents[(detents.indexOf(detent.value) + 1) % detents.length];
+}
+function resizePanel(event) {
+  if (!mobileRoom.value || !event.isPrimary || event.button !== 0) return;
+  const node = conversationSurface.value;
+  panelDrag = { start: event.clientY, top: node.offsetTop, height: node.parentElement.clientHeight };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+function dragPanel(event) {
+  if (!panelDrag) return;
+  const delta = event.clientY - panelDrag.start;
+  if (Math.abs(delta) > 8) suppressDetentClick = true;
+  dragTop.value = Math.max(68, Math.min(panelDrag.height - 220, panelDrag.top + delta));
+}
+function finishPanelDrag(event) {
+  if (!panelDrag) return;
+  if (dragTop.value !== null && event.type !== 'pointercancel') {
+    const top = dragTop.value, height = panelDrag.height;
+    detent.value = top < height * .2 ? 'full' : top < height * .42 ? 'half' : 'peek';
+  }
+  panelDrag = null; dragTop.value = null;
+}
+function panelKey(event) {
+  const index = detents.indexOf(detent.value);
+  if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  detent.value = event.key === 'Home' ? 'peek' : event.key === 'End' ? 'full' : detents[Math.max(0, Math.min(2, index + (event.key === 'ArrowUp' ? 1 : -1)))];
+}
 const helpOpen = ref(false);
 const relationshipOpen = ref(false);
 const relationshipTitle = computed(() => props.lang === 'en' ? 'Affinity' : '好感度');
@@ -234,7 +270,8 @@ watch(() => props.shareId, loadSharedConversation);
     </header>
     <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" :scene="backdrop.scene.value" @settings="emit('go', '/room/settings')" />
 
-    <div class="room-conversation-surface">
+    <div ref="conversationSurface" class="room-conversation-surface" :data-detent="detent" :class="{ 'is-resizing': dragTop !== null }" :style="dragTop !== null ? { '--sheet-top': `${dragTop}px` } : undefined">
+      <button v-if="mobileRoom" class="room-sheet-handle" type="button" :aria-label="`${lang === 'en' ? 'Resize chat panel' : '调整聊天面板高度'} · ${detent}`" @click="cycleDetent" @keydown="panelKey" @pointerdown="resizePanel" @pointermove="dragPanel" @pointerup="finishPanelDrag" @pointercancel="finishPanelDrag"><span></span></button>
       <section class="room-companion-bar" aria-label="角色与房间工具">
         <div class="room-companion-identity">
           <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42" data-image-bloom="subtle">

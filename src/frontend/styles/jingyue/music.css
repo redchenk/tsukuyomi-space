@@ -1,3 +1,4 @@
+@layer components {
 .site-music-drawer { position: fixed; inset: 0; margin: auto; width: min(460px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 28px; border: 1px solid var(--line); border-radius: var(--r-panel); background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .site-music-summary { display: flex; gap: 12px; align-items: center; }
 .site-music-cover { width: 52px; height: 52px; flex: 0 0 auto; display: grid; place-items: center; background: var(--music-cover-image, none) center / cover, var(--soft); color: var(--accent); border-radius: 12px; }
@@ -47,3 +48,4 @@
 .music-result > span { flex: 1; min-width: 0; }
 .music-result img { border-radius: 6px; }
 .music-library-error { color: var(--danger); }
+}

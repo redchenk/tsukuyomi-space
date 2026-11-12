@@ -50,7 +50,8 @@ async function openShare(page, baseURL, { clipboard = 'success', native = 'unava
     await page.route(/\/api\/(?:live\/[^/]+\/)?articles\/3\/messages/, route => route.fulfill({ json: { success: true, data: [] } }));
     await page.goto('/article?id=3&from=%2Fstage%3Fpage%3D2#article-top');
     await expect(page.locator('.article-reader h1')).toHaveText(article.title);
-    await page.locator('.article-social-actions').getByRole('button', { name: '分享', exact: true }).click();
+    const actions = page.locator(await page.locator('.article-reading-tools').isVisible() ? '.article-reading-tools' : '.article-social-actions');
+    await actions.getByRole('button', { name: '分享', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: '分享', exact: true });
     await expect(dialog).toBeVisible();
     return { dialog, recorded, shortUrl: `${baseURL}/articles/3` };

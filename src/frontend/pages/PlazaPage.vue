@@ -1,4 +1,6 @@
 <script setup>
+import MobileSheet from '../components/MobileSheet.vue';
+import { useMediaQuery } from '../composables/useMediaQuery';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
@@ -24,6 +26,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
+const mobileCompose = useMediaQuery('(max-width: 860px)');
+const composeOpen = ref(false), composeTrigger = ref(null);
+const composerDraft = ref('');
+const messageActions = ref(null);
 const route = useRoute();
 const router = useRouter();
 const { hydrateUserLevels, userLevel } = useUserLevels();
@@ -467,6 +473,7 @@ async function plazaSubmitMessage(content) {
       loadTrendingTopics();
     }
     loadPlazaStats();
+    if (result.moderation?.status !== 'pending') composeOpen.value = false;
     return true;
   } catch (error) {
     showPlazaToast(messageModeration.value?.status === 'rejected' ? '未能提交，请查看原因提示。' : error.message || props.t.publishFailed, 'error');
@@ -665,6 +672,12 @@ function plazaFormatUptime(seconds) {
   return days > 0 ? `${days}\u65e5${hours}\u6642\u9593` : `${hours}\u6642\u9593`;
 }
 
+watch(() => user.value?.id, (current, previous) => {
+  if (current === previous) return;
+  composerDraft.value = '';
+  composeOpen.value = false;
+  messageActions.value = null;
+});
 watch(() => [plaza.filter, plaza.query], (current, previous) => {
   applyingPlazaPage = true;
   plaza.page = 1;
@@ -700,6 +713,8 @@ onActivated(() => {
   if (route.hash !== renderedHash) nextTick(plazaSyncPageWithHash);
 });
 function pausePlaza() {
+  composeOpen.value = false;
+  messageActions.value = null;
   plazaMounted = false;
   clearTimeout(plazaReloadTimer);
   clearTimeout(plazaToastTimer);
@@ -726,6 +741,8 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
       <span class="plaza-channel"><TsIcon name="message" :size="16" />{{ t.channelValue }}</span>
     </header>
 
+    <MobileSheet v-if="mobileCompose && isAuthed" :open="composeOpen" :return-focus="composeTrigger" :title="designCopy.composer" @close="composeOpen = false"><PlazaComposer v-model="composerDraft" :t="t" :lang="lang" :on-submit="plazaSubmitMessage" /><ModerationNotice :feedback="messageModeration" /></MobileSheet>
+    <MobileSheet :open="Boolean(messageActions)" :return-focus="messageActions?.trigger" :title="isEn ? 'Message actions' : '留言操作'" @close="messageActions = null"><div class="sheet-options"><button type="button" @click="plazaCopyLink(messageActions.id); messageActions = null"><TsIcon name="copy" :size="20" />{{ t.copyLink }}</button></div></MobileSheet>
     <section class="plaza-layout">
       <section class="panel plaza-compose-panel" :aria-label="t.publish">
         <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
@@ -733,12 +750,13 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
           <div class="plaza-guest-copy"><h2>{{ designCopy.signIn }}</h2><p>{{ designCopy.guestHint }}</p></div>
           <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}<TsIcon name="chevronRight" :size="16" /></a>
         </div>
+        <button v-else-if="mobileCompose" ref="composeTrigger" class="plaza-compose-trigger" type="button" :aria-expanded="composeOpen" @click="composeOpen = true"><TsIcon name="penLine" :size="22" /><span>{{ designCopy.composer }}</span><TsIcon name="plus" :size="20" /></button>
         <div v-else class="plaza-composer">
           <div class="plaza-compose-heading">
             <div class="plaza-avatar"><img v-if="user.avatar" :src="user.avatar" :alt="plazaAvatarAlt(user.nickname || user.username)" /><span v-else>{{ plazaInitial(user.nickname || user.username) }}</span></div>
             <div><h2>{{ designCopy.composer }}</h2><p>{{ user.nickname || user.username }} · {{ designCopy.composerNote }}</p></div>
           </div>
-          <PlazaComposer :t="t" :lang="lang" :on-submit="plazaSubmitMessage" />
+          <PlazaComposer v-model="composerDraft" :t="t" :lang="lang" :on-submit="plazaSubmitMessage" />
           <ModerationNotice :feedback="messageModeration" />
         </div>
       </section>
@@ -813,7 +831,8 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
                 <TsIcon name="message" :size="15" />
                 <span>{{ t.reply }} {{ msg.reply_count || 0 }}</span>
               </button>
-              <button class="icon-btn plaza-copy-action" type="button" :aria-label="t.copyLink" :title="t.copyLink" @click="plazaCopyLink(msg.id)">
+              <button v-if="mobileCompose" class="icon-btn plaza-more-action" type="button" :aria-label="isEn ? 'More message actions' : '更多留言操作'" @click="messageActions = { id: msg.id, trigger: $event.currentTarget }"><TsIcon name="ellipsis" :size="19" /></button>
+              <button v-if="!mobileCompose" class="icon-btn plaza-copy-action" type="button" :aria-label="t.copyLink" :title="t.copyLink" @click="plazaCopyLink(msg.id)">
                 <TsIcon name="copy" :size="15" />
               </button>
             </div>
