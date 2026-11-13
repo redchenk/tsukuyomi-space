@@ -40,7 +40,7 @@ test('game center opens both games; discovery and search use the new name', asyn
   await expect(search).not.toBeVisible();
   if (testInfo.project.name === 'chromium') {
     await page.locator('.desktop-nav button').click();
-    await expect(page.locator('#site-navigation a[href="/game"]')).toBeVisible();
+    await expect(page.locator('#site-navigation .explore-groups a[href="/game"]')).toBeVisible();
   }
 });
 
@@ -148,7 +148,7 @@ test('English and Japanese copies and dark mode keep the board usable', async ({
   await page.getByRole('button', { name: '账号菜单', exact: true }).click();
   await page.locator('#site-navigation').getByRole('button', { name: '切换深色主题', exact: true }).click();
   await page.locator('#site-navigation').getByRole('button', { name: '日本語', exact: true }).click();
-  await page.locator('#site-navigation .menu-heading button').click();
+  await page.locator('#site-navigation .ts-sheet-head button').click();
   await expect(page.getByRole('heading', { name: '月下の五目並べ' })).toBeVisible();
   await cell(page, 112).click();
   await expect(stones(page)).toHaveCount(2);

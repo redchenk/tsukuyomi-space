@@ -87,7 +87,8 @@ for (const width of [390, 1280]) {
         await expect(shortcuts).toBeInViewport();
         const quick = await shortcuts.boundingBox();
         expect(quick.y + quick.height).toBeLessThanOrEqual(844);
-        for (const element of [page.locator('.header-music'), ...(width < 1081 ? [page.locator('.mobile-dock')] : [])]) {
+        if (width < 1081) await expect(page.locator('.mobile-dock')).toHaveCount(0);
+        for (const element of [page.locator('.site-header')]) {
             const box = await element.boundingBox();
             expect(box).not.toBeNull();
             expect(quick.x < box.x + box.width && quick.x + quick.width > box.x && quick.y < box.y + box.height && quick.y + quick.height > box.y).toBe(false);
@@ -95,8 +96,12 @@ for (const width of [390, 1280]) {
         await shortcuts.getByRole('button', { name: '跳转评论' }).click();
         await expect(page.locator('#article-comments')).toBeFocused();
         await expect(page.locator('.comments-head')).toBeInViewport();
-        expect((await page.locator('.comments-head').boundingBox()).y).toBeGreaterThan(80);
-        await shortcuts.getByRole('button', { name: '回到顶部' }).click();
+        const header = await page.locator('.site-header').boundingBox();
+        expect((await page.locator('.comments-head').boundingBox()).y).toBeGreaterThan(header.y + header.height);
+        if (width < 1081) {
+            await shortcuts.getByRole('button', { name: '文章目录' }).click();
+            await page.getByRole('dialog', { name: '文章目录' }).getByRole('button', { name: '回到顶部', exact: true }).click();
+        } else await shortcuts.getByRole('button', { name: '回到顶部' }).click();
         await expect(page.locator('#article-top')).toBeFocused();
         await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     });

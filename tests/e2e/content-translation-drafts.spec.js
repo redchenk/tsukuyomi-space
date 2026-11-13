@@ -66,7 +66,7 @@ for (const location of ['plaza', 'article']) {
             const count = reads.length;
             await page.locator('.header-account').click();
             await page.getByRole('switch', { name: 'Translate community content' }).setChecked(translated);
-            await page.locator('#site-navigation .menu-heading > button').click();
+            await page.locator('#site-navigation .ts-sheet-head > button').click();
             await expect.poll(() => reads.slice(count).includes(translated)).toBe(true);
             if (location === 'article') await expect(page.locator('#article-comments')).toHaveAttribute('aria-busy', 'false');
             else await expect(page.locator('.plaza-wall')).toHaveAttribute('aria-busy', 'false');

@@ -54,7 +54,9 @@ test('MCP body stall after HTTP headers is included in deadline and aborted read
 test('MCP rejects oversized or malformed JSON, unsafe endpoints, forbidden auth headers and unsupported versions', async () => {
     const { callRoomMcp, validateMcpEndpoint, mcpResultText } = await client();
     for (const endpoint of ['http://remote.example/mcp', 'https://u:p@example.test/mcp', 'https://example.test/mcp?token=x', 'file:///tmp/x']) assert.throws(() => validateMcpEndpoint(endpoint));
-    assert.equal(validateMcpEndpoint('http://127.0.0.1:9880/mcp'), 'http://127.0.0.1:9880/mcp');
+    assert.equal(validateMcpEndpoint('http://127.0.0.1:8790/mcp'), 'http://127.0.0.1:8790/mcp');
+    for (const endpoint of ['http://localhost:8790/mcp', 'http://localhost:11434/mcp', 'http://127.0.0.1:11434/mcp']) assert.equal(validateMcpEndpoint(endpoint), endpoint);
+    for (const endpoint of ['http://localhost:8791/mcp', 'http://[::1]:8790/mcp']) assert.throws(() => validateMcpEndpoint(endpoint), { code: 'MCP_CSP' });
     await assert.rejects(callRoomMcp({ ...settings, authHeader: 'Cookie' }, 'tools/list'), error => error.code === 'MCP_HEADER');
     for (const body of ['{', JSON.stringify({ x: 'x'.repeat(262145) })]) await assert.rejects(callRoomMcp({ ...settings, transport: 'rest' }, 'tools/list', {}, { request: async () => new Response(body) }));
     await assert.rejects(callRoomMcp(settings, 'tools/list', {}, { request: async (_, options) => rpc(JSON.parse(options.body).id, { protocolVersion: '2099-01-01' }) }), error => error.code === 'MCP_VERSION');
@@ -73,6 +75,31 @@ function childScript(mode) {
     for(const byte of output){process.stdout.write(Buffer.from([byte])); await new Promise(r=>setTimeout(r,1));}
     });`;
 }
+
+test('MCP reports network and matching CSP failures without exposing endpoint credentials', async () => {
+    const { callRoomMcp } = await client();
+    await assert.rejects(callRoomMcp({ ...settings, transport: 'rest' }, 'tools/list', {}, {
+        request: async () => { throw new TypeError('Failed to fetch synthetic-secret'); }
+    }), error => error.code === 'MCP_NETWORK' && /CORS/.test(error.message) && !error.message.includes('synthetic-secret'));
+    const previous = globalThis.document;
+    const target = new EventTarget(); globalThis.document = target;
+    try {
+        await assert.rejects(callRoomMcp({ ...settings, transport: 'rest' }, 'tools/list', {}, { request: async () => {
+            target.dispatchEvent(Object.assign(new Event('securitypolicyviolation'), {
+                effectiveDirective: 'connect-src', blockedURI: 'https://mcp.example.test', disposition: 'enforce'
+            }));
+            throw new TypeError('Failed to fetch');
+        } }), { code: 'MCP_CSP' });
+        const result = await callRoomMcp({ ...settings, transport: 'rest' }, 'tools/list', {}, { request: async (_, options) => {
+            target.dispatchEvent(Object.assign(new Event('securitypolicyviolation'), {
+                effectiveDirective: 'connect-src', blockedURI: 'https://unrelated.example.test', disposition: 'enforce'
+            }));
+            assert.equal(options.signal.aborted, false);
+            return rpc(JSON.parse(options.body).id, { tools: [] });
+        } });
+        assert.deepEqual(result.tools, []);
+    } finally { globalThis.document = previous; }
+});
 test('stdio MCP decodes fragmented UTF-8 and negotiates before invoking tools', async () => {
     const result = await requestOverStdio({ command: process.execPath, args: ['-e', childScript('ok')], method: 'tools/call', timeoutMs: 2000 });
     assert.equal(result.content[0].text, '中文😀');

@@ -169,8 +169,9 @@ test('cross-page anchors await their target and same-page anchors scroll without
 
 test('route fades finish once, clean up after cancellation and honor reduced motion and immersive pages', async () => {
     let reduced = false, completed = 0, calls = 0, canceled = 0, settle;
+    const documentElement = { dataset: {} };
     const api = loadModule('src/frontend/utils/motion.js', ['animateRouteEnter', 'animateRouteLeave', 'cancelRouteMotion'], {
-        document: { visibilityState: 'visible' }, window: { matchMedia: () => ({ matches: reduced }) }, isReducedPerformance: () => true
+        document: { visibilityState: 'visible', documentElement }, window: { matchMedia: () => ({ matches: reduced }) }, isReducedPerformance: () => true
     });
     const element = { matches: () => false, classList: { add() {}, remove() {} }, animate(frames, options) {
         calls++; assert.ok(options.duration <= 220); assert.deepEqual(Object.keys(frames[0]), ['opacity']);
@@ -183,6 +184,9 @@ test('route fades finish once, clean up after cancellation and honor reduced mot
     reduced = false; element.matches = () => true; api.animateRouteEnter(element, () => completed++);
     await Promise.resolve();
     assert.equal(completed, 3); assert.equal(calls, 1);
+    element.matches = () => false; documentElement.dataset.routeTransition = 'active';
+    api.animateRouteEnter(element, () => completed++);
+    assert.equal(completed, 4); assert.equal(calls, 1);
 });
 
 

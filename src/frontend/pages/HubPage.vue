@@ -1,7 +1,7 @@
 <script setup>
-import { RouterLink } from 'vue-router';
+import { onBeforeRouteLeave, RouterLink } from 'vue-router';
 import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { apiFetch, loadPublicSettings, parseResponse } from '../api/client';
+import { apiFetch, apiUrl, loadPublicSettings, parseResponse } from '../api/client';
 import { loadStageArticles } from '../services/stageArticles';
 import { announcementContent, noticeSummary } from '../../../shared/notice-markdown.mjs';
 import { siteArt } from '../data/siteArt';
@@ -22,14 +22,16 @@ const featured = computed(() => content.value?.article || articles.value[0]);
 const latest = computed(() => articles.value.filter(article => article.id !== featured.value?.id).slice(0, 4));
 const places = computed(() => [
   { path: '/gallery', title: tr('光影收藏', 'Collected light'), label: tr('图库', 'GALLERY'), desc: tr('收藏那些让人停留的瞬间。', 'A place for images that stay with you.'), image: content.value?.gallery?.url || siteArt.galleryCover },
-  { path: '/pixel', title: tr('像素里的宇宙', 'Little pixel worlds'), label: tr('像素画工坊', 'PIXEL STUDIO'), desc: tr('一格一格，把想象画成真。', 'Give your imagination a little room.'), image: siteArt.pixelCover },
+  { path: '/pixel', title: tr('像素里的宇宙', 'Little pixel worlds'), label: tr('像素画工坊', 'PIXEL STUDIO'), desc: tr('一格一格，把想象画成真。', 'Give your imagination a little room.'),
+    image: content.value?.pixel ? apiUrl(`/api/pixel-art/${encodeURIComponent(content.value.pixel.id)}/image.png?v=${encodeURIComponent(content.value.pixel.updated_at || content.value.pixel.created_at || content.value.pixel.id)}`) : siteArt.pixelCover,
+    pixel: content.value?.pixel, alt: content.value?.pixel?.title || '' },
   { path: '/wiki', title: tr('走进月读世界', 'The world of Tsukuyomi'), label: tr('百科', 'WIKI'), desc: tr('人物、音乐，还有故事的另一面。', 'Characters, music and untold stories.'), image: wikiArt },
   { path: '/game', title: tr('一起玩一会儿', 'A little time to play'), label: tr('游戏中心', 'PLAY'), desc: tr('暂时放下忙碌，来一局吧。', 'Take a break. Share a game.'), image: gameArt }
 ]);
 const articlePath = article => article?.id ? `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}` : '/stage';
 const date = value => String(value || '').slice(0, 10).replaceAll('-', '.');
 const author = article => article?.author_nickname || article?.author_username || article?.author || tr('月下旅人', 'Moonlit traveler');
-let loadedAt = 0, requestId = 0;
+let loadedAt = 0, requestId = 0, refreshOnReturn = false;
 async function load() {
   const run = ++requestId;
   loading.value = !content.value; error.value = '';
@@ -54,7 +56,8 @@ function enterRoom(text = draft.value) {
   emit('go', '/room');
 }
 onMounted(load);
-onActivated(() => { if (loadedAt && Date.now() - loadedAt > 30000) load(); });
+onBeforeRouteLeave(to => { refreshOnReturn = to.path === '/pixel'; });
+onActivated(() => { if (refreshOnReturn || (loadedAt && Date.now() - loadedAt > 30000)) { refreshOnReturn = false; load(); } });
 onBeforeUnmount(() => { requestId++; });
 watch(() => props.lang, load);
 </script>
@@ -65,7 +68,7 @@ watch(() => props.lang, load);
       <img class="home-hero-art" :src="siteArt.hero" :alt="tr('月光湖畔的八千代', 'Yachiyo by the moonlit lake')" width="1672" height="941" fetchpriority="high">
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="home-hero-content">
-        <p class="hero-eyebrow"><span></span> A LITTLE MOONLIGHT, JUST FOR YOU</p>
+        <p class="hero-eyebrow"><span></span> {{ tr('留一点月光，给自己', 'A LITTLE MOONLIGHT, JUST FOR YOU', 'あなたのための月明かり') }}</p>
         <h1 id="home-title">{{ tr('给日常', 'A little light,', '日々に、') }}<br>{{ tr('留一点月光。', 'a little closer.', '月明かりを。') }}</h1>
         <p class="hero-description">{{ tr('故事、灵感，还有一直等你的八千代。', 'Stories, little discoveries, and Yachiyo waiting for you.', '物語とひらめき、そしてあなたを待つ八千代。') }}<br>{{ tr('在这里，慢一点也没关系。', 'There’s no hurry here.', 'ここでは、ゆっくりでいい。') }}</p>
         <form class="hero-composer" @submit.prevent="enterRoom()">
@@ -93,13 +96,13 @@ watch(() => props.lang, load);
       </section>
       <section class="home-section home-discover" aria-labelledby="discover-title">
         <header class="home-section-heading"><div><span class="eyebrow">02 — WANDER A LITTLE</span><h2 id="discover-title">{{ tr('随心逛逛', 'Follow your curiosity', '気ままに歩こう') }}</h2></div><p>{{ tr('喜欢的事，都能在这里找到一席之地。', 'A little space for everything you love.') }}</p></header>
-        <div class="discovery-grid"><RouterLink v-for="place in places" :key="place.path" :to="place.path" class="discovery-item"><div class="media-frame"><img :src="place.image" alt="" loading="lazy" width="480" height="600"><span>{{ place.label }}</span></div><div class="discovery-title"><h3>{{ place.title }}</h3><TsIcon name="arrowUpRight" :size="19" /></div><p>{{ place.desc }}</p></RouterLink></div>
+        <div class="discovery-grid"><RouterLink v-for="place in places" :key="place.path" :to="place.path" class="discovery-item"><div class="media-frame"><img :src="place.image" :alt="place.alt || ''" :class="{ 'pixel-preview': place.pixel }" :style="place.pixel ? { backgroundColor: place.pixel.background_color } : undefined" loading="lazy" width="480" height="600"><span>{{ place.label }}</span></div><div class="discovery-title"><h3>{{ place.title }}</h3><TsIcon name="arrowUpRight" :size="19" /></div><p>{{ place.desc }}</p></RouterLink></div>
       </section>
       <section class="home-section home-community" aria-labelledby="community-title">
         <div class="community-intro"><span class="eyebrow">03 — SMALL MOMENTS, SHARED</span><h2 id="community-title">{{ tr('月光下的声音', 'Meet under the moon') }}</h2><p>{{ tr('今天的小事、想分享的心情，', 'Small moments, little thoughts,') }}<br>{{ tr('总有人愿意听。', 'and someone who’s here to listen.') }}</p><RouterLink to="/plaza" class="primary-btn">{{ tr('去广场坐坐', 'Visit the plaza') }}<TsIcon name="arrowRight" :size="16" /></RouterLink></div>
         <div class="home-messages"><RouterLink v-for="message in (content?.messages || []).slice(0, 3)" :key="message.id" to="/plaza" class="home-message"><span class="message-avatar"><img v-if="message.avatar" :src="message.avatar" alt="" loading="lazy"><span v-else>{{ [...(message.author_nickname || message.author || '月')][0] }}</span></span><div><div class="message-byline"><strong>{{ message.author_nickname || message.author }}</strong><time>{{ date(message.created_at) }}</time></div><p>{{ message.content }}</p></div></RouterLink><p v-if="!content?.messages?.length" class="empty-state">{{ tr('安静的广场，等你留下第一句问候。', 'A quiet plaza, waiting for your first hello.') }}</p></div>
       </section>
-      <RouterLink to="/drift" class="home-letter"><img :src="driftArt" alt="" loading="lazy"><div><span class="eyebrow">A LETTER TO SOMEONE, SOMEWHERE</span><h2>{{ tr('把心事，交给星海。', 'Let a little thought drift away.') }}</h2><p>{{ tr('写一封信，让月光带它去遇见一个陌生人。', 'Write a letter. Let the moon find someone to read it.') }}</p></div><span class="letter-arrow"><TsIcon name="arrowUpRight" :size="28" /></span></RouterLink>
+      <RouterLink to="/drift" class="home-letter"><img :src="driftArt" alt="" loading="lazy"><div><span class="eyebrow">{{ tr('写给远方的某个人', 'A LETTER TO SOMEONE, SOMEWHERE', 'どこかの誰かへの手紙') }}</span><h2>{{ tr('把心事，交给星海。', 'Let a little thought drift away.') }}</h2><p>{{ tr('写一封信，让月光带它去遇见一个陌生人。', 'Write a letter. Let the moon find someone to read it.') }}</p></div><span class="letter-arrow"><TsIcon name="arrowUpRight" :size="28" /></span></RouterLink>
     </div>
   </main>
 </template>

@@ -141,8 +141,11 @@ test('mobile history stays in place during a reply and returns to the latest bub
     await expect(transcript.locator('.assistant')).toHaveCount(6);
     const remaining = () => transcript.evaluate(node => node.scrollHeight - node.scrollTop - node.clientHeight);
     await expect.poll(remaining).toBeLessThan(24);
-    const conversation = await page.locator('.room-conversation-surface').boundingBox();
-    expect(conversation.y).toBeGreaterThan(844 * .35);
+    const surface = page.locator('.room-conversation-surface');
+    await expect(surface).toHaveAttribute('data-detent', 'half');
+    await surface.evaluate(node => Promise.allSettled(node.getAnimations().map(animation => animation.finished)));
+    const conversation = await surface.boundingBox();
+    expect(conversation.y).toBeGreaterThan(844 * .2);
     expect(conversation.y).toBeLessThan(844 * .51);
     await expect(page.locator('.room-conversation-surface')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await page.locator('#chatInput').fill('最新的一条消息');

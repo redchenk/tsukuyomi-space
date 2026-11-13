@@ -1,4 +1,6 @@
 <script setup>
+import MobileSheet from '../components/MobileSheet.vue';
+import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
@@ -61,6 +63,10 @@ const replyModeration = reactive({});
 const replyDrafts = reactive({});
 const session = ref(getSession());
 const articleShareOpen = ref(false);
+let articleShareTrigger = null;
+const contentsOpen = ref(false), contentsTrigger = ref(null);
+const { keyboardOpen } = useMobileKeyboard();
+async function selectHeading(id) { contentsOpen.value = false; await nextTick(); goToHeading(id); }
 const articleLike = reactive({ loading: false, liked: false, count: 0 });
 const articleTaskMessage = ref('');
 const bookmark = reactive({
@@ -144,7 +150,8 @@ function absoluteUrl(value) {
   }
 }
 
-function openArticleShare() {
+function openArticleShare(event) {
+  articleShareTrigger = event?.currentTarget || document.activeElement;
   if (!article.value) return;
   articleShareOpen.value = true;
 }
@@ -739,6 +746,14 @@ watch(() => route.hash, revealCommentHash);
       </article>
     </div>
   </main>
+  <MobileSheet :open="contentsOpen" :return-focus="contentsTrigger" :title="readerCopy.toc" @close="contentsOpen = false"><nav class="mobile-article-toc" :aria-label="readerCopy.toc"><button class="ghost-btn" type="button" @click="contentsOpen = false; nextTick(() => jumpToArticleTarget('article-top'))"><TsIcon name="chevronUp" :size="18" />{{ replyLabels.top }}</button><a v-for="heading in headings" :key="heading.id" :href="`#${heading.id}`" :class="{ 'is-subheading': heading.level === 3 }" :aria-current="activeHeading === heading.id ? 'location' : undefined" @click.prevent="selectHeading(heading.id)">{{ heading.text }}</a><p v-if="!headings.length">{{ lang === 'en' ? 'This story has no headings.' : '这篇故事没有分节标题，可以直接阅读。' }}</p></nav></MobileSheet>
+  <nav v-if="article && !loading && !keyboardOpen" class="article-reading-tools" :aria-label="replyLabels.navigation">
+    <button ref="contentsTrigger" type="button" :aria-expanded="contentsOpen" @click="contentsOpen = true"><TsIcon name="list" :size="20" /><span>{{ readerCopy.toc }}</span></button>
+    <button type="button" :aria-pressed="articleLike.liked" :disabled="articleLike.loading" @click="toggleArticleLike"><TsIcon name="heart" :size="20" /><span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }}</span></button>
+    <button type="button" :aria-pressed="bookmark.bookmarked" :disabled="bookmark.loading" @click="toggleBookmark"><TsIcon name="bookmark" :size="20" /><span>{{ bookmark.bookmarked ? readerCopy.saved : readerCopy.bookmark }}</span></button>
+    <button type="button" :aria-label="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="20" /><span>{{ readerCopy.comments }}</span></button>
+    <button type="button" @click="openArticleShare"><TsIcon name="external" :size="20" /><span>{{ readerCopy.share }}</span></button>
+  </nav>
   <Teleport to="body">
     <nav v-if="article && !loading" class="article-quick-nav" :aria-label="replyLabels.navigation">
       <button class="article-quick-button" type="button" :aria-label="replyLabels.comments" :title="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="19" /><span>{{ replyLabels.comments }}</span></button>
@@ -747,6 +762,7 @@ watch(() => route.hash, revealCommentHash);
   </Teleport>
   <SocialShareDialog
     :open="articleShareOpen"
+    :return-focus="articleShareTrigger"
     :lang="lang"
     :title="article?.title || '月读空间文章'"
     :text="article?.excerpt || ''"

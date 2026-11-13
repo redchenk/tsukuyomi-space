@@ -2,7 +2,7 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 const { waitForRoom, configureRoomFixture } = require('../e2e-room-helpers.cjs');
 
 async function login(page, baseURL, username) {
-  const response = await page.request.post('/api/auth/login', { headers: { Origin: baseURL, 'X-Requested-With': 'XMLHttpRequest' }, data: { username, password: 'mem0-test-password' } });
+  const response = await page.request.post('/api/auth/login', { maxRetries: 2, headers: { Origin: baseURL, 'X-Requested-With': 'XMLHttpRequest' }, data: { username, password: 'mem0-test-password' } });
   expect(response.status()).toBe(200);
   const user = (await response.json()).data.user;
   await page.addInitScript(user => { localStorage.setItem('tsukuyomi_user', JSON.stringify(user)); localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false })); }, user);
@@ -24,7 +24,7 @@ async function closeDrawer(page) {
   await expect(page.locator('.room-relationship-drawer')).toHaveCount(0);
 }
 
-test('completed chat visibly increases affinity, persists, and explains duplicates with memory disabled', async ({ page, browser, baseURL }, info) => {
+test('completed chat visibly increases affinity, persists, and explains duplicates with memory disabled', async ({ page, browser, baseURL, extraHTTPHeaders }, info) => {
   test.setTimeout(60000);
   const username = `affection-${info.project.name}`;
   await login(page, baseURL, username); await setup(page);
@@ -64,14 +64,14 @@ test('completed chat visibly increases affinity, persists, and explains duplicat
   await expect(card.locator('.relationship-score')).toHaveText('1/1000');
   await expect(card).toContainText('无需开启长期记忆或写日记');
   await expect(card).toContainText('日常交流');
-  const other=await browser.newContext({baseURL});
+  const other=await browser.newContext({baseURL,extraHTTPHeaders});
   try {
     const p=await other.newPage();await login(p,baseURL,`affection-other-${info.project.name}`);await setup(p);await openDrawer(p);
     await expect(p.locator('.relationship-score')).toHaveText('0/1000');
   } finally {await other.close();}
 });
 
-test('daily limit and guest state provide explicit next steps', async({page,baseURL},info)=>{
+test('daily limit and guest state provide explicit next steps', async({page,baseURL,extraHTTPHeaders},info)=>{
   test.setTimeout(60000);
   await login(page,baseURL,`affection-cap-${info.project.name}`);
   for(let i=0;i<11;i++) {
@@ -85,7 +85,7 @@ test('daily limit and guest state provide explicit next steps', async({page,base
   const card=page.locator('.room-relationship');await expect(card).toContainText('今日 +10/10');
   await expect(card).toContainText('今日已达加分上限');
   // A fresh anonymous context must show sign-in rather than another account's score.
-  const guest=await page.context().browser().newContext({baseURL});
+  const guest=await page.context().browser().newContext({baseURL,extraHTTPHeaders});
   try {const p=await guest.newPage();await setup(p);await expect(p.locator('.relationship-guest')).toHaveCount(0);await openDrawer(p);await expect(p.locator('.relationship-guest')).toHaveText('登录后记录好感度');await expect(p.locator('.relationship-score')).toHaveCount(0);await p.keyboard.press('Escape');await expect(p.locator('.room-relationship-drawer')).toHaveCount(0);}finally{await guest.close();}
 });
 
