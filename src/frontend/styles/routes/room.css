@@ -1,5 +1,6 @@
+@import url("../room-chat.css");
 @layer pages {
-.room-shell { --room-ui-text: var(--ink); --room-ui-line: var(--line); --room-ui-accent: var(--accent); --room-ui-inset: var(--soft); --room-glass: color-mix(in srgb, var(--paper) 91%, transparent); }
+.room-shell { --room-ui-ink: var(--ink); --room-ui-muted: var(--muted); --room-ui-surface: var(--room-glass); --room-ui-primary: var(--accent); --room-ui-primary-hover: var(--accent); --room-ui-on-primary: var(--on-accent); --room-ui-shadow: var(--shadow); --room-ui-text: var(--ink); --room-ui-line: var(--line); --room-ui-accent: var(--accent); --room-ui-inset: var(--soft); --room-glass: color-mix(in srgb, var(--paper) 91%, transparent); }
 .room-conversation-layout { position: relative; width: 100%; height: 100dvh; min-height: 560px; overflow: clip; }
 .room-backdrop { position: absolute; inset: 0; background: var(--ts-room-bg-image) center / cover; }
 .room-backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(13 18 25 / 18%), transparent 60%); }

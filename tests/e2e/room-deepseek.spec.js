@@ -114,3 +114,39 @@ test('official DeepSeek binds tools and chat to the signed-in account and restor
   expect(keys.every(k => typeof k === 'string' && k.length > 20)).toBe(true); expect(new Set(keys).size).toBe(keys.length);
   expect(requests.at(-1).messages.at(-1).content[0].file_id).toBe('file-official');
 });
+
+test('redesigned composer preserves text attachments through send and edit, and clears an abandoned draft', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('roomLLMSettings', JSON.stringify({ apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', apiKey: 'fixture-only', useProxy: false }));
+    localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
+    localStorage.setItem('roomTTSSettings', JSON.stringify({ enabled: false }));
+  });
+  const requests = [];
+  await page.route('https://api.openai.com/v1/chat/completions', route => {
+    requests.push(route.request().postDataJSON());
+    return route.fulfill({ contentType: 'text/event-stream', body: reply('已经读到了附件。') });
+  });
+  await open(page);
+  await page.locator('#chatFileInput').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('春日测试材料') });
+  await expect(page.locator('.chat-file-preview')).toContainText('notes.txt');
+  await page.locator('#chatInput').fill('读一下'); await page.locator('#sendChatBtn').click();
+  await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toContainText('读到了附件');
+  await expect(page.locator('.chat-file-preview')).toHaveCount(0);
+  await expect(page.locator('.chat-file-card')).toContainText('notes.txt');
+  expect(JSON.stringify(requests[0].messages.at(-1))).toContain('春日测试材料');
+  const user = page.locator('.chat-message.user').last();
+  if (info.project.name.includes('mobile')) { await user.locator('.chat-content').click(); await user.locator('.room-message-options > summary').click(); }
+  await user.getByRole('button', { name: '编辑并重发这条消息' }).click();
+  await page.locator('.chat-edit-input').fill('继续读这个文件');
+  await page.getByRole('button', { name: '保存并重发', exact: true }).click();
+  await expect.poll(() => requests.length).toBe(2);
+  expect(JSON.stringify(requests[1].messages.at(-1))).toContain('春日测试材料');
+  await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toContainText('读到了附件');
+  await page.locator('#chatFileInput').setInputFiles({ name: 'abandoned.txt', mimeType: 'text/plain', buffer: Buffer.from('不发送的草稿') });
+  if (info.project.name.includes('mobile')) await page.locator('.room-tools-disclosure > summary').click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: '新建会话', exact: true }).click();
+  await expect(page.locator('.chat-file-preview')).toHaveCount(0);
+  await expect(page.locator('#chatInput')).toHaveValue('');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});

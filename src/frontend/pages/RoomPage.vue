@@ -273,19 +273,21 @@ watch(() => props.shareId, loadSharedConversation);
     <div ref="conversationSurface" class="room-conversation-surface" :data-detent="detent" :class="{ 'is-resizing': dragTop !== null }" :style="dragTop !== null ? { '--sheet-top': `${dragTop}px` } : undefined">
       <button v-if="mobileRoom" class="room-sheet-handle" type="button" :aria-label="`${lang === 'en' ? 'Resize chat panel' : '调整聊天面板高度'} · ${detent}`" @click="cycleDetent" @keydown="panelKey" @pointerdown="resizePanel" @pointermove="dragPanel" @pointerup="finishPanelDrag" @pointercancel="finishPanelDrag"><span></span></button>
       <section class="room-companion-bar" aria-label="角色与房间工具">
-        <div class="room-companion-identity">
+        <div class="room-companion-identity" :class="{ 'is-ready': room.live2d.ready.value, 'is-offline': room.live2d.error.value }">
           <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42" data-image-bloom="subtle">
           <span class="room-companion-avatar" aria-hidden="true"></span>
           <div><h1>{{ companionName }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
         </div>
       </section>
-      <nav v-segmented class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
-        <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
-          <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
-        </button>
-        <button v-if="!shareId" type="button" aria-label="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
+      <nav class="room-desktop-tabs" aria-label="房间功能">
+        <div v-segmented class="room-tabs-track" role="tablist" aria-label="房间工作区">
+          <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
+            <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
+          </button>
+        </div>
+        <button v-if="!shareId" class="room-desktop-help" type="button" aria-label="开始使用与发现功能" title="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
         <button v-if="!shareId" class="room-relationship-trigger" type="button" :aria-label="relationshipTitle" :title="relationshipTitle" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /></button>
-        <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /><span>设置</span></a>
+        <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" title="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /></a>
       </nav>
       <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">
         <RoomChatPanel

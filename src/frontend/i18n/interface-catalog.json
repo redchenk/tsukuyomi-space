@@ -13278,5 +13278,81 @@
   "工具基准价为 2026-11-13 版本，包含语音识别限时折扣。供应商调价时须更新价目版本；预留不足或用量缺失的请求转入待核对。": {
     "en": "Tool base prices are versioned 2026-11-13, including the temporary ASR discount. Update the tariff when supplier prices change. Insufficient reservations or missing usage require review.",
     "ja": "ツール基準価格は 2026-11-13 版で、音声認識の期間限定割引を含みます。提供元の価格変更時は料金表の更新が必要です。確保額の不足や使用量の欠落は確認待ちになります。"
+  },
+  "移除文件": {
+    "en": "Remove file",
+    "ja": "ファイルを削除"
+  },
+  "正在听，请说话…": {
+    "en": "Listening…",
+    "ja": "お話しください…"
+  },
+  "添加图片或文件": {
+    "en": "Add image or file",
+    "ja": "画像・ファイルを追加"
+  },
+  "语音": {
+    "en": "Voice",
+    "ja": "音声"
+  },
+  "文件读取失败，请换一个文件再试": {
+    "en": "Could not read the file. Try another file.",
+    "ja": "ファイルを読み込めません。別のファイルをお試しください。"
+  },
+  "{0} 字 · 只发送前段": {
+    "en": "{0} characters · beginning only",
+    "ja": "{0} 文字・冒頭のみ"
+  },
+  "{0} 字": {
+    "en": "{0} characters",
+    "ja": "{0} 文字"
+  },
+  "这个浏览器不支持语音输入，可以用输入法自带的语音键": {
+    "en": "This browser does not support dictation. Try your keyboard's voice input.",
+    "ja": "このブラウザは音声入力に対応していません。キーボードの音声入力をお試しください。"
+  },
+  "没有麦克风权限，请在浏览器设置里允许后再试": {
+    "en": "Allow microphone access in your browser settings and try again.",
+    "ja": "ブラウザ設定でマイクへのアクセスを許可してください。"
+  },
+  "没有找到可用的麦克风": {
+    "en": "No available microphone found.",
+    "ja": "利用できるマイクが見つかりません。"
+  },
+  "没有听到声音，再试一次吧": {
+    "en": "No speech detected. Please try again.",
+    "ja": "音声を検出できませんでした。もう一度お試しください。"
+  },
+  "语音识别服务暂时连不上，可以用输入法自带的语音键": {
+    "en": "Speech recognition is unavailable. Try your keyboard's voice input.",
+    "ja": "音声認識に接続できません。キーボードの音声入力をお試しください。"
+  },
+  "语音输入没有成功，请再试一次": {
+    "en": "Voice input failed. Please try again.",
+    "ja": "音声入力に失敗しました。もう一度お試しください。"
+  },
+  "正在准备语音": {
+    "en": "Preparing audio",
+    "ja": "音声を準備中"
+  },
+  "停止播放": {
+    "en": "Stop playback",
+    "ja": "再生を停止"
+  },
+  "暂时只支持文本类文件，例如 txt、md、csv、json 或代码文件": {
+    "en": "Use a text file such as TXT, Markdown, CSV, JSON or source code.",
+    "ja": "TXT、Markdown、CSV、JSON、ソースコードなどのテキストファイルを選んでください。"
+  },
+  "文件超过 1 MB，请删减后再上传": {
+    "en": "The file exceeds 1 MB. Please reduce its size.",
+    "ja": "ファイルが 1 MB を超えています。サイズを小さくしてください。"
+  },
+  "这个文件看起来不是纯文本，暂时无法读取": {
+    "en": "This file does not appear to be plain text.",
+    "ja": "このファイルはプレーンテキストではないようです。"
+  },
+  "这个文件是空的": {
+    "en": "This file is empty.",
+    "ja": "ファイルが空です。"
   }
 }
