@@ -150,3 +150,30 @@ test('redesigned composer preserves text attachments through send and edit, and 
   await expect(page.locator('#chatInput')).toHaveValue('');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
+
+test('mobile message actions remain visible above the composer on a short screen', async ({ page }, info) => {
+  test.skip(!info.project.name.includes('mobile'), 'Phone action disclosure');
+  await page.setViewportSize({ width: 320, height: 568 });
+  const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
+  await configureRoomFixture(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('roomChatHistory:guest', JSON.stringify([
+      { id: 'short-user', turnId: 'short-turn', role: 'user', content: '今晚聊些什么？' },
+      { id: 'short-reply', turnId: 'short-turn', role: 'assistant', content: '今天也辛苦了。来，坐在这里，一起听听春夜的风吧。' }
+    ]));
+  });
+  await page.goto('/room'); await waitForRoom(page);
+  const message = page.locator('.chat-message.assistant').filter({ hasText: '今天也辛苦了' });
+  await message.locator('.room-message-options > summary').click();
+  for (const name of ['重新生成', '分享这轮对话']) {
+    const action = message.getByRole('button', { name, exact: true });
+    await expect(action).toBeInViewport({ ratio: 1 });
+    await expect.poll(() => action.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return el === hit || el.contains(hit);
+    })).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await expect(message.locator('.room-message-options')).not.toHaveAttribute('open');
+});

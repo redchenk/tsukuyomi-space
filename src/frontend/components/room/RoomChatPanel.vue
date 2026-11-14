@@ -90,19 +90,20 @@ function closeMessageMenus(event) {
   }
 }
 
-// Phone menus open towards whichever side of the transcript has more room, so
-// they never slide under the faded top edge or the composer.
-function placeMessageMenu(event) {
+// Inline actions add a row to the message. Keep it inside the scrollable
+// transcript instead of letting the fixed composer cover it on short screens.
+async function placeMessageMenu(event) {
   const menu = event.currentTarget;
   if (!props.mobile || !menu?.open) return;
-  const viewport = transcriptRef.value?.getBoundingClientRect();
-  const anchor = menu.querySelector('summary')?.getBoundingClientRect();
-  const sheet = menu.querySelector('.chat-message-actions');
-  if (!viewport || !anchor || !sheet) return;
-  const fadedEdge = 56;
-  const above = anchor.top - viewport.top - fadedEdge;
-  const below = viewport.bottom - anchor.bottom;
-  menu.dataset.placement = above >= sheet.offsetHeight + 8 || above >= below ? 'up' : 'down';
+  await nextTick();
+  const transcript = transcriptRef.value;
+  const actions = menu.querySelector('.chat-message-actions');
+  if (!menu.open || !transcript || !actions) return;
+  const viewport = transcript.getBoundingClientRect();
+  const bounds = actions.getBoundingClientRect();
+  const overflow = bounds.bottom - viewport.bottom + 16;
+  if (overflow > 0) transcript.scrollTop += overflow;
+  else if (bounds.top < viewport.top + 56) transcript.scrollTop -= viewport.top + 56 - bounds.top;
 }
 
 function bindTranscript(node) {
