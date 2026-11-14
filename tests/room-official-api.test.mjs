@@ -1,3 +1,4 @@
+import deepseek from '../shared/deepseek-chat.cjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fs from 'node:fs';
@@ -54,7 +55,7 @@ test('model discovery uses only authenticated no-store GET and filters disabled 
 
 function transport(request, modelDashboard = dashboard) {
   const code = fs.readFileSync('src/frontend/composables/room/useRoomChat.js', 'utf8').replace(/^import [\s\S]*?from '[^']*';$/gm, '').replace(/^export /gm, '');
-  const context = { URL, AbortController, ReadableStream, isEnglishSite: () => false, llmProtocol: protocol, ...localTransport, ...official, ...oneclickTts,
+  const context = { URL, AbortController, ReadableStream, isEnglishSite: () => false, llmProtocol: protocol, deepseek, ...localTransport, ...official, ...oneclickTts,
     roomChatConfigured: value => official.roomChatConfigured(value, origin),
     isOfficialRoomApi: value => official.isOfficialRoomApi(value, origin),
     officialRoomSettings: (value, data) => official.officialRoomSettings(value, data, origin),

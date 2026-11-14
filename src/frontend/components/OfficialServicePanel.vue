@@ -1,4 +1,5 @@
 <script setup>
+import DeepseekTariff from './DeepseekTariff.vue';
 import { translateFeedback } from '../i18n/runtime';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { assertDashboardAccount, moneyAtoms, officialRequest, usageStatus } from '../services/official-service.mjs';
@@ -73,7 +74,7 @@ defineExpose({ reload: load });
           <div><dt>输入 · 命中缓存</dt><dd>¥{{ moneyAtoms(model.price.rates_per_million_money_atoms.input_cached) }}</dd></div>
           <div><dt>输出</dt><dd>¥{{ moneyAtoms(model.price.rates_per_million_money_atoms.output) }}</dd></div>
         </dl>
-        <p v-else class="payment-muted">售价尚未公布。</p>
+        <p v-else class="payment-muted">售价尚未公布。</p><DeepseekTariff :model="model" />
       </article>
       <p class="payment-fine">单价为每百万 Token 的人民币金额。请求接纳时锁定售价，按最终用量结算；冻结金额尚未扣费。</p>
       <RouterLink class="ghost-btn" to="/room/settings">前往聊天模型设置</RouterLink>
@@ -92,7 +93,7 @@ defineExpose({ reload: load });
     <ol v-else-if="usage?.items.length" class="payment-usage-list">
       <li v-for="item in usage.items" :key="item.request_id" class="payment-usage-row">
         <div><h4>{{ item.model }}</h4><time>{{ formatDateTime(item.created_at, 'zh-CN') }}</time><code>{{ item.request_id }}</code></div>
-        <div><span class="payment-badge" :class="{ 'is-muted': item.status !== 'settled' }">{{ $ui(usageStatus(item.status, item.error_code)) }}</span><p v-if="item.usage" class="payment-fine">输入 {{ item.usage.input_uncached }} · 缓存 {{ item.usage.input_cached }} · 输出 {{ item.usage.output }}</p><p v-else class="payment-fine">{{ $ui(item.status === 'released' ? (item.error_code === 'OPERATOR_WAIVED' ? '费用由网站承担，冻结已释放' : '冻结已释放，未扣费') : '最终用量待核对') }}</p></div>
+        <div><span class="payment-badge" :class="{ 'is-muted': item.status !== 'settled' }">{{ $ui(usageStatus(item.status, item.error_code)) }}</span><p v-if="item.usage" class="payment-fine">输入 {{ item.usage.input_uncached }} · 缓存 {{ item.usage.input_cached }} · 输出 {{ item.usage.output }}<template v-for="(label, key) in { search: '搜索', fetch: '网页抓取', image_search: '图片搜索', ocr_pages: '识别页数', asr_seconds: '语音秒数' }" :key="key"><span v-if="Number(item.usage[key])"> · {{ label }} {{ item.usage[key] }}</span></template></p><p v-else class="payment-fine">{{ $ui(item.status === 'released' ? (item.error_code === 'OPERATOR_WAIVED' ? '费用由网站承担，冻结已释放' : '冻结已释放，未扣费') : '最终用量待核对') }}</p></div>
         <strong v-if="item.status === 'released'">未扣费</strong><strong v-else-if="item.billing_mode === 'sponsored'">免扣费</strong><strong v-else-if="item.charged_atoms !== null && item.charged_atoms !== undefined">¥{{ moneyAtoms(item.charged_atoms) }}</strong><span v-else class="payment-muted">尚未结算</span>
       </li>
     </ol>

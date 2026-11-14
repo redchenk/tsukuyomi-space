@@ -415,7 +415,7 @@ describe('room model and voice defaults', () => {
         const backendTts = source('backend/services/tts.js');
         const defaults = source('src/frontend/services/room/oneclickTts.mjs');
 
-        assert.match(settings, /model: 'deepseek-v4-flash'/);
+        assert.match(settings, /model: 'deepseek-flash'/);
         for (const content of [settings, roomChat, live2dSpeech]) {
             assert.match(content, /DEFAULT_GPT_SOVITS_GPT_WEIGHT = ONECLICK_TTS_DEFAULTS\.gptWeightPath/);
             assert.match(content, /DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = ONECLICK_TTS_DEFAULTS\.sovitsWeightPath/);

@@ -5,6 +5,7 @@ const { test } = require('node:test');
 const code = fs.readFileSync('src/frontend/composables/room/useRoomChat.js', 'utf8')
   .replace(/^import [\s\S]*?from '[^']*';$/gm, '')
   .replace(/^export /gm, '');
+const deepseekInputCode = fs.readFileSync('src/frontend/composables/room/useRoomDeepseekInput.js', 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '');
 const uploadProgressCode = fs.readFileSync('src/frontend/composables/useUploadProgress.js', 'utf8')
   .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
 const tick = () => new Promise(setImmediate);
@@ -26,6 +27,7 @@ async function setup(overrides = {}) {
   const saved = [];
   const requests = [];
   const context = {
+    deepseek: require('../shared/deepseek-chat.cjs'),
     roomChatRuntime: require('../shared/room-chat-runtime.cjs'), readRoomDialogueSettings: () => ({}),
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
     ...officialApi,
@@ -82,7 +84,7 @@ async function setup(overrides = {}) {
     return key === 'roomLLMSettings' && !overrides.unconfigured
       ? { apiUrl: 'https://fixture.test/v1/chat/completions', model: 'fixture-model', apiKey: 'fixture-key', useProxy: true, ...value } : value;
   };
-  vm.runInNewContext(uploadProgressCode + '\n' + code + (realContext ? '' : '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} });')
+  vm.runInNewContext(deepseekInputCode + '\n' + uploadProgressCode + '\n' + code + (realContext ? '' : '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} });')
     + '\nglobalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
   await tick();
   context.postJson = async () => ({ reply: '模拟模型回复', model: 'fixture-model' });
@@ -549,6 +551,7 @@ function conversationSyncHarness(authFetch, overrides = {}) {
   let account = 'account-a';
   const localSaves = [];
   const context = {
+    deepseek: require('../shared/deepseek-chat.cjs'),
     roomChatRuntime: require('../shared/room-chat-runtime.cjs'), readRoomDialogueSettings: () => ({}),
     AbortController, console, localStorage, Map, Set, Date, URLSearchParams,
     getSession: () => ({ user: { id: account } }),

@@ -713,7 +713,7 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         const userMessage = opener && !req.body?.userMessage ? '' : normalizeChatContent(req.body?.userMessage, 'userMessage');
         if (opener && userMessage) return res.status(400).json({ success: false, message: 'An opener cannot include a user message' });
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
-        const turn = { turnId, userMessage, assistantMessage, opener,
+        const turn = { turnId, userMessage, assistantMessage, opener, deepseek: req.body?.deepseek,
             memoryEnabled: req.body?.memorySource !== 'local' && req.body?.memoryEnabled === true };
         let memoryIds = [];
         let relationshipChange = null;
@@ -748,7 +748,7 @@ router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
         let relationshipChange = null;
         const result = roomChatRepository.replaceLatestTurn(req.user.id, {
-            turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage
+            turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, deepseek: req.body?.deepseek
         }, () => {
             relationshipChange = require('../services/room-local-analysis').recordConversation(req.user.id,
                 { turnId, userMessage, assistantMessage }, { replace: true });

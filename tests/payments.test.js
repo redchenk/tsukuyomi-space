@@ -295,3 +295,21 @@ test('review holds retain balance protection without occupying the central activ
     assert.equal(wallet.wallet(user_id).held_atoms, '160000000');
     assert.equal(wallet.wallet(user_id).balance_atoms, '1000000000');
 });
+
+test('site wallet settles DeepSeek tool dimensions exactly once without altering legacy token or voice tariffs', () => {
+    const wallet = require('../backend/services/site-wallet');
+    const user_id = 'deepseek-tools-owner', request_id = 'req_deepseek_tools_site';
+    db.prepare("INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,'fixture','user')").run(user_id,user_id,user_id+'@example.test');
+    wallet.wallet(user_id);
+    wallet.ledger.creditVerifiedEvent({verified:true,source_id:'fixture',event_id:user_id,order_id:user_id,user_id,currency:'CNY',money_atoms:'1000000000'});
+    const rates = {input_uncached:['2200000000','1000000'],input_cached:['44000000','1000000'],output:['8800000000','1000000'],search:['5500000','1'],fetch:['5500000','1'],image_search:['5500000','1'],ocr_pages:['1650000','1'],asr_seconds:['429000000','3600']};
+    const snapshot={id:'deepseek-site-fixture',currency:'CNY',unit:'deepseek-apps-v1',rates:Object.fromEntries(Object.entries(rates).map(([k,[numerator,denominator]])=>[k,{numerator,denominator}]))};
+    const input={request_id,user_id,request_fingerprint:'d'.repeat(64),hold_atoms:'100000000',pricing_snapshot:snapshot,sponsored:false};
+    wallet.admission(input);
+    const usage={input_uncached:'100',input_cached:'0',output:'50',search:'2',fetch:'1',image_search:'0',ocr_pages:'1',asr_seconds:'3'};
+    const settle={request_id,request_fingerprint:input.request_fingerprint,usage};
+    assert.equal(wallet.settle(settle).request.money_atoms,'19167500');
+    assert.equal(wallet.settle(settle).request.money_atoms,'19167500');
+    assert.equal(wallet.wallet(user_id).balance_atoms,'980832500');assert.equal(wallet.wallet(user_id).held_atoms,'0');
+    assert.throws(()=>wallet.settle({...settle,usage:{...usage,unsupported_tool:'1'}}));
+});

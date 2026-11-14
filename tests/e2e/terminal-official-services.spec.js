@@ -33,8 +33,11 @@ test('Terminal manages LLM and Fish settings from the dedicated page', async({pa
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#app')).not.toHaveAttribute('inert','');
     await page.getByLabel('模型 ID',{exact:true}).fill('chat-2');
+    await page.getByLabel('开放 DeepSeek 应用能力').check();
+    await page.getByLabel('DeepSeek 输出 / 百万 Token').fill('8.8');
     await page.getByRole('button',{name:'保存服务配置'}).click();
     await expect.poll(()=>savedLlm?.model).toBe('chat-2');
+    expect(savedLlm.deepseekApps).toEqual({ enabled:true, markupNumerator:'11', markupDenominator:'10', reservationAtoms:'1000000000', tokenRates:{input_uncached:'2200000000',input_cached:'44000000',output:'8800000000'} });
     await page.getByRole('button',{name:'语音合成',exact:true}).click();
     await page.getByRole('button',{name:/Fish Audio/}).click();
     await expect(page.getByLabel('更换 Fish 密钥')).toHaveValue('');

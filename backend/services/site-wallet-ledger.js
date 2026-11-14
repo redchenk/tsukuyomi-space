@@ -1,3 +1,4 @@
+const deepseekPricing = require('../../shared/deepseek-pricing.cjs');
 /**
  * Original offline billing-ledger reference, Node 24 + node:sqlite only.
  * money_atoms = 10^-9 of the wallet currency. SQLite money is INTEGER, read as BigInt;
@@ -58,6 +59,7 @@ function objectKeys(value, expected, label) {
   }
 }
 function normalizedSnapshot(raw) {
+  if (raw?.unit === deepseekPricing.UNIT) return deepseekPricing.snapshot(raw);
   if (raw?.unit === 'voice') {
     objectKeys(raw, ['id', 'currency', 'unit', 'unit_price_money_atoms'], 'voice pricing_snapshot');
     identifier(raw.id, 'voice pricing snapshot');
@@ -77,6 +79,7 @@ function normalizedSnapshot(raw) {
   };
 }
 function normalizedUsage(raw, snapshot) {
+  if (snapshot?.unit === deepseekPricing.UNIT) return deepseekPricing.usage(raw);
   if (snapshot.unit === 'voice') {
     objectKeys(raw, ['voices'], 'voice usage');
     if (raw.voices !== 1 && raw.voices !== '1') fail('INVALID_VOICE_USAGE', 'Only one completed voice is billable.');

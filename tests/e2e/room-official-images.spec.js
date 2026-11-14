@@ -27,7 +27,7 @@ test('official image chat uploads, forwards and renders its reply on the current
   await expect(page.getByText('支持文字、图片与工具调用。', { exact: false })).toBeVisible();
   await page.goto('/room');
   await expect(page.locator('#loadingOverlay')).toHaveCount(0);
-  await page.locator('input[type="file"][accept*="image"]').setInputFiles(path.resolve('assets/icons/icon-192.png'));
+  await page.locator('#chatImageInput').setInputFiles(path.resolve('assets/icons/icon-192.png'));
   await expect(page.locator('#chatImagePreview img')).toBeVisible();
   await page.locator('#chatInput').fill('看看这张图片');
   await page.locator('#sendChatBtn').click();

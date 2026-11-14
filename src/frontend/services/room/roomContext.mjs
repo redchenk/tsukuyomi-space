@@ -154,7 +154,7 @@ export function selectRecentRoomConversation(history = [], { maxChars = 6_000, m
       } else sizes[0] = remaining;
     }
     const exchange = group.map((part, at) => ({ role: part.role,
-      content: boundedDialogue(raw[at], sizes[at]), turnId: part.turnId || '' }));
+      content: boundedDialogue(raw[at], sizes[at]), turnId: part.turnId || '', ...(part.deepseek ? { deepseek: part.deepseek } : {}) }));
     selected.unshift(...exchange);
     used += exchange.reduce((sum, part) => sum + part.content.length, 0);
   }

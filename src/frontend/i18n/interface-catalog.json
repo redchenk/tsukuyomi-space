@@ -13070,5 +13070,213 @@
   "图片云同步服务暂不可用，请联系管理员检查存储凭据或权限；原图仍保留在当前消息中": {
     "en": "Image cloud sync is unavailable. Ask the administrator to check storage credentials or permissions. The original image is still attached to this message.",
     "ja": "画像のクラウド同期を利用できません。管理者にストレージの認証情報と権限の確認を依頼してください。元の画像はこのメッセージに保持されています。"
+  },
+  "搜索与阅读链接 ¥{0}/次 · OCR 与文件解析 ¥{1}/页 · 语音识别 ¥{2}/小时（不足 1 秒按 1 秒）。": {
+    "en": "Search and link reading ¥{0}/call · OCR and document parsing ¥{1}/page · Speech recognition ¥{2}/hour (rounded up to whole seconds).",
+    "ja": "検索・リンク閲覧 ¥{0}/回 · OCR・文書解析 ¥{1}/ページ · 音声認識 ¥{2}/時間（1 秒未満は切り上げ）。"
+  },
+  "对话能力": {
+    "en": "Chat tools",
+    "ja": "会話ツール"
+  },
+  "深度思考": {
+    "en": "Think deeply",
+    "ja": "深く考える"
+  },
+  "联网搜索": {
+    "en": "Web search",
+    "ja": "ウェブ検索"
+  },
+  "阅读链接": {
+    "en": "Read links",
+    "ja": "リンクを読む"
+  },
+  "添加文件": {
+    "en": "Add file",
+    "ja": "ファイルを追加"
+  },
+  "提取文字": {
+    "en": "Extract text",
+    "ja": "文字を抽出"
+  },
+  "结束录音": {
+    "en": "Finish recording",
+    "ja": "録音を終了"
+  },
+  "语音输入": {
+    "en": "Voice input",
+    "ja": "音声入力"
+  },
+  "添加对话文件": {
+    "en": "Add a conversation file",
+    "ja": "会話にファイルを追加"
+  },
+  "OCR 提取文字": {
+    "en": "Extract text with OCR",
+    "ja": "OCR で文字を抽出"
+  },
+  "正在录音，点击「结束录音」转成文字（最长 2 分钟）": {
+    "en": "Recording. Select Finish recording to transcribe (up to 2 minutes).",
+    "ja": "録音中です。「録音を終了」で文字に変換します（最長 2 分）。"
+  },
+  "正在思考": {
+    "en": "Thinking",
+    "ja": "思考中"
+  },
+  "思考过程": {
+    "en": "Reasoning",
+    "ja": "思考の過程"
+  },
+  "正在查阅资料": {
+    "en": "Checking sources",
+    "ja": "資料を確認中"
+  },
+  "已查阅 {0} 项资料": {
+    "en": "Checked {0} sources",
+    "ja": "{0} 件の資料を確認済み"
+  },
+  "· 未成功": {
+    "en": "· Failed",
+    "ja": "· 失敗"
+  },
+  "· 完成": {
+    "en": "· Done",
+    "ja": "· 完了"
+  },
+  "回答来源": {
+    "en": "Answer sources",
+    "ja": "回答の出典"
+  },
+  "本轮达到输出上限，已保留收到的内容。可继续追问。": {
+    "en": "The output limit was reached. The received text is saved; you can ask a follow-up.",
+    "ja": "出力上限に達しました。受信した内容は保存済みです。続きを質問できます。"
+  },
+  "搜索：{0}": {
+    "en": "Search: {0}",
+    "ja": "検索：{0}"
+  },
+  "阅读：{0}": {
+    "en": "Read: {0}",
+    "ja": "閲覧：{0}"
+  },
+  "网页": {
+    "en": "Web page",
+    "ja": "ウェブページ"
+  },
+  "聊天接口已切换，请重新添加文件。": {
+    "en": "The chat endpoint changed. Please add your files again.",
+    "ja": "チャットの接続先が変わりました。ファイルを再度追加してください。"
+  },
+  "请阅读这些文件。": {
+    "en": "Please read these files.",
+    "ja": "これらのファイルを読んでください。"
+  },
+  "处理失败，请重试。": {
+    "en": "Processing failed. Please try again.",
+    "ja": "処理に失敗しました。もう一度お試しください。"
+  },
+  "每次最多附加 5 个文件。": {
+    "en": "You can attach up to 5 files per turn.",
+    "ja": "1 回につき最大 5 ファイルまで添付できます。"
+  },
+  "文件不能超过 100 MB。": {
+    "en": "Files must be no larger than 100 MB.",
+    "ja": "ファイルは 100 MB 以下にしてください。"
+  },
+  "OCR 未返回可读取的页面。": {
+    "en": "OCR returned no readable pages.",
+    "ja": "OCR から読み取れるページが返されませんでした。"
+  },
+  "部分页面文字被截断，请分段识别。": {
+    "en": "Some pages were truncated. Please split the document.",
+    "ja": "一部のページが途中で切れています。文書を分割して認識してください。"
+  },
+  "文件上传未完成，请重试。": {
+    "en": "The file upload did not complete. Please try again.",
+    "ja": "ファイルのアップロードが完了しませんでした。もう一度お試しください。"
+  },
+  "没有录到声音，请重试。": {
+    "en": "No audio was recorded. Please try again.",
+    "ja": "音声を録音できませんでした。もう一度お試しください。"
+  },
+  "语音接口没有返回文字。": {
+    "en": "Speech recognition returned no text.",
+    "ja": "音声認識からテキストが返されませんでした。"
+  },
+  "无法使用麦克风，请检查浏览器权限和 HTTPS 连接。": {
+    "en": "The microphone is unavailable. Check browser permissions and your HTTPS connection.",
+    "ja": "マイクを使用できません。ブラウザーの権限と HTTPS 接続を確認してください。"
+  },
+  "自定义网关支持 DeepSeek 应用接口": {
+    "en": "My gateway supports DeepSeek application APIs",
+    "ja": "独自ゲートウェイが DeepSeek アプリ API に対応している"
+  },
+  "网关须支持 DeepSeek 文件、搜索、OCR 和语音识别接口；自定义网关使用浏览器直连。DeepSeek 官方地址自动启用。": {
+    "en": "The gateway must support DeepSeek files, search, OCR and speech recognition. Custom gateways use a direct browser connection. Official DeepSeek endpoints are enabled automatically.",
+    "ja": "ゲートウェイは DeepSeek のファイル、検索、OCR、音声認識 API に対応する必要があります。独自ゲートウェイはブラウザーから直接接続します。DeepSeek 公式アドレスでは自動で有効になります。"
+  },
+  "账号已切换，请重新发送。": {
+    "en": "Your account changed. Please send again.",
+    "ja": "アカウントが変わりました。再送してください。"
+  },
+  "请先配置自己的 DeepSeek API Key。": {
+    "en": "Configure your own DeepSeek API key first.",
+    "ja": "先にご自身の DeepSeek API キーを設定してください。"
+  },
+  "桥接上传每个文件最多 8 MB，请压缩文件或使用自己的 API 直连。": {
+    "en": "Bridged uploads support up to 8 MB per file. Compress the file or connect directly with your own API.",
+    "ja": "中継アップロードは 1 ファイル 8 MB までです。圧縮するか、ご自身の API に直接接続してください。"
+  },
+  "自定义网关请使用直连；受限桥接仅支持 DeepSeek 官方域名。": {
+    "en": "Use a direct connection for custom gateways. The restricted bridge supports only the official DeepSeek domain.",
+    "ja": "独自ゲートウェイは直接接続してください。制限付き中継は DeepSeek 公式ドメインのみに対応しています。"
+  },
+  "账号已切换，旧请求不会写入新会话。": {
+    "en": "Your account changed. The old request will not be saved to the new conversation.",
+    "ja": "アカウントが変わりました。以前のリクエストは新しい会話に保存されません。"
+  },
+  "聊天请求预留 ¥{0}，工具按服务上限预留，按实际用量结算并释放余款。多步思考按整轮累计计费；超过预留或用量不完整时转入待核对。文档先提取文字，再加入对话，按实际识别页数收费。": {
+    "en": "¥{0} is reserved per chat request. Tools reserve their service maximum; the remainder is released after final usage is settled. Multi-step reasoning is billed for the whole turn. Incomplete usage or charges above the reserve require review. Documents are converted to text and charged per recognized page.",
+    "ja": "チャットごとに ¥{0} を確保し、ツールはサービスの上限分を確保します。最終使用量の精算後に残額を解放します。複数ステップの思考はターン全体で課金され、確保額の超過や使用量の不足は確認待ちになります。文書はテキストに変換され、認識したページ数で課金されます。"
+  },
+  "DeepSeek 对话与工具": {
+    "en": "DeepSeek chat and tools",
+    "ja": "DeepSeek の会話とツール"
+  },
+  "开放 DeepSeek 应用能力": {
+    "en": "Enable DeepSeek application features",
+    "ja": "DeepSeek アプリ機能を有効にする"
+  },
+  "使用已保存的 DeepSeek 密钥，与其他站内模型并行提供。工具费按倍率收取；下方 Token 售价已含加价。": {
+    "en": "Uses the stored DeepSeek key alongside other site models. Tool fees use the multiplier; the token prices below already include markup.",
+    "ja": "保存済みの DeepSeek キーを使い、他のサイト内モデルと並行して提供します。ツール料金には倍率を適用し、以下のトークン価格には加算分が含まれます。"
+  },
+  "工具倍率分子": {
+    "en": "Tool multiplier numerator",
+    "ja": "ツール倍率の分子"
+  },
+  "工具倍率分母": {
+    "en": "Tool multiplier denominator",
+    "ja": "ツール倍率の分母"
+  },
+  "每次预留金额（元）": {
+    "en": "Chat reservation (CNY)",
+    "ja": "チャットの確保額（元）"
+  },
+  "DeepSeek 未缓存输入 / 百万 Token": {
+    "en": "DeepSeek uncached input / million tokens",
+    "ja": "DeepSeek キャッシュなし入力 / 100 万トークン"
+  },
+  "DeepSeek 缓存输入 / 百万 Token": {
+    "en": "DeepSeek cached input / million tokens",
+    "ja": "DeepSeek キャッシュ入力 / 100 万トークン"
+  },
+  "DeepSeek 输出 / 百万 Token": {
+    "en": "DeepSeek output / million tokens",
+    "ja": "DeepSeek 出力 / 100 万トークン"
+  },
+  "工具基准价为 2026-11-13 版本，包含语音识别限时折扣。供应商调价时须更新价目版本；预留不足或用量缺失的请求转入待核对。": {
+    "en": "Tool base prices are versioned 2026-11-13, including the temporary ASR discount. Update the tariff when supplier prices change. Insufficient reservations or missing usage require review.",
+    "ja": "ツール基準価格は 2026-11-13 版で、音声認識の期間限定割引を含みます。提供元の価格変更時は料金表の更新が必要です。確保額の不足や使用量の欠落は確認待ちになります。"
   }
 }

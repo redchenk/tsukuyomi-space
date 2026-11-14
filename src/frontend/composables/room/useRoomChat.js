@@ -1,3 +1,5 @@
+import { useRoomDeepseekInput } from './useRoomDeepseekInput';
+import { deepseek, requestDeepseekReply } from '../../services/room/roomDeepseek.mjs';
 import { readRoomDialogueSettings } from '../../services/room/roomDialogueSettings';
 import roomChatRuntime from '../../../../shared/room-chat-runtime.cjs';
 import { normalizeLocalGptSovitsUrl, requestLocalGptSovitsControl } from '../../services/room/gptSovitsControl.mjs';
@@ -609,13 +611,15 @@ function roomProvider(apiUrl, model = '') {
   return 'openai';
 }
 
-export async function requestRoomReply({ settings, systemPrompt, conversation = [], message, image, signal, onDelta = () => {}, onDiagnostic = () => {}, stream = true, tools = [], agentTurns = [] }) {
+export async function requestRoomReply({ settings, systemPrompt, conversation = [], message, image, signal, onDelta = () => {}, onDiagnostic = () => {}, onUpdate = () => {}, files = [], features, stream = true, tools = [], agentTurns = [] }) {
   if (!roomChatConfigured(settings)) throw Object.assign(new Error('请先在房间设置中选择并配置聊天模型。'), { code: 'ROOM_MODEL_NOT_CONFIGURED' });
+  if (deepseek.supported(settings) && !isOfficialRoomApi(settings.apiUrl)) return requestDeepseekReply({ settings, systemPrompt, conversation, message, image, files, features, stream, tools, agentTurns, signal, onDelta, onUpdate });
   let officialModel;
   if (isOfficialRoomApi(settings.apiUrl)) {
     const dashboard = await fetchOfficialRoomDashboard({ signal });
     settings = officialRoomSettings(settings, dashboard);
     officialModel = dashboard.models.find(model => model.id === settings.model);
+    if (officialModel.capabilities?.apps && deepseek.supported(settings)) return requestDeepseekReply({ settings, systemPrompt, conversation, message, image, files, features, stream, tools, agentTurns, signal, onDelta, onUpdate });
     if (image && settings.visionMode !== 'mcp' && officialModel.capabilities?.vision !== true) throw new Error('当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。');
   }
   const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
@@ -968,6 +972,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const messages = ref([]);
   const input = ref('');
   const sending = ref(false);
+  const deepseekInput = useRoomDeepseekInput({ input, busy: () => sending.value || resetting.value });
   const configurationRequired = ref(false);
   function checkConfiguration() {
     const ready = roomChatConfigured(readJson('roomLLMSettings', {}));
@@ -1017,6 +1022,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       content: String(content || ''),
       speechText: String(options.speechText || content || ''),
       image: options.image || null,
+      ...(options.deepseek ? { deepseek: options.deepseek } : {}),
       live2d: options.live2d || null,
       shareable: options.shareable !== false,
       createdAt: options.createdAt || Date.now()
@@ -1039,6 +1045,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       id: previous.find(item => message.turnId && item.turnId === message.turnId && item.role === message.role)?.id || message.id,
       turnId: message.turnId,
       image: message.image,
+      deepseek: message.deepseek,
       createdAt: message.createdAt,
       scroll: !preservePosition
     }));
@@ -1063,7 +1070,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       restored.failed = true;
       userMessageId = restored.id;
     }
-    lastFailedTurn = { kind: 'new', turnId: draft.turnId, message: draft.message, image: draft.image, opener: draft.opener, userMessageId };
+    lastFailedTurn = { kind: 'new', turnId: draft.turnId, message: draft.message, image: draft.image, files: draft.files || [], opener: draft.opener, userMessageId };
     generationState.value = { status: 'error', turnId: draft.turnId, error: '上次回复未完成，已恢复原消息。' };
   }
 
@@ -1098,6 +1105,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function resetConversationView() {
+    deepseekInput.reset();
     turnContextSnapshot = null;
     if (activeGeneration) stopGeneration();
     conversationRevision += 1;
@@ -1215,7 +1223,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     if (userMessage && !operation.replacement) userMessage.failed = true;
     lastFailedTurn = operation.replacement
       ? { kind: 'replacement', replacement: operation.replacement }
-      : { kind: 'new', turnId: operation.turnId, message: operation.message, image: operation.image, opener: operation.opener, userMessageId: operation.userMessageId };
+      : { kind: 'new', turnId: operation.turnId, message: operation.message, image: operation.image, files: operation.files, opener: operation.opener, userMessageId: operation.userMessageId };
     generationState.value = { status: 'stopped', turnId: operation.turnId, error: '' };
     return true;
   }
@@ -1277,6 +1285,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       expectedAssistantMessage: previous.find((item) => item.role === 'assistant')?.content || '',
       userMessage: text,
       image: null,
+      files: previous.find(item => item.role === 'user')?.deepseek?.files?.map(file => ({ ...file, endpoint: previous.find(item => item.role === 'user').deepseek.endpoint })) || [],
       opener: false
     } });
   }
@@ -1295,12 +1304,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
       expectedAssistantMessage: previous.find((item) => item.role === 'assistant')?.content || '',
       userMessage: user?.content || '',
       image: null,
+      files: previous.find(item => item.role === 'user')?.deepseek?.files?.map(file => ({ ...file, endpoint: previous.find(item => item.role === 'user').deepseek.endpoint })) || [],
       opener: !user
     } });
   }
 
   async function send({ opener = false, retry = null, replacement = null } = {}) {
-    if (sending.value || imageUpload.state.active || resetting.value || endChatState.value.status === 'generating') return;
+    if (sending.value || imageUpload.state.active || deepseekInput.working.value || deepseekInput.recording.value || resetting.value || endChatState.value.status === 'generating') return;
     if (!checkConfiguration()) return false;
     if (lastFailedTurn?.kind === 'new' && !retry && !replacement) return false;
     if (opener && !retry && !replacement && !canStartConversation()) return;
@@ -1311,16 +1321,19 @@ export function useRoomChat({ live2d, world, diary = null }) {
       ? '现在由你先开口。结合当前时间，主动说一句自然、简短、符合你身份的话来开启对话。不要复述这条指令。'
       : input.value.trim();
     const image = replacement?.image ?? retry?.image ?? (opener ? null : imageAttachment.value);
-    if (!message && !image) return;
+    const files = replacement?.files ?? retry?.files ?? (opener ? [] : [...deepseekInput.files.value]);
+    if (!message && !image && !files.length) return;
+    if (files.some(file => file.endpoint !== deepseek.endpoint(readJson('roomLLMSettings', {})))) { deepseekInput.error.value = '聊天接口已切换，请重新添加文件。'; return; }
     const requestConversationRevision = conversationRevision;
     const requestArchiveKey = diaryArchiveKey();
     const turnId = replacement?.turnId || retry?.turnId || uid();
-    if (!replacement) writeRoomGenerationDraft({ turnId, message, image, opener });
+    if (!replacement) writeRoomGenerationDraft({ turnId, message, image, files, opener });
     let userMessage = retry ? messages.value.find((item) => item.id === retry.userMessageId) : null;
     if (!opener && !retry && !replacement) {
-      userMessage = addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
+      userMessage = addMessage('user', message || (files.length ? '请阅读这些文件。' : '请看这张图片。'), { image, turnId, ...(files.length ? { deepseek: { provider: 'deepseek', endpoint: deepseek.endpoint(readJson('roomLLMSettings', {})), files } } : {}) });
       input.value = '';
       imageAttachment.value = null;
+      deepseekInput.files.value = [];
     }
     if (userMessage) userMessage.failed = false;
     sending.value = true;
@@ -1330,7 +1343,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     messages.value.push({ id: pendingId, turnId, role: 'assistant', content: '', parts: [], pending: true, createdAt: Date.now() });
     // Read back Vue's proxy: mutating the raw object would not render deltas.
     const pendingMessage = messages.value.at(-1);
-    const operation = { controller: new AbortController(), pendingId, turnId, message, image, opener, userMessageId: userMessage?.id || '', replacement, committing: false, timedOut: false };
+    const operation = { controller: new AbortController(), pendingId, turnId, message, image, files, opener, userMessageId: userMessage?.id || '', replacement, committing: false, timedOut: false };
     activeGeneration = operation;
     const presenter = createRoomReplyPresenter({
       signal: operation.controller.signal,
@@ -1431,7 +1444,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
           message: mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
           image,
           signal: operation.controller.signal,
-          onDelta,
+          onDelta, files, features: deepseekInput.features.value,
+          onUpdate(update) { if (activeGeneration === operation && !operation.controller.signal.aborted) pendingMessage.deepseekProgress = update; },
           ...extra
         });
         result = tools.length ? await agentProtocol.runAgent({
@@ -1466,6 +1480,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
           expectedAssistantMessage: replacement.expectedAssistantMessage,
           userMessage: replacement.userMessage,
           assistantMessage: reply,
+          deepseek: { user: files.length ? { provider: 'deepseek', endpoint: deepseek.endpoint(settings), files } : null, assistant: result.deepseek },
           memoryEnabled: readJson('roomMemorySettings', { enabled: true }).enabled !== false
         });
         if (destroyed || activeGeneration !== operation || requestArchiveKey !== diaryArchiveKey()) return false;
@@ -1478,8 +1493,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
         messages.value = messages.value.filter((item) => item.id !== pendingId);
         const oldUser = messages.value.find((item) => item.id === replacement.userMessageId);
         const oldAssistant = messages.value.find((item) => item.id === replacement.assistantMessageId);
-        if (oldUser) oldUser.content = replacement.userMessage;
-        if (oldAssistant) Object.assign(oldAssistant, { content: reply, speechText: spokenReply, live2d: structured.live2d, failed: false });
+        if (oldUser) Object.assign(oldUser, { content: replacement.userMessage, deepseek: files.length ? { provider: 'deepseek', endpoint: deepseek.endpoint(settings), files } : null });
+        if (oldAssistant) Object.assign(oldAssistant, { content: reply, speechText: spokenReply, live2d: structured.live2d, failed: false, deepseek: result.deepseek, deepseekProgress: pendingMessage.deepseekProgress });
         const session = currentSessionMessages.value;
         const last = session.at(-1);
         if (last?.role === 'assistant' && last.content === replacement.expectedAssistantMessage) {
@@ -1491,16 +1506,19 @@ export function useRoomChat({ live2d, world, diary = null }) {
         // Finish the same bubble in place, preserving its DOM identity and
         // the reader's scroll position while controls/timestamps appear.
         Object.assign(pendingMessage, { content: reply, speechText: spokenReply, live2d: structured.live2d, pending: false });
-        if (!opener) currentSessionMessages.value.push({ turnId, role: 'user', content: message || '请看这张图片。' });
+        if (!opener) currentSessionMessages.value.push({ turnId, role: 'user', content: message || (files.length ? '请阅读这些文件。' : '请看这张图片。') });
         currentSessionMessages.value.push({ turnId, role: 'assistant', content: reply });
         persistDiaryRecording();
-        const userContent = message || (image ? '请看这张图片。' : '');
-        const nextHistory = [...readRoomConversation(), ...(!opener ? [{ role: 'user', content: userContent, turnId, image: savedImage, createdAt: userMessage?.createdAt }] : []), { role: 'assistant', content: reply, turnId, createdAt: pendingMessage.createdAt }].slice(-24);
+        const userContent = message || (files.length ? '请阅读这些文件。' : image ? '请看这张图片。' : '');
+        const userDeepseek = files.length ? { provider: 'deepseek', endpoint: deepseek.endpoint(settings), files } : null;
+        if (userMessage && userDeepseek) userMessage.deepseek = userDeepseek;
+        if (result.deepseek) pendingMessage.deepseek = result.deepseek;
+        const nextHistory = [...readRoomConversation(), ...(!opener ? [{ role: 'user', content: userContent, turnId, image: savedImage, deepseek: userDeepseek, createdAt: userMessage?.createdAt }] : []), { role: 'assistant', content: reply, turnId, deepseek: result.deepseek, createdAt: pendingMessage.createdAt }].slice(-24);
         writeRoomConversation(nextHistory);
         operation.committing = true;
         generationState.value = { status: 'saving', turnId, error: '' };
         memorySaveError.value = '';
-        await saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener, imageId: savedImage?.id,
+        await saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener, imageId: savedImage?.id, deepseek: { user: userDeepseek, assistant: result.deepseek },
           memoryEnabled: readJson('roomMemorySettings', { enabled: true }).enabled !== false
         }).catch(() => {
           memorySaveError.value = ROOM_ENGLISH ? 'Memory save incomplete. Please reconnect and reload.' : '本轮记忆尚未保存成功，请恢复连接后刷新重试。';
@@ -1518,7 +1536,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       if (userMessage && !replacement) userMessage.failed = true;
       lastFailedTurn = replacement
         ? { kind: 'replacement', replacement }
-        : { kind: 'new', turnId, message, image, opener, userMessageId: userMessage?.id || '' };
+        : { kind: 'new', turnId, message, image, files, opener, userMessageId: userMessage?.id || '' };
       generationState.value = {
         status: error?.name === 'AbortError' && !operation.timedOut ? 'stopped' : 'error',
         turnId,
@@ -1952,13 +1970,15 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function onDrop(event) {
-    const file = [...event.dataTransfer?.files || []].find((item) => /^image\//.test(item.type));
+    const file = [...event.dataTransfer?.files || []][0];
     if (!file) return;
     event.preventDefault();
-    attachImage(file);
+    if (/^image\//.test(file.type)) attachImage(file);
+    else if (deepseekInput.supported()) deepseekInput.attach(file);
   }
 
   function destroy() {
+    deepseekInput.destroy();
     turnContextSnapshot = null;
     destroyed = true;
     if (activeGeneration) stopGeneration();
@@ -1994,6 +2014,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     growth,
     characterName,
     imageAttachment,
+    deepseekInput,
     imageUploadState: imageUpload.state,
     dismissImageUpload: imageUpload.clear,
     messageListRef,

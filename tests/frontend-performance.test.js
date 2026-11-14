@@ -112,7 +112,7 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /\.pixel-art-actions/);
         assert.match(arenaPage, /pointer: coarse[\s\S]*\? 'move' : 'brush'/);
         assert.match(source('backend/routes/hub-preview.js'), /preview:\s*true/);
-        assert.match(source('src/frontend/pages/HubPage.vue'), /image: siteArt\.pixelCover/);
+        assert.match(source('src/frontend/pages/HubPage.vue'), /image: content\.value\?\.pixel[\s\S]*: siteArt\.pixelCover/);
     });
 
     it('keeps desktop pixel controls scrollable without trapping mobile page scrolling', () => {

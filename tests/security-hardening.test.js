@@ -258,7 +258,7 @@ describe('browser security headers', () => {
         assert.equal(headers.get('x-content-type-options'), 'nosniff');
         assert.equal(headers.get('x-frame-options'), 'SAMEORIGIN');
         assert.equal(headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
-        assert.equal(headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=(self)');
+        assert.equal(headers.get('permissions-policy'), 'camera=(), microphone=(self), geolocation=(self)');
         assert.equal(headers.get('x-permitted-cross-domain-policies'), 'none');
         assert.equal(headers.get('origin-agent-cluster'), '?1');
         assert.equal(headers.get('cross-origin-opener-policy'), 'same-origin-allow-popups');

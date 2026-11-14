@@ -1,4 +1,6 @@
 <script setup>
+import { deepseek, deepseekRequest } from '../services/room/roomDeepseek.mjs';
+import DeepseekTariff from '../components/DeepseekTariff.vue';
 import { roomSettingsNavigation, roomSettingsSearch } from '../constants/room/settingsNavigation';
 import RoomDialogueSettings from '../components/room/RoomDialogueSettings.vue';
 import { readJson, writeJson } from '../services/room/roomStorage';
@@ -77,7 +79,7 @@ const LLM_PRESETS = {
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
   claude: { label: 'Claude (Anthropic)', apiUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-opus-5-5' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
-  deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-v4-flash' },
+  deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-flash' },
   kimi: { label: 'Kimi', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'kimi-k2.6' },
   zhipu: { label: '智谱 GLM', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5.1' },
   siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'deepseek-ai/DeepSeek-V3' },
@@ -270,7 +272,7 @@ let toastTimer = 0;
 let modelNoticeTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
-const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {} });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, deepseekApps: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {} });
 const selectedModelDeclaration = computed(() => modelCatalog.models.find(item => item.nativeId === llm.model)?.capabilities);
 const tts = reactive({ ...ONECLICK_TTS_DEFAULTS });
 const officialTtsStatus = ref({ online: false });
@@ -1430,7 +1432,7 @@ function loadSettings() {
   model.xOffset = Number(modelSettings.xOffset || 0);
   model.yOffset = Number(modelSettings.yOffset || 0);
 
-  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {}, ...readJson('roomLLMSettings', {}) });
+  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, deepseekApps: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {}, ...readJson('roomLLMSettings', {}) });
   if (isOllamaApi(llm.apiUrl)) {
     llm.apiUrl = normalizeOllamaUrl(llm.apiUrl);
     llm.useProxy = false;
@@ -1755,6 +1757,7 @@ function normalizedLLMSettings() {
     apiKey: needsApiKey ? String(llm.apiKey || '').trim() : '',
     model: modelName,
     useProxy: needsApiKey ? Boolean(llm.useProxy) : false,
+    deepseekApps: Boolean(llm.deepseekApps),
     visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto',
     systemPrompt: String(llm.systemPrompt || '').trim(),
     catalogWorkspaceId: String(llm.catalogWorkspaceId || '').trim(),
@@ -1784,6 +1787,7 @@ function saveLLM(showDialog = true) {
     apiKey: settings.apiKey,
     model: settings.model,
     useProxy: settings.useProxy,
+    deepseekApps: settings.deepseekApps,
     visionMode: settings.visionMode,
     systemPrompt: settings.systemPrompt,
     catalogWorkspaceId: settings.catalogWorkspaceId,
@@ -1824,7 +1828,8 @@ async function testLLM() {
     showToast('请先填写 LLM API Key', 'error');
     return;
   }
-  const requestUrl = settings.useProxy ? apiUrl('/api/chat') : normalizeChatUrl(settings.apiUrl, settings.model);
+  const useDeepseek = deepseek.supported(settings) && (!isOfficialRoomApi(settings.apiUrl) || officialSelectedModel.value?.capabilities?.apps);
+  const requestUrl = useDeepseek ? deepseek.endpoint(settings) : settings.useProxy ? apiUrl('/api/chat') : normalizeChatUrl(settings.apiUrl, settings.model);
   const requestFetch = settings.useProxy
     ? (options) => apiFetch('/api/chat', options)
     : (options) => fetchWithLocalOllamaGuidance(requestUrl, options);
@@ -1833,7 +1838,7 @@ async function testLLM() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await requestFetch({
+    const response = useDeepseek ? await deepseekRequest(settings, '/chat/completions', { signal: controller.signal, body: { ...deepseek.buildRequest({ settings, message: '请只回复：连接成功', stream: false, features: { readUrl: false } }), max_tokens: 120 } }) : await requestFetch({
       method: 'POST',
       signal: controller.signal,
       headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
@@ -2706,6 +2711,7 @@ onBeforeUnmount(() => {
                 每百万 Token：输入 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.input_uncached) }}，缓存输入 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.input_cached) }}，输出 ¥{{ officialMoney(officialSelectedModel.price.rates_per_million_money_atoms.output) }}。按实际用量结算，测试连接也会产生用量。
               </p>
               <p v-if="officialSelectedModel">单次输出上限 {{ officialSelectedModel.max_output_tokens }} Token；{{ officialSelectedModel.capabilities?.vision ? '支持文字、图片与工具调用。图片会自动压缩，按实际 Token 用量计费。' : '支持文字聊天和工具调用；图片请配合 MCP 识图。' }}</p>
+              <DeepseekTariff v-if="officialSelectedModel" :model="officialSelectedModel" />
               <div class="settings-official-links">
                 <a class="ghost-btn compact" href="/payments" @click.prevent="emit('go', '/payments')">支付中心</a>
                 <a v-if="!officialSupply.dashboard && !modelCatalog.loading" class="ghost-btn compact" href="/login?redirect=%2Froom%2Fsettings">登录账号</a>
@@ -2929,6 +2935,8 @@ onBeforeUnmount(() => {
                   :disabled="llmProviderKey === 'ollama' || setupLlmMode === 'site'"
                 />使用服务器受限代理</label
               >
+              <label v-if="setupLlmMode !== 'site' && setupLlmMode !== 'ollama'" class="check-row"><input v-model="llm.deepseekApps" type="checkbox" />自定义网关支持 DeepSeek 应用接口</label>
+              <p v-if="llm.deepseekApps && setupLlmMode !== 'site'" class="field-hint">网关须支持 DeepSeek 文件、搜索、OCR 和语音识别接口；自定义网关使用浏览器直连。DeepSeek 官方地址自动启用。</p>
               <p v-if="setupLlmMode === 'site'" class="field-hint">站内直供通过当前网站安全连接，使用登录 Cookie 验证身份。</p>
               <p v-else class="field-hint">
                 关闭时由浏览器直连服务商；开启时请求经过本站后端，仅支持已允许的服务商。Ollama

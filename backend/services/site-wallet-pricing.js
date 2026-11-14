@@ -1,3 +1,4 @@
+const deepseekPricing = require('../../shared/deepseek-pricing.cjs');
 /**
  * Original offline pricing reference. Node.js standard library only.
  *
@@ -112,6 +113,7 @@ function snapshotForPricing(snapshot) {
  * A downstream SQLite/SQL ledger must additionally enforce its own integer bounds.
  */
 function priceUsage(snapshot, usage) {
+  if (snapshot?.unit === deepseekPricing.UNIT) return deepseekPricing.price(snapshot, usage);
   const pricingSnapshot = snapshotForPricing(snapshot);
   objectFields(usage, PRICING_DIMENSIONS, 'UNSUPPORTED_USAGE_DIMENSIONS', 'usage');
   let numerator = 0n;

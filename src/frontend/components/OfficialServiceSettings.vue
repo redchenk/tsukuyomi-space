@@ -14,6 +14,8 @@ const api = (path, { body } = {}) => props.request('/official-services/llm/' + p
 });
 function apply(data) {
   settings.value = data; draft.value = { ...data, rates: Object.fromEntries(Object.entries(data.rates).map(([name, value]) => [name, moneyAtoms(value)])) };
+  const apps = data.deepseekApps || { enabled: false, markupNumerator: '11', markupDenominator: '10', reservationAtoms: '1000000000', tokenRates: { input_uncached: '2200000000', input_cached: '44000000', output: '8800000000' } };
+  draft.value.deepseekApps = { ...apps, reservationAtoms: moneyAtoms(apps.reservationAtoms), tokenRates: Object.fromEntries(Object.entries(apps.tokenRates).map(([name, value]) => [name, moneyAtoms(value)])) };
   key.value = ''; replaceKey.value = false; removeKey.value = false;
 }
 async function run(action) {
@@ -39,6 +41,7 @@ async function save() {
     // Payment products and amounts remain solely in the existing site manager.
     body.paymentsEnabled = value.paymentsEnabled;
     body.rates = Object.fromEntries(Object.entries(value.rates).map(([name, price]) => [name, rateAtoms(price)]));
+    body.deepseekApps = { ...value.deepseekApps, markupNumerator: String(value.deepseekApps.markupNumerator), markupDenominator: String(value.deepseekApps.markupDenominator), reservationAtoms: rateAtoms(value.deepseekApps.reservationAtoms), tokenRates: Object.fromEntries(Object.entries(value.deepseekApps.tokenRates).map(([name, price]) => [name, rateAtoms(price)])) };
     if (replaceKey.value && key.value) body.apiKey = key.value;
     if (removeKey.value) body.removeKey = true;
     apply(await api('settings', { body }));
@@ -65,6 +68,21 @@ async function reconcile(item, action) {
         <label class="payment-check"><input v-model="replaceKey" type="checkbox" :disabled="settings.simulation || removeKey" @change="key = ''" />更换供应商密钥</label><label v-if="replaceKey">新供应商密钥<input v-model="key" type="password" autocomplete="new-password" placeholder="留空保留已保存的密钥" /></label><label class="payment-check"><input v-model="removeKey" type="checkbox" @change="replaceKey = false; key = ''" />删除所选供应商密钥</label>
       </fieldset>
       <fieldset :disabled="busy"><legend>每百万 Token 售价（元）</legend><div class="payment-form-grid payment-form-three"><label>未缓存输入<input v-model="draft.rates.input_uncached" inputmode="decimal" required /></label><label>缓存输入<input v-model="draft.rates.input_cached" inputmode="decimal" required /></label><label>输出<input v-model="draft.rates.output" inputmode="decimal" required /></label></div></fieldset>
+      <fieldset :disabled="busy"><legend>DeepSeek 对话与工具</legend>
+        <label class="payment-check"><input v-model="draft.deepseekApps.enabled" type="checkbox" />开放 DeepSeek 应用能力</label>
+        <p class="payment-fine">使用已保存的 DeepSeek 密钥，与其他站内模型并行提供。工具费按倍率收取；下方 Token 售价已含加价。</p>
+        <div class="payment-form-grid">
+          <label>工具倍率分子<input v-model="draft.deepseekApps.markupNumerator" type="number" min="1" required /></label>
+          <label>工具倍率分母<input v-model="draft.deepseekApps.markupDenominator" type="number" min="1" required /></label>
+          <label>每次预留金额（元）<input v-model="draft.deepseekApps.reservationAtoms" inputmode="decimal" required /></label>
+        </div>
+        <div class="payment-form-grid payment-form-three">
+          <label>DeepSeek 未缓存输入 / 百万 Token<input v-model="draft.deepseekApps.tokenRates.input_uncached" inputmode="decimal" required /></label>
+          <label>DeepSeek 缓存输入 / 百万 Token<input v-model="draft.deepseekApps.tokenRates.input_cached" inputmode="decimal" required /></label>
+          <label>DeepSeek 输出 / 百万 Token<input v-model="draft.deepseekApps.tokenRates.output" inputmode="decimal" required /></label>
+        </div>
+        <p class="payment-fine">工具基准价为 2026-11-13 版本，包含语音识别限时折扣。供应商调价时须更新价目版本；预留不足或用量缺失的请求转入待核对。</p>
+      </fieldset>
       <fieldset :disabled="busy"><legend>请求限制</legend><div class="payment-form-grid"><label>输入 Token 上限<input v-model.number="draft.maxInputTokens" type="number" min="4096" max="262144" required /></label><label>输出 Token 上限<input v-model.number="draft.maxOutputTokens" type="number" min="16" max="16384" required /></label><label>每人并发数<input v-model.number="draft.perUserConcurrent" type="number" min="1" max="4" required /></label><label>每分钟请求数<input v-model.number="draft.requestsPerMinute" type="number" min="1" max="60" required /></label></div></fieldset>
       <fieldset :disabled="busy"><legend>服务状态</legend><label class="payment-check"><input v-model="draft.published" type="checkbox" />公布售价</label><label class="payment-check"><input v-model="draft.usageVerified" type="checkbox" />已核验供应商最终用量协议</label><label class="payment-check"><input v-model="draft.boundVerified" type="checkbox" />已核验请求费用上限</label><label class="payment-check"><input v-model="draft.enabled" type="checkbox" />启用站内直供</label></fieldset>
       <p class="payment-fine">保存后仅影响新请求。充值金额、商品和支付开关沿用网站支付管理。</p>

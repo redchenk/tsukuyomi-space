@@ -1,3 +1,4 @@
+const deepseek = require('../../shared/deepseek-chat.cjs');
 const crypto = require('crypto');
 const db = require('../db');
 const roomImages = require('../services/room-chat-images');
@@ -16,15 +17,16 @@ function compactMessage(row) {
         turnId: row.turn_id,
         role: row.role,
         content: row.content,
+        ...(row.provider_context ? { deepseek: deepseek.metadata(JSON.parse(row.provider_context)) } : {}),
         createdAt: row.created_at
     };
 }
 
 function listMessages(userId, limit = 24) {
     return db.prepare(`
-        SELECT id, turn_id, role, content, created_at
+        SELECT id, turn_id, role, content, created_at, provider_context
         FROM (
-            SELECT rowid AS sort_id, id, turn_id, role, content, created_at
+            SELECT rowid AS sort_id, id, turn_id, role, content, created_at, provider_context
             FROM room_chat_messages
             WHERE user_id = ?
             ORDER BY sort_id DESC
@@ -88,7 +90,7 @@ function clearDiarySnapshot(userId, snapshot) {
 
 function findOwnedTurn(userId, turnId) {
     const rows = db.prepare(`
-        SELECT id, turn_id, role, content, created_at
+        SELECT id, turn_id, role, content, created_at, provider_context
         FROM room_chat_messages
         WHERE user_id = ? AND turn_id = ?
         ORDER BY CASE role WHEN 'user' THEN 0 ELSE 1 END
@@ -110,7 +112,7 @@ function conflict(message) {
 
 function turnRows(userId, turnId) {
     return db.prepare(`
-        SELECT id, role, content FROM room_chat_messages
+        SELECT id, role, content, provider_context FROM room_chat_messages
         WHERE user_id = ? AND turn_id = ?
         ORDER BY CASE role WHEN 'user' THEN 0 ELSE 1 END
     `).all(userId, turnId);
@@ -121,12 +123,17 @@ function requireCapacity(userId, additional) {
     if (count + additional > MAX_ACTIVE_MESSAGES) throw conflict('当前会话已达到 10000 条记录，请先结束会话并写日记；已有记录不会删除');
 }
 
-function insertMessage({ userId, turnId, role, content }) {
+function storedContext(value) {
+    try { const parsed = deepseek.metadata(value); return parsed ? JSON.stringify(parsed) : ''; }
+    catch (error) { error.statusCode = 400; throw error; }
+}
+
+function insertMessage({ userId, turnId, role, content, providerContext }) {
     const id = crypto.randomUUID();
     const result = db.prepare(`
-        INSERT OR IGNORE INTO room_chat_messages (id, user_id, turn_id, role, content)
-        VALUES (?, ?, ?, ?, ?)
-    `).run(id, userId, turnId, role, content);
+        INSERT OR IGNORE INTO room_chat_messages (id, user_id, turn_id, role, content, provider_context)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, userId, turnId, role, content, storedContext(providerContext));
     return result.changes ? id : null;
 }
 
@@ -149,7 +156,7 @@ function findRecentMatchingLegacyTurn(userId, userMessage, assistantMessage) {
     `).get(userId, userMessage, assistantMessage)?.turn_id || '';
 }
 
-function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = false }, onSaved = null) {
+function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = false, deepseek: context }, onSaved = null) {
     const save = db.transaction(() => {
         const existing = turnRows(userId, turnId);
         if (existing.length) {
@@ -157,7 +164,7 @@ function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = fals
                 ? [{ role: 'assistant', content: assistantMessage }]
                 : [{ role: 'user', content: userMessage }, { role: 'assistant', content: assistantMessage }];
             if (existing.length !== expected.length || existing.some((row, index) => (
-                row.role !== expected[index].role || row.content !== expected[index].content
+                row.role !== expected[index].role || row.content !== expected[index].content || row.provider_context !== storedContext(context?.[row.role])
             ))) throw conflict('此轮对话已由其他内容保存，请刷新后重试');
             return [];
         }
@@ -169,8 +176,8 @@ function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = fals
 
         requireCapacity(userId, opener ? 1 : 2);
         const messageIds = [
-            !opener && insertMessage({ userId, turnId, role: 'user', content: userMessage }),
-            insertMessage({ userId, turnId, role: 'assistant', content: assistantMessage })
+            !opener && insertMessage({ userId, turnId, role: 'user', content: userMessage, providerContext: context?.user }),
+            insertMessage({ userId, turnId, role: 'assistant', content: assistantMessage, providerContext: context?.assistant })
         ].filter(Boolean);
         if (messageIds.length && typeof onSaved === 'function') onSaved();
         return messageIds;
@@ -178,7 +185,7 @@ function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = fals
     return save();
 }
 
-function replaceLatestTurn(userId, { turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage }, onReplaced = null) {
+function replaceLatestTurn(userId, { turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, deepseek: context }, onReplaced = null) {
     const replace = db.transaction(() => {
         const latest = db.prepare(`
             SELECT turn_id FROM room_chat_messages WHERE user_id = ? ORDER BY rowid DESC LIMIT 1
@@ -192,18 +199,18 @@ function replaceLatestTurn(userId, { turnId, expectedUserMessage, expectedAssist
         if (opener && (expectedUserMessage || userMessage)) throw conflict('开场白不能包含用户消息');
         const actualUser = opener ? '' : rows[0].content;
         const actualAssistant = rows.at(-1).content;
-        if (actualUser === userMessage && actualAssistant === assistantMessage) {
+        if (actualUser === userMessage && actualAssistant === assistantMessage && rows.every(row => row.provider_context === storedContext(context?.[row.role]))) {
             return { changed: false, messageIds: [] };
         }
         if (actualUser !== expectedUserMessage || actualAssistant !== expectedAssistantMessage) {
             throw conflict('该轮对话已在其他设备更新，请刷新后重试');
         }
         if (!opener) {
-            db.prepare('UPDATE room_chat_messages SET content = ? WHERE id = ? AND user_id = ?')
-                .run(userMessage, rows[0].id, userId);
+            db.prepare('UPDATE room_chat_messages SET content = ?, provider_context = ? WHERE id = ? AND user_id = ?')
+                .run(userMessage, storedContext(context?.user), rows[0].id, userId);
         }
-        db.prepare('UPDATE room_chat_messages SET content = ? WHERE id = ? AND user_id = ?')
-            .run(assistantMessage, rows.at(-1).id, userId);
+        db.prepare('UPDATE room_chat_messages SET content = ?, provider_context = ? WHERE id = ? AND user_id = ?')
+            .run(assistantMessage, storedContext(context?.assistant), rows.at(-1).id, userId);
         // Keep chat replacement and retirement of its generated memories in
         // the same SQLite transaction. A failed edit cannot erase memories.
         const invalidatedMemoryIds = typeof onReplaced === 'function' ? onReplaced() : [];

@@ -1,3 +1,4 @@
+import deepseek from '../../../../shared/deepseek-chat.cjs';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { applyGrowthResult } from '../userGrowth';
 import { announceRelationship } from './roomRelationship';
@@ -45,7 +46,7 @@ export function writeRoomGenerationDraft(draft) {
   const image = draft?.image && String(draft.image.dataUrl || '').length <= 750_000
     ? draft.image
     : draft?.image ? { name: draft.image.name || 'image', unavailable: true } : null;
-  const value = { turnId: draft.turnId, message: String(draft.message || ''), opener: draft.opener === true, image, createdAt: Date.now() };
+  const value = { turnId: draft.turnId, message: String(draft.message || ''), opener: draft.opener === true, image, files: Array.isArray(draft.files) ? draft.files : [], createdAt: Date.now() };
   try {
     localStorage.setItem(generationDraftKey(), JSON.stringify(value));
   } catch (_) {
@@ -73,6 +74,7 @@ function normalizeHistory(messages) {
       turnId: message.turnId ? String(message.turnId) : '',
       role: message.role,
       content: String(message.content || ''),
+      ...(message.deepseek ? { deepseek: deepseek.metadata(message.deepseek) } : {}),
       ...(message.image ? { image: normalizeRoomImage(message.image) } : {}),
       createdAt: message.createdAt || ''
     }))
@@ -364,9 +366,9 @@ export async function validateRoomDiarySnapshot(snapshot) {
   if (!response.ok || !result.success || result.data?.userId !== userId) throw new Error(result.message || '日记对话已改变，请重新读取');
 }
 
-export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, imageId, opener = false, memoryEnabled = true }) {
+export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, imageId, deepseek: providerContext, opener = false, memoryEnabled = true }) {
   const userId = currentUserId();
-  const turn = queuePendingTurn(withLocalMemorySource({ turnId, userMessage, assistantMessage, memoryEnabled, ...(imageId ? { imageId } : {}), ...(opener ? { opener: true } : {}) }, userId), userId);
+  const turn = queuePendingTurn(withLocalMemorySource({ turnId, userMessage, assistantMessage, memoryEnabled, ...(providerContext ? { deepseek: providerContext } : {}), ...(imageId ? { imageId } : {}), ...(opener ? { opener: true } : {}) }, userId), userId);
   if (!userId) {
     await saveGuestMemory(turn, localMemoryOptions(turn, userId));
     requireSameAccount(userId);
@@ -379,7 +381,7 @@ export async function saveRoomConversationTurn({ turnId, userMessage, assistantM
 }
 
 /** Replace only the most recent complete turn, leaving earlier history intact. */
-export async function replaceRoomConversationTurn({ turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, memoryEnabled = true }) {
+export async function replaceRoomConversationTurn({ turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, deepseek: providerContext, memoryEnabled = true }) {
   const userId = currentUserId();
   const epoch = saveEpoch(userId);
   let captureTurn = withLocalMemorySource({ turnId, userMessage, assistantMessage, memoryEnabled, replace: true }, userId);
@@ -396,7 +398,7 @@ export async function replaceRoomConversationTurn({ turnId, expectedUserMessage,
   }
   let next = history.map((item) => item.turnId !== turnId ? item : {
     ...item,
-    content: item.role === 'user' ? userMessage : assistantMessage
+    content: item.role === 'user' ? userMessage : assistantMessage, deepseek: item.role === 'user' ? providerContext?.user : providerContext?.assistant
   });
   if (userId) {
     // A newly generated turn may still be in the durable local outbox. Wait for
@@ -407,7 +409,7 @@ export async function replaceRoomConversationTurn({ turnId, expectedUserMessage,
     const response = await authFetch(`/api/room/chat/turn/${encodeURIComponent(turnId)}`, {
       method: 'PUT',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage,
+      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, deepseek: providerContext,
         memoryEnabled: captureTurn.memorySource === 'local' ? false : memoryEnabled,
         ...(captureTurn.memorySource === 'local' ? { memorySource: 'local' } : {}) })
     });

@@ -149,6 +149,7 @@ function createApp() {
     app.use('/api/assets/uploads', strictJson('16kb'));
     app.use('/api/assets', strictJson('28mb'));
     app.use('/api/mcp', strictJson('6mb'));
+    app.use('/api/chat/deepseek', strictJson('12mb'), require('./routes/deepseek'));
     app.use('/api/chat', strictJson('8mb'));
     app.use('/api/tts/official', strictJson('8kb'));
     app.use('/api/tts', strictJson('12mb'));

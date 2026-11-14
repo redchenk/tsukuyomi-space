@@ -2,6 +2,8 @@
 import { splitKnowledgeReply } from '../../services/siteKnowledge.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../TsIcon.vue';
+import NoticeMarkdown from '../NoticeMarkdown.vue';
+import RoomDeepseekDetails from './RoomDeepseekDetails.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 import RoomChatImage from './RoomChatImage.vue';
 import RoomPromptSources from './RoomPromptSources.vue';
@@ -19,6 +21,10 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth', 'open-diary', 'help']);
 const imageInputRef = ref(null);
+const documentInputRef = ref(null);
+const ocrInputRef = ref(null);
+const deepseekInput = computed(() => props.chat.deepseekInput);
+const deepseekBusy = computed(() => deepseekInput.value?.working.value || deepseekInput.value?.recording.value);
 const transcriptRef = ref(null);
 const composerRef = ref(null);
 const editingMessageId = ref('');
@@ -336,6 +342,7 @@ function endChatStatusLabel() {
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
           <span v-if="message.role === 'assistant'" class="room-message-ai">AI</span>
           <RoomChatImage v-if="message.image" :image="message.image" />
+          <ul v-if="message.deepseek?.files?.length" class="room-file-list"><li v-for="file in message.deepseek.files" :key="file.id">{{ file.name }}</li></ul>
           <template v-if="editingMessageId === message.id">
             <label class="chat-edit-label" :for="`chat-edit-${message.id}`">修改这条消息</label>
             <textarea
@@ -353,9 +360,11 @@ function endChatStatusLabel() {
             </div>
           </template>
           <template v-else>
+            <RoomDeepseekDetails v-if="message.pending && !message.content" :message="message" />
             <StatusLoader v-if="message.pending && !message.content" :label="`${characterName}正在输入…`" compact />
             <template v-else-if="message.role === 'assistant'">
-              <div v-for="(part, index) in replyParts(message)" :key="index" class="chat-content chat-reply-part">{{ part }}</div>
+              <NoticeMarkdown v-if="message.deepseek || message.deepseekProgress" class="chat-content chat-reply-part" :content="knowledgeReply(message).text" /><template v-else v-for="(part, index) in replyParts(message)" :key="index"><div class="chat-content chat-reply-part">{{ part }}</div></template>
+              <RoomDeepseekDetails :message="message" />
             </template>
             <div v-else class="chat-content">{{ message.role === 'system' ? $ui(message.content) : message.content }}</div>
             <div v-if="message.role === 'assistant' && !message.pending && knowledgeReply(message).sources.length" class="chat-knowledge-sources">
@@ -433,6 +442,19 @@ function endChatStatusLabel() {
         <img :src="chat.imageAttachment.value.dataUrl" :alt="chat.imageAttachment.value.name">
         <button class="panel-btn" type="button" @click="chat.clearImage">&#31227;&#38500;</button>
       </div>
+      <div v-if="deepseekInput?.supported()" class="room-deepseek-toolbar" aria-label="对话能力">
+        <button type="button" :aria-pressed="deepseekInput.features.value.thinking" :disabled="generationBusy" @click="deepseekInput.toggle('thinking')">深度思考</button>
+        <button type="button" :aria-pressed="deepseekInput.features.value.search" :disabled="generationBusy" @click="deepseekInput.toggle('search')">联网搜索</button>
+        <button type="button" :aria-pressed="deepseekInput.features.value.readUrl" :disabled="generationBusy" @click="deepseekInput.toggle('readUrl')">阅读链接</button>
+        <button type="button" :disabled="generationBusy || deepseekBusy" @click="documentInputRef?.click()">添加文件</button>
+        <button type="button" :disabled="generationBusy || deepseekBusy" @click="ocrInputRef?.click()">提取文字</button>
+        <button type="button" :aria-pressed="deepseekInput.recording.value" :disabled="generationBusy || deepseekInput.working.value" @click="deepseekInput.voice()">{{ deepseekInput.recording.value ? '结束录音' : '语音输入' }}</button>
+        <input ref="documentInputRef" type="file" hidden aria-label="添加对话文件" @change="deepseekInput.attach($event.target.files?.[0]); $event.target.value = ''">
+        <input ref="ocrInputRef" type="file" hidden accept="image/*,.pdf,.doc,.docx,.ppt,.pptx" aria-label="OCR 提取文字" @change="deepseekInput.attach($event.target.files?.[0], true); $event.target.value = ''">
+      </div>
+      <p v-if="deepseekInput?.recording.value || deepseekInput?.status.value" class="room-deepseek-notice" role="status">{{ deepseekInput.recording.value ? '正在录音，点击「结束录音」转成文字（最长 2 分钟）' : deepseekInput.status.value }}</p>
+      <p v-if="deepseekInput?.error.value" class="room-deepseek-notice" role="alert">{{ deepseekInput.error.value }}</p>
+      <ul v-if="deepseekInput?.files.value.length" class="room-file-list"><li v-for="file in deepseekInput.files.value" :key="file.id">{{ file.name }} <button type="button" :aria-label="`移除 ${file.name}`" @click="deepseekInput.remove(file.id)">移除</button></li></ul>
       <div class="chat-input-row">
         <input ref="imageInputRef" id="chatImageInput" type="file" accept="image/*" hidden @change="chat.attachImage($event.target.files?.[0]); $event.target.value = ''">
         <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy || chat.imageUploadState?.active" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="imageInputRef?.click()">
@@ -446,7 +468,7 @@ function endChatStatusLabel() {
           <span>停止</span>
         </button>
         <button v-else-if="generationBusy" class="panel-btn chat-stop-btn" type="button" disabled aria-label="正在保存回复"><TsIcon name="loader" :size="20" class="ts-status-loader-icon" /><span>保存中</span></button>
-        <button v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || chat.imageUploadState?.active || endChatBusy || (!chat.input.value.trim() && !chat.imageAttachment.value)" aria-label="发送" @click="chat.send">
+        <button v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || chat.imageUploadState?.active || deepseekBusy || endChatBusy || (!chat.input.value.trim() && !chat.imageAttachment.value && !deepseekInput?.files.value.length)" aria-label="发送" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
           <span>发送</span>
         </button>
@@ -565,4 +587,14 @@ function endChatStatusLabel() {
 @media (max-width: 860px) {
   .room-image-upload.upload-progress-card { width: calc(100% - 24px); margin: 4px 12px; padding: 10px; gap: 6px; }
 }
+</style>
+
+<style scoped>
+.room-deepseek-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:.25rem .8rem; padding:.35rem 20px; }
+.room-deepseek-toolbar button, .room-file-list button { appearance:none; border:0; background:transparent; color:var(--ts-muted); font:inherit; font-size:.76rem; padding:.5rem 0; cursor:pointer; }
+.room-deepseek-toolbar button[aria-pressed="true"] { color:var(--ts-accent); text-decoration:underline; text-underline-offset:5px; }
+.room-deepseek-toolbar button:disabled { opacity:.45; cursor:default; }
+.room-deepseek-notice { font-size:.78rem; color:var(--ts-muted); margin:.25rem 0; }
+.room-file-list { list-style:none; margin:.25rem 0; padding:0; font-size:.8rem; overflow-wrap:anywhere; }
+@media(max-width:720px) { .room-deepseek-toolbar { gap:0 .85rem; } .room-deepseek-toolbar button { min-height:44px; } .chat-reply-part :deep(pre), .chat-reply-part :deep(code) { background:transparent; border:0; } }
 </style>

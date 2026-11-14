@@ -22,6 +22,7 @@ function setup(options = {}) {
   let routeGuard;
   const navigation = [];
   const ctx = {
+    deepseek: require('../shared/deepseek-chat.cjs'),
     fishAudio: require('../shared/fish-audio.cjs'), URL, console, AbortController, setTimeout: () => 0, clearTimeout() {}, uiText: value => value,
     ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog, ...oneclickTts,
     ...officialApi,
@@ -395,7 +396,7 @@ test('provider presets keep same-provider keys but cannot send an old provider k
   assert.equal(h.llm.apiKey, 'fixture-openai-key');
   h.applyPreset('deepseek');
   assert.equal(h.llm.apiKey, '');
-  assert.equal(h.llm.model, 'deepseek-v4-flash');
+  assert.equal(h.llm.model, 'deepseek-flash');
 });
 
 test('changing only public retrieval is tracked, saved, restored and discardable', async () => {

@@ -95,3 +95,18 @@ test('active-session capacity stops new saves explicitly without pruning previou
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM room_chat_messages WHERE user_id='capacity'").get().n, 10000);
     assert.equal(chat.listDiaryMessages('capacity').messages[0].id, 'capacity-message-0');
 });
+
+
+test('DeepSeek file context and signed citations survive cloud storage and replacement without crossing accounts', async () => {
+    chat.clearMessages('diary-two');
+    const endpoint = 'https://api.deepseek.com/chat/completions';
+    const context = { user: { provider: 'deepseek', endpoint, files: [{ id: 'file-owned', name: '资料.pdf' }] }, assistant: { provider: 'deepseek', endpoint, server_tool_calls: [{ calls: [{ signature: 'fixture-signature' }] }], annotations: [{ url_citation: { url: 'https://example.com', title: '资料' } }] } };
+    const body = { turnId: 'deepseek-cloud', userMessage: '读文件', assistantMessage: '已阅读', deepseek: context };
+    chat.saveTurn('diary-two', body); chat.saveTurn('diary-two', body);
+    const saved = chat.listMessages('diary-two');
+    assert.equal(saved.length, 2); assert.equal(saved[0].deepseek.files[0].id, 'file-owned'); assert.equal(saved[1].deepseek.server_tool_calls[0].calls[0].signature, 'fixture-signature');
+    assert.equal(chat.listMessages('diary-one').some(m => m.turnId === body.turnId), false);
+    assert.throws(() => chat.saveTurn('diary-two', { ...body, deepseek: { ...context, user: { ...context.user, files: [{ id: 'other-file' }] } } }), /其他内容/);
+    chat.replaceLatestTurn('diary-two', { ...body, expectedUserMessage: body.userMessage, expectedAssistantMessage: body.assistantMessage, deepseek: { ...context, assistant: { ...context.assistant, annotations: [] } } });
+    assert.deepEqual(chat.listMessages('diary-two')[1].deepseek.annotations, []);
+});
