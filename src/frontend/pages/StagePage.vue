@@ -43,6 +43,21 @@ function setFilter(key, value) {
   if (!value || key === 'sort' && value === 'latest') delete query[key]; else query[key] = value;
   router.replace({ path: '/stage', query });
 }
+async function jumpToPage(event) {
+  const target = event.currentTarget.elements.page.valueAsNumber;
+  if (loading.value || loadingMore.value || !Number.isSafeInteger(target) || target < 1 || target > totalPages.value) return;
+  event.currentTarget.reset();
+  const currentRoutePage = Math.max(1, Number.parseInt(route.query.page, 10) || 1);
+  if (target === currentRoutePage) {
+    // "More stories" can append later pages without changing this URL.
+    await load();
+    if (active && route.name === 'stage') window.scrollTo({ top: 0, behavior: 'instant' });
+    return;
+  }
+  const query = { ...route.query };
+  if (target === 1) delete query.page; else query.page = String(target);
+  router.push({ path: '/stage', query });
+}
 async function load(more = false, background = false) {
   if (more && (loadingMore.value || page.value >= totalPages.value)) return;
   const run = ++revision;
@@ -94,7 +109,19 @@ useContentTranslationRefresh(() => load());
       </article>
     </div>
     <div v-if="error" class="journal-error" role="alert"><p>{{ error }}</p><button class="ghost-btn" @click="load(Boolean(articles.length))">{{ tr('重新加载', 'Try again') }}</button></div>
-    <footer v-if="!loading && articles.length" class="journal-pagination"><span>{{ tr('已读到这里', 'You’re here') }} · {{ articles.length }} / {{ total }}</span><button v-if="page < totalPages" class="ghost-btn" :disabled="loadingMore" @click="load(true)">{{ loadingMore ? tr('正在加载…', 'Loading…') : tr('再读一些', 'More stories') }}<TsIcon :name="loadingMore ? 'loader' : 'arrowDown'" :size="17" /></button><p v-else>{{ tr('暂时读到这里，新的故事还在路上。', 'That’s all for now. More stories are on their way.') }}</p></footer>
+    <footer v-if="!loading && (articles.length || total > 0)" class="journal-pagination">
+      <span>{{ tr('已读到这里', 'You’re here') }} · {{ articles.length }} / {{ total }}</span>
+      <nav v-if="totalPages > 1" class="journal-page-navigation" :aria-label="tr('文章分页', 'Story pages', '記事のページ')">
+        <span class="journal-page-count">{{ tr('页码', 'Page', 'ページ') }} {{ page }} / {{ totalPages }}</span>
+        <form class="journal-page-jump" @submit.prevent="jumpToPage">
+          <label for="stage-page-number">{{ tr('跳到', 'Go to', '移動先') }}</label>
+          <input id="stage-page-number" name="page" type="number" min="1" :max="totalPages" step="1" required inputmode="numeric" enterkeyhint="go" autocomplete="off" :placeholder="String(page)" :aria-label="tr('跳转页码', 'Page number', 'ページ番号')" :disabled="loadingMore">
+          <button class="ghost-btn" type="submit" :disabled="loadingMore">{{ tr('跳转', 'Go', '移動') }}</button>
+        </form>
+      </nav>
+      <button v-if="page < totalPages" class="ghost-btn" :disabled="loadingMore" @click="load(true)">{{ loadingMore ? tr('正在加载…', 'Loading…') : tr('再读一些', 'More stories') }}<TsIcon :name="loadingMore ? 'loader' : 'arrowDown'" :size="17" /></button>
+      <p v-else>{{ tr('暂时读到这里，新的故事还在路上。', 'That’s all for now. More stories are on their way.') }}</p>
+    </footer>
     <MobileSheet :open="sortOpen" :return-focus="sortTrigger" :title="tr('文章排序', 'Sort stories')" @close="sortOpen = false"><div class="sheet-options"><button v-for="item in sortOptions" :key="item.value" type="button" :aria-pressed="order === item.value" @click="setFilter('sort', item.value); sortOpen = false">{{ item.label }}<TsIcon v-if="order === item.value" name="check" :size="20" /></button></div></MobileSheet>
   </main>
 </template>

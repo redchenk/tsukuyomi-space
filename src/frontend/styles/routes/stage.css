@@ -35,7 +35,12 @@
 .journal-cover img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 500ms var(--ease); }
 .journal-cover:hover img { transform: scale(1.045); }
 .journal-pagination { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 40px 0 0; color: var(--muted); font-size: 13px; }
-.journal-pagination button { min-width: 180px; }
+.journal-pagination > button { min-width: 180px; }
+.journal-page-navigation { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 24px; max-width: 100%; }
+.journal-page-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.journal-page-jump { display: flex; align-items: center; gap: 10px; }
+.journal-page-jump input { width: 72px; min-height: 44px; padding: 6px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; text-align: center; }
+.journal-page-jump .ghost-btn { min-height: 44px; padding: 8px 12px; }
 .journal-error { display: grid; justify-items: center; gap: 16px; padding: 32px; color: var(--danger); }
 @media (max-width: 860px) { .stage-heading .section-title { font-size: 42px; } .journal-toolbar { padding-bottom: 10px; gap: 0; } .journal-tools { width: 100%; justify-content: space-between; } .journal-cover { width: 200px; } .journal-row { gap: 26px; } }
 @media (max-width: 600px) { .stage-heading { align-items: start; gap: 12px; padding-bottom: 24px; } .stage-heading > a { padding: 9px 13px; font-size: 13px; margin-top: 36px; } .stage-heading > a svg { display: none; } .stage-heading .section-title { font-size: 38px; } .stage-heading .section-subtitle { font-size: 14px; } .journal-tabs { gap: 24px; width: 100%; } .journal-search input { width: min(180px, 45vw); font-size: 16px; } .journal-row { gap: 16px; padding: 24px 0; align-items: start; } .journal-title h2 { font-size: 20px; } .journal-cover { width: 96px; aspect-ratio: 1; margin-top: 27px; border-radius: 10px; } .journal-excerpt { font-size: 14px; -webkit-line-clamp: 2; } .journal-byline { gap: 10px; font-size: 13px; } .journal-engagement { display: none; } .journal-meta { gap: 8px; flex-wrap: wrap; } .journal-meta > span:last-child { display: none; } }
