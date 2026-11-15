@@ -176,7 +176,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'content-shell': showChrome, 'site-background-shell': showChrome || ['login', 'register'].includes(routeName), 'room-shell': isRoom, 'drift-scene-shell': routeName === 'drift', 'hub-shell': routeName === 'hub', 'is-keyboard-open': keyboardOpen, 'has-mini-player': miniPlayer, 'reading-shell': readingPage }" :style="viewportStyle">
+  <div class="app-shell" :class="{ 'content-shell': showChrome, 'site-background-shell': showChrome || ['login', 'register'].includes(routeName), 'room-shell': isRoom, 'pixel-shell': routeName === 'pixel', 'drift-scene-shell': routeName === 'drift', 'hub-shell': routeName === 'hub', 'is-keyboard-open': keyboardOpen, 'has-mini-player': miniPlayer, 'reading-shell': readingPage }" :style="viewportStyle">
     <header v-if="showChrome" class="site-header" :class="{ 'on-hero': routeName === 'hub' && !scrolled }">
       <a href="/hub" class="site-brand" @click="navigate($event, { path: '/hub' })"><img :src="brandLogo" alt="" width="32" height="32"><span>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}</span></a>
       <nav class="desktop-nav" :aria-label="t.navigation">
@@ -209,7 +209,7 @@ onUnmounted(() => {
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="emit('go', $event)" />
     <SiteMusicDrawer v-if="music?.drawer.open" :music="music" :lang="lang" />
     <slot />
-    <footer v-if="showChrome" class="site-footer">
+    <footer v-if="showChrome && routeName !== 'pixel'" class="site-footer">
       <div class="footer-top">
         <div class="footer-intro"><a href="/hub" class="footer-brand" @click="navigate($event, { path: '/hub' })">{{ t.brand }}</a><p>{{ tr('在月光下相遇，把喜欢的事慢慢写下来。', 'A little moonlight. A place to belong.') }}</p></div>
         <nav :aria-label="tr('页脚导航', 'Footer')">
@@ -225,6 +225,7 @@ onUnmounted(() => {
         <BeianLink />
       </div>
     </footer>
+    <BeianLink v-if="showChrome && routeName === 'pixel'" class="site-beian-footer" />
     <div v-if="miniPlayer && !keyboardOpen" class="mini-player">
       <button class="mini-player-open" type="button" :aria-label="tr('打开站内音乐', 'Open music')" @click="openMusic"><span class="mini-player-cover" :style="music.coverUrl.value ? { backgroundImage: `url(${JSON.stringify(music.coverUrl.value)})` } : null"><TsIcon v-if="!music.coverUrl.value" name="music" :size="20" /></span><span class="mini-player-copy"><strong>{{ music.currentTrack.value?.title || 'Music' }}</strong><small>{{ music.currentLabel.value }} · {{ tr('正在播放', 'Now playing') }}</small></span></button>
       <button class="icon-button" type="button" :aria-label="tr('暂停音乐', 'Pause music')" @click="music.togglePlay"><TsIcon name="pause" :size="20" /></button>

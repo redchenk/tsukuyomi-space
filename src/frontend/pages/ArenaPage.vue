@@ -35,10 +35,20 @@ const DISPLAY_CELL_SIZE = 6;
 const EXPORT_CELL_SIZE = 8;
 const DEFAULT_ZOOM = 100;
 const MIN_ZOOM = 20;
-const MAX_ZOOM = 260;
+const MAX_ZOOM = 1200;
+// Photoshop-style zoom stops for the +/- buttons and shortcuts.
+const ZOOM_STOPS = [20, 25, 33, 50, 67, 100, 150, 200, 300, 400, 600, 800, 1200];
+const MAX_BRUSH_SIZE = 8;
 const MAX_CUSTOM_COLORS = 52;
 const MAX_IMAGE_COLORS = 32;
 const SIGN_IN_DRAFT_KEY = 'tsukuyomi-pixel-sign-in-draft-v1';
+const PANEL_STATE_KEY = 'tsukuyomi-pixel-panels-v1';
+const GESTURE_HINT_KEY = 'tsukuyomi-pixel-gesture-hint-v1';
+// A second finger this soon after a touch stroke starts means "gesture", so
+// the stroke is withdrawn instead of leaving a stray dot (Procreate-style).
+const TOUCH_STROKE_GRACE_MS = 420;
+const TWO_FINGER_TAP_MS = 280;
+const PAINT_TOOLS = ['brush', 'eraser', 'fill'];
 const presetPalette = [
   '#0b1020',
   '#ffffff',
@@ -54,251 +64,115 @@ const presetPalette = [
   '#647086'
 ];
 const studioColors = ['#273e61', '#496985', '#648da1', '#87a17b', '#cfb991', '#ffd286', '#172d41', '#31576b', '#7fa6ac', '#c99595', '#e6d79c', '#fff5cf'];
-const backgroundPresets = ['#ffffff', '#f7f7f7', '#edf8ff', '#ffd1e8', '#172033', '#0b1020'];
+const backgroundPresets = ['#ffffff', '#f4f1ea', '#edf8ff', '#ffd1e8', '#172033', '#0b1020'];
 const decodedArtworkPreviews = new WeakMap();
 const fullArtworkCache = new Map();
 
 const copy = computed(() => props.lang === 'en' ? {
-  kicker: 'Tsukuyomi Pixel Atelier',
-  title: 'Moonlit Pixel Workshop',
-  subtitle: 'Choose a tool and color, draw on the grid, then export or publish your piece.',
-  channel: 'Drawing flow',
-  channelValue: 'Choose · Draw · Save',
-  onlineRoom: 'Drawing session notes',
-  draftTitle: 'New artwork',
-  draftPlaceholder: 'Artwork title',
-  descPlaceholder: 'Leave a short note about this piece',
-  share: 'Publish artwork',
-  saveUpdate: 'Save update',
-  loginToShare: 'Sign in to publish',
-  clear: 'Clear canvas',
-  undo: 'Undo',
-  redo: 'Redo',
-  sample: 'Load moon example',
-  download: 'Export PNG',
-  brush: 'Brush',
-  eraser: 'Eraser',
-  fill: 'Fill',
-  move: 'Move',
-  zoom: 'Zoom',
-  layers: 'Layers',
-  brushSize: 'Brush size',
-  pressure: 'Pen pressure',
-  stabilizer: 'Pen smoothing',
-  chat: 'Session notes',
-  connected: 'Only available in this session',
-  messagePlaceholder: 'Write down an idea for this drawing...',
-  sendMessage: 'Add note',
-  palette: 'Colors & settings',
-  openTools: 'Open colors and settings',
-  closeTools: 'Close colors and settings',
-  quickColors: 'Quick colors', currentColor: 'Current color', moreColors: 'More colors',
-  finishArtwork: 'Finish artwork', publishDetails: 'Artwork details',
-  fitCanvas: 'Fit canvas', drawingGuide: 'How to draw',
-  moveHint: 'Move mode: drag the canvas to explore. Choose Brush to start drawing.',
-  brushHint: 'Brush mode: drag to draw. Zoom in for finer details.',
-  eraserHint: 'Eraser mode: drag to remove pixels. Undo restores a mistake.',
-  fillHint: 'Fill mode: tap an area to color connected pixels.',
-  guideSteps: ['Pick Brush and a color to draw.', 'Use Move to navigate, or zoom in for details.', 'Undo mistakes; export PNG anytime. Add a title to publish.'],
-  notesEmpty: 'Keep a quick idea here while you draw. Notes disappear when you leave this page.',
-  draftRestored: 'Your drawing is ready to continue.',
-  presets: 'Preset colors',
-  freeColor: 'Custom color',
-  addColor: 'Save color',
-  colorLimit: 'The 64-color palette is full',
-  canvasSize: 'Rectangular grid',
-  imageImport: 'Import image',
-  uploadImage: 'Convert an image to pixel art',
-  imageConverted: 'Image converted to pixel art',
-  imageLoadFailed: 'Unable to load image',
-  imageTypeInvalid: 'Choose an image file',
-  background: 'Canvas background',
-  colors: 'Colors',
-  size: 'Grid',
-  gallery: 'Community artwork',
-  openGallery: 'Open community artwork',
-  closeGallery: 'Close community artwork',
-  latest: 'Latest',
-  hot: 'Popular',
-  refresh: 'Refresh',
-  empty: 'No public artwork yet. The first moonlit piece can begin here.',
-  loading: 'Syncing...',
-  like: 'Like',
-  liked: 'Liked',
-  publishOk: 'Artwork shared',
-  updateOk: 'Artwork updated',
-  publishFailed: 'Unable to share artwork',
-  titleRequired: 'Give your artwork a title first',
-  blankCanvas: 'The canvas is still empty',
-  likedToast: 'Artwork liked',
-  alreadyLiked: 'You already liked this artwork',
-  shareLink: 'Share',
-  by: 'by'
+  appName: 'Pixel Studio', pageTitle: 'Moonlit Pixel Workshop',
+  draftTitle: 'Untitled artwork', renameArtwork: 'Rename and publish details',
+  tools: 'Tools', toolOptions: 'Tool options',
+  brush: 'Brush', eraser: 'Eraser', fill: 'Fill', picker: 'Eyedropper', move: 'Hand',
+  brushSize: 'Size', pressure: 'Pen pressure', stabilizer: 'Smoothing',
+  undo: 'Undo', redo: 'Redo', gallery: 'Community', newCanvas: 'New', imageImport: 'Import image', uploadImage: 'Convert an image to pixel art',
+  download: 'Export PNG', share: 'Publish', saveUpdate: 'Save update', loginToShare: 'Sign in to publish', more: 'More',
+  panels: 'Panels', showPanels: 'Show panels', hidePanels: 'Hide panels',
+  colorPanel: 'Color', swatchesPanel: 'Swatches', brushPanel: 'Brush', navigatorPanel: 'Navigator', canvasPanel: 'Canvas', notesPanel: 'Notes', filePanel: 'File',
+  presets: 'Preset colors', studioSet: 'Moonlit set', recent: 'Recent', savedColors: 'My colors', addColor: 'Add to swatches',
+  colorLimit: 'The 64-color palette is full', freeColor: 'Custom color', currentColor: 'Foreground (brush color)', background: 'Background color',
+  brushHint: 'Drag to paint · Alt to sample a color · [ ] change size', eraserHint: 'Drag to erase pixels. Undo restores mistakes.',
+  fillHint: 'Click to fill the connected area of one color.', pickerHint: 'Click the canvas to sample a color, then return to your last tool.',
+  moveHint: 'Drag to look around · hold Space anytime', gestureHint: 'One finger paints · two fingers zoom and pan · two-finger tap undoes',
+  zoom: 'Zoom', fitCanvas: 'Fit on screen', actualPixels: '100%', grid: 'Pixel grid', focus: 'Focus mode', exitFocus: 'Exit focus mode',
+  saving: 'Saving…', saved: 'Saved on this device', saveFailed: 'Not saved — export a backup', savedLocal: 'Draft saved on this device',
+  canvasSize: 'Canvas size', newCanvasAction: 'New canvas…', example: 'Load moonlit house example', clear: 'Clear canvas',
+  newTitle: 'New canvas', newHint: 'Your current drawing will be replaced. Export it first, or use Undo to restore it.', create: 'Create',
+  publishDetails: 'Artwork details', draftPlaceholder: 'Artwork title', descPlaceholder: 'Leave a short note about this piece',
+  exportHint: 'The PNG is generated on your device. On mobile, you can also long-press the preview to save it.', saveImage: 'Save PNG',
+  latest: 'Latest', hot: 'Popular', refresh: 'Refresh', emptyGallery: 'No public artwork yet. The first moonlit piece can begin here.',
+  loading: 'Syncing…', like: 'Like', liked: 'Liked', shareLink: 'Share', by: 'by', pager: 'Artwork pages', prevPage: 'Previous page', nextPage: 'Next page',
+  close: 'Close', cancel: 'Cancel', publishOk: 'Artwork shared', updateOk: 'Artwork updated', publishFailed: 'Unable to share artwork',
+  titleRequired: 'Give your artwork a title first', blankCanvas: 'The canvas is still empty', likedToast: 'Artwork liked', alreadyLiked: 'You already liked this artwork',
+  imageConverted: 'Image converted to pixel art', imageLoadFailed: 'Unable to load image', imageTypeInvalid: 'Choose an image file',
+  draftRestored: 'Your drawing is ready to continue.', editLoaded: 'Artwork loaded for editing', exampleTitle: 'Moonlit house',
+  notesEmpty: 'Jot down ideas while you draw. Notes disappear when you leave this page.', messagePlaceholder: 'Write down an idea…', sendMessage: 'Add',
+  shortcuts: 'Shortcuts & gestures', pixels: 'px'
 } : props.lang === 'ja' ? {
-  kicker: 'Tsukuyomi Pixel Atelier',
-  title: '月光ピクセル工房',
-  subtitle: '道具と色を選んで描き、PNGを書き出すか作品を投稿しましょう。',
-  channel: '制作の流れ',
-  channelValue: '選ぶ · 描く · 保存',
-  onlineRoom: '制作メモ',
-  draftTitle: '新しい作品',
-  draftPlaceholder: '作品名',
-  descPlaceholder: 'ひとことメモ',
-  share: '投稿する',
-  saveUpdate: '更新を保存',
-  loginToShare: 'ログインして投稿',
-  clear: '画布を消去',
-  undo: '戻す',
-  redo: '進む',
-  sample: '月の見本を読み込む',
-  download: 'PNG',
-  brush: 'ブラシ',
-  eraser: '消しゴム',
-  fill: '塗りつぶし',
-  move: '移動',
-  zoom: 'ズーム',
-  layers: 'レイヤー',
-  brushSize: 'ブラシサイズ',
-  pressure: 'ペンの筆圧',
-  stabilizer: 'ペンの手ぶれ補正',
-  chat: '制作メモ',
-  connected: 'この画面でのみ表示',
-  messagePlaceholder: 'アイデアをメモする...',
-  sendMessage: 'メモを追加',
-  palette: '色と設定',
-  openTools: '色と設定を開く',
-  closeTools: '色と設定を閉じる',
-  quickColors: 'よく使う色', currentColor: '現在の色', moreColors: 'ほかの色',
-  finishArtwork: '作品を仕上げる', publishDetails: '作品情報',
-  fitCanvas: '全体を表示', drawingGuide: '描き方',
-  moveHint: '移動モード：画布をドラッグできます。描くにはブラシを選んでください。',
-  brushHint: 'ブラシモード：ドラッグして描けます。拡大すると細部を描きやすくなります。',
-  eraserHint: '消しゴムモード：ドラッグして消します。元に戻すこともできます。',
-  fillHint: '塗りつぶしモード：領域をタップして色を塗ります。',
-  guideSteps: ['ブラシと色を選んで描きます。', '移動や拡大で細部を確認します。', '元に戻す、PNG書き出し、作品名を付けて投稿できます。'],
-  notesEmpty: '描きながらアイデアをメモできます。この画面を離れると消えます。',
-  draftRestored: '描きかけの作品を復元しました。',
-  presets: 'プリセット',
-  freeColor: '自由色',
-  addColor: '色を保存',
-  colorLimit: '64色パレットがいっぱいです',
-  canvasSize: '矩形グリッド',
-  imageImport: '画像から変換',
-  uploadImage: '画像をピクセル化',
-  imageConverted: '画像をピクセル画に変換しました',
-  imageLoadFailed: '画像を読み込めませんでした',
-  imageTypeInvalid: '画像ファイルを選んでください',
-  background: '背景色',
-  colors: '色',
-  size: 'グリッド',
-  gallery: 'みんなの作品',
-  openGallery: 'みんなの作品を開く',
-  closeGallery: 'みんなの作品を閉じる',
-  latest: '新着',
-  hot: '人気',
-  refresh: '更新',
-  empty: 'まだ作品はありません。最初の一枚を置いていきましょう。',
-  loading: '同期中...',
-  like: 'いいね',
-  liked: 'いいね済み',
-  publishOk: '作品を共有しました',
-  updateOk: '作品を更新しました',
-  publishFailed: '共有に失敗しました',
-  titleRequired: '作品名を入れてください',
-  blankCanvas: 'キャンバスはまだ空です',
-  likedToast: 'いいねしました',
-  alreadyLiked: 'すでにいいねしています',
-  shareLink: '共有',
-  by: 'by'
+  appName: 'ピクセルスタジオ', pageTitle: '月光ピクセル工房',
+  draftTitle: '無題の作品', renameArtwork: '作品名と投稿情報',
+  tools: 'ツール', toolOptions: 'ツールオプション',
+  brush: 'ブラシ', eraser: '消しゴム', fill: '塗りつぶし', picker: 'スポイト', move: '手のひら',
+  brushSize: 'サイズ', pressure: '筆圧', stabilizer: '手ぶれ補正',
+  undo: '戻す', redo: '進む', gallery: 'みんなの作品', newCanvas: '新規', imageImport: '画像を読み込む', uploadImage: '画像をピクセル化',
+  download: 'PNG書き出し', share: '投稿する', saveUpdate: '更新を保存', loginToShare: 'ログインして投稿', more: 'その他',
+  panels: 'パネル', showPanels: 'パネルを表示', hidePanels: 'パネルを隠す',
+  colorPanel: 'カラー', swatchesPanel: 'スウォッチ', brushPanel: 'ブラシ', navigatorPanel: 'ナビゲーター', canvasPanel: 'キャンバス', notesPanel: 'メモ', filePanel: 'ファイル',
+  presets: 'プリセット', studioSet: '月光セット', recent: '最近の色', savedColors: 'マイカラー', addColor: 'スウォッチに追加',
+  colorLimit: '64色パレットがいっぱいです', freeColor: '自由色', currentColor: '描画色（ブラシの色）', background: '背景色',
+  brushHint: 'ドラッグで描画 · Alt でスポイト · [ ] でサイズ変更', eraserHint: 'ドラッグで消します。元に戻すで復元できます。',
+  fillHint: 'クリックでつながった同じ色の範囲を塗ります。', pickerHint: 'キャンバスをクリックして色を取得し、前のツールに戻ります。',
+  moveHint: 'ドラッグで表示を移動 · Space で一時切り替え', gestureHint: '1本指で描画 · 2本指で拡大と移動 · 2本指タップで戻す',
+  zoom: 'ズーム', fitCanvas: '画面に合わせる', actualPixels: '100%', grid: 'ピクセルグリッド', focus: '集中モード', exitFocus: '集中モードを終了',
+  saving: '保存中…', saved: 'この端末に保存済み', saveFailed: '保存できません。書き出して保管してください', savedLocal: '下書きをこの端末に保存しました',
+  canvasSize: 'キャンバスサイズ', newCanvasAction: '新しいキャンバス…', example: '月光の家の見本を読み込む', clear: 'キャンバスを消去',
+  newTitle: '新しいキャンバス', newHint: '現在の作品を置き換えます。先に書き出すか、元に戻すで復元できます。', create: '作成',
+  publishDetails: '作品情報', draftPlaceholder: '作品名', descPlaceholder: 'ひとことメモ',
+  exportHint: '画像はこの端末で生成されます。スマートフォンでは長押しでも保存できます。', saveImage: 'PNGを保存',
+  latest: '新着', hot: '人気', refresh: '更新', emptyGallery: 'まだ作品はありません。最初の一枚を置いていきましょう。',
+  loading: '同期中…', like: 'いいね', liked: 'いいね済み', shareLink: '共有', by: 'by', pager: '作品ページ', prevPage: '前のページ', nextPage: '次のページ',
+  close: '閉じる', cancel: 'キャンセル', publishOk: '作品を共有しました', updateOk: '作品を更新しました', publishFailed: '共有に失敗しました',
+  titleRequired: '作品名を入れてください', blankCanvas: 'キャンバスはまだ空です', likedToast: 'いいねしました', alreadyLiked: 'すでにいいねしています',
+  imageConverted: '画像をピクセル画に変換しました', imageLoadFailed: '画像を読み込めませんでした', imageTypeInvalid: '画像ファイルを選んでください',
+  draftRestored: '描きかけの作品を復元しました。', editLoaded: '編集用に読み込みました', exampleTitle: '月光の家',
+  notesEmpty: '描きながらアイデアをメモできます。この画面を離れると消えます。', messagePlaceholder: 'アイデアをメモする…', sendMessage: '追加',
+  shortcuts: 'ショートカットとジェスチャー', pixels: 'px'
 } : {
-  kicker: 'Tsukuyomi Pixel Atelier',
-  title: '月光像素工坊',
-  subtitle: '选好工具和颜色，在网格上画画；完成后可导出 PNG 或发布作品。',
-  channel: '画画步骤',
-  channelValue: '选色 · 画画 · 保存',
-  onlineRoom: '画画便签',
-  draftTitle: '新作品',
-  draftPlaceholder: '作品名',
-  descPlaceholder: '给这幅画留一句话',
-  share: '发布作品',
-  saveUpdate: '保存更新',
-  loginToShare: '登录后发布',
-  clear: '清空画布',
-  undo: '撤销',
-  redo: '重做',
-  sample: '载入月纹示例',
-  download: '导出 PNG',
-  brush: '画笔',
-  eraser: '橡皮',
-  fill: '填充',
-  move: '移动',
-  zoom: '缩放',
-  layers: '图层',
-  brushSize: '画笔大小',
-  pressure: '触控笔笔压',
-  stabilizer: '触控笔防抖',
-  chat: '画画便签',
-  connected: '仅在本次打开期间保留',
-  messagePlaceholder: '记下这幅画的灵感...',
-  sendMessage: '添加便签',
-  palette: '颜色与设置',
-  openTools: '展开颜色与设置',
-  closeTools: '收起颜色与设置',
-  quickColors: '常用颜色', currentColor: '当前颜色', moreColors: '更多颜色',
-  finishArtwork: '完成作品', publishDetails: '作品信息',
-  fitCanvas: '适应画布', drawingGuide: '怎么画',
-  moveHint: '当前是移动模式：可以拖动画布。点「画笔」就能开始画。',
-  brushHint: '拖动即可画画；放大后更容易画细节。',
-  eraserHint: '拖动擦除像素，误删可点撤销。',
-  fillHint: '点一下区域，就能填充相连的像素。',
-  guideSteps: ['选画笔和颜色，再到画布上下笔。', '用移动工具查看画布，放大后画细节。', '画错可撤销；随时导出 PNG，填写作品名后可发布。'],
-  notesEmpty: '可以临时记下灵感；离开页面后便签会消失。',
-  draftRestored: '已恢复画画草稿，可以继续创作。',
-  presets: '预设色',
-  freeColor: '自由颜色',
-  addColor: '保存颜色',
-  colorLimit: '64 色调色板已满',
-  canvasSize: '长方形网格',
-  imageImport: '图片导入',
-  uploadImage: '上传图片转像素画',
-  imageConverted: '图片已转换为像素画',
-  imageLoadFailed: '图片读取失败',
-  imageTypeInvalid: '请上传图片文件',
-  background: '画布背景',
-  colors: '颜色',
-  size: '网格',
-  gallery: '大家的作品',
-  openGallery: '展开大家的作品',
-  closeGallery: '收起大家的作品',
-  latest: '最新',
-  hot: '热门',
-  refresh: '刷新',
-  empty: '还没有公开作品。第一幅月光像素画可以从这里开始。',
-  loading: '同步中...',
-  like: '点赞',
-  liked: '已赞',
-  publishOk: '作品已分享',
-  updateOk: '作品已更新',
-  publishFailed: '分享失败',
-  titleRequired: '请先给作品取个名字',
-  blankCanvas: '画布还是空的',
-  likedToast: '已点赞',
-  alreadyLiked: '已经点过赞了',
-  shareLink: '分享',
-  by: 'by'
+  appName: '像素工坊', pageTitle: '月光像素工坊',
+  draftTitle: '未命名作品', renameArtwork: '修改作品名和发布信息',
+  tools: '工具', toolOptions: '工具选项',
+  brush: '画笔', eraser: '橡皮', fill: '填充', picker: '吸管', move: '移动',
+  brushSize: '大小', pressure: '笔压', stabilizer: '防抖',
+  undo: '撤销', redo: '重做', gallery: '大家的作品', newCanvas: '新建', imageImport: '导入图片', uploadImage: '上传图片转像素画',
+  download: '导出 PNG', share: '发布作品', saveUpdate: '保存更新', loginToShare: '登录后发布', more: '更多',
+  panels: '面板', showPanels: '显示面板', hidePanels: '隐藏面板',
+  colorPanel: '颜色', swatchesPanel: '色板', brushPanel: '画笔', navigatorPanel: '导航器', canvasPanel: '画布', notesPanel: '便签', filePanel: '文件',
+  presets: '预设色', studioSet: '月光色组', recent: '最近使用', savedColors: '我的颜色', addColor: '存入色板',
+  colorLimit: '64 色调色板已满', freeColor: '自由颜色', currentColor: '前景色（画笔颜色）', background: '背景色',
+  brushHint: '拖动绘制 · 按住 Alt 临时吸色 · [ ] 调整大小', eraserHint: '拖动擦除像素，擦错可以撤销。',
+  fillHint: '点一下，填充相连的同色区域。', pickerHint: '点画布吸取颜色，取完自动回到上一个工具。',
+  moveHint: '拖动查看画布 · 随时按住空格临时切换', gestureHint: '单指绘画 · 双指缩放和移动 · 双指轻点撤销',
+  zoom: '缩放', fitCanvas: '适应屏幕', actualPixels: '100%', grid: '像素网格', focus: '专注模式', exitFocus: '退出专注',
+  saving: '正在保存…', saved: '已保存在本机', saveFailed: '草稿未保存，请导出备份', savedLocal: '草稿已保存到本机',
+  canvasSize: '画布尺寸', newCanvasAction: '新建画布…', example: '载入月光小屋示例', clear: '清空画布',
+  newTitle: '新建画布', newHint: '新建将替换当前画面，请先导出保存；也可通过撤销找回。', create: '创建',
+  publishDetails: '作品信息', draftPlaceholder: '作品名', descPlaceholder: '给这幅画留一句话',
+  exportHint: 'PNG 已在当前设备生成，手机也可长按预览保存图片。', saveImage: '保存 PNG',
+  latest: '最新', hot: '热门', refresh: '刷新', emptyGallery: '还没有公开作品。第一幅月光像素画可以从这里开始。',
+  loading: '同步中…', like: '点赞', liked: '已赞', shareLink: '分享', by: 'by', pager: '作品分页', prevPage: '上一页', nextPage: '下一页',
+  close: '关闭', cancel: '取消', publishOk: '作品已分享', updateOk: '作品已更新', publishFailed: '分享失败',
+  titleRequired: '请先给作品取个名字', blankCanvas: '画布还是空的', likedToast: '已点赞', alreadyLiked: '已经点过赞了',
+  imageConverted: '图片已转换为像素画', imageLoadFailed: '图片读取失败', imageTypeInvalid: '请上传图片文件',
+  draftRestored: '已恢复画画草稿，可以继续创作。', editLoaded: '已载入像素画，可以继续编辑', exampleTitle: '月光小屋',
+  notesEmpty: '可以临时记下灵感；离开页面后便签会消失。', messagePlaceholder: '记下这幅画的灵感…', sendMessage: '添加',
+  shortcuts: '快捷键与手势', pixels: 'px'
 });
 
-function initialCanvasTool() {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'brush';
-  return window.matchMedia('(max-width: 760px) and (pointer: coarse)').matches ? 'move' : 'brush';
-}
+const shortcutRows = computed(() => {
+  const c = copy.value;
+  return [
+    [c.brush, 'B'], [c.eraser, 'E'], [c.fill, 'G'], [c.picker, 'I · Alt'], [c.move, 'H · Space'],
+    [c.brushSize, '[  ]'], [c.undo, 'Ctrl Z'], [c.redo, 'Ctrl Shift Z'],
+    [c.fitCanvas, 'Ctrl 0'], [c.actualPixels, 'Ctrl 1'], [c.zoom, 'Ctrl + / −'], [c.grid, "'"], [c.focus, 'F']
+  ];
+});
 
 const session = ref(getSession());
 const selectedColor = ref(presetPalette[3]);
 const customColor = ref('#ff5f96');
 const customColors = ref([]);
 const backgroundColor = ref('#ffffff');
-const tool = ref(initialCanvasTool());
+const tool = ref('brush');
+const previousPaintTool = ref('brush');
 const isDrawing = ref(false);
 const canvasWidth = ref(DEFAULT_CANVAS_PRESET.width);
 const canvasHeight = ref(DEFAULT_CANVAS_PRESET.height);
@@ -308,24 +182,39 @@ const pressureEnabled = ref(true);
 const stabilizerEnabled = ref(true);
 const zoom = ref(DEFAULT_ZOOM);
 const canvasViewportRef = ref(null);
+const canvasWorldRef = ref(null);
+const canvasSurfaceRef = ref(null);
+const navigatorRef = ref(null);
 const isCanvasZoomManual = ref(false);
 const isSpacePanning = ref(false);
-const sideTab = ref('gallery');
-const controlsOpen = ref(typeof window !== 'undefined' && window.matchMedia('(min-width: 1101px)').matches);
+const isAltPicking = ref(false);
+const isPanningView = ref(false);
+const panelsOpen = ref(typeof window !== 'undefined' && window.matchMedia('(min-width: 1101px)').matches);
+const isMobileLayout = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches);
+const sheet = ref('');
+// Keeps the last sheet's content rendered while the sheet slides away.
+const sheetPanel = ref('color');
+const sheetDragOffset = ref(0);
+// Lifts the artwork above an open phone sheet so color and brush changes stay visible.
+const sheetShift = ref(0);
 const galleryOpen = ref(false);
 const isPublishing = ref(false);
 const showGrid = ref(false);
 const focusMode = ref(false);
+const pickPulse = ref(0);
+const gestureHintVisible = ref(false);
+const collapsedPanels = reactive({ color: false, swatches: false, brush: false, navigator: false, canvas: true, notes: true });
+const viewRect = reactive({ left: 0, top: 0, width: 1, height: 1 });
 const publishDialogRef = ref(null);
 const galleryDialogRef = ref(null);
 const newDialogRef = ref(null);
 const exportDialogRef = ref(null);
+const shortcutsDialogRef = ref(null);
 const exportPreview = ref('');
 const exportFilename = ref('');
-const penSettingsRef = ref(null);
-const imageInputRef = ref(null);
 const newSize = ref('192x108');
 const coordinates = ref(null);
+const hoverPointerType = ref('mouse');
 const recentColors = ref([]);
 const draftSaved = ref(false);
 const draftSaveFailed = ref(false);
@@ -333,34 +222,20 @@ const draftOwner = session.value?.user?.id || 'guest';
 const localDraftKey = `tsukuyomi-pixel-draft-v2:${draftOwner}`;
 let draftTimer = 0;
 let previewFromGallery = false;
-const workspaceCopy = computed(() => props.lang === 'en' ? {
-  exportHint: 'The PNG is generated on your device. On mobile, you can also long-press the preview to save it.', saveImage: 'Save PNG', new: 'New', focus: 'Focus', exitFocus: 'Exit focus', grid: 'Grid', colors: 'Colors',
-  canvasSettings: 'Canvas settings', penSettings: 'Pen settings', preview: 'Preview', recent: 'Recent colors',
-  close: 'Close', cancel: 'Cancel', create: 'Create canvas', newHint: 'Your current drawing will be replaced. Export it first, or use Undo to restore it.',
-  saving: 'Saving on this device…', example: 'Moonlit house example', draft: 'Local draft', saved: 'Saved on this device', saveFailed: 'Draft not saved; export a backup',
-  drag: 'Space to pan · Ctrl + wheel to zoom', notes: 'Drawing notes'
-} : props.lang === 'ja' ? {
-  exportHint: '画像はこの端末で生成されます。スマートフォンでは長押しでも保存できます。', saveImage: 'PNGを保存', new: '新規', focus: '集中モード', exitFocus: '集中モードを終了', grid: 'グリッド', colors: '色',
-  canvasSettings: '画布設定', penSettings: 'ペン設定', preview: 'プレビュー', recent: '最近の色',
-  close: '閉じる', cancel: 'キャンセル', create: '画布を作成', newHint: '現在の作品を置き換えます。先に書き出すか、元に戻すで復元できます。',
-  saving: 'この端末に保存中…', example: '月光の家の見本', draft: 'ローカル下書き', saved: 'この端末に保存済み', saveFailed: '保存できません。書き出して保管してください',
-  drag: 'Space で移動 · Ctrl + ホイールで拡大', notes: '制作メモ'
-} : {
-  exportHint: 'PNG 已在当前设备生成，手机也可长按预览保存图片。', saveImage: '保存 PNG', new: '新建', focus: '专注绘画', exitFocus: '退出专注', grid: '网格', colors: '颜色',
-  canvasSettings: '画布设置', penSettings: '触控笔设置', preview: '画面预览', recent: '最近使用',
-  close: '关闭', cancel: '取消', create: '新建画布', newHint: '新建将替换当前画面，请先导出保存；也可通过撤销找回。',
-  saving: '正在保存到当前设备…', example: '月光小屋示例', draft: '本地草稿', saved: '已保存在当前设备', saveFailed: '草稿未保存，请导出备份',
-  drag: 'Space 拖动画布 · Ctrl + 滚轮缩放', notes: '画画便签'
-});
+
 const toolOptions = computed(() => [
   { key: 'brush', icon: 'brush', label: copy.value.brush, shortcut: 'B' },
   { key: 'eraser', icon: 'eraser', label: copy.value.eraser, shortcut: 'E' },
-  { key: 'fill', icon: 'paintBucket', label: copy.value.fill, shortcut: 'F' },
-  { key: 'move', icon: 'move', label: copy.value.move, shortcut: 'H' }
+  { key: 'fill', icon: 'paintBucket', label: copy.value.fill, shortcut: 'G' },
+  { key: 'picker', icon: 'pipette', label: copy.value.picker, shortcut: 'I' },
+  { key: 'move', icon: 'hand', label: copy.value.move, shortcut: 'H' }
 ]);
-const rulerX = computed(() => Array.from({ length: 9 }, (_, i) => Math.round(canvasWidth.value * i / 8)));
-const rulerY = computed(() => Array.from({ length: 7 }, (_, i) => Math.round(canvasHeight.value * i / 6)));
-const currentToolLabel = computed(() => toolOptions.value.find(item => item.key === activeTool.value)?.label);
+const sheetTabs = computed(() => [
+  { key: 'color', icon: 'palette', label: copy.value.colorPanel },
+  { key: 'brush', icon: 'sliders', label: copy.value.brushPanel },
+  { key: 'canvas', icon: 'grid', label: copy.value.canvasPanel },
+  { key: 'file', icon: 'layers', label: copy.value.filePanel }
+]);
 const chatMessage = ref('');
 const chatMessages = ref([]);
 const undoStack = ref([]);
@@ -395,12 +270,27 @@ const customColorInputRef = ref(null);
 let toastTimer = 0;
 let activePaintColorIndex = -1;
 let canvasPanState = null;
+let viewportPan = null;
 let canvasFitObserver = null;
 let canvasFitFrame = 0;
+let viewRectFrame = 0;
 let strokePixels = null;
+let isPicking = false;
+let touchStrokeGuard = null;
+let pinch = null;
+let sheetDrag = null;
+let navigatorDrag = false;
+let gestureHintTimer = 0;
+const touchPoints = new Map();
+const mediaQueries = [];
 
 const isAuthed = computed(() => Boolean(session.value));
-const activeTool = computed(() => isSpacePanning.value ? 'move' : tool.value);
+const activeTool = computed(() => {
+  if (isSpacePanning.value) return 'move';
+  if (isAltPicking.value && PAINT_TOOLS.includes(tool.value)) return 'picker';
+  return tool.value;
+});
+const activeToolOption = computed(() => toolOptions.value.find(item => item.key === activeTool.value) || toolOptions.value[0]);
 const activePalette = computed(() => [...presetPalette, ...customColors.value]);
 const paintedCount = computed(() => pixels.value.filter(index => index >= 0).length);
 const hasUndo = computed(() => undoStack.value.length > 0);
@@ -410,68 +300,179 @@ const canvasBaseHeight = computed(() => canvasHeight.value * DISPLAY_CELL_SIZE);
 const canvasZoomScale = computed(() => zoom.value / 100);
 const canvasZoomWidth = computed(() => Math.round(canvasBaseWidth.value * canvasZoomScale.value));
 const canvasZoomHeight = computed(() => Math.round(canvasBaseHeight.value * canvasZoomScale.value));
+const cellScreenSize = computed(() => canvasZoomWidth.value / canvasWidth.value);
 const canvasSurfaceStyle = computed(() => ({
   width: `${canvasZoomWidth.value}px`,
   height: `${canvasZoomHeight.value}px`
 }));
 const canvasStyle = computed(() => ({
-  width: `${canvasBaseWidth.value}px`,
-  height: `${canvasBaseHeight.value}px`,
-  transform: `translateZ(0) scale(${canvasZoomScale.value})`,
+  width: `${canvasZoomWidth.value}px`,
+  height: `${canvasZoomHeight.value}px`,
   backgroundColor: backgroundColor.value
 }));
+const gridVisible = computed(() => showGrid.value && cellScreenSize.value >= 4);
+const gridStyle = computed(() => ({ '--ps-cell': `${cellScreenSize.value}px` }));
+const brushCursorStyle = computed(() => {
+  if (!coordinates.value || hoverPointerType.value === 'touch' || isPanningView.value) return null;
+  if (!['brush', 'eraser'].includes(activeTool.value)) return null;
+  const size = Math.max(1, Math.min(MAX_BRUSH_SIZE, brushSize.value));
+  const start = Math.floor((size - 1) / 2);
+  const cell = cellScreenSize.value;
+  return {
+    left: `${(coordinates.value.x - start) * cell}px`,
+    top: `${(coordinates.value.y - start) * cell}px`,
+    width: `${size * cell}px`,
+    height: `${size * cell}px`
+  };
+});
+const brushDotStyle = computed(() => ({ '--ps-dot': `${brushSize.value * DISPLAY_CELL_SIZE}px`, '--ps-dock-dot': `${4 + brushSize.value * 2}px` }));
 const publishButtonText = computed(() => {
   if (!isAuthed.value) return copy.value.loginToShare;
   return editingArtwork.value ? copy.value.saveUpdate : copy.value.share;
 });
-const drawingHint = computed(() => ({
+const toolHint = computed(() => ({
   brush: copy.value.brushHint,
   eraser: copy.value.eraserHint,
   fill: copy.value.fillHint,
+  picker: copy.value.pickerHint,
   move: copy.value.moveHint
 })[activeTool.value] || copy.value.brushHint);
+const saveStateText = computed(() => draftSaveFailed.value ? copy.value.saveFailed : draftSaved.value ? copy.value.saved : copy.value.saving);
+const saveState = computed(() => draftSaveFailed.value ? 'is-failed' : draftSaved.value ? 'is-saved' : 'is-saving');
+const panelsVisible = computed(() => isMobileLayout.value ? Boolean(sheet.value) : panelsOpen.value && !focusMode.value);
+const navigatorStyle = computed(() => ({
+  left: `${viewRect.left * 100}%`,
+  top: `${viewRect.top * 100}%`,
+  width: `${viewRect.width * 100}%`,
+  height: `${viewRect.height * 100}%`
+}));
+const studioClasses = computed(() => ({
+  'is-panels-open': panelsOpen.value && !focusMode.value,
+  'is-focus-mode': focusMode.value,
+  'is-sheet-open': isMobileLayout.value && Boolean(sheet.value),
+  'is-panning': isPanningView.value,
+  [`is-tool-${activeTool.value}`]: true
+}));
+const sheetStyle = computed(() => sheetDragOffset.value ? { transform: `translateY(${sheetDragOffset.value}px)`, transition: 'none' } : null);
+const worldStyle = computed(() => sheetShift.value ? { transform: `translateY(${-sheetShift.value}px)` } : null);
 
 function go(path) {
   emit('go', path);
 }
 
-function toggleControlsPanel() {
-  controlsOpen.value = !controlsOpen.value;
-  if (controlsOpen.value) focusMode.value = false;
+function setTool(key) {
+  if (!toolOptions.value.some(item => item.key === key)) return;
+  if (PAINT_TOOLS.includes(key)) previousPaintTool.value = key;
+  tool.value = key;
 }
 
-async function showColorSettings() {
-  controlsOpen.value = true;
+function togglePanels() {
+  if (focusMode.value) focusMode.value = false;
+  panelsOpen.value = !panelsOpen.value;
+}
+
+function openSheet(name) {
+  if (!isMobileLayout.value) {
+    panelsOpen.value = true;
+    focusMode.value = false;
+    return;
+  }
+  sheet.value = sheet.value === name ? '' : name;
+}
+
+function closeSheet() {
+  sheet.value = '';
+  sheetDragOffset.value = 0;
+}
+
+async function revealPanel(name) {
+  if (isMobileLayout.value) {
+    sheet.value = name === 'swatches' ? 'color' : name === 'navigator' ? 'canvas' : name;
+    return;
+  }
   focusMode.value = false;
+  panelsOpen.value = true;
+  collapsedPanels[name] = false;
   await nextTick();
-  customColorInputRef.value?.$el?.querySelector('input')?.focus({ preventScroll: true });
+  document.getElementById(`ps-panel-${name}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function updateSheetShift() {
+  const panel = document.getElementById('arena-controls-panel');
+  const surface = canvasSurfaceRef.value;
+  const viewport = canvasViewportRef.value;
+  if (!isMobileLayout.value || !sheet.value || !panel || !surface || !viewport) { sheetShift.value = 0; return; }
+  const viewRect = viewport.getBoundingClientRect();
+  // Measure from the sheet's resting position: it may still be sliding in.
+  const host = panel.offsetParent || panel.parentElement;
+  const sheetTop = host.getBoundingClientRect().bottom - panel.offsetHeight;
+  const surfaceRect = surface.getBoundingClientRect();
+  const restingTop = surfaceRect.top + sheetShift.value;
+  const height = Math.min(surfaceRect.height, viewRect.height);
+  const visibleTop = viewRect.top + 10;
+  const available = sheetTop - 14 - visibleTop;
+  const targetTop = available >= height ? visibleTop + (available - height) / 2 : visibleTop;
+  sheetShift.value = Math.max(0, Math.round(restingTop - targetTop));
+}
+
+function toggleCollapsed(name) {
+  collapsedPanels[name] = !collapsedPanels[name];
+  try { localStorage.setItem(PANEL_STATE_KEY, JSON.stringify(collapsedPanels)); } catch (_) { /* Storage can be unavailable. */ }
+}
+
+function restorePanelState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PANEL_STATE_KEY) || 'null');
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of Object.keys(collapsedPanels)) if (typeof saved[key] === 'boolean') collapsedPanels[key] = saved[key];
+  } catch (_) { /* Ignore damaged panel preferences. */ }
+}
+
+function startSheetDrag(event) {
+  if (event.target.closest('button')) return;
+  sheetDrag = { id: event.pointerId, y: event.clientY };
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+}
+
+function moveSheetDrag(event) {
+  if (!sheetDrag || sheetDrag.id !== event.pointerId) return;
+  sheetDragOffset.value = Math.max(0, event.clientY - sheetDrag.y);
+}
+
+function endSheetDrag(event) {
+  if (!sheetDrag || sheetDrag.id !== event.pointerId) return;
+  const offset = sheetDragOffset.value;
+  sheetDrag = null;
+  sheetDragOffset.value = 0;
+  if (offset > 72) closeSheet();
 }
 
 function toggleGalleryPanel() {
   if (galleryDialogRef.value?.open) galleryDialogRef.value.close();
-  else { galleryOpen.value = true; galleryDialogRef.value?.showModal(); }
+  else { closeSheet(); galleryOpen.value = true; galleryDialogRef.value?.showModal(); }
 }
 
 async function preparePublish() {
+  closeSheet();
   publishDialogRef.value?.showModal();
   await nextTick();
   titleInputRef.value?.focus({ preventScroll: true });
 }
 
-async function openPenSettings() {
-  controlsOpen.value = true;
-  focusMode.value = false;
-  await nextTick();
-  if (penSettingsRef.value) {
-    penSettingsRef.value.open = true;
-    penSettingsRef.value.scrollIntoView({ block: 'nearest' });
-  }
+function openNewDialog() {
+  closeSheet();
+  newSize.value = canvasPresetKey(canvasWidth.value, canvasHeight.value);
+  newDialogRef.value?.showModal();
+}
+
+function openShortcuts() {
+  shortcutsDialogRef.value?.showModal();
 }
 
 function toggleFocus() {
   focusMode.value = !focusMode.value;
-  controlsOpen.value = !focusMode.value;
-  scheduleCanvasFit(true);
+  closeSheet();
+  scheduleCanvasFit();
 }
 
 function chooseColor(color) {
@@ -479,22 +480,27 @@ function chooseColor(color) {
   const normalized = color.toLowerCase();
   selectedColor.value = normalized;
   customColor.value = normalized;
-  recentColors.value = [normalized, ...recentColors.value.filter(c => c !== normalized)].slice(0, 6);
+  recentColors.value = [normalized, ...recentColors.value.filter(c => c !== normalized)].slice(0, 8);
+}
+
+function saveSelectedColor() {
+  addCustomColor(selectedColor.value);
 }
 
 function trackCoordinates(event) {
   const canvas = pixelCanvasRef.value?.$el;
   if (!canvas) return;
+  hoverPointerType.value = event.pointerType || 'mouse';
   const rect = canvas.getBoundingClientRect();
   const x = Math.floor((event.clientX - rect.left) / rect.width * canvasWidth.value);
   const y = Math.floor((event.clientY - rect.top) / rect.height * canvasHeight.value);
-  coordinates.value = x >= 0 && x < canvasWidth.value && y >= 0 && y < canvasHeight.value ? { x, y } : null;
+  const inside = x >= 0 && x < canvasWidth.value && y >= 0 && y < canvasHeight.value;
+  if (!inside) { coordinates.value = null; return; }
+  if (coordinates.value?.x !== x || coordinates.value?.y !== y) coordinates.value = { x, y };
 }
 
-function zoomWheel(event) {
-  if (!(event.ctrlKey || event.metaKey)) return;
-  event.preventDefault();
-  adjustZoom(event.deltaY < 0 ? 10 : -10);
+function clearHover() {
+  coordinates.value = null;
 }
 
 function createCanvas() {
@@ -507,9 +513,9 @@ function createCanvas() {
   pixels.value = blankPixels(width, height);
   editingArtwork.value = null;
   form.title = ''; form.description = '';
-  tool.value = initialCanvasTool();
+  setTool('brush');
   newDialogRef.value?.close();
-  scheduleCanvasFit(true);
+  resetCanvasZoom();
 }
 
 function saveLocalDraft() {
@@ -537,7 +543,7 @@ function restoreLocalDraft() {
     restoreSnapshot(snapshot);
     form.title = String(draft.title || '').slice(0, 40);
     form.description = String(draft.description || '').slice(0, 120);
-    brushSize.value = Math.max(1, Math.min(4, Number(draft.brushSize) || 1));
+    brushSize.value = clampBrushSize(draft.brushSize);
     // A local drawing is a draft, not authorization to update an existing post.
     editingArtwork.value = null;
     draftSaved.value = true;
@@ -568,12 +574,19 @@ function normalizeHexColor(value, fallback = '#0b1020') {
   return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
 }
 
+function clampBrushSize(value) {
+  return Math.max(1, Math.min(MAX_BRUSH_SIZE, Math.round(Number(value) || 1)));
+}
+
+function setBrushSize(value) {
+  brushSize.value = clampBrushSize(value);
+}
+
 function addCustomColor(color = customColor.value) {
   const normalized = normalizeHexColor(color, customColor.value);
   selectedColor.value = normalized;
   customColor.value = normalized;
   if (presetPalette.includes(normalized) || customColors.value.includes(normalized)) {
-    tool.value = 'brush';
     return activePalette.value.indexOf(normalized);
   }
   if (customColors.value.length >= MAX_CUSTOM_COLORS) {
@@ -584,7 +597,6 @@ function addCustomColor(color = customColor.value) {
     return activePalette.value.indexOf(fallbackColor);
   }
   customColors.value = [...customColors.value, normalized];
-  tool.value = 'brush';
   return activePalette.value.indexOf(normalized);
 }
 
@@ -607,7 +619,6 @@ function sendLocalMessage() {
   if (!text) return;
   chatMessages.value.push({
     id: Date.now(),
-    author: session.value?.user?.nickname || session.value?.user?.username || session.value?.nickname || session.value?.username || '我',
     time: new Date().toLocaleTimeString(props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'), { hour: '2-digit', minute: '2-digit' }),
     text
   });
@@ -707,7 +718,7 @@ function restoreDraftAfterSignIn() {
     restoreSnapshot(snapshot);
     form.title = String(draft.title || '').slice(0, 40);
     form.description = String(draft.description || '').slice(0, 120);
-    brushSize.value = Math.max(1, Math.min(4, Number(draft.brushSize) || 1));
+    brushSize.value = clampBrushSize(draft.brushSize);
     window.sessionStorage.removeItem(SIGN_IN_DRAFT_KEY);
     showToast(copy.value.draftRestored);
   } catch (_) {
@@ -761,7 +772,6 @@ function loadArtworkIntoDraft(artwork) {
   undoStack.value = [];
   redoStack.value = [];
   editingArtwork.value = artwork;
-  sideTab.value = 'gallery';
 }
 
 function pushHistory() {
@@ -770,22 +780,19 @@ function pushHistory() {
   redoStack.value = [];
 }
 
+/* ---------- View: zoom, fit, pan and navigator ---------- */
+
 function clampZoom(value) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(value)));
 }
 
-function viewportInnerSize(element) {
-  const rect = element.getBoundingClientRect();
-  const style = window.getComputedStyle(element);
-  const left = Number.parseFloat(style.paddingLeft) || 0;
-  const right = Number.parseFloat(style.paddingRight) || 0;
-  const top = Number.parseFloat(style.paddingTop) || 0;
-  const bottom = Number.parseFloat(style.paddingBottom) || 0;
-  const paddingX = left + right;
-  const paddingY = top + bottom;
+function worldPadding() {
+  const world = canvasWorldRef.value;
+  if (!world) return { x: 0, y: 0 };
+  const style = window.getComputedStyle(world);
   return {
-    width: Math.max(0, rect.width - paddingX),
-    height: Math.max(0, rect.height - paddingY)
+    x: (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0),
+    y: (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0)
   };
 }
 
@@ -793,13 +800,20 @@ function fitCanvasToViewport(force = false) {
   if (!force && isCanvasZoomManual.value) return;
   const viewport = canvasViewportRef.value;
   if (!viewport || !canvasBaseWidth.value || !canvasBaseHeight.value) return;
-  const { width, height } = viewportInnerSize(viewport);
-  if (!width || !height) return;
+  const padding = worldPadding();
+  const width = viewport.clientWidth - padding.x;
+  const height = viewport.clientHeight - padding.y;
+  if (width <= 0 || height <= 0) return;
   const scale = Math.min(width / canvasBaseWidth.value, height / canvasBaseHeight.value);
   const fittedZoom = clampZoom(Math.floor((scale * 100) / 5) * 5);
   if (Number.isFinite(fittedZoom) && Math.abs(fittedZoom - zoom.value) >= 1) {
     zoom.value = fittedZoom;
   }
+  nextTick(() => {
+    viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+    viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
+    updateViewRect();
+  });
 }
 
 function scheduleCanvasFit(force = false) {
@@ -812,17 +826,122 @@ function scheduleCanvasFit(force = false) {
 
 function handleCanvasViewportResize() {
   scheduleCanvasFit();
+  scheduleViewRect();
 }
 
-function adjustZoom(delta) {
+function surfaceFraction(clientX, clientY) {
+  const surface = canvasSurfaceRef.value;
+  if (!surface) return null;
+  const rect = surface.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+  return { fx: (clientX - rect.left) / rect.width, fy: (clientY - rect.top) / rect.height };
+}
+
+// Scroll so that a point of the artwork (as a fraction of its size) sits under a screen point.
+function placeFraction(fx, fy, clientX, clientY) {
+  const viewport = canvasViewportRef.value;
+  const surface = canvasSurfaceRef.value;
+  if (!viewport || !surface) return;
+  const rect = surface.getBoundingClientRect();
+  viewport.scrollLeft += rect.left + fx * rect.width - clientX;
+  viewport.scrollTop += rect.top + fy * rect.height - clientY;
+  scheduleViewRect();
+}
+
+function viewportCenter() {
+  const rect = canvasViewportRef.value?.getBoundingClientRect();
+  return rect ? { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 } : { clientX: 0, clientY: 0 };
+}
+
+function zoomTo(value, anchor = null) {
+  const next = clampZoom(value);
   isCanvasZoomManual.value = true;
-  zoom.value = clampZoom(zoom.value + delta);
+  if (next === zoom.value) return;
+  const point = anchor || viewportCenter();
+  const fraction = surfaceFraction(point.clientX, point.clientY);
+  zoom.value = next;
+  if (fraction) nextTick(() => placeFraction(fraction.fx, fraction.fy, point.clientX, point.clientY));
+}
+
+function stepZoom(direction, anchor = null) {
+  const current = zoom.value;
+  const next = direction > 0
+    ? ZOOM_STOPS.find(stop => stop > current + 0.5) ?? MAX_ZOOM
+    : [...ZOOM_STOPS].reverse().find(stop => stop < current - 0.5) ?? MIN_ZOOM;
+  zoomTo(next, anchor);
+}
+
+// The navigator slider is logarithmic so 20%–400% gets most of its travel, like Photoshop.
+const zoomSliderValue = computed(() => Math.round(Math.log(zoom.value / MIN_ZOOM) / Math.log(MAX_ZOOM / MIN_ZOOM) * 1000));
+
+function zoomFromSlider(value) {
+  zoomTo(MIN_ZOOM * (MAX_ZOOM / MIN_ZOOM) ** (Number(value) / 1000));
 }
 
 function resetCanvasZoom() {
   isCanvasZoomManual.value = false;
   scheduleCanvasFit(true);
 }
+
+function handleViewportWheel(event) {
+  if (!(event.ctrlKey || event.metaKey || event.altKey)) return;
+  event.preventDefault();
+  // Mouse notches zoom in comfortable steps; trackpad pinches (ctrl + small deltas) stay smooth.
+  const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+  const factor = Math.exp(-Math.max(-120, Math.min(120, delta)) * 0.0028);
+  zoomTo(zoom.value * factor, { clientX: event.clientX, clientY: event.clientY });
+}
+
+function updateViewRect() {
+  viewRectFrame = 0;
+  const viewport = canvasViewportRef.value;
+  const surface = canvasSurfaceRef.value;
+  if (!viewport || !surface) return;
+  const v = viewport.getBoundingClientRect();
+  const s = surface.getBoundingClientRect();
+  if (!s.width || !s.height) return;
+  const clamp01 = value => Math.max(0, Math.min(1, value));
+  const left = clamp01((v.left - s.left) / s.width);
+  const top = clamp01((v.top - s.top) / s.height);
+  const right = clamp01((v.right - s.left) / s.width);
+  const bottom = clamp01((v.bottom - s.top) / s.height);
+  viewRect.left = left;
+  viewRect.top = top;
+  viewRect.width = Math.max(0, right - left);
+  viewRect.height = Math.max(0, bottom - top);
+}
+
+function scheduleViewRect() {
+  if (viewRectFrame) return;
+  viewRectFrame = window.requestAnimationFrame(updateViewRect);
+}
+
+function centerViewOnNavigator(event) {
+  const frame = navigatorRef.value;
+  const surface = canvasSurfaceRef.value;
+  if (!frame || !surface) return;
+  const rect = frame.getBoundingClientRect();
+  const fx = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  const fy = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+  const center = viewportCenter();
+  placeFraction(fx, fy, center.clientX, center.clientY);
+}
+
+function startNavigatorDrag(event) {
+  navigatorDrag = true;
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  centerViewOnNavigator(event);
+}
+
+function moveNavigatorDrag(event) {
+  if (navigatorDrag) centerViewOnNavigator(event);
+}
+
+function endNavigatorDrag() {
+  navigatorDrag = false;
+}
+
+/* ---------- Painting ---------- */
 
 function fillPixelsFrom(index, colorIndex) {
   const targetColor = pixels.value[index];
@@ -854,7 +973,7 @@ function brushTargetIndices(index, diameter = brushSize.value) {
   const height = canvasHeight.value;
   const x = index % width;
   const y = Math.floor(index / width);
-  const normalizedDiameter = Math.max(1, Math.min(6, Math.round(Number(diameter) || 1)));
+  const normalizedDiameter = Math.max(1, Math.min(MAX_BRUSH_SIZE + 2, Math.round(Number(diameter) || 1)));
   const start = Math.floor((normalizedDiameter - 1) / 2);
   const result = [];
 
@@ -868,10 +987,6 @@ function brushTargetIndices(index, diameter = brushSize.value) {
   }
 
   return result;
-}
-
-function normalizePaintIndices(payload) {
-  return normalizePaintSamples(payload).map(sample => sample.index);
 }
 
 function normalizePaintSamples(payload) {
@@ -905,7 +1020,7 @@ function pressureBrushSize(sample) {
   if (!pressureEnabled.value || sample.pointerType !== 'pen') return baseSize;
   const rawPressure = Number(sample.pressure);
   const pressure = Math.max(0, Math.min(1, Number.isFinite(rawPressure) ? rawPressure : 0.5));
-  return Math.min(6, baseSize + Math.max(0, Math.round((pressure - 0.45) * 3)));
+  return Math.min(MAX_BRUSH_SIZE + 2, baseSize + Math.max(0, Math.round((pressure - 0.45) * 3)));
 }
 
 function paintBrushPath(payload, colorIndex) {
@@ -932,11 +1047,32 @@ function paintBrushPath(payload, colorIndex) {
   }
 }
 
+function pickColorAt(index) {
+  const source = strokePixels || pixels.value;
+  const colorIndex = source[index];
+  const color = colorIndex >= 0 ? activePalette.value[colorIndex] : backgroundColor.value;
+  if (!color) return;
+  if (color !== selectedColor.value) {
+    chooseColor(color);
+    pickPulse.value += 1;
+  }
+}
+
 function beginPaint(payload) {
   const source = normalizePaintSamples(payload);
   if (!source.length || activeTool.value === 'move') return;
+  if (isMobileLayout.value && sheet.value) closeSheet();
+  hideGestureHint();
+  if (activeTool.value === 'picker') {
+    isPicking = true;
+    pickColorAt(source[0].index);
+    return;
+  }
   pushHistory();
   const currentTool = tool.value;
+  touchStrokeGuard = source[0].pointerType === 'touch'
+    ? { at: performance.now(), undoLength: undoStack.value.length }
+    : null;
   const nextColor = currentTool === 'eraser' ? -1 : ensurePaletteColor(selectedColor.value);
   if (currentTool === 'fill') {
     fillPixelsFrom(source[0].index, nextColor);
@@ -951,20 +1087,47 @@ function beginPaint(payload) {
 }
 
 function continuePaint(payload) {
+  if (isPicking) {
+    const samples = normalizePaintSamples(payload);
+    if (samples.length) pickColorAt(samples[samples.length - 1].index);
+    return;
+  }
   if (!isDrawing.value) return;
   paintBrushPath(payload, activePaintColorIndex);
 }
 
 function endPaint() {
+  if (isPicking) {
+    isPicking = false;
+    // The eyedropper is a one-shot tool: hand the brush back after sampling.
+    if (tool.value === 'picker') tool.value = previousPaintTool.value || 'brush';
+  }
   if (strokePixels) flushStrokeCommit();
   strokePixels = null;
   isDrawing.value = false;
   activePaintColorIndex = -1;
 }
 
+// Withdraw a finger stroke that turned out to be the start of a two-finger gesture.
+function cancelTouchStroke() {
+  const guard = touchStrokeGuard;
+  touchStrokeGuard = null;
+  if (isPicking) { isPicking = false; return; }
+  const young = guard && performance.now() - guard.at < TOUCH_STROKE_GRACE_MS;
+  if (young && undoStack.value.length === guard.undoLength) {
+    discardStrokeBuffer();
+    isDrawing.value = false;
+    activePaintColorIndex = -1;
+    restoreSnapshot(undoStack.value.pop());
+    return;
+  }
+  if (isDrawing.value) endPaint();
+}
+
 function beginCanvasPan(sample) {
   const viewport = canvasViewportRef.value;
-  if (!viewport) return;
+  if (!viewport || pinch) return;
+  isPanningView.value = true;
   canvasPanState = {
     clientX: sample.clientX,
     clientY: sample.clientY,
@@ -975,19 +1138,135 @@ function beginCanvasPan(sample) {
 
 function continueCanvasPan(sample) {
   const viewport = canvasViewportRef.value;
-  if (!viewport || !canvasPanState) return;
+  if (!viewport || !canvasPanState || pinch) return;
   viewport.scrollLeft = canvasPanState.scrollLeft - (sample.clientX - canvasPanState.clientX);
   viewport.scrollTop = canvasPanState.scrollTop - (sample.clientY - canvasPanState.clientY);
 }
 
 function endCanvasPan() {
   canvasPanState = null;
+  if (!viewportPan) isPanningView.value = false;
 }
 
 function endCanvasInteraction() {
   endPaint();
   endCanvasPan();
 }
+
+/* ---------- Viewport gestures: pasteboard pan, middle-button pan, pinch ---------- */
+
+function touchPair() {
+  const [a, b] = [...touchPoints.values()];
+  return { mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, distance: Math.hypot(a.x - b.x, a.y - b.y) };
+}
+
+function beginPinch() {
+  cancelTouchStroke();
+  canvasPanState = null;
+  viewportPan = null;
+  isPanningView.value = false;
+  const { mid, distance } = touchPair();
+  const fraction = surfaceFraction(mid.x, mid.y) || { fx: 0.5, fy: 0.5 };
+  pinch = { startDistance: Math.max(distance, 1), startZoom: zoom.value, ...fraction, startMid: mid, moved: 0, startedAt: performance.now(), fingers: 2 };
+  hideGestureHint();
+}
+
+function handleViewportPointerDownCapture(event) {
+  // Like a native popover, the first tap outside an open sheet only dismisses it.
+  if (isMobileLayout.value && sheet.value && !touchPoints.size) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeSheet();
+    return;
+  }
+  if (event.pointerType !== 'touch') return;
+  touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (touchPoints.size === 2 && !pinch) beginPinch();
+  else if (pinch) pinch.fingers = Math.max(pinch.fingers, touchPoints.size);
+}
+
+function handleViewportPointerMoveCapture(event) {
+  if (event.pointerType !== 'touch' || !touchPoints.has(event.pointerId)) return;
+  touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (!pinch || touchPoints.size < 2) return;
+  event.preventDefault();
+  const gesture = pinch;
+  const { mid, distance } = touchPair();
+  gesture.moved = Math.max(gesture.moved, Math.hypot(mid.x - gesture.startMid.x, mid.y - gesture.startMid.y), Math.abs(distance - gesture.startDistance));
+  const nextZoom = clampZoom(gesture.startZoom * distance / gesture.startDistance);
+  isCanvasZoomManual.value = true;
+  if (nextZoom !== zoom.value) {
+    zoom.value = nextZoom;
+    nextTick(() => placeFraction(gesture.fx, gesture.fy, mid.x, mid.y));
+  } else {
+    placeFraction(gesture.fx, gesture.fy, mid.x, mid.y);
+  }
+}
+
+function handleViewportPointerUpCapture(event) {
+  if (event.pointerType !== 'touch') return;
+  touchPoints.delete(event.pointerId);
+  if (!pinch || touchPoints.size >= 2) return;
+  const gesture = pinch;
+  pinch = null;
+  const isTap = performance.now() - gesture.startedAt < TWO_FINGER_TAP_MS && gesture.moved < 12;
+  if (!isTap) return;
+  if (gesture.fingers >= 3) redo();
+  else undo();
+}
+
+function handleViewportPointerDown(event) {
+  if (event.defaultPrevented || pinch || touchPoints.size > 1) return;
+  const canvas = pixelCanvasRef.value?.$el;
+  const isMiddle = event.pointerType === 'mouse' && event.button === 1;
+  if (event.target === canvas && !isMiddle) return;
+  if (!(isMiddle || event.pointerType === 'touch' || activeTool.value === 'move')) return;
+  const viewport = canvasViewportRef.value;
+  if (!viewport) return;
+  event.preventDefault();
+  viewportPan = { id: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+  isPanningView.value = true;
+  try { viewport.setPointerCapture(event.pointerId); } catch (_) { /* Synthetic pointers can lack capture support. */ }
+}
+
+function handleViewportPointerMove(event) {
+  if (!viewportPan || viewportPan.id !== event.pointerId || pinch) return;
+  const viewport = canvasViewportRef.value;
+  viewport.scrollLeft = viewportPan.left - (event.clientX - viewportPan.x);
+  viewport.scrollTop = viewportPan.top - (event.clientY - viewportPan.y);
+}
+
+function endViewportPan(event) {
+  if (!viewportPan || (event && viewportPan.id !== event.pointerId)) return;
+  viewportPan = null;
+  if (!canvasPanState) isPanningView.value = false;
+}
+
+function preventMiddleAutoscroll(event) {
+  if (event.button === 1) event.preventDefault();
+}
+
+function preventSafariGesture(event) {
+  event.preventDefault();
+}
+
+function showGestureHint() {
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+  try {
+    const seen = Number(localStorage.getItem(GESTURE_HINT_KEY) || 0);
+    if (seen >= 3) return;
+    localStorage.setItem(GESTURE_HINT_KEY, String(seen + 1));
+  } catch (_) { /* Still show the hint once when storage is unavailable. */ }
+  gestureHintVisible.value = true;
+  gestureHintTimer = window.setTimeout(hideGestureHint, 6500);
+}
+
+function hideGestureHint() {
+  clearTimeout(gestureHintTimer);
+  gestureHintVisible.value = false;
+}
+
+/* ---------- History ---------- */
 
 function undo() {
   endPaint();
@@ -1030,8 +1309,8 @@ async function applyMoonPattern() {
     endPaint(); pushHistory();
     canvasWidth.value = 192; canvasHeight.value = 108;
     customColors.value = colors.slice(presetPalette.length);
-    pixels.value = next; form.title = props.lang === 'en' ? 'Moonlit house' : props.lang === 'ja' ? '月光の家' : '月光小屋';
-    tool.value = 'brush'; scheduleCanvasFit(true);
+    pixels.value = next; form.title = copy.value.exampleTitle;
+    setTool('brush'); closeSheet(); resetCanvasZoom();
   } catch (_) { showToast(copy.value.imageLoadFailed, 'error'); }
 }
 
@@ -1188,7 +1467,8 @@ async function handleImageUpload(event) {
     selectedColor.value = normalizeHexColor(converted.selected, presetPalette[3]);
     customColor.value = selectedColor.value;
     pixels.value = converted.pixels;
-    tool.value = 'brush';
+    setTool('brush');
+    closeSheet();
     if (!form.title.trim()) form.title = file.name.replace(/\.[^.]+$/, '').slice(0, 40);
     showToast(copy.value.imageConverted);
   } catch (error) {
@@ -1202,6 +1482,7 @@ function saveCanvasPng(canvas, filename) {
   // Close gallery/preview first: the export dialog must own the top layer.
   galleryDialogRef.value?.close();
   previewArtwork.value = null;
+  closeSheet();
   exportDialogRef.value?.showModal();
 }
 
@@ -1352,7 +1633,6 @@ async function loadArtworks(page = gallery.page) {
     if (revision !== artworkListRevision) return;
     gallery.items = [];
     gallery.error = error.message || copy.value.publishFailed;
-    showToast(error.message || copy.value.publishFailed, 'error');
   } finally {
     if (revision === artworkListRevision) gallery.loading = false;
   }
@@ -1375,7 +1655,8 @@ async function loadArtworkForEdit() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
     loadArtworkIntoDraft(result.data);
-    showToast(props.lang === 'en' ? 'Artwork loaded for editing' : (props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑'));
+    resetCanvasZoom();
+    showToast(copy.value.editLoaded);
   } catch (error) {
     showToast(error.message || copy.value.publishFailed, 'error');
   }
@@ -1493,58 +1774,81 @@ async function focusSharedArtwork() {
   await openArtworkPreview({ id });
 }
 
+/* ---------- Keyboard ---------- */
+
 function isTypingTarget(target) {
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName) || target?.isContentEditable;
 }
 
+function anyDialogOpen() {
+  return [publishDialogRef, galleryDialogRef, newDialogRef, exportDialogRef, shortcutsDialogRef].some(dialog => dialog.value?.open);
+}
+
 function handleArenaKeydown(event) {
-  if (publishDialogRef.value?.open || galleryDialogRef.value?.open || newDialogRef.value?.open || exportDialogRef.value?.open) return;
+  if (anyDialogOpen()) return;
   if (event.key === 'Escape') {
-    if (previewArtwork.value) {
-      closeArtworkPreview();
-      return;
-    }
+    if (previewArtwork.value) { closeArtworkPreview(); return; }
+    if (sheet.value) { closeSheet(); return; }
     if (focusMode.value) { toggleFocus(); return; }
-    if (controlsOpen.value || galleryOpen.value) {
-      controlsOpen.value = false;
-      galleryOpen.value = false;
-      return;
-    }
+    return;
   }
-  if (isTypingTarget(event.target) || publishDialogRef.value?.open || galleryDialogRef.value?.open || newDialogRef.value?.open || exportDialogRef.value?.open) return;
+  if (isTypingTarget(event.target) && event.target.type !== 'range' && event.target.type !== 'checkbox') return;
   const key = event.key.toLowerCase();
-  if ((event.ctrlKey || event.metaKey) && key === 'z') {
+  const modifier = event.ctrlKey || event.metaKey;
+  if (event.key === 'Alt') {
     event.preventDefault();
-    if (event.shiftKey) redo();
-    else undo();
+    isAltPicking.value = true;
     return;
   }
-  if ((event.ctrlKey || event.metaKey) && key === 'y') {
-    event.preventDefault();
-    redo();
+  if (modifier) {
+    if (key === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); return; }
+    if (key === 'y') { event.preventDefault(); redo(); return; }
+    if (key === '0') { event.preventDefault(); resetCanvasZoom(); return; }
+    if (key === '1') { event.preventDefault(); zoomTo(100); return; }
+    if (key === '=' || key === '+') { event.preventDefault(); stepZoom(1); return; }
+    if (key === '-' || key === '_') { event.preventDefault(); stepZoom(-1); return; }
+    if (key === 's') { event.preventDefault(); saveLocalDraft(); showToast(copy.value.savedLocal); return; }
+    if (key === "'") { event.preventDefault(); showGrid.value = !showGrid.value; }
     return;
   }
+  if (event.altKey) return;
   if (event.key === ' ') {
     event.preventDefault();
     isSpacePanning.value = true;
     return;
   }
-  if (key === 'b') tool.value = 'brush';
-  if (key === 'e') tool.value = 'eraser';
-  if (key === 'f') tool.value = 'fill';
-  if (key === 'v' || key === 'h') tool.value = 'move';
-  if (event.key === '[') brushSize.value = Math.max(1, brushSize.value - 1);
-  if (event.key === ']') brushSize.value = Math.min(4, brushSize.value + 1);
-  if (event.key === '-' || event.key === '_') adjustZoom(-25);
-  if (event.key === '=' || event.key === '+') adjustZoom(25);
+  if (key === 'b') setTool('brush');
+  else if (key === 'e') setTool('eraser');
+  else if (key === 'g') setTool('fill');
+  else if (key === 'i') setTool('picker');
+  else if (key === 'v' || key === 'h') setTool('move');
+  else if (key === 'f') toggleFocus();
+  else if (event.key === "'") showGrid.value = !showGrid.value;
+  else if (event.key === '[') setBrushSize(brushSize.value - 1);
+  else if (event.key === ']') setBrushSize(brushSize.value + 1);
+  else if (event.key === '-' || event.key === '_') stepZoom(-1);
+  else if (event.key === '=' || event.key === '+') stepZoom(1);
 }
 
 function handleArenaKeyup(event) {
   if (event.key === ' ') isSpacePanning.value = false;
+  if (event.key === 'Alt') isAltPicking.value = false;
+}
+
+function resetModifiers() {
+  isSpacePanning.value = false;
+  isAltPicking.value = false;
 }
 
 function artworkInitial(name) {
   return nameInitial(name, props.t.brand || '月');
+}
+
+function watchMedia(query, handler) {
+  const media = window.matchMedia(query);
+  const listener = () => handler(media.matches);
+  media.addEventListener?.('change', listener);
+  mediaQueries.push(() => media.removeEventListener?.('change', listener));
 }
 
 watch([pixels, () => form.title, () => form.description, backgroundColor, customColors, brushSize, selectedColor], () => {
@@ -1554,22 +1858,41 @@ watch([pixels, () => form.title, () => form.description, backgroundColor, custom
 });
 watch(() => gallery.sort, () => loadArtworks(1));
 watch([canvasBaseWidth, canvasBaseHeight], () => scheduleCanvasFit());
+watch(zoom, () => scheduleViewRect());
+watch(sheet, async (value) => {
+  if (value) { sheetPanel.value = value; hideGestureHint(); }
+  await nextTick();
+  updateSheetShift();
+});
+watch([panelsVisible, focusMode], () => scheduleCanvasFit());
 
 onMounted(async () => {
   window.addEventListener('pointerup', endCanvasInteraction);
   window.addEventListener('pointercancel', endCanvasInteraction);
   window.addEventListener('keydown', handleArenaKeydown);
   window.addEventListener('keyup', handleArenaKeyup);
+  window.addEventListener('blur', resetModifiers);
   window.addEventListener('resize', handleCanvasViewportResize);
+  watchMedia('(max-width: 760px)', (matches) => { isMobileLayout.value = matches; if (!matches) closeSheet(); });
+  watchMedia('(min-width: 1101px)', (matches) => { panelsOpen.value = matches; });
+  restorePanelState();
+  // Nothing is unsaved until the first edit (or a restored draft) changes the canvas.
+  draftSaved.value = true;
   restoreLocalDraft();
   restoreDraftAfterSignIn();
   window.addEventListener('pagehide', saveLocalDraft);
   await nextTick();
-  if (typeof ResizeObserver !== 'undefined' && canvasViewportRef.value) {
+  const viewport = canvasViewportRef.value;
+  if (viewport) {
+    viewport.addEventListener('gesturestart', preventSafariGesture);
+    viewport.addEventListener('gesturechange', preventSafariGesture);
+  }
+  if (typeof ResizeObserver !== 'undefined' && viewport) {
     canvasFitObserver = new ResizeObserver(handleCanvasViewportResize);
-    canvasFitObserver.observe(canvasViewportRef.value);
+    canvasFitObserver.observe(viewport);
   }
   scheduleCanvasFit(true);
+  showGestureHint();
   loadArtworks();
   loadArtworkForEdit();
 });
@@ -1577,250 +1900,364 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   saveLocalDraft();
   window.removeEventListener('pagehide', saveLocalDraft);
-  publishDialogRef.value?.close(); galleryDialogRef.value?.close(); newDialogRef.value?.close(); exportDialogRef.value?.close();
+  [publishDialogRef, galleryDialogRef, newDialogRef, exportDialogRef, shortcutsDialogRef].forEach(dialog => dialog.value?.close());
   window.removeEventListener('pointerup', endCanvasInteraction);
   window.removeEventListener('pointercancel', endCanvasInteraction);
   window.removeEventListener('keydown', handleArenaKeydown);
   window.removeEventListener('keyup', handleArenaKeyup);
+  window.removeEventListener('blur', resetModifiers);
   window.removeEventListener('resize', handleCanvasViewportResize);
+  mediaQueries.splice(0).forEach(dispose => dispose());
+  const viewport = canvasViewportRef.value;
+  viewport?.removeEventListener('gesturestart', preventSafariGesture);
+  viewport?.removeEventListener('gesturechange', preventSafariGesture);
   canvasFitObserver?.disconnect();
   canvasFitObserver = null;
   if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
+  if (viewRectFrame) window.cancelAnimationFrame(viewRectFrame);
   clearTimeout(toastTimer);
+  clearTimeout(gestureHintTimer);
 });
 useContentTranslationRefresh(() => loadArtworks(gallery.page));
 </script>
 
 <template>
-  <main class="page arena-page pixel-workspace" :class="{ 'is-controls-open': controlsOpen, 'is-gallery-open': galleryOpen, 'is-focus-mode': focusMode }">
-    <section class="pw-workbench" :aria-label="copy.title">
-      <header class="pw-document">
-        <div class="pw-document-name"><span class="pw-document-icon"><TsIcon name="grid" :size="19" /></span><button type="button" @click="preparePublish" :title="copy.draftPlaceholder"><h1>{{ form.title || copy.draftTitle }}</h1><TsIcon name="penLine" :size="14" /></button><span class="pw-draft-status" :title="draftSaved ? workspaceCopy.saved : draftSaveFailed ? workspaceCopy.saveFailed : workspaceCopy.saving"><TsIcon :name="draftSaved ? 'check' : 'info'" :size="14" />{{ workspaceCopy.draft }}</span></div>
-        <div class="pw-document-actions">
-          <button class="ghost-btn" type="button" :aria-label="copy.gallery" :title="copy.gallery" aria-controls="arena-gallery-panel" @click="toggleGalleryPanel" :aria-expanded="galleryOpen"><TsIcon name="image" :size="17" /><span>{{ copy.gallery }}</span></button>
-          <button class="ghost-btn" type="button" :aria-label="workspaceCopy.new" :title="workspaceCopy.new" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="17" /><span>{{ workspaceCopy.new }}</span></button>
-          <label class="ghost-btn pw-import" :title="copy.imageImport"><TsIcon name="upload" :size="17" /><span>{{ copy.imageImport }}</span><input ref="imageInputRef" class="sr-only" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
-          <button class="ghost-btn" type="button" :aria-label="copy.download" :title="copy.download" @click="downloadDraft"><TsIcon name="download" :size="17" /><span>{{ copy.download }}</span></button>
-          <button class="primary-btn" type="button" @click="preparePublish"><TsIcon name="send" :size="17" /><span>{{ editingArtwork ? copy.saveUpdate : copy.share }}</span></button>
+  <main class="page arena-page pixel-workspace pixel-studio ps-theme" :class="studioClasses">
+    <h1 class="ps-visually-hidden">{{ copy.pageTitle }}</h1>
+    <section class="ps-app" :aria-label="copy.pageTitle">
+      <header class="ps-bar">
+        <div class="ps-brand" aria-hidden="true"><span class="ps-brand-mark"><TsIcon name="moon" :size="15" /></span><span>{{ copy.appName }}</span></div>
+        <button class="ps-doc-button" type="button" :aria-label="copy.renameArtwork" @click="preparePublish">
+          <span class="ps-doc-name">{{ form.title || copy.draftTitle }}</span>
+          <span class="ps-save-dot" :class="saveState" :title="saveStateText"></span>
+        </button>
+        <div class="ps-options" role="toolbar" :aria-label="copy.toolOptions">
+          <span class="ps-options-tool"><TsIcon :name="activeToolOption.icon" :size="16" /><span>{{ activeToolOption.label }}</span></span>
+          <template v-if="activeTool === 'brush' || activeTool === 'eraser'">
+            <div class="ps-size-control">
+              <span class="ps-field-name">{{ copy.brushSize }}</span>
+              <button class="ps-icon-btn is-small" type="button" :disabled="brushSize <= 1" :aria-label="`${copy.brushSize} -`" @click="setBrushSize(brushSize - 1)"><TsIcon name="minus" :size="13" /></button>
+              <input class="ps-range" :value="brushSize" type="range" min="1" :max="MAX_BRUSH_SIZE" step="1" :aria-label="copy.brushSize" @input="setBrushSize($event.target.value)">
+              <button class="ps-icon-btn is-small" type="button" :disabled="brushSize >= MAX_BRUSH_SIZE" :aria-label="`${copy.brushSize} +`" @click="setBrushSize(brushSize + 1)"><TsIcon name="plus" :size="13" /></button>
+              <output class="ps-value">{{ brushSize }} {{ copy.pixels }}</output>
+            </div>
+            <label class="ps-check"><input v-model="pressureEnabled" type="checkbox"><span>{{ copy.pressure }}</span></label>
+            <label class="ps-check"><input v-model="stabilizerEnabled" type="checkbox"><span>{{ copy.stabilizer }}</span></label>
+          </template>
+          <span class="ps-options-hint">{{ toolHint }}</span>
+        </div>
+        <div class="ps-bar-actions">
+          <div class="ps-history" role="group" :aria-label="copy.undo">
+            <button class="ps-icon-btn" type="button" :disabled="!hasUndo" :aria-label="copy.undo" :data-tip="`${copy.undo} · Ctrl Z`" @click="undo"><TsIcon name="undo" :size="18" /></button>
+            <button class="ps-icon-btn" type="button" :disabled="!hasRedo" :aria-label="copy.redo" :data-tip="`${copy.redo} · Ctrl Shift Z`" @click="redo"><TsIcon name="redo" :size="18" /></button>
+          </div>
+          <span class="ps-bar-sep ps-hide-mobile" aria-hidden="true"></span>
+          <button class="ps-btn ps-hide-mobile" type="button" aria-controls="arena-gallery-panel" :aria-expanded="galleryOpen" @click="toggleGalleryPanel"><TsIcon name="image" :size="16" /><span>{{ copy.gallery }}</span></button>
+          <button class="ps-btn ps-hide-mobile ps-hide-compact" type="button" @click="openNewDialog"><TsIcon name="plus" :size="16" /><span>{{ copy.newCanvas }}</span></button>
+          <label class="ps-btn ps-hide-mobile ps-hide-compact"><TsIcon name="upload" :size="16" /><span>{{ copy.imageImport }}</span><input class="ps-visually-hidden" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
+          <button class="ps-btn ps-hide-mobile" type="button" @click="downloadDraft"><TsIcon name="download" :size="16" /><span>{{ copy.download }}</span></button>
+          <button class="ps-icon-btn ps-show-mobile" type="button" :aria-label="copy.more" :aria-expanded="sheet === 'file'" aria-controls="arena-controls-panel" @click="openSheet('file')"><TsIcon name="ellipsis" :size="20" /></button>
+          <button class="ps-btn ps-btn-primary" type="button" @click="preparePublish"><TsIcon name="send" :size="15" /><span>{{ editingArtwork ? copy.saveUpdate : copy.share }}</span></button>
         </div>
       </header>
-      <div class="pw-body">
-        <aside class="pw-toolbox" :aria-label="copy.drawingGuide">
-          <div class="pw-tools" role="group" :aria-label="copy.drawingGuide">
-            <button v-for="item in toolOptions" :key="item.key" class="icon-btn pw-tool" :class="{ active: activeTool === item.key }" :aria-pressed="activeTool === item.key" :aria-label="item.label" :title="`${item.label} (${item.shortcut})`" type="button" @click="tool = item.key"><TsIcon :name="item.icon" :size="21" /><span>{{ item.label }}</span></button>
+
+      <div class="ps-body">
+        <nav class="ps-toolbar" :aria-label="copy.tools">
+          <div class="ps-tool-group" role="group" :aria-label="copy.tools">
+            <button v-for="item in toolOptions" :key="item.key" class="ps-tool" :class="{ active: activeTool === item.key }" type="button" :aria-pressed="activeTool === item.key" :aria-label="item.label" :data-tip="`${item.label} · ${item.shortcut}`" @click="setTool(item.key)"><TsIcon :name="item.icon" :size="20" /></button>
           </div>
-          <div class="pw-history" role="group" :aria-label="copy.undo"><button class="icon-btn" type="button" :disabled="!hasUndo" :aria-label="copy.undo" :title="copy.undo" @click="undo"><TsIcon name="undo" :size="20" /></button><button class="icon-btn" type="button" :disabled="!hasRedo" :aria-label="copy.redo" :title="copy.redo" @click="redo"><TsIcon name="redo" :size="20" /></button></div>
-          <button class="pw-selected-color" type="button" :style="{ backgroundColor: selectedColor }" :aria-label="copy.moreColors" @click="showColorSettings"></button>
-          <button class="icon-btn pw-tool-help" type="button" :aria-label="copy.drawingGuide" @click="openPenSettings"><TsIcon name="helpCircle" :size="19" /></button>
-        </aside>
-        <div class="pw-center arena-canvas-panel">
-          <div class="pw-context" role="toolbar" :aria-label="copy.drawingGuide">
-            <span class="pw-current-tool"><TsIcon :name="toolOptions.find(item => item.key === activeTool)?.icon || 'brush'" :size="16" />{{ currentToolLabel }}</span>
-            <label class="pw-brush-size"><span>{{ copy.brushSize }}</span><input v-model.number="brushSize" type="range" min="1" max="4" step="1" :aria-label="copy.brushSize"><strong>{{ brushSize }} px</strong></label>
-            <button class="ghost-btn pw-pen-options" type="button" @click="openPenSettings"><TsIcon name="sliders" :size="15" /><span>{{ workspaceCopy.penSettings }}</span></button>
-            <div class="pw-view-actions">
-              <button class="ghost-btn" type="button" :class="{ active: showGrid }" :aria-pressed="showGrid" @click="showGrid = !showGrid"><TsIcon name="grid" :size="15" /><span>{{ workspaceCopy.grid }}</span></button>
-              <button class="ghost-btn pw-fit-top" type="button" @click="resetCanvasZoom"><TsIcon name="maximize" :size="15" /><span>{{ copy.fitCanvas }}</span></button>
-              <button class="ghost-btn" type="button" :aria-pressed="focusMode" @click="toggleFocus"><TsIcon name="maximize" :size="15" /><span>{{ focusMode ? workspaceCopy.exitFocus : workspaceCopy.focus }}</span></button>
-              <button class="ghost-btn pw-restore-colors" type="button" :aria-expanded="controlsOpen" aria-controls="arena-controls-panel" @click="toggleControlsPanel"><TsIcon name="palette" :size="17" /><span>{{ workspaceCopy.colors }}</span></button>
-            </div>
+          <span class="ps-toolbar-sep" aria-hidden="true"></span>
+          <button class="ps-dock-size ps-show-mobile" type="button" :aria-label="`${copy.brushSize} ${brushSize} ${copy.pixels}`" :aria-expanded="sheet === 'brush'" aria-controls="arena-controls-panel" :style="brushDotStyle" @click="openSheet('brush')"><span class="ps-dot"></span><small>{{ brushSize }}</small></button>
+          <div class="ps-color-chips">
+            <button :key="pickPulse" class="ps-chip-fg" :class="{ 'is-picked': pickPulse }" type="button" :style="{ '--chip': selectedColor }" :aria-label="copy.currentColor" :data-tip="copy.currentColor" :aria-expanded="sheet === 'color'" @click="revealPanel('color')"></button>
+            <button class="ps-chip-bg" type="button" :style="{ '--chip': backgroundColor }" :aria-label="copy.background" :data-tip="copy.background" @click="revealPanel('canvas')"></button>
           </div>
-          <div ref="canvasViewportRef" class="arena-canvas-viewport" @wheel="zoomWheel">
-            <div class="pw-canvas-world">
-              <div class="pixel-canvas-zoom-surface" :style="canvasSurfaceStyle">
-                <div class="pw-ruler pw-ruler-x" aria-hidden="true"><span v-for="(value, index) in rulerX" :key="index" :style="{ left: `${index * 12.5}%` }">{{ value }}</span></div>
-                <div class="pw-ruler pw-ruler-y" aria-hidden="true"><span v-for="(value, index) in rulerY" :key="index" :style="{ top: `${index * 100 / 6}%` }">{{ value }}</span></div>
-                <div class="pixel-canvas" :style="canvasStyle" @dragstart.prevent @pointermove="trackCoordinates" @pointerleave="coordinates = null">
-                  <PixelCanvasCells ref="pixelCanvasRef" :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="DISPLAY_CELL_SIZE" :tool="activeTool" :show-grid="showGrid" :stabilizer="stabilizerEnabled" @begin-paint="beginPaint" @continue-paint="continuePaint" @end-paint="endPaint" @begin-pan="beginCanvasPan" @continue-pan="continueCanvasPan" @end-pan="endCanvasPan" />
+          <div class="ps-toolbar-end">
+            <button class="ps-tool" :class="{ active: showGrid }" type="button" :aria-pressed="showGrid" :aria-label="copy.grid" :data-tip="`${copy.grid} · '`" @click="showGrid = !showGrid"><TsIcon name="grid" :size="18" /></button>
+            <button class="ps-tool" :class="{ active: focusMode }" type="button" :aria-pressed="focusMode" :aria-label="focusMode ? copy.exitFocus : copy.focus" :data-tip="`${focusMode ? copy.exitFocus : copy.focus} · F`" @click="toggleFocus"><TsIcon :name="focusMode ? 'minimize' : 'maximize'" :size="18" /></button>
+            <button class="ps-tool" type="button" :aria-label="copy.shortcuts" :data-tip="copy.shortcuts" @click="openShortcuts"><TsIcon name="helpCircle" :size="18" /></button>
+          </div>
+        </nav>
+
+        <div class="ps-stage arena-canvas-panel">
+          <div class="ps-doc-tabs">
+            <button class="ps-doc-tab" type="button" :aria-label="copy.renameArtwork" @click="preparePublish">
+              <TsIcon name="image" :size="13" /><span class="ps-doc-name">{{ form.title || copy.draftTitle }}</span><small>@ {{ zoom }}%</small>
+            </button>
+            <span class="ps-doc-status"><span class="ps-save-dot" :class="saveState"></span>{{ saveStateText }}</span>
+            <button class="ps-icon-btn is-small ps-panels-toggle" type="button" :aria-expanded="panelsOpen && !focusMode" aria-controls="arena-controls-panel" :aria-label="panelsOpen ? copy.hidePanels : copy.showPanels" :data-tip="panelsOpen ? copy.hidePanels : copy.showPanels" @click="togglePanels"><TsIcon name="panelRight" :size="16" /></button>
+          </div>
+          <div
+            ref="canvasViewportRef"
+            class="arena-canvas-viewport ps-viewport"
+            @wheel="handleViewportWheel"
+            @pointerdown.capture="handleViewportPointerDownCapture"
+            @pointermove.capture="handleViewportPointerMoveCapture"
+            @pointerup.capture="handleViewportPointerUpCapture"
+            @pointercancel.capture="handleViewportPointerUpCapture"
+            @pointerdown="handleViewportPointerDown"
+            @pointermove="handleViewportPointerMove"
+            @pointerup="endViewportPan"
+            @pointercancel="endViewportPan"
+            @mousedown="preventMiddleAutoscroll"
+            @contextmenu.prevent
+            @scroll.passive="scheduleViewRect"
+          >
+            <div ref="canvasWorldRef" class="ps-world" :style="worldStyle">
+              <div ref="canvasSurfaceRef" class="ps-surface" :style="canvasSurfaceStyle">
+                <div class="pixel-canvas" :style="canvasStyle" @dragstart.prevent @pointermove="trackCoordinates" @pointerdown="trackCoordinates" @pointerleave="clearHover">
+                  <PixelCanvasCells ref="pixelCanvasRef" :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="DISPLAY_CELL_SIZE" :tool="activeTool" :show-grid="false" :stabilizer="stabilizerEnabled" @begin-paint="beginPaint" @continue-paint="continuePaint" @end-paint="endPaint" @begin-pan="beginCanvasPan" @continue-pan="continueCanvasPan" @end-pan="endCanvasPan" />
                 </div>
+                <div v-if="gridVisible" class="ps-grid-overlay" :style="gridStyle" aria-hidden="true"></div>
+                <div v-if="brushCursorStyle" class="ps-brush-cursor" :class="{ 'is-eraser': activeTool === 'eraser' }" :style="brushCursorStyle" aria-hidden="true"></div>
               </div>
             </div>
           </div>
-          <footer class="pw-statusbar">
-            <span>{{ canvasWidth }} × {{ canvasHeight }} px</span><span class="pw-shortcuts">{{ workspaceCopy.drag }}</span>
-            <span class="pw-coordinates">X: {{ coordinates?.x ?? '—' }} &nbsp; Y: {{ coordinates?.y ?? '—' }}</span>
-            <div class="arena-zoom-controls" role="group" :aria-label="copy.zoom"><button class="icon-btn" type="button" :aria-label="`${copy.zoom} -`" @click="adjustZoom(-10)"><TsIcon name="minus" :size="15" /></button><strong>{{ zoom }}%</strong><button class="icon-btn" type="button" :aria-label="`${copy.zoom} +`" @click="adjustZoom(10)"><TsIcon name="plus" :size="15" /></button><button class="ghost-btn" type="button" @click="resetCanvasZoom">{{ copy.fitCanvas }}</button></div>
+          <Transition name="ps-fade">
+            <p v-if="gestureHintVisible" class="ps-gesture-hint" role="status" @click="hideGestureHint"><TsIcon name="sparkles" :size="14" />{{ copy.gestureHint }}</p>
+          </Transition>
+          <Transition name="ps-fade">
+            <div v-if="toast.visible" class="ps-toast" :class="toast.type" :role="toast.type === 'error' ? 'alert' : 'status'">{{ toast.text }}</div>
+          </Transition>
+          <footer class="ps-statusbar">
+            <span class="ps-status-item">{{ canvasWidth }} × {{ canvasHeight }} {{ copy.pixels }}</span>
+            <span class="ps-status-item ps-coords">X {{ coordinates?.x ?? '–' }}<span>Y {{ coordinates?.y ?? '–' }}</span></span>
+            <span class="ps-status-item ps-status-color"><i :style="{ backgroundColor: selectedColor }"></i>{{ selectedColor.toUpperCase() }}</span>
+            <span class="ps-status-hint">{{ toolHint }}</span>
+            <div class="arena-zoom-controls ps-zoom" role="group" :aria-label="copy.zoom">
+              <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} -`" @click="stepZoom(-1)"><TsIcon name="minus" :size="14" /></button>
+              <button class="ps-zoom-value" type="button" :aria-label="copy.fitCanvas" :data-tip="`${copy.fitCanvas} · Ctrl 0`" @click="resetCanvasZoom"><strong>{{ zoom }}%</strong></button>
+              <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} +`" @click="stepZoom(1)"><TsIcon name="plus" :size="14" /></button>
+              <button class="ps-text-btn" type="button" :data-tip="`${copy.actualPixels} · Ctrl 1`" @click="zoomTo(100)">1:1</button>
+              <button class="ps-icon-btn is-small" type="button" :aria-label="copy.fitCanvas" :data-tip="`${copy.fitCanvas} · Ctrl 0`" @click="resetCanvasZoom"><TsIcon name="scan" :size="14" /></button>
+            </div>
           </footer>
-          <div class="pw-mobile-hint" role="status"><TsIcon :name="activeTool === 'move' ? 'move' : 'brush'" :size="15" /><span>{{ drawingHint }}</span></div>
         </div>
-        <aside id="arena-controls-panel" class="arena-controls pw-properties" :aria-label="copy.palette" :inert="!controlsOpen">
-          <header class="pw-properties-head"><h2>{{ workspaceCopy.colors }}</h2><button class="icon-btn" type="button" :aria-label="copy.closeTools" :aria-expanded="controlsOpen" aria-controls="arena-controls-panel" @click="toggleControlsPanel"><TsIcon name="chevronRight" :size="18" /></button></header>
-          <div class="pw-property-section">
-            <PixelColorPicker ref="customColorInputRef" :model-value="selectedColor" :label="copy.freeColor" @update:model-value="chooseColor" />
-            <div class="pw-property-label"><strong>{{ copy.presets }}</strong><span>{{ copy.kicker }}</span></div>
-            <div class="pixel-palette pw-palette" role="group" :aria-label="copy.presets"><button v-for="color in [...presetPalette, ...studioColors]" :key="color" class="pixel-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ backgroundColor: color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"><TsIcon v-if="selectedColor === color" name="check" :size="14" /></button></div>
-            <div v-if="recentColors.length" class="pw-recent"><span>{{ workspaceCopy.recent }}</span><div class="pixel-palette pw-palette"><button v-for="color in recentColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${workspaceCopy.recent} ${color}`" type="button" @click="chooseColor(color)"></button></div></div>
-            <details v-if="customColors.length" class="pw-custom-colors"><summary>{{ copy.freeColor }} <span>{{ customColors.length }}</span></summary><div class="pixel-palette pw-palette"><button v-for="color in customColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-pressed="selectedColor === color" :aria-label="`${copy.freeColor} ${color}`" type="button" @click="chooseColor(color)"></button></div></details>
+
+        <button v-if="panelsOpen && !focusMode && !isMobileLayout" class="ps-panels-scrim" type="button" tabindex="-1" :aria-label="copy.hidePanels" @click="panelsOpen = false"></button>
+        <aside id="arena-controls-panel" class="ps-panels arena-controls" :data-sheet="sheetPanel" :style="sheetStyle" :aria-label="copy.panels" :inert="!panelsVisible">
+          <div class="ps-sheet-head" @pointerdown="startSheetDrag" @pointermove="moveSheetDrag" @pointerup="endSheetDrag" @pointercancel="endSheetDrag">
+            <span class="ps-sheet-grip" aria-hidden="true"></span>
+            <div class="ps-sheet-tabs" role="tablist" :aria-label="copy.panels">
+              <button v-for="tab in sheetTabs" :key="tab.key" type="button" role="tab" :aria-selected="sheet === tab.key" @click="sheet = tab.key"><TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
+            </div>
+            <button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="closeSheet"><TsIcon name="x" :size="18" /></button>
           </div>
-          <details class="pw-setting"><summary><TsIcon name="grid" :size="16" />{{ workspaceCopy.canvasSettings }}<small>{{ canvasWidth }} × {{ canvasHeight }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label>{{ copy.background }}<input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label><div class="pixel-palette pw-palette"><button v-for="color in backgroundPresets" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${copy.background} ${color}`" type="button" @click="setBackgroundColor(color)"></button></div><button class="ghost-btn" type="button" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="15" />{{ workspaceCopy.create }}</button><button class="ghost-btn" type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="15" />{{ workspaceCopy.example }}</button><button class="ghost-btn" type="button" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="15" />{{ copy.clear }}</button></div></details>
-          <details ref="penSettingsRef" class="pw-setting"><summary><TsIcon name="sliders" :size="16" />{{ workspaceCopy.penSettings }}<TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label><input v-model="pressureEnabled" type="checkbox">{{ copy.pressure }}</label><label><input v-model="stabilizerEnabled" type="checkbox">{{ copy.stabilizer }}</label><p>{{ drawingHint }}</p><ol><li v-for="step in copy.guideSteps" :key="step">{{ step }}</li></ol></div></details>
-          <details class="pw-setting"><summary><TsIcon name="penLine" :size="16" />{{ workspaceCopy.notes }}<small>{{ chatMessages.length }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><p>{{ copy.notesEmpty }}</p><div v-for="message in chatMessages" :key="message.id" class="pw-note"><time>{{ message.time }}</time><p>{{ message.text }}</p></div><form @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button class="ghost-btn" type="submit">{{ copy.sendMessage }}</button></form></div></details>
-          <div class="pw-navigator"><div class="pw-property-label"><span>{{ workspaceCopy.preview }}</span><TsIcon name="eye" :size="15" /></div><div class="pw-navigator-frame"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="workspaceCopy.preview" /></div><p>{{ canvasWidth }} × {{ canvasHeight }}</p></div>
+          <div class="ps-panels-scroll" data-lenis-prevent>
+            <section id="ps-panel-color" class="ps-panel" data-panel="color" :class="{ 'is-collapsed': collapsedPanels.color }">
+              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.color" @click="toggleCollapsed('color')"><TsIcon name="chevronDown" :size="13" />{{ copy.colorPanel }}</button><span class="ps-panel-meta">{{ selectedColor.toUpperCase() }}</span></h2>
+              <div class="ps-panel-body">
+                <PixelColorPicker ref="customColorInputRef" :model-value="selectedColor" :label="copy.freeColor" @update:model-value="chooseColor" />
+              </div>
+            </section>
+            <section id="ps-panel-swatches" class="ps-panel" data-panel="swatches" :class="{ 'is-collapsed': collapsedPanels.swatches }">
+              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.swatches" @click="toggleCollapsed('swatches')"><TsIcon name="chevronDown" :size="13" />{{ copy.swatchesPanel }}</button><button class="ps-icon-btn is-small" type="button" :aria-label="copy.addColor" :data-tip="copy.addColor" @click="saveSelectedColor"><TsIcon name="plus" :size="14" /></button></h2>
+              <div class="ps-panel-body">
+                <div class="ps-swatch-grid" role="group" :aria-label="copy.presets">
+                  <button v-for="color in [...presetPalette, ...studioColors]" :key="color" class="ps-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"></button>
+                </div>
+                <template v-if="customColors.length">
+                  <p class="ps-panel-label">{{ copy.savedColors }} <span>{{ customColors.length }}</span></p>
+                  <div class="ps-swatch-grid" role="group" :aria-label="copy.savedColors">
+                    <button v-for="color in customColors" :key="color" class="ps-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.savedColors} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"></button>
+                  </div>
+                </template>
+                <template v-if="recentColors.length">
+                  <p class="ps-panel-label">{{ copy.recent }}</p>
+                  <div class="ps-swatch-grid is-recent" role="group" :aria-label="copy.recent">
+                    <button v-for="color in recentColors" :key="color" class="ps-swatch" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.recent} ${color}`" @click="chooseColor(color)"></button>
+                  </div>
+                </template>
+              </div>
+            </section>
+            <section id="ps-panel-brush" class="ps-panel" data-panel="brush" :class="{ 'is-collapsed': collapsedPanels.brush }">
+              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.brush" @click="toggleCollapsed('brush')"><TsIcon name="chevronDown" :size="13" />{{ copy.brushPanel }}</button><span class="ps-panel-meta">{{ brushSize }} {{ copy.pixels }}</span></h2>
+              <div class="ps-panel-body">
+                <div class="ps-brush-preview" :style="brushDotStyle"><span class="ps-dot" :style="{ backgroundColor: selectedColor }"></span></div>
+                <div class="ps-brush-sizes" role="group" :aria-label="copy.brushSize">
+                  <button v-for="size in MAX_BRUSH_SIZE" :key="size" type="button" :class="{ active: brushSize === size }" :aria-pressed="brushSize === size" :aria-label="`${copy.brushSize} ${size} ${copy.pixels}`" @click="setBrushSize(size)">{{ size }}</button>
+                </div>
+                <label class="ps-switch-row"><span>{{ copy.pressure }}</span><input v-model="pressureEnabled" class="ps-switch" type="checkbox"></label>
+                <label class="ps-switch-row"><span>{{ copy.stabilizer }}</span><input v-model="stabilizerEnabled" class="ps-switch" type="checkbox"></label>
+                <p class="ps-panel-note">{{ toolHint }}</p>
+              </div>
+            </section>
+            <section id="ps-panel-navigator" class="ps-panel" data-panel="navigator" :class="{ 'is-collapsed': collapsedPanels.navigator }">
+              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.navigator" @click="toggleCollapsed('navigator')"><TsIcon name="chevronDown" :size="13" />{{ copy.navigatorPanel }}</button><span class="ps-panel-meta">{{ zoom }}%</span></h2>
+              <div class="ps-panel-body">
+                <div ref="navigatorRef" class="ps-navigator" :style="{ aspectRatio: `${canvasWidth} / ${canvasHeight}`, backgroundColor }" @pointerdown="startNavigatorDrag" @pointermove="moveNavigatorDrag" @pointerup="endNavigatorDrag" @pointercancel="endNavigatorDrag">
+                  <PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="copy.navigatorPanel" />
+                  <span class="ps-navigator-view" :style="navigatorStyle" aria-hidden="true"></span>
+                </div>
+                <div class="ps-navigator-zoom">
+                  <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} -`" @click="stepZoom(-1)"><TsIcon name="zoomOut" :size="14" /></button>
+                  <input class="ps-range" type="range" min="0" max="1000" :value="zoomSliderValue" :aria-label="copy.zoom" :aria-valuetext="`${zoom}%`" @input="zoomFromSlider($event.target.value)">
+                  <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} +`" @click="stepZoom(1)"><TsIcon name="zoomIn" :size="14" /></button>
+                </div>
+              </div>
+            </section>
+            <section id="ps-panel-canvas" class="ps-panel" data-panel="canvas" :class="{ 'is-collapsed': collapsedPanels.canvas }">
+              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.canvas" @click="toggleCollapsed('canvas')"><TsIcon name="chevronDown" :size="13" />{{ copy.canvasPanel }}</button><span class="ps-panel-meta">{{ canvasWidth }} × {{ canvasHeight }}</span></h2>
+              <div class="ps-panel-body">
+                <p class="ps-panel-label">{{ copy.background }}</p>
+                <div class="ps-bg-row">
+                  <label class="ps-bg-picker" :style="{ '--swatch': backgroundColor }"><input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label>
+                  <button v-for="color in backgroundPresets" :key="color" class="ps-swatch" :class="{ active: backgroundColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.background} ${color}`" :aria-pressed="backgroundColor === color" @click="setBackgroundColor(color)"></button>
+                </div>
+                <label class="ps-switch-row ps-show-mobile"><span>{{ copy.grid }}</span><input v-model="showGrid" class="ps-switch" type="checkbox"></label>
+                <div class="ps-action-list">
+                  <button type="button" @click="openNewDialog"><TsIcon name="plus" :size="16" /><span>{{ copy.newCanvasAction }}</span><small>{{ canvasWidth }} × {{ canvasHeight }}</small></button>
+                  <button type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="16" /><span>{{ copy.example }}</span></button>
+                  <button type="button" class="is-danger" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="16" /><span>{{ copy.clear }}</span></button>
+                </div>
+              </div>
+            </section>
+            <section id="ps-panel-file" class="ps-panel" data-panel="file">
+              <div class="ps-panel-body">
+                <div class="ps-action-list is-large">
+                  <button type="button" aria-controls="arena-gallery-panel" :aria-expanded="galleryOpen" @click="toggleGalleryPanel"><TsIcon name="image" :size="18" /><span>{{ copy.gallery }}</span><TsIcon name="chevronRight" :size="14" /></button>
+                  <label><TsIcon name="upload" :size="18" /><span>{{ copy.imageImport }}</span><input class="ps-visually-hidden" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"><TsIcon name="chevronRight" :size="14" /></label>
+                  <button type="button" @click="downloadDraft"><TsIcon name="download" :size="18" /><span>{{ copy.download }}</span><TsIcon name="chevronRight" :size="14" /></button>
+                  <button type="button" @click="preparePublish"><TsIcon name="penLine" :size="18" /><span>{{ copy.publishDetails }}</span><TsIcon name="chevronRight" :size="14" /></button>
+                </div>
+                <p class="ps-panel-note"><span class="ps-save-dot" :class="saveState"></span>{{ saveStateText }}</p>
+              </div>
+            </section>
+            <section id="ps-panel-notes" class="ps-panel" data-panel="notes" :class="{ 'is-collapsed': collapsedPanels.notes }">
+              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.notes" @click="toggleCollapsed('notes')"><TsIcon name="chevronDown" :size="13" />{{ copy.notesPanel }}</button><span class="ps-panel-meta">{{ chatMessages.length }}</span></h2>
+              <div class="ps-panel-body">
+                <p v-if="!chatMessages.length" class="ps-panel-note">{{ copy.notesEmpty }}</p>
+                <div v-for="message in chatMessages" :key="message.id" class="ps-note"><time>{{ message.time }}</time><p>{{ message.text }}</p></div>
+                <form class="ps-note-form" @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button class="ps-btn" type="submit">{{ copy.sendMessage }}</button></form>
+              </div>
+            </section>
+          </div>
         </aside>
-        <button v-if="controlsOpen" class="pw-properties-scrim" type="button" :aria-label="copy.closeTools" @click="controlsOpen = false"></button>
       </div>
     </section>
+
     <Teleport to="body">
-      <dialog ref="galleryDialogRef" class="pw-dialog pw-gallery-dialog" :aria-label="copy.gallery" @close="galleryOpen = false" @click.self="galleryDialogRef.close()">
-    <section
-      id="arena-gallery-panel"
-      class="arena-gallery panel"
-      :aria-busy="sideTab === 'gallery' && gallery.loading"
-    >
-      <button class="pw-gallery-close icon-btn" type="button" :aria-label="workspaceCopy.close" @click="galleryDialogRef.close()"><TsIcon name="x" :size="20" /></button>
-      <div class="arena-section-head arena-gallery-head">
-        <div>
-          <span>03</span>
-          <h2>{{ copy.gallery }}</h2>
-        </div>
-        <div class="arena-gallery-tools">
-          <div v-if="sideTab === 'gallery'" class="arena-gallery-sort" role="group" :aria-label="copy.gallery">
-            <button class="chip" :class="{ active: gallery.sort === 'latest' }" :aria-pressed="gallery.sort === 'latest'" type="button" @click="gallery.sort = 'latest'">{{ copy.latest }}</button>
-            <button class="chip" :class="{ active: gallery.sort === 'hot' }" :aria-pressed="gallery.sort === 'hot'" type="button" @click="gallery.sort = 'hot'">{{ copy.hot }}</button>
-          </div>
-          <button v-if="sideTab === 'gallery'" class="ghost-btn" type="button" :disabled="gallery.loading" :aria-busy="gallery.loading" @click="loadArtworks">
-            <TsIcon name="refresh" :size="17" />
-            <span>{{ copy.refresh }}</span>
-          </button>
-        </div>
-      </div>
-
-      <LoadingSkeleton v-if="gallery.loading" variant="pixel" :count="4" :label="copy.loading" />
-      <div v-else-if="gallery.error" class="arena-empty error" role="alert">{{ gallery.error }}</div>
-      <div v-else-if="!gallery.items.length" class="arena-empty">{{ copy.empty }}</div>
-      <div v-else class="pixel-gallery-grid">
-        <article
-          v-for="artwork in gallery.items"
-          :id="'pixel-art-' + artwork.id"
-          :key="artwork.id"
-          class="pixel-art-card"
-        >
-          <button
-            class="pixel-art-preview"
-            type="button"
-            :title="artwork.title || copy.gallery"
-            :aria-label="artwork.title || copy.gallery"
-            :style="{
-              '--grid-width': artworkPreviewWidth(artwork),
-              '--grid-height': artworkPreviewHeight(artwork),
-              '--canvas-bg': artworkBackground(artwork)
-            }"
-            @click="openArtworkPreview(artwork)"
-          >
-            <PixelCanvasCells
-              :pixels="artworkPixels(artwork)"
-              :palette="artworkPalette(artwork)"
-              :width="artworkPreviewWidth(artwork)"
-              :height="artworkPreviewHeight(artwork)"
-              :cell-size="1"
-              :background-color="artworkBackground(artwork)"
-              :show-grid="false"
-              :interactive="false"
-              defer-offscreen
-              :aria-label="artwork.title || copy.gallery"
-            />
-          </button>
-          <div class="pixel-art-body">
-            <div class="pixel-art-title-row">
-              <h3>{{ artwork.title }}</h3>
-              <span>#{{ artwork.id }}</span>
+      <dialog ref="galleryDialogRef" class="ps-dialog ps-theme ps-gallery-dialog" :aria-label="copy.gallery" @close="galleryOpen = false" @click.self="galleryDialogRef.close()">
+        <section id="arena-gallery-panel" class="ps-gallery" :aria-busy="gallery.loading">
+          <header class="ps-dialog-head">
+            <h2>{{ copy.gallery }}</h2>
+            <div class="ps-segmented" role="group" :aria-label="copy.gallery">
+              <button :class="{ active: gallery.sort === 'latest' }" :aria-pressed="gallery.sort === 'latest'" type="button" @click="gallery.sort = 'latest'">{{ copy.latest }}</button>
+              <button :class="{ active: gallery.sort === 'hot' }" :aria-pressed="gallery.sort === 'hot'" type="button" @click="gallery.sort = 'hot'">{{ copy.hot }}</button>
             </div>
-            <p v-if="artwork.description">{{ artwork.description }}</p>
-            <div class="pixel-art-author">
-              <span class="pixel-art-avatar">
-                <img v-if="artwork.avatar" :src="artwork.avatar" :alt="artwork.author_nickname || artwork.author" loading="lazy" decoding="async">
-                <span v-else>{{ artworkInitial(artwork.author_nickname || artwork.author) }}</span>
-              </span>
-              <span>{{ copy.by }} {{ artwork.author_nickname || artwork.author || props.t.brand }}</span>
-              <UserLevelBadge v-if="artwork.author_id" :level="userLevel(artwork.author_id)" :lang="lang" compact :show-title="false" />
-              <time>{{ formatDate(artwork.created_at) }}</time>
+            <button class="ps-icon-btn" type="button" :disabled="gallery.loading" :aria-busy="gallery.loading" :aria-label="copy.refresh" :data-tip="copy.refresh" @click="loadArtworks()"><TsIcon name="refresh" :size="17" /></button>
+            <button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="galleryDialogRef.close()"><TsIcon name="x" :size="19" /></button>
+          </header>
+          <div class="ps-gallery-scroll" data-lenis-prevent>
+            <LoadingSkeleton v-if="gallery.loading" variant="pixel" :count="4" :label="copy.loading" />
+            <div v-else-if="gallery.error" class="ps-gallery-empty is-error" role="alert">{{ gallery.error }}</div>
+            <div v-else-if="!gallery.items.length" class="ps-gallery-empty">{{ copy.emptyGallery }}</div>
+            <div v-else class="pixel-gallery-grid">
+              <article v-for="artwork in gallery.items" :id="'pixel-art-' + artwork.id" :key="artwork.id" class="pixel-art-card">
+                <button
+                  class="pixel-art-preview"
+                  type="button"
+                  :aria-label="artwork.title || copy.gallery"
+                  :style="{ '--grid-width': artworkPreviewWidth(artwork), '--grid-height': artworkPreviewHeight(artwork), backgroundColor: artworkBackground(artwork) }"
+                  @click="openArtworkPreview(artwork)"
+                >
+                  <PixelCanvasCells
+                    :pixels="artworkPixels(artwork)"
+                    :palette="artworkPalette(artwork)"
+                    :width="artworkPreviewWidth(artwork)"
+                    :height="artworkPreviewHeight(artwork)"
+                    :cell-size="1"
+                    :background-color="artworkBackground(artwork)"
+                    :show-grid="false"
+                    :interactive="false"
+                    defer-offscreen
+                    :aria-label="artwork.title || copy.gallery"
+                  />
+                </button>
+                <div class="pixel-art-body">
+                  <div class="pixel-art-title-row"><h3>{{ artwork.title }}</h3><span>#{{ artwork.id }}</span></div>
+                  <p v-if="artwork.description">{{ artwork.description }}</p>
+                  <div class="pixel-art-author">
+                    <span class="pixel-art-avatar">
+                      <img v-if="artwork.avatar" :src="artwork.avatar" :alt="artwork.author_nickname || artwork.author" loading="lazy" decoding="async">
+                      <span v-else>{{ artworkInitial(artwork.author_nickname || artwork.author) }}</span>
+                    </span>
+                    <span class="pixel-art-author-name">{{ artwork.author_nickname || artwork.author || props.t.brand }}</span>
+                    <UserLevelBadge v-if="artwork.author_id" :level="userLevel(artwork.author_id)" :lang="lang" compact :show-title="false" />
+                    <time>{{ formatDate(artwork.created_at) }}</time>
+                  </div>
+                </div>
+                <div class="pixel-art-actions">
+                  <button class="ps-chip-btn like-btn" :class="{ liked: isArtworkLiked(artwork) }" :aria-pressed="isArtworkLiked(artwork)" :aria-label="`${isArtworkLiked(artwork) ? copy.liked : copy.like} ${formatNumber(artwork.like_count)}`" type="button" @click="likeArtwork(artwork)"><TsIcon name="heart" :size="15" /><span>{{ formatNumber(artwork.like_count) }}</span></button>
+                  <button class="ps-chip-btn" type="button" :aria-label="copy.download" @click="downloadArtwork(artwork)"><TsIcon name="download" :size="15" /><span>PNG</span></button>
+                  <button class="ps-chip-btn" type="button" :aria-label="copy.shareLink" @click="openArtworkShare(artwork)"><TsIcon name="external" :size="15" /><span>{{ copy.shareLink }}</span></button>
+                </div>
+              </article>
             </div>
+            <nav v-if="!gallery.loading && gallery.totalPages > 1" class="ps-pager" :aria-label="copy.pager">
+              <button class="ps-icon-btn" type="button" :disabled="gallery.page <= 1" :aria-label="copy.prevPage" @click="loadArtworks(gallery.page - 1)"><TsIcon name="arrowLeft" :size="16" /></button>
+              <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
+              <button class="ps-icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" :aria-label="copy.nextPage" @click="loadArtworks(gallery.page + 1)"><TsIcon name="arrowRight" :size="16" /></button>
+            </nav>
           </div>
-          <div class="pixel-art-actions">
-            <button
-              class="icon-btn like-btn"
-              :class="{ liked: isArtworkLiked(artwork) }"
-              :aria-pressed="isArtworkLiked(artwork)"
-              type="button"
-              @click="likeArtwork(artwork)"
-            >
-              <TsIcon name="heart" :size="15" />
-              <span>{{ isArtworkLiked(artwork) ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
-            </button>
-            <button class="icon-btn" type="button" @click="downloadArtwork(artwork)">
-              <TsIcon name="download" :size="15" />
-              <span>{{ copy.download }}</span>
-            </button>
-            <button class="icon-btn" type="button" @click="openArtworkShare(artwork)">
-              <TsIcon name="external" :size="15" />
-              <span>{{ copy.shareLink }}</span>
-            </button>
-          </div>
-        </article>
-      </div>
-      <nav v-if="sideTab === 'gallery' && !gallery.loading && gallery.totalPages > 1" class="arena-gallery-pager" aria-label="作品分页">
-        <button class="icon-btn" type="button" :disabled="gallery.page <= 1" aria-label="上一页" @click="loadArtworks(gallery.page - 1)">
-          <TsIcon name="arrowLeft" :size="16" />
-        </button>
-        <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
-        <button class="icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" aria-label="下一页" @click="loadArtworks(gallery.page + 1)">
-          <TsIcon name="arrowRight" :size="16" />
-        </button>
-      </nav>
-    </section>
-
+        </section>
       </dialog>
-      <dialog ref="publishDialogRef" class="pw-dialog pw-publish-dialog" :aria-label="copy.publishDetails" @click.self="publishDialogRef.close()">
-        <header><h2>{{ copy.publishDetails }}</h2><button class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="publishDialogRef.close()"><TsIcon name="x" :size="20" /></button></header>
-        <div class="pw-dialog-preview"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="workspaceCopy.preview" /></div>
+
+      <dialog ref="publishDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.publishDetails" @click.self="publishDialogRef.close()">
+        <header class="ps-dialog-head"><h2>{{ copy.publishDetails }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="publishDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <div class="ps-dialog-preview" :style="{ backgroundColor }"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="copy.navigatorPanel" /></div>
         <form @submit.prevent="shareArtwork">
-          <label>{{ copy.draftPlaceholder }}<input ref="titleInputRef" v-model="form.title" maxlength="40" type="text" autocomplete="off" required :placeholder="copy.draftPlaceholder"></label>
-          <label>{{ copy.descPlaceholder }}<textarea v-model="form.description" maxlength="120" rows="3" :placeholder="copy.descPlaceholder"></textarea></label>
-          <footer><button class="ghost-btn" type="button" @click="publishDialogRef.close()">{{ workspaceCopy.cancel }}</button><button class="primary-btn" type="submit" :disabled="isPublishing"><TsIcon name="send" :size="17" />{{ publishButtonText }}</button></footer>
+          <label class="ps-input-field"><span>{{ copy.draftPlaceholder }}</span><input ref="titleInputRef" v-model="form.title" maxlength="40" type="text" autocomplete="off" required :placeholder="copy.draftPlaceholder"><small>{{ form.title.length }}/40</small></label>
+          <label class="ps-input-field"><span>{{ copy.descPlaceholder }}</span><textarea v-model="form.description" maxlength="120" rows="3" :placeholder="copy.descPlaceholder"></textarea><small>{{ form.description.length }}/120</small></label>
+          <footer class="ps-dialog-foot"><button class="ps-btn" type="button" @click="publishDialogRef.close()">{{ copy.cancel }}</button><button class="ps-btn ps-btn-primary" type="submit" :disabled="isPublishing"><TsIcon name="send" :size="15" />{{ publishButtonText }}</button></footer>
         </form>
       </dialog>
-      <dialog ref="exportDialogRef" class="pw-dialog pw-export-dialog" :aria-label="copy.download" @click.self="exportDialogRef.close()" @close="exportPreview = ''">
-        <header><h2>{{ copy.download }}</h2><button class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="exportDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
-        <img v-if="exportPreview" class="pw-export-preview" :src="exportPreview" :alt="exportFilename">
-        <p>{{ workspaceCopy.exportHint }}</p>
-        <footer><button class="ghost-btn" type="button" @click="exportDialogRef.close()">{{ workspaceCopy.close }}</button><a class="primary-btn" :href="exportPreview" :download="exportFilename"><TsIcon name="download" :size="16" />{{ workspaceCopy.saveImage }}</a></footer>
+
+      <dialog ref="exportDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.download" @click.self="exportDialogRef.close()" @close="exportPreview = ''">
+        <header class="ps-dialog-head"><h2>{{ copy.download }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="exportDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <img v-if="exportPreview" class="ps-export-preview" :src="exportPreview" :alt="exportFilename">
+        <p class="ps-dialog-text">{{ copy.exportHint }}</p>
+        <footer class="ps-dialog-foot"><button class="ps-btn" type="button" @click="exportDialogRef.close()">{{ copy.close }}</button><a class="ps-btn ps-btn-primary" :href="exportPreview" :download="exportFilename"><TsIcon name="download" :size="15" />{{ copy.saveImage }}</a></footer>
       </dialog>
-      <dialog ref="newDialogRef" class="pw-dialog" :aria-label="workspaceCopy.create" @click.self="newDialogRef.close()">
-        <header><h2>{{ workspaceCopy.create }}</h2><button class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="newDialogRef.close()"><TsIcon name="x" :size="20" /></button></header>
-        <p>{{ workspaceCopy.newHint }}</p><form @submit.prevent="createCanvas"><label>{{ copy.canvasSize }}<select v-model="newSize"><option v-for="preset in CANVAS_PRESETS" :key="preset.width" :value="`${preset.width}x${preset.height}`">{{ preset.width }} × {{ preset.height }}</option></select></label><footer><button class="ghost-btn" type="button" @click="newDialogRef.close()">{{ workspaceCopy.cancel }}</button><button class="primary-btn" type="submit">{{ workspaceCopy.create }}</button></footer></form>
+
+      <dialog ref="newDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.newTitle" @click.self="newDialogRef.close()">
+        <header class="ps-dialog-head"><h2>{{ copy.newTitle }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="newDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <form @submit.prevent="createCanvas">
+          <fieldset class="ps-preset-grid">
+            <legend>{{ copy.canvasSize }}</legend>
+            <label v-for="preset in CANVAS_PRESETS" :key="preset.width" :class="{ active: newSize === `${preset.width}x${preset.height}` }">
+              <input v-model="newSize" class="ps-visually-hidden" type="radio" name="pixel-canvas-size" :value="`${preset.width}x${preset.height}`">
+              <span class="ps-preset-shape" :style="{ '--w': preset.width / 192 }"></span>
+              <strong>{{ preset.width }} × {{ preset.height }}</strong>
+            </label>
+          </fieldset>
+          <p class="ps-dialog-text">{{ copy.newHint }}</p>
+          <footer class="ps-dialog-foot"><button class="ps-btn" type="button" @click="newDialogRef.close()">{{ copy.cancel }}</button><button class="ps-btn ps-btn-primary" type="submit">{{ copy.create }}</button></footer>
+        </form>
+      </dialog>
+
+      <dialog ref="shortcutsDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.shortcuts" @click.self="shortcutsDialogRef.close()">
+        <header class="ps-dialog-head"><h2>{{ copy.shortcuts }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="shortcutsDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <dl class="ps-shortcuts">
+          <div v-for="row in shortcutRows" :key="row[0]"><dt>{{ row[0] }}</dt><dd><kbd>{{ row[1] }}</kbd></dd></div>
+        </dl>
+        <p class="ps-dialog-text"><TsIcon name="smartphone" :size="14" /> {{ copy.gestureHint }}</p>
       </dialog>
     </Teleport>
+
     <Teleport to="body">
       <div
         v-if="previewArtwork"
-        class="arena-art-lightbox"
+        class="arena-art-lightbox ps-theme"
         role="presentation"
         @pointerdown.self="closeArtworkPreview"
-        @mousedown.self="closeArtworkPreview"
-        @touchstart.self="closeArtworkPreview"
-        @touchend.self="closeArtworkPreview"
         @click.self="closeArtworkPreview"
       >
-        <section class="arena-art-lightbox-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
-          <button
-            class="arena-art-lightbox-close"
-            type="button"
-            :aria-label="props.lang === 'en' ? 'Close' : (props.lang === 'ja' ? '閉じる' : '关闭')"
-            @pointerdown.stop.prevent="closeArtworkPreview"
-            @mousedown.stop.prevent="closeArtworkPreview"
-            @touchstart.stop.prevent="closeArtworkPreview"
-            @touchend.stop.prevent="closeArtworkPreview"
-            @click.stop.prevent="closeArtworkPreview"
-          >
+        <section class="arena-art-lightbox-card" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
+          <button class="arena-art-lightbox-close ps-icon-btn" type="button" :aria-label="copy.close" @click.stop.prevent="closeArtworkPreview">
             <TsIcon name="x" :size="18" />
           </button>
-          <div
-            class="arena-art-lightbox-canvas"
-            :style="{
-              backgroundColor: artworkBackground(previewArtwork),
-              aspectRatio: `${artworkWidth(previewArtwork)} / ${artworkHeight(previewArtwork)}`
-            }"
-          >
+          <div class="arena-art-lightbox-canvas" :style="{ backgroundColor: artworkBackground(previewArtwork), aspectRatio: `${artworkWidth(previewArtwork)} / ${artworkHeight(previewArtwork)}` }">
             <PixelCanvasCells
               :pixels="artworkPixels(previewArtwork)"
               :palette="artworkPalette(previewArtwork)"
@@ -1836,17 +2273,11 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
           <footer class="arena-art-lightbox-footer">
             <div>
               <strong>{{ previewArtwork.title || copy.gallery }}</strong>
-              <span>{{ copy.by }} {{ previewArtwork.author_nickname || previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
+              <span>{{ copy.by }} {{ previewArtwork.author_nickname || previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }} × {{ artworkHeight(previewArtwork) }}</span>
             </div>
             <div class="arena-art-lightbox-actions">
-              <button class="ghost-btn" type="button" @click="openArtworkShare(previewArtwork)">
-                <TsIcon name="external" :size="17" />
-                <span>{{ copy.shareLink }}</span>
-              </button>
-              <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
-                <TsIcon name="download" :size="17" />
-                <span>{{ copy.download }}</span>
-              </button>
+              <button class="ps-btn" type="button" @click="openArtworkShare(previewArtwork)"><TsIcon name="external" :size="16" /><span>{{ copy.shareLink }}</span></button>
+              <button class="ps-btn ps-btn-primary" type="button" @click="downloadArtwork(previewArtwork)"><TsIcon name="download" :size="16" /><span>{{ copy.download }}</span></button>
             </div>
           </footer>
         </section>
@@ -1864,7 +2295,5 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
       :lang="lang"
       @close="artworkShareOpen = false"
     />
-
-    <div v-if="toast.visible" class="arena-toast show" :class="toast.type" :role="toast.type === 'error' ? 'alert' : 'status'">{{ toast.text }}</div>
   </main>
 </template>

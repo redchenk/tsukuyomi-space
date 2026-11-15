@@ -532,7 +532,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(drawingCanvas).toHaveAttribute('height', '648');
     await expect(page.locator('.arena-size-options')).toHaveCount(0);
 
-    const galleryToggle = page.locator('[aria-controls="arena-gallery-panel"]');
+    const galleryToggle = page.locator('.ps-bar [aria-controls="arena-gallery-panel"]');
     await expect(galleryToggle).toHaveAttribute('aria-expanded', 'false');
     await galleryToggle.click();
     await expect(galleryToggle).toHaveAttribute('aria-expanded', 'true');
@@ -545,7 +545,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expectLikedHeart(likeButton);
 
     const galleryActionLayout = async () => card.locator('.pixel-art-actions').evaluate((actions) => {
-        const buttons = Array.from(actions.querySelectorAll('.icon-btn'));
+        const buttons = Array.from(actions.querySelectorAll('.ps-chip-btn'));
         const actionRect = actions.getBoundingClientRect();
         const buttonRects = buttons.map((button) => button.getBoundingClientRect());
         return {
@@ -596,7 +596,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(lightbox).toHaveCount(0);
 });
 
-test('pixel canvas switches between canvas panning and uninterrupted drawing', async ({ browser }) => {
+test('phone pixel canvas paints with one finger without page scroll or pointer cancellation', async ({ browser }) => {
     const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -608,42 +608,10 @@ test('pixel canvas switches between canvas panning and uninterrupted drawing', a
         await page.goto('/pixel');
         await expect(page.locator('#boot-splash')).toHaveCount(0);
         const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
-        const toolButtons = page.locator('.pw-tools .pw-tool');
-        const brushButton = toolButtons.first();
-        const moveButton = toolButtons.last();
+        const brushButton = page.locator('.ps-tool-group .ps-tool').first();
         await expect(canvas).toBeVisible();
-        await expect(moveButton).toHaveClass(/active/);
-        await canvas.scrollIntoViewIfNeeded();
-
-        const initialScrollY = await page.evaluate(() => window.scrollY);
-        const canvasBox = await canvas.boundingBox();
-        expect(canvasBox).not.toBeNull();
-        expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
-        const canvasViewport = page.locator('.arena-canvas-viewport');
-        const maxPan = await canvasViewport.evaluate(el => el.scrollHeight - el.clientHeight);
-
-        const session = await context.newCDPSession(page);
-        const x = canvasBox.x + Math.min(canvasBox.width / 2, 120);
-        const startY = Math.min(canvasBox.y + canvasBox.height / 2, 700);
-        await session.send('Input.dispatchTouchEvent', {
-            type: 'touchStart',
-            touchPoints: [{ x, y: startY }]
-        });
-        for (const y of [startY - 35, startY - 75, startY - 120, startY - 165]) {
-            await session.send('Input.dispatchTouchEvent', {
-                type: 'touchMove',
-                touchPoints: [{ x, y }]
-            });
-        }
-        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-
-        await expect.poll(() => canvasViewport.evaluate(el => el.scrollTop)).toBeCloseTo(Math.min(165, maxPan), 0);
-        expect(await page.evaluate(() => window.scrollY)).toBe(initialScrollY);
-        await expect(page.getByRole('button', { name: '撤销', exact: true })).toBeDisabled();
-
-        await brushButton.click();
         await expect(brushButton).toHaveClass(/active/);
-        await expect.poll(() => canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
+        expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
         await canvas.evaluate((element) => {
             window.__pixelPointerTrace = [];
             for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) {
@@ -651,28 +619,15 @@ test('pixel canvas switches between canvas panning and uninterrupted drawing', a
             }
         });
 
-        // The preceding swipe can still be scrolling, and clicking the toolbar
-        // can move the canvas. Wait for a stable, reachable drawing point before
-        // dispatching raw CDP coordinates (CDP has no locator auto-waiting).
-        await canvas.scrollIntoViewIfNeeded();
-        await canvas.click({ trial: true, position: { x: 120, y: 120 } });
-        const drawingBox = await canvas.boundingBox();
-        expect(drawingBox).not.toBeNull();
-        const drawX = drawingBox.x + Math.min(drawingBox.width / 2, 120);
-        const drawStartY = drawingBox.y + Math.min(drawingBox.height * 0.3, 120);
-        await expect.poll(() => canvas.evaluate((element, point) =>
-            element.contains(document.elementFromPoint(point.x, point.y)), { x: drawX, y: drawStartY }))
-            .toBe(true);
-        await session.send('Input.dispatchTouchEvent', {
-            type: 'touchStart',
-            touchPoints: [{ x: drawX, y: drawStartY }]
-        });
-        await expect.poll(() => page.evaluate(() => window.__pixelPointerTrace)).toContain('pointerdown');
-        for (const y of [drawStartY + 30, drawStartY + 60, drawStartY + 90, drawStartY + 120]) {
-            await session.send('Input.dispatchTouchEvent', {
-                type: 'touchMove',
-                touchPoints: [{ x: drawX, y }]
-            });
+        const box = await canvas.boundingBox();
+        expect(box).not.toBeNull();
+        const before = await canvas.evaluate((element) => element.toDataURL());
+        const session = await context.newCDPSession(page);
+        const x = box.x + Math.min(box.width / 2, 120);
+        const y = box.y + box.height * 0.3;
+        await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        for (const step of [12, 24, 36, 48]) {
+            await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + step, y: y + step / 2 }] });
         }
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
@@ -680,30 +635,33 @@ test('pixel canvas switches between canvas panning and uninterrupted drawing', a
         const pointerTrace = await page.evaluate(() => window.__pixelPointerTrace);
         expect(pointerTrace).toContain('pointerdown');
         expect(pointerTrace).toContain('pointermove');
-        expect(pointerTrace).toContain('pointerup');
         expect(pointerTrace).not.toContain('pointercancel');
+        await expect.poll(() => canvas.evaluate((element) => element.toDataURL())).not.toBe(before);
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
     } finally {
         await context.close();
     }
 });
 
-test('desktop pixel controls scroll independently from the page', async ({ page }) => {
+test('desktop pixel panels scroll independently from the page', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.goto('/pixel');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
 
-    const controls = page.locator('.arena-controls');
-    await expect(controls).toBeVisible();
-    const controlsToggle = page.locator('.pw-properties-head [aria-controls="arena-controls-panel"]');
-    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
-    await controlsToggle.click();
-    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'false');
-    await page.getByRole('button', { name: '颜色', exact: true }).click();
-    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
+    const panels = page.locator('#arena-controls-panel');
+    const toggle = page.locator('.ps-panels-toggle');
+    await expect(panels).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(panels).toBeHidden();
+    // The foreground color chip brings the color panel back.
+    await page.locator('.ps-chip-fg').click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-    await controls.locator('summary').filter({ hasText: '触控笔设置' }).click();
-    const metrics = await controls.evaluate((element) => ({
+    const scroller = panels.locator('.ps-panels-scroll');
+    const metrics = await scroller.evaluate((element) => ({
         clientHeight: element.clientHeight,
         scrollHeight: element.scrollHeight,
         overflowY: getComputedStyle(element).overflowY
@@ -711,10 +669,10 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
     expect(metrics.overflowY).toBe('auto');
     expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
 
-    await controls.hover();
+    await scroller.hover();
     const pageScrollBeforeWheel = await page.evaluate(() => window.scrollY);
     await page.mouse.wheel(0, 480);
-    await expect.poll(() => controls.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect.poll(() => scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollBeforeWheel);
 });
 
@@ -841,8 +799,8 @@ test('pixel workspace restores strokes after reload and exports the same PNG', a
 
     await page.getByRole('button', { name: '新建', exact: true }).click();
     const newCanvas = page.getByRole('dialog', { name: '新建画布', exact: true });
-    await newCanvas.getByRole('combobox').selectOption('64x36');
-    await newCanvas.getByRole('button', { name: '新建画布', exact: true }).click();
+    await newCanvas.getByText('64 × 36', { exact: true }).click();
+    await newCanvas.getByRole('button', { name: '创建', exact: true }).click();
     await expect(canvas).toHaveAttribute('width', '384');
     await page.getByRole('button', { name: '撤销', exact: true }).click();
     await expect(canvas).toHaveAttribute('width', '1152');

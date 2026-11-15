@@ -110,15 +110,15 @@ describe('constrained-device performance policy', () => {
         const arenaPage = source('src/frontend/pages/ArenaPage.vue');
         assert.match(plaza, /\.plaza-msg-footer[^}]*flex-wrap: wrap/);
         assert.match(arena, /\.pixel-art-actions/);
-        assert.match(arenaPage, /pointer: coarse[\s\S]*\? 'move' : 'brush'/);
+        assert.match(arenaPage, /const tool = ref\('brush'\)/);
         assert.match(source('backend/routes/hub-preview.js'), /preview:\s*true/);
         assert.match(source('src/frontend/pages/HubPage.vue'), /image: content\.value\?\.pixel[\s\S]*: siteArt\.pixelCover/);
     });
 
-    it('keeps desktop pixel controls scrollable without trapping mobile page scrolling', () => {
+    it('keeps Pixel panels and dialogs scrollable within the drawing workspace', () => {
         const arena = source('src/frontend/styles/routes/arena.css');
-        assert.match(arena, /\.arena-controls\.pw-properties[^}]*overflow-y:\s*auto/s);
-        assert.match(arena, /\.pw-dialog[^}]*overflow-y:\s*auto/s);
+        assert.match(arena, /\.ps-panels-scroll[^}]*overflow-y:\s*auto/s);
+        assert.match(arena, /\.ps-form-dialog[^}]*overflow-y:\s*auto/s);
         assert.match(arena, /@media \(max-width: 760px\)/);
         assert.doesNotMatch(source('src/frontend/styles/jingyue/components.css'), /\.arena-controls[^}]*overflow:\s*hidden/s);
     });
@@ -130,8 +130,8 @@ describe('constrained-device performance policy', () => {
         assert.match(page, /ref="publishDialogRef"[\s\S]*@submit\.prevent="shareArtwork"/);
         assert.match(page, /ref="galleryDialogRef"/);
         assert.match(page, /const PIXEL_GALLERY_PAGE_SIZE = 12/);
-        assert.match(styles, /grid-template-columns:\s*68px minmax\(0, 1fr\) 256px/);
-        assert.match(styles, /\.arena-controls\.pw-properties[^}]*overflow-y:\s*auto/s);
+        assert.match(styles, /grid-template-columns:\s*52px minmax\(0, 1fr\) 288px/);
+        assert.match(styles, /\.ps-panels-scroll[^}]*overflow-y:\s*auto/s);
         assert.match(styles, /@media \(max-width: 760px\)/);
         assert.match(page, /new ResizeObserver\(handleCanvasViewportResize\)/);
     });

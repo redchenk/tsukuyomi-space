@@ -274,6 +274,8 @@ function shouldAcceptPointer(event) {
   if (!props.interactive || activePointer) return false;
   if (event.isPrimary === false) return false;
   const pointerType = event.pointerType || 'mouse';
+  // Middle/right mouse buttons belong to the viewport (pan, context menu), never to paint.
+  if (pointerType === 'mouse' && event.button !== 0) return false;
   const now = performance.now();
   if (pointerType === 'pen') lastPenAt = now;
   if (pointerType === 'touch' && lastPenAt > 0 && now - lastPenAt < PALM_REJECTION_MS) return false;
