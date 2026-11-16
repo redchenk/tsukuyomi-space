@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import { browserCssCompat } from './scripts/browser-css-compat.mjs';
 import { interfaceLocalization } from './scripts/i18n-plugin.mjs';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync, existsSync } from 'node:fs';
@@ -121,6 +122,7 @@ export default defineConfig(({ mode }) => {
         '@frontend': frontendRoot
       }
     },
+    css: { postcss: { plugins: [browserCssCompat(projectRoot)] } },
     server: {
       fs: {
         allow: [projectRoot]
@@ -137,6 +139,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
+      target: ['chrome99', 'edge99', 'firefox102', 'safari15.4'],
+      cssTarget: ['chrome99', 'edge99', 'firefox102', 'safari15.4'],
       modulePreload: {
         // WebKit 270357 can retain failed modulepreloads even after a reload.
         // These entrances expose a reload action. Retain CSS preloads but let
@@ -151,6 +155,7 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       cssCodeSplit: true,
       rollupOptions: {
+        input: { index: frontendRoot + '/index.html', compat: frontendRoot + '/compat/index.html' },
         output: {
           manualChunks(id) {
             if (id.includes('node_modules/vue') || id.includes('node_modules/@vue') || id.includes('node_modules/vue-router')) {

@@ -97,14 +97,14 @@ html[data-theme="light"] .ps-theme {
 }
 
 /* ---------- Shell: on this route the app owns the viewport ---------- */
-.pixel-shell { display: flex; flex-direction: column; height: 100dvh; min-height: 0; padding-bottom: 0; overflow: hidden; }
+.pixel-shell { display: flex; flex-direction: column; height: var(--ts-visual-height, 100dvh); min-height: 0; padding-bottom: 0; overflow: hidden; }
 .pixel-shell > .site-header { flex-shrink: 0; }
 .pixel-shell > :is(.mobile-dock, .mini-player) { display: none; }
 .pixel-shell > .route-stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .pixel-shell > .route-stage > .route-view-frame { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .pixel-shell { position: relative; }
 /* The filing link lives in the gap under the studio instead of taking a row. */
-.pixel-shell > .site-beian-footer { position: absolute; z-index: 3; left: 50%; bottom: 3px; width: auto; margin: 0; padding: 0; translate: -50% 0; line-height: 18px; }
+.pixel-shell > .site-beian-footer { position: absolute; z-index: 3; left: 50%; bottom: 3px; width: auto; margin: 0; padding: 0; transform: translate(-50%, 0); line-height: 18px; }
 .pixel-shell > .site-beian-footer .beian-link { font-size: 11px; opacity: .7; }
 
 body .page.arena-page.pixel-studio {
@@ -173,14 +173,14 @@ body .page.arena-page.pixel-studio {
     padding: 5px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none;
     color: #f2f3f6; background: #0d0e11; box-shadow: 0 6px 18px rgb(0 0 0 / 35%);
     font: 500 11.5px/1.3 system-ui, sans-serif; letter-spacing: 0;
-    opacity: 0; translate: -50% 2px; transition: opacity .12s, translate .12s; transition-delay: 0s;
+    opacity: 0; transform: translate(-50%, 2px); transition: opacity .12s, transform .12s; transition-delay: 0s;
   }
-  .ps-theme [data-tip]:hover::after { opacity: 1; translate: -50% 0; transition-delay: .45s; }
-  .ps-toolbar [data-tip]::after { top: 50%; left: calc(100% + 10px); translate: -2px -50%; }
-  .ps-toolbar [data-tip]:hover::after { translate: 0 -50%; }
+  .ps-theme [data-tip]:hover::after { opacity: 1; transform: translate(-50%, 0); transition-delay: .45s; }
+  .ps-toolbar [data-tip]::after { top: 50%; left: calc(100% + 10px); transform: translate(-2px, -50%); }
+  .ps-toolbar [data-tip]:hover::after { transform: translate(0, -50%); }
   .ps-statusbar [data-tip]::after { top: auto; bottom: calc(100% + 7px); }
-  .ps-panels-toggle[data-tip]::after, .ps-history [data-tip]:last-child::after { left: auto; right: 0; translate: 0 2px; }
-  .ps-panels-toggle[data-tip]:hover::after, .ps-history [data-tip]:last-child:hover::after { translate: 0 0; }
+  .ps-panels-toggle[data-tip]::after, .ps-history [data-tip]:last-child::after { left: auto; right: 0; transform: translate(0, 2px); }
+  .ps-panels-toggle[data-tip]:hover::after, .ps-history [data-tip]:last-child:hover::after { transform: translate(0, 0); }
 }
 
 /* ---------- Options bar ---------- */
@@ -293,13 +293,13 @@ body .pixel-studio .pixel-canvas .pixel-canvas-renderer {
 .ps-brush-cursor.is-eraser { background: rgb(255 255 255 / 18%); }
 
 .ps-gesture-hint {
-  position: absolute; z-index: 5; top: 46px; left: 50%; translate: -50% 0;
+  position: absolute; z-index: 5; top: 46px; left: 50%; transform: translate(-50%, 0);
   display: flex; align-items: center; gap: 7px; max-width: calc(100% - 28px); margin: 0; padding: 8px 14px;
   border-radius: 999px; color: #f2f3f6; background: rgb(13 14 17 / 86%); backdrop-filter: blur(10px);
   font-size: 12px; line-height: 1.4; box-shadow: 0 8px 24px rgb(0 0 0 / 30%); cursor: pointer;
 }
 .ps-toast {
-  position: absolute; z-index: 6; left: 50%; bottom: 42px; translate: -50% 0; max-width: calc(100% - 32px);
+  position: absolute; z-index: 6; left: 50%; bottom: 42px; transform: translate(-50%, 0); max-width: calc(100% - 32px);
   padding: 9px 16px; border-radius: 10px; color: #f2f3f6; background: #0d0e11; box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
   font-size: 12.5px; line-height: 1.5; text-align: center;
 }
@@ -427,8 +427,8 @@ body .pixel-studio .pixel-canvas .pixel-canvas-renderer {
 
 /* ---------- Focus mode: the canvas and the tools, nothing else ---------- */
 body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
-.pixel-shell:has(.pixel-studio.is-focus-mode) > :is(.site-header, .site-commandbar, .moon) { display: none; }
-#app:has(.pixel-studio.is-focus-mode) :is(.site-music-drawer, .site-pet-wrap) { display: none; }
+.pixel-focus-mode .pixel-shell > :is(.site-header, .site-commandbar, .moon) { display: none; }
+.pixel-focus-mode #app :is(.site-music-drawer, .site-pet-wrap) { display: none; }
 .pixel-studio.is-focus-mode .ps-brand { display: none; }
 
 /* ---------- Site floating widgets on this route ---------- */
@@ -438,8 +438,8 @@ body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
 }
 @media (min-width: 761px) {
   /* The music button sits at the bottom of the tool column instead of over the tools. */
-  #app:has(.pixel-studio) .site-music-drawer:not(.is-open) { left: 18px; right: auto; top: auto; bottom: 31px; }
-  #app:has(.pixel-studio):has(.site-music-drawer) .ps-toolbar { padding-bottom: 64px; }
+  html[data-route="pixel"] #app .site-music-drawer:not(.is-open) { left: 18px; right: auto; top: auto; bottom: 31px; }
+  html[data-route="pixel"] #app .ps-toolbar { padding-bottom: 64px; }
 }
 
 /* ---------- Dialogs ---------- */
@@ -560,7 +560,7 @@ body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
 /* ---------- Tablet: panels become a drawer over the canvas ---------- */
 @media (max-width: 1100px) {
   /* Without the dock, the companion would sit on the canvas and the zoom controls. */
-  #app:has(.pixel-studio) .site-pet-wrap { display: none; }
+  html[data-route="pixel"] #app .site-pet-wrap { display: none; }
   .ps-body { grid-template-columns: 52px minmax(0, 1fr); }
   .ps-panels {
     position: absolute; z-index: 12; top: 0; right: 0; bottom: 0; width: min(300px, calc(100% - 64px));
@@ -579,12 +579,12 @@ body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
   body .page.arena-page.pixel-studio { padding: 10px 12px 24px; }
 }
 @media (max-height: 560px) {
-  #app:has(.pixel-studio) :is(.site-pet-wrap, .site-music-drawer) { display: none; }
+  html[data-route="pixel"] #app :is(.site-pet-wrap, .site-music-drawer) { display: none; }
 }
 @media (min-width: 761px) and (max-height: 560px) {
   body .page.arena-page.pixel-studio { padding-bottom: 8px; }
   .pixel-shell > .site-beian-footer { display: none; }
-  #app:has(.pixel-studio):has(.site-music-drawer) .ps-toolbar { padding-bottom: 6px; }
+  html[data-route="pixel"] #app .ps-toolbar { padding-bottom: 6px; }
   .ps-doc-tabs { display: none; }
   .ps-bar { height: 42px; }
   .ps-toolbar { padding: 6px 0; overflow-y: auto; scrollbar-width: none; }
@@ -609,7 +609,7 @@ body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
   body .page.arena-page.pixel-studio { padding: 10px 0 0; font-size: 14px; }
   body .page.arena-page.pixel-studio.is-focus-mode { padding-top: max(0px, env(safe-area-inset-top)); }
   .pixel-shell > .site-beian-footer { display: none; }
-  #app:has(.pixel-studio) :is(.site-pet-wrap, .site-music-drawer) { display: none; }
+  html[data-route="pixel"] #app :is(.site-pet-wrap, .site-music-drawer) { display: none; }
   .ps-app { border-width: 1px 0 0; border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgb(0 0 0 / 18%); }
   .pixel-studio.is-focus-mode .ps-app { border-radius: 0; border-top: 0; }
 
@@ -736,4 +736,29 @@ body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) {
   .ps-panels, .ps-swatch, .ps-tool, .pixel-art-card { transition: none !important; }
   .ps-chip-fg.is-picked, .ps-save-dot.is-saving { animation: none; }
+}
+
+/* Touch targets occupy real layout space; neighbouring hit areas never overlap. */
+@media (max-width: 760px) {
+  .ps-doc-button, .ps-bar .ps-icon-btn, .ps-bar-actions > .ps-btn-primary { min-height: 44px; }
+  .ps-bar .ps-icon-btn { width: 44px; min-width: 44px; }
+  .ps-bar-actions > .ps-btn-primary { padding-inline: 10px; }
+  .ps-tool, .ps-theme .ps-dock-size { width: 44px; height: 44px; min-width: 44px; flex-shrink: 0; }
+  .ps-toolbar { padding-inline: 4px; gap: 0; }
+  .ps-toolbar-sep { display: none; }
+  .ps-color-chips { width: 44px; height: 44px; flex-shrink: 0; }
+  .ps-chip-fg { inset: 0; width: 44px; height: 44px; border: 8px solid var(--ps-panel); }
+  .ps-chip-bg { display: none; } /* Background colour remains in the Canvas sheet. */
+  .ps-zoom .ps-icon-btn.is-small, .ps-zoom-value, .ps-sheet-head .ps-icon-btn,
+  .ps-dialog-head .ps-icon-btn { min-width: 44px; width: auto; min-height: 44px; }
+  .ps-sheet-tabs button, .ps-brush-sizes button, .ps-note-form .ps-btn { min-height: 44px; }
+  .ps-note-form input, .ps-theme input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]), .ps-theme select { min-height: 44px; font-size: 16px; }
+  .ps-dialog-head { flex-wrap: wrap; }
+  .ps-dialog-head h2 { min-width: 0; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 760px) {
+  .ps-swatch-grid, .ps-panel-label + .ps-swatch-grid { grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 8px; }
+  .ps-swatch { min-height: 44px; }
+  .ps-brush-sizes { grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
 }

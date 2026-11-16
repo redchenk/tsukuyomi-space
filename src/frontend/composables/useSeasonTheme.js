@@ -1,3 +1,4 @@
+import { syncThemeColor } from '../utils/browserAppearance';
 import { computed, nextTick, readonly, ref, watch } from 'vue';
 import { SEASON_STORAGE_KEY, readSeasonPreference, writeSeasonPreference, normalizeSeasonPreference, resolveSeason, nextSeasonCheckDelay } from '../services/seasonTheme.mjs';
 import { createSeasonTransition, decodeSeasonImages } from '../services/seasonTransition.mjs';
@@ -28,6 +29,7 @@ export const activeSeason = computed(() => selection.value.artwork);
 export function initializeSeasonTheme() {
   const root = document.documentElement;
   root.dataset.season = selection.value.artwork;
+  syncThemeColor();
   root.dataset.calendarSeason = selection.value.calendar;
   const background = seasonBackgrounds[selection.value.artwork];
   root.style.setProperty('--site-background-light', `url("${background.light}")`);

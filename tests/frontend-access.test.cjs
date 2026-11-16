@@ -24,6 +24,7 @@ function setup(file, exports, props = {}, { reduced = false, saveData = false } 
     };
     const document = {
         hidden: false,
+        createElement: () => ({ canPlayType: () => 'probably' }),
         addEventListener: (name, callback) => documentEvents.set(name, callback),
         removeEventListener: name => documentEvents.delete(name)
     };
@@ -38,6 +39,7 @@ function setup(file, exports, props = {}, { reduced = false, saveData = false } 
         defineEmits: () => (...args) => emitted.push(args),
         defineExpose: () => {},
         ref: value => ({ value }),
+        computed: getter => ({ get value() { return getter(); } }),
         onMounted: callback => mounted.push(callback),
         onBeforeUnmount: callback => unmounted.push(callback),
         watch: () => {},

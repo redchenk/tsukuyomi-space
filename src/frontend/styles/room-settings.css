@@ -451,13 +451,13 @@
   accent-color: var(--ts-accent);
   padding: 0;
 }
-.room-settings-page label:has(input[type='range']) {
+.room-settings-page label.settings-range {
   grid-template-columns: 1fr auto;
 }
-.room-settings-page label:has(input[type='range']) input {
+.room-settings-page label.settings-range input {
   grid-column: 1/-1;
 }
-.room-settings-page label:has(input[type='range']) strong {
+.room-settings-page label.settings-range strong {
   font-size: 12px;
   font-weight: 500;
   color: var(--ts-accent);

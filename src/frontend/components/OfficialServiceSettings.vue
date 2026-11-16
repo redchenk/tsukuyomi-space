@@ -1,4 +1,5 @@
 <script setup>
+import { withRequestTimeout } from '../utils/requestTimeout.mjs';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { moneyAtoms, rateAtoms, usageStatus } from '../services/official-service.mjs';
 const props = defineProps({ request: { type: Function, required: true } });
@@ -8,10 +9,10 @@ const busy = ref(false), error = ref(''), notice = ref(''), reviews = ref([]), p
 const provider = computed(() => settings.value?.providers.find(item => item.id === draft.value?.provider));
 const controller = new AbortController();
 onUnmounted(() => { controller.abort(); key.value = ''; });
-const api = (path, { body } = {}) => props.request('/official-services/llm/' + path, {
+const api = (path, { body } = {}) => withRequestTimeout(signal => props.request('/official-services/llm/' + path, {
   method: body ? 'POST' : 'GET', headers: account.value ? { 'X-Official-Expected-Account': account.value } : {},
-  ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
-});
+  ...(body ? { body: JSON.stringify(body) } : {}), signal
+}), { signal: controller.signal });
 function apply(data) {
   settings.value = data; draft.value = { ...data, rates: Object.fromEntries(Object.entries(data.rates).map(([name, value]) => [name, moneyAtoms(value)])) };
   const apps = data.deepseekApps || { enabled: false, markupNumerator: '11', markupDenominator: '10', reservationAtoms: '1000000000', tokenRates: { input_uncached: '2200000000', input_cached: '44000000', output: '8800000000' } };

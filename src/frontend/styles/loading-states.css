@@ -103,7 +103,7 @@ div.ts-status-loader-progress {
     display: block;
     min-height: 0.75rem;
     border-radius: 6px;
-    background: color-mix(in srgb, var(--ts-text, currentColor) 12%, transparent);
+    background: color-mix(in srgb, var(--ts-text, #202b46) 12%, transparent);
     animation: ts-skeleton-pulse 1.45s ease-in-out infinite;
 }
 
@@ -111,7 +111,7 @@ div.ts-status-loader-progress {
     height: 100%;
     min-height: 6rem;
     border-radius: 0;
-    background: color-mix(in srgb, var(--ts-text, currentColor) 9%, transparent);
+    background: color-mix(in srgb, var(--ts-text, #202b46) 9%, transparent);
 }
 
 .ts-skeleton-kicker {

@@ -31,7 +31,7 @@
 .boot-splash[data-scene="water-mirror"] .boot-splash-retry { margin: 0; }
 @media (max-aspect-ratio: 5/6) {
   .boot-splash[data-scene="water-mirror"]::before {
-    inset: 57% 0 auto; height: min(65svh, 122vw); translate: 0 -50%;
+    inset: 57% 0 auto; height: min(65svh, 122vw); transform: translate(0, -50%);
     background-position: 33% 50%;
     mask-image: linear-gradient(180deg, transparent, #000 15%, #000 84%, transparent);
   }

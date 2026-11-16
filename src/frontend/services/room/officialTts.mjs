@@ -1,3 +1,4 @@
+import { withRequestTimeout } from '../../utils/requestTimeout.mjs';
 import fishAudio from '../../../../shared/fish-audio.cjs';
 const active = new Map();
 const keys = new Map();
@@ -21,12 +22,12 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
     try { sessionStorage.setItem(PREFIX + fingerprint, JSON.stringify(saved)); } catch (_) { /* Keep in-memory idempotency. */ }
     const forget = () => { keys.delete(fingerprint); try { sessionStorage.removeItem(PREFIX + fingerprint); } catch (_) {} };
     const headers = { 'X-TTS-Account': account, 'Content-Type': 'application/json' };
-    const json = async (path, options = {}) => {
-      const response = await request(path, { ...options, headers, cache: 'no-store', signal: AbortSignal.timeout(15000) });
+    const json = (path, options = {}) => withRequestTimeout(async signal => {
+      const response = await request(path, { ...options, headers, cache: 'no-store', signal });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || '官方语音暂不可用');
       return result.data;
-    };
+    });
     let job;
     if (saved.jobId) job = await json(`/api/tts/official/jobs/${saved.jobId}`);
     else {
@@ -46,12 +47,14 @@ export async function requestOfficialTts(text, settings, request, prepareText) {
     }
     if (['failed', 'expired'].includes(job.state)) { forget(); throw new Error(job.message); }
     if (job.state !== 'ready') throw new Error('语音仍在处理中，请稍后再次点击，同一请求不会重复扣费。');
-    const response = await request(`/api/tts/official/jobs/${job.id}/audio`, { headers, cache: 'no-store', signal: AbortSignal.timeout(30000) });
-    if (!response.ok) {
-      if (response.status === 410) forget();
-      throw new Error('暂时无法读取语音，请重试；缓存有效期内不会重复扣费。');
-    }
-    return response.blob();
+    return withRequestTimeout(async signal => {
+      const response = await request(`/api/tts/official/jobs/${job.id}/audio`, { headers, cache: 'no-store', signal });
+      if (!response.ok) {
+        if (response.status === 410) forget();
+        throw new Error('暂时无法读取语音，请重试；缓存有效期内不会重复扣费。');
+      }
+      return response.blob();
+    }, { timeoutMs: 30000 });
   };
   const promise = run(); active.set(fingerprint, promise);
   try { return await promise; } finally { active.delete(fingerprint); }

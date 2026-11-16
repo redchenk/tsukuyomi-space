@@ -27,13 +27,13 @@
     min-height: var(--drift-scene-height);
     margin-inline: auto;
     padding: clamp(36px, 7svh, 85px) clamp(24px, 6vw, 90px) 34px;
-    transition: opacity 460ms cubic-bezier(.25, .65, .3, 1), translate 460ms ease;
+    transition: opacity 460ms cubic-bezier(.25, .65, .3, 1), transform 460ms ease;
     transition-duration: 460ms !important;
 }
 
 .drift-page[data-playing] .drift-stage {
     opacity: 0;
-    translate: 0 8px;
+    transform: translate(0, 8px);
     pointer-events: none;
 }
 
@@ -339,8 +339,8 @@
 .drift-reader-footer, .drift-letter-form { padding: 9px 20px 13px; }
 .drift-reply-context { margin: 0; padding: 8px 10px; border-inline-start: 2px solid var(--pages-line); max-height: 80px; overflow: auto; color: var(--pages-muted); }
 .drift-privacy { padding: 0 20px 13px; color: var(--pages-muted); font-size: .72rem; }
-body:has(.drift-bottle-dialog[open]) { overflow: hidden; }
-body:has(.drift-bottle-dialog[open]) .site-music-drawer { visibility: hidden; }
+.drift-dialog-open body { overflow: hidden; }
+.drift-dialog-open body .site-music-drawer { visibility: hidden; }
 
 @media (max-width: 900px) {
     .drift-stage { grid-template-columns: minmax(0, .8fr) minmax(300px, 1fr); padding-inline: 20px; }

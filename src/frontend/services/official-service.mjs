@@ -1,3 +1,4 @@
+import { withRequestTimeout } from '../utils/requestTimeout.mjs';
 export function moneyAtoms(value) {
   const amount = BigInt(value ?? '0');
   const absolute = amount < 0n ? -amount : amount;
@@ -16,14 +17,16 @@ export function rateAtoms(value) {
 export async function officialRequest(path, { method = 'GET', body, account, signal, request = globalThis.fetch } = {}) {
   if (!/^\/api\/[a-z0-9/?=&%_.-]+$/i.test(path)) throw new Error('服务请求地址无效。');
   if (method !== 'GET' && !account) throw new Error('请刷新支付中心，确认当前账号后重试。');
-  const response = await request(`/official-api${path}`, {
-    method, credentials: 'same-origin', cache: 'no-store', signal: signal ?? AbortSignal.timeout(15000),
-    headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(account ? { 'X-Official-Expected-Account': account } : {}) },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {})
-  });
-  const data = await response.json();
-  if (!response.ok) throw Object.assign(new Error(data?.error?.message || '站内直供暂时无法读取，请稍后刷新。'), { code: data?.error?.code, status: response.status });
-  return data;
+  return withRequestTimeout(async requestSignal => {
+    const response = await request(`/official-api${path}`, {
+      method, credentials: 'same-origin', cache: 'no-store', signal: requestSignal,
+      headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(account ? { 'X-Official-Expected-Account': account } : {}) },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {})
+    });
+    const data = await response.json();
+    if (!response.ok) throw Object.assign(new Error(data?.error?.message || '站内直供暂时无法读取，请稍后刷新。'), { code: data?.error?.code, status: response.status });
+    return data;
+  }, { signal });
 }
 
 export function assertDashboardAccount(data, siteUserId) {

@@ -1,5 +1,10 @@
 const { test, expect } = require('@playwright/test');
 
+async function requireH264(page) {
+  const supported = await page.evaluate(() => Boolean(document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"')));
+  test.skip(!supported, 'This browser distribution has no H.264 decoder; poster fallback is tested separately.');
+}
+
 async function entry(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#boot-splash')).toHaveCount(0);
@@ -63,6 +68,7 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
 }
 
 test('the painted scene stays mounted through the moonlit reveal of one live Hub', async ({ page }) => {
+  await requireH264(page);
   await pauseReveal(page);
   let releaseData;
   const data = new Promise(resolve => { releaseData = resolve; });
@@ -195,6 +201,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
 }
 
 test('direct Hub visits have no alternate intro, while Access keeps the Seedance film', async ({ page }) => {
+  await requireH264(page);
   await page.addInitScript(() => {
     new MutationObserver(() => {
       if (document.querySelector('.moonlight-entry.is-direct')) document.documentElement.dataset.moonlightPlayed = 'true';
@@ -220,6 +227,7 @@ test('direct Hub visits have no alternate intro, while Access keeps the Seedance
 });
 
 test('a slow entrance video starts after the old startup timeout', async ({ page }) => {
+  await requireH264(page);
   let releaseVideo;
   const videoReady = new Promise(resolve => { releaseVideo = resolve; });
   await page.route('**/*water-mirror-enter-*.mp4', async route => {
@@ -255,7 +263,9 @@ test('missing motion videos keeps the matching poster and does not block entry',
   const poster = page.locator('.access-film-poster');
   await expect(poster).toHaveJSProperty('complete', true);
   expect(await poster.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
-  await expect(page.locator('.access-film-idle')).toHaveCSS('opacity', '0');
+  const idle = page.locator('.access-film-idle');
+  if (await idle.count()) await expect(idle).toHaveCSS('opacity', '0');
+  else await expect(page.locator('.access-film-intro')).toHaveCount(0);
   await page.locator('.access-enter').click();
   await expect(page.locator('.access-gate')).toHaveCount(0);
   await expect(page.locator('.hub h1')).toBeFocused();

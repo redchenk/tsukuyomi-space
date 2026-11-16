@@ -35,7 +35,7 @@ defineProps({ compact: { type: Boolean, default: false } });
 .content-translation-preference input::before { content: ''; display: block; width: 18px; height: 18px; margin: 3px; border-radius: 50%; background: var(--ts-editorial-surface); transition: transform 160ms ease; }
 .content-translation-preference input:checked { background: var(--ts-unified-primary-bg); border-color: var(--ts-unified-primary-bg); }
 .content-translation-preference input:checked::before { transform: translateX(18px); background: var(--ts-unified-primary-text); }
-.content-translation-preference:has(input:focus-visible) { outline: 2px solid var(--ts-accent); outline-offset: 4px; border-radius: var(--ts-radius-button); }
+.content-translation-preference:focus-within { outline: 2px solid var(--ts-accent); outline-offset: 4px; border-radius: var(--ts-radius-button); }
 .is-compact { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: auto; margin: 8px 0 20px; font-size: 13px; color: var(--ts-editorial-muted); }
 .is-compact button { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--ts-editorial-ink); font: inherit; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 .is-compact button:hover { color: var(--ts-accent); }

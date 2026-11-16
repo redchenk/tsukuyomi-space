@@ -63,8 +63,8 @@ export function installScrollReveal(root) {
       element.dataset.scrollMotion = `from-${state.side}`;
       element.classList.add('scroll-reveal-active');
       const animation = element.animate([
-        { opacity: 0.65, translate: `0 ${state.side === 'above' ? -distance : distance}px` },
-        { opacity: 1, translate: '0 0' }
+        { opacity: 0.65, ...(CSS.supports('translate', '1px') ? { translate: `0 ${state.side === 'above' ? -distance : distance}px` } : {}) },
+        { opacity: 1, ...(CSS.supports('translate', '1px') ? { translate: '0 0' } : {}) }
       ], { duration: low ? 180 : 420, easing: 'cubic-bezier(.22, 1, .36, 1)' });
       state.animation = animation;
       active.add(element);

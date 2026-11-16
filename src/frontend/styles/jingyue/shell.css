@@ -113,6 +113,6 @@
 .site-nav-drawer-head h2 { font: 24px/1.5 var(--serif); margin-top: 8px; }
 .site-search-result[aria-selected='true'] { background: var(--soft); }
 
-.drift-scene-shell:has(.drift-page[data-playing]) :is(.site-header, .mobile-dock, .site-footer) { visibility: hidden; }
+.drift-playing .drift-scene-shell :is(.site-header, .mobile-dock, .site-footer) { visibility: hidden; }
 
 @media (max-width: 600px) { .site-search-help > span:first-child { display: none; } .site-search-help { font-size: 12px; } }

@@ -12,8 +12,8 @@
   --accent-hover: #923d5b;
   --on-accent: #fff;
   --site-background-image: var(--site-background-light);
-  --background-edge: 56%;
-  --background-reading: 90%;
+  --background-edge: 0.56;
+  --background-reading: 0.9;
   /* Preserve the original Sakura site's font order and editorial headings. */
   --serif: 'Source Han Serif SC', 'Noto Serif SC', 'Microsoft YaHei', serif;
   --sans: 'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', system-ui, Arial, sans-serif;
@@ -61,8 +61,8 @@
   --accent-hover: #edbdd0;
   --on-accent: #151923;
   --site-background-image: var(--site-background-dark);
-  --background-edge: 64%;
-  --background-reading: 91%;
+  --background-edge: 0.64;
+  --background-reading: 0.91;
   --danger: #ed8ca0;
   --success: #8fcaaf;
   --shadow: 0 24px 64px rgb(0 0 0 / 35%);

@@ -4,6 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
 import { setInterfaceLanguage, uiText } from './i18n/runtime';
+import { syncThemeColor } from './utils/browserAppearance';
 import AppShell from './layouts/AppShell.vue';
 import RouteViewFrame from './components/RouteViewFrame.vue';
 import { createRouteHistory, ROUTE_CACHE_LIMIT, shouldCacheRoute } from './utils/routeHistory';
@@ -35,8 +36,9 @@ const routeHistory = createRouteHistory(router);
 const CachedRouteFrame = { ...RouteViewFrame, name: 'CachedRouteFrame' };
 const frameForRoute = viewRoute => shouldCacheRoute(viewRoute) ? CachedRouteFrame : RouteViewFrame;
 const forcedLanguage = forcedSiteLanguage();
-const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
-const theme = ref(localStorage.getItem('tsukuyomi_theme') === 'dark' ? 'dark' : 'light');
+const readPreference = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
+const lang = ref(forcedLanguage || normalizeLanguage(readPreference('lang')));
+const theme = ref(readPreference('tsukuyomi_theme') === 'dark' ? 'dark' : 'light');
 let stopSeasonTracking;
 const user = ref(null);
 const routeCacheIdentity = computed(() => `${user.value?.scope || 'user'}:${user.value?.id || 'guest'}:${user.value?.role || ''}`);
@@ -191,15 +193,15 @@ async function refreshUser(trustedUser = null) {
 async function setLang(nextLang) {
   const next = forcedLanguage || normalizeLanguage(nextLang);
   try { lang.value = await setInterfaceLanguage(next); } catch (_) { return; }
-  if (!forcedLanguage) localStorage.setItem('lang', lang.value);
+  try { if (!forcedLanguage) localStorage.setItem('lang', lang.value); } catch (_) { /* Preferences are optional. */ }
   document.documentElement.lang = documentLanguage(lang.value);
 }
 
 function setTheme(nextTheme) {
   theme.value = nextTheme === 'dark' ? 'dark' : 'light';
-  localStorage.setItem('tsukuyomi_theme', theme.value);
+  try { localStorage.setItem('tsukuyomi_theme', theme.value); } catch (_) { /* Keep the in-memory choice. */ }
   document.documentElement.dataset.theme = theme.value;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value === 'dark' ? '#151923' : '#f7f9fc');
+  syncThemeColor();
 }
 
 function toggleTheme(event) {

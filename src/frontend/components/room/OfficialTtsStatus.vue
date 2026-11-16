@@ -1,4 +1,5 @@
 <script setup>
+import { requestAbortScope } from '../../utils/requestTimeout.mjs';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { apiFetch } from '../../api/client';
 const props = defineProps({ compact: Boolean, engine: { type: String, default: '' } });
@@ -7,17 +8,20 @@ const selected = computed(() => props.engine === 'fish-audio' ? state.value?.fis
 const emit = defineEmits(['status']);
 const state = ref(null), checking = ref(false);
 let timer, disposed = false;
+const lifetime = new AbortController();
 async function refresh() {
   if (checking.value) return;
   checking.value = true;
   async function check(engine) {
     let value;
+    const scope = requestAbortScope({ signal: lifetime.signal, timeoutMs: 12000 });
     try {
-      const response = await apiFetch('/api/tts/official/status' + (engine ? '?engine=fish-audio' : ''), { cache: 'no-store', signal: AbortSignal.timeout(12000) });
+      const response = await apiFetch('/api/tts/official/status' + (engine ? '?engine=fish-audio' : ''), { cache: 'no-store', signal: scope.signal });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error();
       value = result.data;
     } catch (_) { value = { online: false, reason: 'offline' }; }
+    finally { scope.dispose(); }
     if (disposed) return;
     state.value = engine ? { ...state.value, fishAudio: value } : { ...value, fishAudio: state.value?.fishAudio };
     emit('status', state.value);
@@ -27,7 +31,7 @@ async function refresh() {
 }
 function visible() { if (!document.hidden) void refresh(); }
 onMounted(() => { void refresh(); timer = setInterval(visible, 15000); document.addEventListener('visibilitychange', visible); });
-onBeforeUnmount(() => { disposed = true; clearInterval(timer); document.removeEventListener('visibilitychange', visible); });
+onBeforeUnmount(() => { disposed = true; lifetime.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', visible); });
 </script>
 <template>
   <div class="official-tts-status" :class="{ compact }" aria-live="polite">

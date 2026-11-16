@@ -101,7 +101,8 @@
     "node": ">=20.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1"
+    "@playwright/test": "^1.59.1",
+    "postcss": "^8.5.28"
   },
   "overrides": {
     "imapflow": {

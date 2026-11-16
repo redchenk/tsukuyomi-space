@@ -1,11 +1,12 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
-export function readKeyboardViewport({ height, viewportHeight, restingHeight = height, offsetTop = 0, scale = 1, editable, mobile, wasOpen = false }) {
-  const inset = Math.max(0, height - viewportHeight - offsetTop);
+export function readKeyboardViewport({ height, viewportHeight, restingHeight = height, offsetTop = 0, scale = 1, editable, mobile, wasOpen = false, overlayHeight = 0 }) {
+  const inset = Math.max(0, height - viewportHeight - offsetTop, overlayHeight);
+  const availableHeight = overlayHeight > 0 ? Math.min(viewportHeight, height - overlayHeight) : viewportHeight;
   const anchored = Boolean(mobile && scale === 1 && (editable || wasOpen));
   return {
     open: anchored && Math.max(inset, restingHeight - viewportHeight) > 120,
-    anchored, inset, height: viewportHeight,
+    anchored, inset, height: scale === 1 ? availableHeight : height,
     offsetTop: anchored && viewportHeight < restingHeight - 1 ? Math.max(0, offsetTop) : 0,
     layoutHeight: restingHeight
   };
@@ -37,7 +38,8 @@ export function useMobileKeyboard() {
         scale: viewport?.scale ?? 1,
         editable,
         mobile: mobileQuery?.matches,
-        wasOpen: state.value.open
+        wasOpen: state.value.open,
+        overlayHeight: navigator.virtualKeyboard?.boundingRect?.height || 0
       });
       if (!next.open && !editable) next.anchored = false;
       if (Object.keys(next).some(key => state.value[key] !== next[key])) {
@@ -50,6 +52,7 @@ export function useMobileKeyboard() {
     window.visualViewport?.addEventListener('resize', update);
     window.visualViewport?.addEventListener('scroll', update);
     window.addEventListener('resize', update);
+    navigator.virtualKeyboard?.addEventListener('geometrychange', update);
     document.addEventListener('focusin', update);
     document.addEventListener('focusout', update);
     update();
@@ -59,12 +62,13 @@ export function useMobileKeyboard() {
     window.visualViewport?.removeEventListener('resize', update);
     window.visualViewport?.removeEventListener('scroll', update);
     window.removeEventListener('resize', update);
+    navigator.virtualKeyboard?.removeEventListener('geometrychange', update);
     document.removeEventListener('focusin', update);
     document.removeEventListener('focusout', update);
   });
   return {
     keyboardOpen: computed(() => state.value.open),
-    viewportStyle: computed(() => state.value.anchored ? {
+    viewportStyle: computed(() => state.value.height ? {
       '--ts-keyboard-inset': `${state.value.inset}px`,
       '--ts-visual-height': `${state.value.height}px`,
       '--ts-visual-offset-top': `${state.value.offsetTop}px`,

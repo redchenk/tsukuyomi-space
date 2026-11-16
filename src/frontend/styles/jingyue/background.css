@@ -9,13 +9,13 @@
   pointer-events: none;
   background:
     linear-gradient(90deg,
-      color-mix(in srgb, var(--paper) var(--background-edge), transparent),
-      color-mix(in srgb, var(--paper) var(--background-reading), transparent) 20% 80%,
-      color-mix(in srgb, var(--paper) var(--background-edge), transparent)),
+      rgb(var(--paper-r) var(--paper-g) var(--paper-b) / var(--background-edge)),
+      rgb(var(--paper-r) var(--paper-g) var(--paper-b) / var(--background-reading)) 20% 80%,
+      rgb(var(--paper-r) var(--paper-g) var(--paper-b) / var(--background-edge))),
     var(--site-background-image) center / cover no-repeat,
     var(--paper);
 }
 @media (max-width: 860px) {
-  .site-background-shell { --background-edge: 84%; --background-reading: 92%; }
+  .site-background-shell { --background-edge: .84; --background-reading: .92; }
   .site-background-shell:not(.drift-scene-shell)::before { background-position: center, 85% top, center; }
 }

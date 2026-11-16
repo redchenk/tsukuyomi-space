@@ -19,6 +19,8 @@ const props = defineProps({ isAuthed: Boolean, lang: { type: String, default: 'z
 const emit = defineEmits(['go', 'logout', 'set-lang', 'toggle-theme', 'open-guide']);
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
 const copy = computed(() => navigationCopy(props.lang));
+watch(() => props.routeName, name => { document.documentElement.dataset.route = name || ''; }, { immediate: true });
+onUnmounted(() => { delete document.documentElement.dataset.route; });
 const isRoom = computed(() => ['room', 'roomShared'].includes(props.routeName));
 const growthLabel = computed(() => tr('月契成长', 'Bond growth', '月契成長'));
 const themeLabel = computed(() => props.theme === 'dark' ? props.t.switchLightTheme : props.t.switchDarkTheme);

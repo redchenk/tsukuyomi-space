@@ -65,7 +65,7 @@ body.vue-access-route { overflow-y: auto; }
 .access-brand img { width: 52px; height: 52px; object-fit: contain; }
 .access-page .access-hero {
     position: absolute; top: var(--water-center-y); left: 50%;
-    translate: -50% -50%; width: min(540px, 63vw); padding: 0 10px;
+    transform: translate(-50%, -50%); width: min(540px, 63vw); padding: 0 10px;
     text-align: center; font-family: var(--ts-font-serif, Georgia, serif);
     text-shadow: 0 2px 12px #0b102b, 0 0 22px #0b102b;
     transform-origin: 50% 50%;
@@ -155,7 +155,7 @@ body.vue-access-route { overflow-y: auto; }
     .access-film-frame {
         inset: 57% 0 auto;
         height: min(65svh, 122vw);
-        translate: 0 -50%;
+        transform: translateY(-50%);
         mask-image: linear-gradient(180deg, transparent, #000 15%, #000 84%, transparent);
     }
     .access-film-frame > :is(img, video) { object-position: 33% 50%; }

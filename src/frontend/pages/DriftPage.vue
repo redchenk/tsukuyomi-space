@@ -221,6 +221,7 @@ async function showDialog(nextPhase) {
   phase.value = nextPhase;
   await nextTick();
   if (!bottleDialog.value?.open) bottleDialog.value?.showModal();
+  document.documentElement.classList.add('drift-dialog-open');
   if (letterScroll.value) letterScroll.value.scrollTop = 0;
   if (nextPhase === 'reply') writingArea.value?.focus();
 }
@@ -248,6 +249,7 @@ function inspire() {
 }
 function closeDialog() { bottleDialog.value?.close(); }
 function dialogClosed() {
+  document.documentElement.classList.remove('drift-dialog-open');
   phase.value = 'idle';
   if (route.query.bottle) {
     const { bottle, ...query } = route.query;
@@ -398,7 +400,9 @@ onMounted(async () => {
     document.addEventListener('visibilitychange', refreshThread);
   }
 });
+watch(leavingWriter, value => document.documentElement.classList.toggle('drift-playing', value));
 onUnmounted(() => {
+  document.documentElement.classList.remove('drift-playing', 'drift-dialog-open');
   disposed = true;
   revision++;
   clearInterval(pollTimer);

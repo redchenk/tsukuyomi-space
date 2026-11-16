@@ -47,7 +47,7 @@
   .dock-indicator { position: absolute; top: 6px; left: 6px; width: calc((100% - 12px) / 5); height: 52px; border-radius: 18px; background: color-mix(in srgb, var(--accent) 10%, transparent); transform: translateX(calc(var(--dock-index, 0) * 100%)); transition: transform 320ms var(--ease-sheet); pointer-events: none; }
   .mobile-dock .dock-room > .dock-icon { background: none; }
   .dock-avatar { width: 28px; height: 28px; object-fit: cover; object-position: 50% 20%; border-radius: 50%; }
-  .mobile-dock > :is(a, button):active { scale: .96; }
+  .mobile-dock > :is(a, button):active { transform: scale(.96); }
   .ts-sheet, .ts-sheet.site-music-drawer, .site-navigation-dialog.ts-sheet { position: fixed; inset: auto 0 var(--ts-keyboard-inset, 0px); width: 100%; margin: 0; max-width: none; max-height: min(90dvh, calc(var(--ts-visual-height, 100dvh) - var(--safe-t) - 16px)); padding: 0; border-radius: var(--sheet-radius) var(--sheet-radius) 0 0; }
   .ts-sheet[open] { animation: mobile-sheet-enter 320ms var(--ease-sheet); }
   .sheet-handle { flex: none; display: grid; place-items: center; height: 24px; touch-action: none; cursor: grab; }
@@ -257,4 +257,4 @@
 @media (prefers-reduced-transparency: reduce) { :is(.mobile-dock, .mini-player, .article-reading-tools, .journal-toolbar) { background: var(--surface); backdrop-filter: none; } }
 html[data-performance='reduced'] :is(.mobile-dock, .mini-player, .article-reading-tools, .journal-toolbar) { backdrop-filter: none; background: var(--surface); }
 
-.drift-scene-shell:has(.drift-page[data-playing]) .mini-player { visibility: hidden; }
+.drift-playing .drift-scene-shell .mini-player { visibility: hidden; }

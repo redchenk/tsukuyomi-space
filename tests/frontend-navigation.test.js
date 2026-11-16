@@ -120,6 +120,9 @@ describe('mobile keyboard viewport', () => {
         assert.equal(read({ height: 430, viewportHeight: 430, restingHeight: 844 }).open, true);
         assert.equal(read({ height: 430, viewportHeight: 430, restingHeight: 844 }).inset, 0);
         assert.equal(read({ viewportHeight: 790 }).open, false);
+        assert.equal(read({ overlayHeight: 360 }).open, true);
+        assert.equal(read({ overlayHeight: 360 }).height, 484);
+        assert.equal(read({ overlayHeight: 360, viewportHeight: 484 }).height, 484);
         assert.equal(read({ viewportHeight: 430, scale: 2 }).open, false);
         assert.equal(read({ viewportHeight: 430, editable: false }).open, false);
         assert.equal(read({ viewportHeight: 430, mobile: false }).open, false);
@@ -210,7 +213,7 @@ describe('frontend navigation routes', () => {
         assert.match(shell, /<TsIcon name="languages"/);
         assert.match(shell, /emit\('set-lang', alternateLanguage\(lang\)\)/);
         assert.match(shell, /lang === 'zh' \? '日本語' : '中文'/);
-        assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
+        assert.match(app, /normalizeLanguage\(readPreference\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
         assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja', 'en'\]\)/);
         for (const content of [app, runtimeInterface, seo, gallery]) {

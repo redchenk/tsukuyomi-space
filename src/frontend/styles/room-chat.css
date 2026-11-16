@@ -207,7 +207,7 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-conversation-layout .room-chat-panel .chat-message-failed { padding: 0 6px; }
 
   /* Editing a sent message in place */
-  .room-shell .room-conversation-layout .room-chat-panel .user:has(.chat-edit-input) { align-items: stretch; margin-left: 8%; }
+  .room-shell .room-conversation-layout .room-chat-panel .user.is-editing { align-items: stretch; margin-left: 8%; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-label { margin: 0 0 6px; color: var(--chat-muted); font-size: 12.5px; text-align: right; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-input { min-height: 88px; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--chat-accent) 50%, var(--chat-line)); border-radius: 18px; background: var(--chat-surface); color: var(--chat-ink); font-size: 15px; line-height: 1.7; resize: vertical; box-shadow: 0 0 0 3px color-mix(in srgb, var(--chat-accent) 12%, transparent); }
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-input:focus-visible { outline: none; }
@@ -349,7 +349,7 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-conversation-layout .room-chat-panel .room-chat-messages { padding-inline: var(--chat-gutter); }
 
   /* Messages over the scene */
-  .room-shell .room-conversation-layout .room-chat-panel .chat-message:has(.room-message-options[open]) { z-index: 8; }
+  .room-shell .room-conversation-layout .room-chat-panel .chat-message.has-open-menu { z-index: 8; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-message { position: relative; display: flex; flex-direction: column; align-items: flex-start; width: auto; max-width: 88%; min-height: 0; margin: 0 0 12px; padding: 0 0 0 34px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--chat-text); white-space: normal; -webkit-tap-highlight-color: transparent; }
   .room-shell .room-conversation-layout .room-message-avatar { position: absolute; left: 0; top: 0; display: block; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--chat-surface) var(--chat-avatar) 55% 25% / 500% auto no-repeat; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--chat-surface) 80%, transparent), var(--chat-shadow); }
   .room-shell .room-conversation-layout .room-chat-panel .chat-message .chat-role { display: inline-block; margin: 0 0 4px 2px; font-size: 12px; font-weight: 600; line-height: 26px; }
@@ -397,7 +397,7 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-conversation-layout .room-chat-panel .chat-message-failed { margin: 0 4px; padding: 1px 8px; border-radius: 999px; background: var(--chat-glass); text-shadow: none; }
 
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-label { margin: 0 0 6px; font-size: 12px; text-shadow: var(--room-stage-text-shadow); color: var(--room-stage-ink, #fff); }
-  .room-shell .room-conversation-layout .room-chat-panel .user:has(.chat-edit-input) { width: 100%; max-width: 100%; align-items: stretch; }
+  .room-shell .room-conversation-layout .room-chat-panel .user.is-editing { width: 100%; max-width: 100%; align-items: stretch; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-input { min-height: 88px; padding: 11px 14px; border: 1px solid var(--chat-accent); border-radius: 18px; background: var(--chat-surface); color: var(--chat-ink); font-size: 16px; line-height: 1.6; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-edit-actions .chat-tts-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--chat-line); border-radius: 999px; background: var(--chat-glass); color: var(--chat-ink); font: inherit; font-size: 14px; }
@@ -494,4 +494,10 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-chat-panel .chat-message-actions .chat-tts-btn[aria-label]::after { display: none; }
 }
 
+}
+
+@layer pages {
+  @media (max-width: 860px) {
+    .room-shell .room-conversation-layout .room-chat-panel .chat-input-row.has-attachments-open { margin-top: 58px; }
+  }
 }

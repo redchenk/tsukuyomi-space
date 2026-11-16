@@ -57,7 +57,7 @@ function swipe([x, y], [dx, dy], steps = 8) {
 }
 
 test('phone studio is a fixed app viewport with the dock at the bottom', async ({ page }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile, 'Phone layout');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760), 'Phone layout');
     await openStudio(page);
     const layout = await page.evaluate(() => {
         const dock = document.querySelector('.ps-toolbar').getBoundingClientRect();
@@ -76,7 +76,7 @@ test('phone studio is a fixed app viewport with the dock at the bottom', async (
 });
 
 test('canvas viewport stays put while zooming through every stop', async ({ page }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile, 'Phone layout');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760), 'Phone layout');
     await openStudio(page);
     const viewport = page.locator('.arena-canvas-viewport');
     const baseline = await viewport.boundingBox();
@@ -92,7 +92,7 @@ test('canvas viewport stays put while zooming through every stop', async ({ page
 });
 
 test('one finger paints without pointer cancellation and undo restores it', async ({ page, browserName }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760) || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
     await openStudio(page);
     const client = await page.context().newCDPSession(page);
     await canvas(page).evaluate(element => {
@@ -116,7 +116,7 @@ test('one finger paints without pointer cancellation and undo restores it', asyn
 });
 
 test('two fingers pinch-zoom without painting and a two-finger tap undoes', async ({ page, browserName }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760) || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
     await openStudio(page);
     const client = await page.context().newCDPSession(page);
     const c = await canvas(page).boundingBox();
@@ -141,7 +141,7 @@ test('two fingers pinch-zoom without painting and a two-finger tap undoes', asyn
 });
 
 test('a second finger withdraws a stroke that just started', async ({ page, browserName }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760) || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
     await openStudio(page);
     const client = await page.context().newCDPSession(page);
     const c = await canvas(page).boundingBox();
@@ -161,7 +161,7 @@ test('a second finger withdraws a stroke that just started', async ({ page, brow
 });
 
 test('hand tool and pasteboard drags pan the zoomed canvas, never the page', async ({ page, browserName }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760) || browserName !== 'chromium', 'Trusted touch input requires Chromium CDP');
     await openStudio(page);
     const client = await page.context().newCDPSession(page);
     const viewport = page.locator('.arena-canvas-viewport');
@@ -187,7 +187,7 @@ test('hand tool and pasteboard drags pan the zoomed canvas, never the page', asy
 });
 
 test('panels open as a bottom sheet and drawing tools stay one tap away', async ({ page }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile, 'Phone layout');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760), 'Phone layout');
     await openStudio(page);
     const studio = page.locator('.pixel-studio');
     await page.locator('.ps-chip-fg').click();
@@ -208,7 +208,7 @@ test('panels open as a bottom sheet and drawing tools stay one tap away', async 
 });
 
 test('narrow phones keep the top bar and dock inside the screen at every zoom', async ({ page }, testInfo) => {
-    test.skip(!testInfo.project.use.isMobile, 'Narrow phone overflow regression');
+    test.skip(!(testInfo.project.use.hasTouch && testInfo.project.use.viewport?.width <= 760), 'Narrow phone overflow regression');
     await page.setViewportSize({ width: 320, height: 640 });
     await openStudio(page);
     for (const zoom of [20, 100, 400]) {

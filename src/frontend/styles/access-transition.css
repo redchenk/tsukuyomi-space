@@ -58,12 +58,10 @@
 .moon-entry-direct-copy .access-title { margin: 0; font-size: clamp(2rem, 5.5vw, 4.75rem); line-height: 1.18; letter-spacing: .08em; }
 .moon-entry-direct-copy .access-subtitle { margin: 12px 0 0; font-size: clamp(.82rem, 1.6vw, 1.1rem); letter-spacing: .14em; }
 
-.moon-entry-frames { z-index: 3; perspective: 880px; }
+.moon-entry-frames { z-index: 3; perspective: 880px; display: grid; place-items: center; }
 .moon-entry-frame {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    translate: -50% -50%;
+    position: relative;
+    grid-area: 1 / 1;
     width: clamp(142px, 18vw, 262px);
     margin: 0;
     padding: 7px;
@@ -86,11 +84,11 @@
 .moon-entry-seal {
     position: absolute;
     z-index: 4;
-    inset: 50% auto auto 50%;
+    inset: 0;
     width: clamp(150px, 22vmin, 230px);
+    height: clamp(150px, 22vmin, 230px);
     aspect-ratio: 1;
-    margin: 0;
-    translate: -50% -50%;
+    margin: auto;
     opacity: 0;
     will-change: transform, opacity;
 }
@@ -151,8 +149,9 @@
     position: absolute;
     z-index: 6;
     top: 10%;
-    left: 50%;
-    translate: -50% 0;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
     width: min(60vw, 590px);
     height: 78%;
     opacity: 0;

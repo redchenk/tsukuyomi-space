@@ -29,6 +29,7 @@ const deepseekInput = computed(() => props.chat.deepseekInput);
 const deepseekBusy = computed(() => deepseekInput.value?.working.value || deepseekInput.value?.recording.value);
 const recordingVoice = computed(() => deepseekInput.value?.supported() ? deepseekInput.value.recording.value : voice.listening.value);
 const attachMenuRef = ref(null);
+const attachmentsOpen = ref(false);
 const documentAttachment = ref(null);
 let attachmentRevision = 0;
 let voiceOwner = '';
@@ -94,6 +95,7 @@ function closeMessageMenus(event) {
 // transcript instead of letting the fixed composer cover it on short screens.
 async function placeMessageMenu(event) {
   const menu = event.currentTarget;
+  menu?.closest('.chat-message')?.classList.toggle('has-open-menu', Boolean(menu.open));
   if (!props.mobile || !menu?.open) return;
   await nextTick();
   const transcript = transcriptRef.value;
@@ -525,7 +527,7 @@ function endChatStatusLabel() {
             v-for="message in displayedMessages"
             :key="message.id"
             class="chat-message"
-            :class="[message.role, { 'is-failed': message.failed, 'is-streaming': message.pending, 'is-latest': latestReplyId === message.id, 'is-selected': selectedMessageId === message.id, 'is-fresh': isFreshMessage(message) }]"
+            :class="[message.role, { 'is-editing': editingMessageId === message.id, 'is-failed': message.failed, 'is-streaming': message.pending, 'is-latest': latestReplyId === message.id, 'is-selected': selectedMessageId === message.id, 'is-fresh': isFreshMessage(message) }]"
             :aria-busy="message.pending || undefined"
             @click="selectMessage($event, message)"
           >
@@ -656,11 +658,11 @@ function endChatStatusLabel() {
           <button class="panel-btn" type="button" aria-label="移除文件" @click="attachmentRevision++; documentAttachment = null"><TsIcon name="x" :size="14" /></button>
         </div>
       </div>
-      <div class="chat-input-row" :class="{ 'is-busy': generationBusy, 'is-listening': recordingVoice }">
+      <div class="chat-input-row" :class="{ 'is-busy': generationBusy, 'is-listening': recordingVoice, 'has-attachments-open': mobile && attachmentsOpen }">
         <input ref="imageInputRef" id="chatImageInput" type="file" accept="image/*" hidden @change="chat.attachImage($event.target.files?.[0]); $event.target.value = ''">
         <input ref="documentInputRef" id="chatFileInput" aria-label="添加对话文件" type="file" :accept="deepseekInput?.supported() ? '*/*' : DOCUMENT_ACCEPT" hidden @change="attachDocument($event.target.files?.[0]); $event.target.value = ''">
         <textarea id="chatInput" ref="composerRef" v-model="chat.input.value" rows="1" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="recordingVoice ? '正在听，请说话…' : englishRoom ? 'Message, Enter to send' : `和${characterName}说点什么…`" @keydown="handleComposerKeydown"></textarea>
-        <details ref="attachMenuRef" class="chat-attach-menu" :open="!mobile">
+        <details ref="attachMenuRef" class="chat-attach-menu" :open="!mobile" @toggle="attachmentsOpen = $event.target.open">
           <summary aria-label="添加图片或文件"><TsIcon name="plus" :size="22" :stroke-width="2" /></summary>
           <div class="chat-attach-options">
             <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy || chat.imageUploadState?.active" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="pickImage">
@@ -673,7 +675,7 @@ function endChatStatusLabel() {
             </button>
           </div>
         </details>
-        <button id="voiceInputBtn" class="panel-btn chat-voice-input" type="button" :class="{ 'is-listening': recordingVoice }" :aria-pressed="recordingVoice" :disabled="(generationBusy || deepseekInput?.working.value) && !recordingVoice" :title="recordingVoice ? '结束录音' : '语音输入'" :aria-label="recordingVoice ? '结束录音' : '语音输入'" @click="toggleVoice">
+        <button id="voiceInputBtn" class="panel-btn chat-voice-input" type="button" :class="{ 'is-listening': recordingVoice, 'has-attachments-open': mobile && attachmentsOpen }" :aria-pressed="recordingVoice" :disabled="(generationBusy || deepseekInput?.working.value) && !recordingVoice" :title="recordingVoice ? '结束录音' : '语音输入'" :aria-label="recordingVoice ? '结束录音' : '语音输入'" @click="toggleVoice">
           <span v-if="recordingVoice" class="chat-voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <TsIcon v-else name="mic" :size="20" :stroke-width="1.9" />
           <span>{{ recordingVoice ? '停止' : '语音' }}</span>

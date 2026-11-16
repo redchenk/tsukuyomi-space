@@ -1,10 +1,12 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import poster from '../assets/access/water-mirror/water-mirror-poster.webp';
 import standby from '../assets/access/water-mirror/water-mirror-standby.mp4';
 import entrance from '../assets/access/water-mirror/water-mirror-enter.mp4';
 
 const props = defineProps({ allowMotion: Boolean, moving: Boolean });
+const supportsVideo = Boolean(document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"'));
+const motionEnabled = computed(() => props.allowMotion && supportsVideo);
 defineEmits(['ready']);
 const idle = ref(null);
 const painted = ref(false);
@@ -39,12 +41,12 @@ function syncIdle() {
 }
 
 function warm() {
-  if (!document.hidden && props.allowMotion) preload.value = 'auto';
+  if (!document.hidden && motionEnabled.value) preload.value = 'auto';
 }
 
 function scheduleWarm() {
   clearTimeout(primeTimer);
-  if (props.allowMotion && preload.value !== 'auto') primeTimer = setTimeout(warm, 500);
+  if (motionEnabled.value && preload.value !== 'auto') primeTimer = setTimeout(warm, 500);
 }
 
 function onError() {
@@ -52,8 +54,8 @@ function onError() {
   painted.value = false;
 }
 
-watch(() => [props.moving, props.allowMotion], syncIdle, { flush: 'post' });
-watch(() => props.allowMotion, allowed => {
+watch(() => [props.moving, motionEnabled.value], syncIdle, { flush: 'post' });
+watch(() => motionEnabled.value, allowed => {
   if (!allowed) onError();
   scheduleWarm();
 });
@@ -80,10 +82,10 @@ defineExpose({ warm });
     <div class="access-film-frame">
       <img class="access-film-poster" :src="poster" alt="" width="1600" height="900" fetchpriority="high"
         decoding="async" data-image-bloom="off" @load="$emit('ready')" @error="$emit('ready')">
-      <video v-if="allowMotion" ref="idle" class="access-film-idle" :class="{ 'is-painted': painted }"
+      <video v-if="motionEnabled" ref="idle" class="access-film-idle" :class="{ 'is-painted': painted }"
         :src="standby" muted loop playsinline preload="metadata" disablepictureinpicture
         disableremoteplayback tabindex="-1" @playing="onPlaying" @error="onError"></video>
-      <video v-if="allowMotion" class="access-film-intro" :src="entrance" :preload="preload"
+      <video v-if="motionEnabled" class="access-film-intro" :src="entrance" :preload="preload"
         muted playsinline disablepictureinpicture disableremoteplayback tabindex="-1"></video>
     </div>
     <div class="access-film-shade"></div>

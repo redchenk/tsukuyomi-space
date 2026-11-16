@@ -1,4 +1,5 @@
 <script setup>
+import { withRequestTimeout } from '../utils/requestTimeout.mjs';
 import { deepseek, deepseekRequest } from '../services/room/roomDeepseek.mjs';
 import DeepseekTariff from '../components/DeepseekTariff.vue';
 import { roomSettingsNavigation, roomSettingsSearch } from '../constants/room/settingsNavigation';
@@ -812,8 +813,10 @@ async function refreshMemoryChoice(force = false) {
     memoryChoice.visible = force || Boolean(guestRows.length && readMemorySource(accountId).fingerprint !== fingerprint);
     memoryChoice.loading = false;
     if (!memoryChoice.visible) return;
-    const response = await authFetch(noStoreUrl('/api/room/memory/status'), { headers: memoryAuthHeaders(), cache: 'no-store', signal: AbortSignal.timeout(8000) });
-    const result = await parseResponse(response);
+    const { response, result } = await withRequestTimeout(async signal => {
+      const response = await authFetch(noStoreUrl('/api/room/memory/status'), { headers: memoryAuthHeaders(), cache: 'no-store', signal });
+      return { response, result: await parseResponse(response) };
+    }, { timeoutMs: 8000 });
     if (requestId !== memoryChoiceRequestId || String(getSession()?.user?.id || '') !== accountId || memoryPageDisposed) return;
     memoryChoice.cloudCount = response.ok && result.success ? Number(result.data?.count || 0) : null;
     if (response.ok && result.success) memoryContentLimit.value = Number(result.data?.maxContentLength) || 12000;
@@ -3688,15 +3691,15 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="form-grid">
-            <label
+            <label class="settings-range"
               >模型大小 <strong>{{ model.scale }}%</strong
               ><input v-model="model.scale" type="range" min="60" max="160"
             /></label>
-            <label
+            <label class="settings-range"
               >水平位置 <strong>{{ model.xOffset }} px</strong
               ><input v-model="model.xOffset" type="range" min="-240" max="240"
             /></label>
-            <label
+            <label class="settings-range"
               >垂直位置 <strong>{{ model.yOffset }} px</strong
               ><input v-model="model.yOffset" type="range" min="-180" max="180"
             /></label>
@@ -4050,7 +4053,7 @@ onBeforeUnmount(() => {
                 </option>
               </select>
             </label>
-            <label
+            <label class="settings-range"
               >恢复时间 <strong>{{ live2dTest.durationMs }}ms</strong
               ><input
                 v-model="live2dTest.durationMs"
