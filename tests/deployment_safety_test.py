@@ -129,6 +129,45 @@ class DeploymentSafetyTest(unittest.TestCase):
                 release.prepare(self.frontend_args(**options))
         self.assertFalse((self.base / 'backups/frontend-only').exists())
 
+    def test_frontend_extra_entry_update_and_rollback(self):
+        self.write(self.front / 'compat/index.html', '<h1>previous probe</h1>')
+        self.write(self.artifact / 'compat/index.html', '<script type="module" src="/assets/main-new12345.js"></script>')
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            state = release.prepare(self.frontend_args())
+            release.activate(state)
+            self.assertEqual((self.front / 'compat/index.html').read_bytes(), (self.artifact / 'compat/index.html').read_bytes())
+            release.rollback(state)
+        self.assertEqual((self.front / 'compat/index.html').read_text(), '<h1>previous probe</h1>')
+
+    def test_frontend_new_entry_rollback_preserves_unrelated_files(self):
+        self.write(self.front / 'compat/operator.txt', 'keep this')
+        self.write(self.artifact / 'compat/index.html', '<h1>new probe</h1>')
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            state = release.prepare(self.frontend_args())
+            release.activate(state)
+            release.rollback(state)
+        self.assertFalse((self.front / 'compat/index.html').exists())
+        self.assertEqual((self.front / 'compat/operator.txt').read_text(), 'keep this')
+
+    def test_frontend_extra_entry_blocks_concurrent_edits_and_symlink(self):
+        self.write(self.artifact / 'compat/index.html', '<h1>new probe</h1>')
+        state = release.prepare(self.frontend_args())
+        self.write(self.front / 'compat/index.html', 'operator edit')
+        with self.assertRaisesRegex(RuntimeError, 'changed outside this release'):
+            release.activate(state)
+        state['status'] = 'activating'
+        with self.assertRaisesRegex(RuntimeError, 'changed outside this release'):
+            release.rollback(state)
+        shutil.rmtree(self.front / 'compat')
+        (self.front / 'compat').symlink_to(self.base, target_is_directory=True)
+        with self.assertRaisesRegex(RuntimeError, 'symlink'):
+            release.frontend_files(self.artifact, self.front)
+
+    def test_frontend_entry_allowlist_rejects_other_html(self):
+        self.write(self.artifact / 'compat/other.html', 'not allowlisted')
+        with self.assertRaisesRegex(RuntimeError, 'Only allowlisted HTML'):
+            release.frontend_files(self.artifact, self.front)
+
     def test_frontend_release_still_blocks_resource_changes_before_activation(self):
         state = release.prepare(self.frontend_args())
         self.write(self.root / 'assets/music/song.flac', 'changed during preparation')

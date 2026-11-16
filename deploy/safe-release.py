@@ -44,6 +44,7 @@ CODE_FILES = ('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore'
               'vite.config.js', 'vite.frontend.config.js', 'playwright.config.js',
               'README.md', 'README_EN.md', 'LICENSE', 'design.md', 'design-qa.md')
 ASSET_NAME = re.compile(r'^[^/\\]+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9.]+$')
+FRONTEND_ENTRIES = ('index.html', 'compat/index.html')
 DEPENDENCY_FIELDS = ('dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies',
                      'peerDependenciesMeta', 'overrides', 'workspaces', 'config', 'os', 'cpu', 'libc', 'packageManager')
 INSTALL_SCRIPTS = ('preinstall', 'install', 'postinstall', 'prepublish', 'preprepare', 'prepare', 'postprepare')
@@ -364,16 +365,17 @@ def frontend_files(source, destination):
         relative = path.relative_to(source)
         name = relative.as_posix()
         if path.is_dir():
-            require(name == 'assets', 'Unexpected artifact directory: ' + name)
+            require(name in ('assets', 'compat'), 'Unexpected artifact directory: ' + name)
             continue
         require(path.is_file(), 'Unexpected artifact entry: ' + name)
-        require(name == 'index.html' or (len(relative.parts) == 2 and relative.parts[0] == 'assets' and ASSET_NAME.fullmatch(relative.name)),
-                'Only index.html and flat hashed assets can be published: ' + name)
+        require(name in FRONTEND_ENTRIES or (len(relative.parts) == 2 and relative.parts[0] == 'assets' and ASSET_NAME.fullmatch(relative.name)),
+                'Only allowlisted HTML entries and flat hashed assets can be published: ' + name)
         target = destination / relative
         require(not target.is_symlink() and not (destination / 'assets').is_symlink(), 'Refusing to overwrite a frontend symlink: ' + name)
+        require(target.parent == destination or not target.parent.is_symlink(), 'Refusing to publish through a frontend symlink: ' + name)
         if target.exists():
             require(target.is_file(), 'Frontend target is not a file: ' + name)
-            if name != 'index.html':
+            if name not in FRONTEND_ENTRIES:
                 require(sha(path) == sha(target), 'Existing hashed asset has different content: ' + name)
         files.append(name)
     require(bool(files), 'Empty frontend artifact')
@@ -435,6 +437,11 @@ def prepare(args):
                  artifact=str(Path(args.artifact).resolve()), state_dir=str(state_dir), status='preparing',
                  extra_resources=args.extra_resource, base_url=args.base_url, resolve=args.resolve,
                  files=files, index_before=sha(frontend / 'index.html'), index_after=sha(Path(args.artifact) / 'index.html'))
+    state['extra_entries'] = {
+        name: {'before': sha(frontend / name) if (frontend / name).exists() else None,
+               'after': sha(Path(args.artifact) / name)}
+        for name in files if name in FRONTEND_ENTRIES and name != 'index.html'
+    }
     brand_source = getattr(args, 'brand_artifact', None)
     if brand_source:
         state['brand'] = dict(source=str(Path(brand_source).resolve()), files=brand_files(brand_source, root))
@@ -475,6 +482,9 @@ def prepare(args):
     os.chmod(state_dir, 0o700)
     shutil.copy2(__file__, state_dir / 'release.py')
     shutil.copy2(frontend / 'index.html', state_dir / 'index.before.html')
+    for name, hashes in state['extra_entries'].items():
+        if hashes['before'] is not None:
+            copy_atomic(frontend / name, state_dir / 'entries.before' / name)
     if brand_source:
         for name, hashes in state['brand']['files'].items():
             if hashes['before'] is not None:
@@ -510,6 +520,7 @@ def activate(state):
     require(state['status'] == 'prepared', 'Release must be prepared before activation')
     check_frontend_target(state)
     require(sha(Path(state['frontend_real']) / 'index.html') == state['index_before'], 'Frontend changed after preparation')
+    check_extra_entries(state, 'before')
     verify_resources(state)
     verify_brand(state, 'before')
     verify_retired_artwork(state, 'before')
@@ -534,8 +545,11 @@ def activate(state):
     publish_brand(state)
     publish_retired_artwork(state)
     for name in state['files']:
-        if name != 'index.html' and not (Path(state['frontend_real']) / name).exists():
+        if name not in FRONTEND_ENTRIES and not (Path(state['frontend_real']) / name).exists():
             copy_atomic(Path(state['artifact']) / name, Path(state['frontend_real']) / name)
+    for name, hashes in state.get('extra_entries', {}).items():
+        require(sha(Path(state['artifact']) / name) == hashes['after'], 'Frontend entry artifact changed: ' + name)
+        copy_atomic(Path(state['artifact']) / name, Path(state['frontend_real']) / name)
     # Publish the entry only after every immutable asset is available.
     copy_atomic(Path(state['artifact']) / 'index.html', Path(state['frontend_real']) / 'index.html')
     if publishes_code(state):
@@ -584,11 +598,21 @@ def frontend_entry_references(html):
     return sorted(parser.references)
 
 
+def check_extra_entries(state, phase, mixed=False):
+    for name, hashes in state.get('extra_entries', {}).items():
+        target = Path(state['frontend_real']) / name
+        require(not target.is_symlink() and not target.parent.is_symlink(), 'Frontend entry became a symlink: ' + name)
+        current = sha(target) if target.exists() else None
+        expected = (hashes['before'], hashes['after']) if mixed else (hashes[phase],)
+        require(current in expected, 'Frontend entry changed outside this release: ' + name)
+
+
 def verify(state, attempts=15):
     require(state['status'] in ('active', 'rolled_back'), 'Only an activated or rolled-back release can be verified')
     check_frontend_target(state)
     expected = state['index_before'] if state['status'] == 'rolled_back' else state['index_after']
     require(sha(Path(state['frontend_real']) / 'index.html') == expected, 'Frontend entry does not match this release')
+    check_extra_entries(state, 'before' if state['status'] == 'rolled_back' else 'after')
     verify_resources(state)
     verify_brand(state)
     verify_retired_artwork(state)
@@ -618,6 +642,17 @@ def verify(state, attempts=15):
             for reference in set(references):
                 name = reference.decode().lstrip('/')
                 require(hashlib.sha256(fetch(state, '/' + name)).hexdigest() == sha(Path(state['frontend_real']) / name), 'HTTP asset mismatch: ' + name)
+            for name, hashes in state.get('extra_entries', {}).items():
+                entry_hash = hashes['before' if state['status'] == 'rolled_back' else 'after']
+                if entry_hash is None:
+                    continue
+                entry = fetch(state, '/' + name + '?release-check=' + entry_hash[:16])
+                require(hashlib.sha256(entry).hexdigest() == entry_hash, 'HTTP frontend entry mismatch: ' + name)
+                for reference in frontend_entry_references(entry):
+                    require(reference.startswith('/assets/') and ASSET_NAME.fullmatch(reference.rsplit('/', 1)[-1]),
+                            'Unexpected frontend entry reference: ' + reference)
+                    require(hashlib.sha256(fetch(state, reference)).hexdigest() == sha(Path(state['frontend_real']) / reference.lstrip('/')),
+                            'HTTP asset mismatch: ' + reference)
             for name, hashes in state.get('brand', {}).get('files', {}).items():
                 expected_hash = hashes['before' if state['status'] == 'rolled_back' else 'after']
                 if expected_hash is not None:
@@ -642,6 +677,7 @@ def rollback(state):
     check_frontend_target(state)
     require(sha(Path(state['frontend_real']) / 'index.html') in (state['index_before'], state['index_after']),
             'Refusing rollback over a newer or manually edited frontend entry')
+    check_extra_entries(state, 'before', mixed=True)
     verify_brand(state, mixed=True)
     verify_retired_artwork(state, mixed=True)
     if publishes_code(state):
@@ -658,6 +694,13 @@ def rollback(state):
         rollback_dependencies(state)
     publish_brand(state, rollback=True)
     publish_retired_artwork(state, rollback=True)
+    for name, hashes in state.get('extra_entries', {}).items():
+        if hashes['before'] is None:
+            (Path(state['frontend_real']) / name).unlink(missing_ok=True)
+        else:
+            backup = Path(state['state_dir']) / 'entries.before' / name
+            require(sha(backup) == hashes['before'], 'Frontend entry backup changed: ' + name)
+            copy_atomic(backup, Path(state['frontend_real']) / name)
     copy_atomic(Path(state['state_dir']) / 'index.before.html', Path(state['frontend_real']) / 'index.html')
     restart(state)
     state['status'] = 'rolled_back'
