@@ -76,13 +76,13 @@ onUnmounted(() => { sequence++; controller?.abort(); });
 .usage-card p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .usage-card strong { font-size: 1.8rem; font-variant-numeric: tabular-nums; }
 .official-usage .terminal-card.usage-card span { color: inherit; font-weight: 400; }
-.usage-card span, .usage-card small { font-size: .8rem; opacity: .75; }
+.usage-card span, .usage-card small { font-size: .8rem; color: var(--muted); }
 .usage-table { max-height: 440px; overflow: auto; }
 .official-usage .terminal-table-wrap.usage-table table { min-width: 0; width: 100%; table-layout: fixed; }
 .official-usage .terminal-table-wrap.usage-table th, .official-usage .terminal-table-wrap.usage-table td { white-space: normal; }
 .usage-table th[scope=row] { font-size: .8rem; font-weight: 500; width: 100px; }
 .usage-table td strong { font-variant-numeric: tabular-nums; }
-.official-usage .terminal-table-wrap.usage-table td small { display: block; margin-top: 4px; font-size: .75rem; opacity: .75; line-height: 1.6; }
+.official-usage .terminal-table-wrap.usage-table td small { display: block; margin-top: 4px; font-size: .75rem; color: var(--muted); line-height: 1.6; }
 .usage-notes { font-size: .8rem; line-height: 1.7; opacity: .8; }
 .usage-notes summary { cursor: pointer; min-height: 36px; display: list-item; }
 .usage-notes p { margin: 6px 0; }
