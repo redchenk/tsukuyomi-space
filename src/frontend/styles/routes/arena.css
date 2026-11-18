@@ -85,7 +85,7 @@ body .pixel-workspace:not(.is-controls-open) .arena-controls, body .pixel-worksp
 .pw-native-color input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .pw-hex-field { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; border: 1px solid var(--pw-line); border-radius: 12px; padding: 8px; color: var(--pw-muted); font: 11px ui-monospace, monospace; }
 .pixel-workspace .pw-hex-field input { width: 100%; min-width: 0; min-height: 0; height: 18px; border: 0; padding: 0; border-radius: 0; outline: 0; color: var(--pages-ink); background: transparent; font: inherit; }
-.pw-hex-field small { font-size: 9px; opacity: .6; }
+.pw-hex-field small { font-size: 9px; color: var(--pw-muted); }
 /* These gradients are the functional saturation/value and hue input surfaces. */
 .pw-color-plane { height: 126px; position: relative; border-radius: 10px; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); touch-action: none; cursor: crosshair; border: 1px solid var(--pw-line); }
 .pw-color-cursor { position: absolute; width: 11px; height: 11px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgb(0 0 0 / 35%); transform: translate(-50%, -50%); pointer-events: none; }
