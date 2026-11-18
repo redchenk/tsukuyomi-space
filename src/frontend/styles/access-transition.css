@@ -26,7 +26,7 @@
 .moonlight-entry.is-direct { background: radial-gradient(ellipse at center, #33354d, #18192c 78%); }
 .moon-entry-set { position: absolute; inset: 0; pointer-events: none; }
 .moon-entry-set :is(img, div, figure, svg) { transition-property: none; }
-.moon-entry-set :is(.moon-entry-corridor, .moon-entry-vignette, .moon-entry-dust, .moon-entry-frames, .moon-entry-beam, .moon-entry-trail, .moon-entry-glare) {
+.moon-entry-set :is(.moon-entry-corridor, .moon-entry-vignette, .moon-entry-frames, .moon-entry-glare) {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -34,14 +34,10 @@
 }
 .moon-entry-corridor { object-fit: cover; object-position: center 45%; opacity: 0; }
 .is-direct .moon-entry-corridor { opacity: .38; }
-.moon-entry-vignette { background: radial-gradient(ellipse at 50% 43%, transparent 21%, #15182b62 62%, #090b15dd 100%); opacity: 0; }
-.moon-entry-dust { z-index: 5; }
-.moon-entry-ripple {
-    position: absolute;
-    z-index: 6;
-    border: 1px solid #fff3d6e0;
-    border-radius: 999px;
-    box-shadow: 0 0 24px #ffd59c60, inset 0 0 17px #fff1cf26;
+.moon-entry-vignette {
+    background: linear-gradient(90deg, #111729ad, transparent 75%),
+        linear-gradient(0deg, #131629e6, transparent 36%),
+        radial-gradient(ellipse at 66% 40%, transparent 22%, #171c3740 75%);
     opacity: 0;
 }
 .moon-entry-direct-copy {
@@ -141,74 +137,85 @@
 }
 .moon-entry-orbit i:nth-of-type(2n) { background: #28253b; }
 
-.moon-entry-beam {
-    z-index: 5;
-    opacity: 0;
-    background: conic-gradient(from 198deg at 97% -6%, transparent 0deg, #fff0bc13 20deg, #fbe6b955 34deg, #ffdea120 48deg, transparent 68deg);
-    mix-blend-mode: screen;
-}
-.moon-entry-portrait {
+.moon-entry-welcome {
     position: absolute;
     z-index: 6;
-    top: 10%;
-    left: 50%;
-    translate: -50% 0;
-    width: min(60vw, 590px);
-    height: 78%;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+    grid-template-areas: "dialogue portrait";
+    align-items: center;
+    width: min(100%, 1400px);
+    margin: 0 auto;
+    padding: 0 6%;
+    box-sizing: border-box;
+}
+.moon-entry-portrait {
+    grid-area: portrait;
+    position: relative;
+    justify-self: center;
+    width: min(100%, 60vh);
+    aspect-ratio: 1055 / 1490;
     opacity: 0;
-    filter: brightness(.3);
-    will-change: opacity, transform;
-    transform-origin: 50% 63%;
+    transform-origin: 50% 65%;
 }
 .moon-entry-portrait img {
     display: block;
     width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: top;
-    mask-image: linear-gradient(#000 66%, transparent 98%);
+    height: auto;
+    mask-image: linear-gradient(#000 82%, transparent 100%);
+}
+/* The light sits just above the open palm in the illustration. */
+.moon-entry-hand-light {
+    position: absolute;
+    left: 12%;
+    top: 37%;
+    width: 16px;
+    height: 16px;
+    margin: -8px;
+    border-radius: 50%;
+    opacity: 0;
+    background: radial-gradient(circle, #fffbea 8%, #bff7ec 20%, #a5eee966 45%, transparent 72%);
+}
+.moon-entry-hand-ring {
+    position: absolute;
+    inset: -7px;
+    border: 1px solid #c2f7e8;
+    border-radius: 50%;
+    opacity: 0;
 }
 .moon-entry-slogan {
-    position: absolute;
-    z-index: 7;
-    inset: auto 7% max(11%, calc(env(safe-area-inset-bottom) + 42px));
-    text-align: center;
+    grid-area: dialogue;
+    align-self: center;
+    text-align: start;
+    padding-inline-start: 5%;
+    margin-top: 10%;
+    color: #fff5e7;
     opacity: 0;
-    text-shadow: 0 3px 25px #100a26, 0 0 10px #100a26;
-    letter-spacing: .4em;
+    text-shadow: 0 2px 14px #11162d;
 }
 .moon-entry-slogan p { margin: 0; }
-.moon-entry-slogan p:first-child { font: 500 clamp(1.5rem, 4vw, 3.5rem)/1.23 var(--ts-panel-serif, Georgia, serif); }
-.moon-entry-slogan p + p { margin: 10px auto 0; max-width: 40em; font-size: clamp(.78rem, 1.2vw, 1rem); line-height: 1.7; color: #f4e2ca; }
-.moon-entry-trail { z-index: 7; overflow: visible; opacity: 0; }
-.moon-entry-trail path { fill: none; stroke-linecap: round; }
-.moon-entry-trail-base { stroke: #f9dfa42d; stroke-width: 1.4; }
-.moon-entry-trail-light { stroke: #ffe5b1; stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: var(--moon-entry-progress); filter: drop-shadow(0 0 6px #ffcf80); transition: stroke-dashoffset 220ms ease-out; }
-.moon-entry-dock {
-    position: absolute;
-    right: max(.9rem, env(safe-area-inset-right));
-    bottom: max(.75rem, env(safe-area-inset-bottom));
-    width: clamp(6.5rem, 9vw, 9.5rem);
-    aspect-ratio: 192 / 208;
-    visibility: hidden;
+.moon-entry-speaker {
+    display: flex;
+    align-items: center;
+    gap: .85em;
+    color: #b9eddf;
+    font: 600 clamp(.8rem, 1.15vw, 1rem)/1.5 var(--ts-font-sans, system-ui);
+    letter-spacing: .14em;
 }
-.moon-entry-pet {
-    position: absolute;
-    z-index: 8;
-    left: 0;
-    top: 0;
-    width: var(--entry-dock-width);
-    aspect-ratio: 192 / 208;
-    background: url('/assets/pets/yachiyo/idle.webp') center / 100% no-repeat;
-    filter: drop-shadow(0 0 13px #f6d29c6b);
-    opacity: 0;
-    will-change: transform, opacity;
+.moon-entry-speaker::before { content: ''; width: 2.2em; height: 1px; background: currentColor; }
+.moon-entry-slogan .moon-entry-words {
+    margin-top: .35em;
+    font: 500 clamp(1.65rem, 3.3vw, 3.25rem)/1.35 var(--ts-panel-serif, Georgia, serif);
+    letter-spacing: .025em;
+    text-wrap: balance;
 }
+.moon-entry-words span { display: block; }
 .moon-entry-glare {
     z-index: 9;
     opacity: 0;
-    background: radial-gradient(circle at center, #fff9e2 1%, #ffe7b5ba 11%, #facdae44 28%, transparent 62%);
-    mix-blend-mode: screen;
+    background: radial-gradient(circle closest-corner at var(--moonlight-x, 50%) var(--moonlight-y, 50%),
+        #fffae3 0, #abede6a6 13%, #b5bde337 32%, transparent 70%);
 }
 .moon-entry-skip {
     position: absolute;
@@ -233,15 +240,22 @@
     font-size: .78rem;
 }
 
-@media (max-width: 860px) {
-    .moon-entry-dock { right: max(.3rem, env(safe-area-inset-right)); width: clamp(3.6rem, 16vw, 4.25rem); }
-    .moon-entry-portrait { width: min(84vw, 490px); top: 14%; height: 72%; }
-    .moon-entry-slogan { inset-inline: 5%; bottom: max(13%, calc(env(safe-area-inset-bottom) + 46px)); }
-}
-
-@media (max-height: 500px) {
-    .moon-entry-portrait { top: 7%; height: 83%; width: min(45vw, 450px); }
-    .moon-entry-slogan { bottom: max(8%, calc(env(safe-area-inset-bottom) + 15px)); }
+@media (max-aspect-ratio: 1/1) {
+    .moon-entry-vignette { background: linear-gradient(0deg, #101629ee 4%, #191e3430 54%, transparent); }
+    .moon-entry-welcome {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        grid-template-areas: "portrait" "dialogue";
+        align-content: center;
+        gap: 8px;
+        padding: max(58px, env(safe-area-inset-top)) 6% max(54px, env(safe-area-inset-bottom));
+    }
+    .moon-entry-portrait { width: min(100%, 48vh); }
+    .moon-entry-slogan { margin: 0; padding: 0; text-align: center; }
+    .moon-entry-speaker { justify-content: center; }
+    .moon-entry-speaker::after { content: ''; width: 2.2em; height: 1px; background: currentColor; }
+    .moon-entry-slogan .moon-entry-words { font-size: clamp(1.45rem, 5.9vw, 2.5rem); }
+    .moon-entry-words span { display: inline-block; }
 }
 
 @property --access-mist-radius {
