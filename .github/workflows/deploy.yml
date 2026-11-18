@@ -1,4 +1,4 @@
-name: Publish Moon Chat overseas
+name: Publish Moon Chat transport fallback overseas
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 59ade387c2b3f8aab3bc128497aecdcd991c32b3
+          ref: 76a9b9afe7f0aa096f98e8867655b9a7025ed838
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -29,7 +29,7 @@ jobs:
         run: |
           set -eu
           npm run build:web:overseas
-          echo '758b3e50e27d10542c4fa49e2149160138d64aa9d05f35115a2469d8fa09874b  dist/frontend/index.html' | sha256sum -c -
+          echo '55c5454ae051a5e35cc73ea28b77b86a87a67b744d1ae913296349f308a892c5  dist/frontend/index.html' | sha256sum -c -
           cat > "$RUNNER_TEMP/activate.py" <<'RELEASE_DATA'
           from pathlib import Path
           import json,hashlib,os,shutil,subprocess,sys,tempfile,time
@@ -51,36 +51,26 @@ jobs:
           def verify():
            assert sha(root/'index.html')==meta['after']
            assert hashlib.sha256(get('/chatroom')).hexdigest()==meta['after']
-           assert json.loads(get('/api/chatroom/lobby/history'))['success']
+           assert json.loads(get('/api/chatroom/lobby/sync'))['data']['packets'][0]['type']=='snapshot'
            assert json.loads(get('/api/health'))['status']=='ok'
           if sha(root/'index.html')==meta['after']:
            verify();sys.exit(0)
           assert sha(root/'index.html')==meta['before'],'Overseas frontend advanced'
-          original=config.read_bytes();s=original.decode()
-          anchor='location = /api/room/memory/events {'
-          assert s.count(anchor)==1 and 'location = /api/chatroom/live' not in s
-          route='location ~ ^/(?:drift|'
-          if s.count(route)==1:s=s.replace(route,'location ~ ^/(?:chatroom|drift|',1)
-          else:
-           # Keep existing SPA routing intact when this installation uses a separate block.
-           s=s.replace(anchor,(stage/'page.block').read_text()+'\n    '+anchor,1)
-          s=s.replace(anchor,(stage/'live.block').read_text().strip()+'\n\n    '+anchor,1)
+          assert 'location = /api/chatroom/live' in config.read_text()
           run('bash',stage/'prepare-lightweight-release.sh','--site','overseas','--state',state,'--root',root,'--frontend',root,'--artifact',stage/'frontend','--base-url','https://'+host,'--resolve',host+':443:127.0.0.1','--commit',meta['commit'],'--frontend-only')
-          assert sha(root/'index.html')==meta['before'] and config.read_bytes()==original
-          shutil.copy2(config,state/'nginx-before.conf')
+          assert sha(root/'index.html')==meta['before']
           activated=False
           try:
-           put(s.encode());reload();activated=True
+           activated=True
            run('python3',stage/'safe-release.py','activate','--state',state)
            verify()
           except BaseException:
-           put(original);reload()
            if activated:run('python3',stage/'safe-release.py','rollback','--state',state)
            raise
           print('Verified Moon Chat overseas',meta['commit'])
           RELEASE_DATA
           cat > "$RUNNER_TEMP/manifest.json" <<'RELEASE_DATA'
-          {"commit": "59ade387c2b3f8aab3bc128497aecdcd991c32b3", "before": "4a8b6216833a2fb4f5200a7717fbd99a37cce38a7ff3ea8d6b44234c4e7b01ef", "after": "758b3e50e27d10542c4fa49e2149160138d64aa9d05f35115a2469d8fa09874b"}
+          {"commit": "76a9b9afe7f0aa096f98e8867655b9a7025ed838", "before": "758b3e50e27d10542c4fa49e2149160138d64aa9d05f35115a2469d8fa09874b", "after": "55c5454ae051a5e35cc73ea28b77b86a87a67b744d1ae913296349f308a892c5"}
           RELEASE_DATA
           cat > "$RUNNER_TEMP/live.block" <<'RELEASE_DATA'
           location = /api/chatroom/live {
@@ -128,7 +118,7 @@ jobs:
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           for attempt in 1 2 3; do
-            label="moon-chat-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            label="moon-chat-sync-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
             stage="/tmp/tsukuyomi-$label"
             echo "Starting upload and activation (attempt $attempt)"
             if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
