@@ -46,7 +46,7 @@
 :root[data-season='winter'] {
   --paper: #f5f8fc; --surface: #fdfeff; --soft: #e8edf6;
   --line: #d8e1ee; --line-strong: #bfcbe0; --ink: #2a3550; --muted: #445571;
-  --accent: #46628d; --accent-hover: #344b70;
+  --accent: #3e5780; --accent-hover: #344b70;
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
