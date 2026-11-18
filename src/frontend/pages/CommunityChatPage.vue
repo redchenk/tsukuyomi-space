@@ -7,6 +7,9 @@ import shared from '../../../shared/community-chat.cjs';
 import { chatCopy } from '../data/communityChatCopy';
 import { chatRequest, connectChannel } from '../services/communityChat';
 import { applyGrowthResult, loadGrowth } from '../services/userGrowth';
+import { useMediaQuery } from '../composables/useMediaQuery';
+import { useModalDialog } from '../composables/useModalDialog';
+import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
 import plazaArt from '../assets/navigation/plaza-gathering.webp';
 import portrait from '../assets/sakura/yachiyo-portrait.webp';
 
@@ -21,6 +24,23 @@ const messages = ref([]), members = ref([]), status = ref('connecting'), older =
 const draft = ref(''), reply = ref(null), working = ref(false), feedback = ref(''), feed = ref(null), input = ref(null);
 const sheet = ref(''), action = ref(null), reports = ref([]), activeToday = ref(0), unread = ref({}), newBelow = ref(false);
 const rewarded = ref(false), moderator = computed(() => ['admin','super_admin'].includes(props.user?.role));
+const compact = useMediaQuery('(max-width: 760px)');
+const membersOpen = computed(() => sheet.value === 'members');
+const drawer = useModalDialog(() => compact.value && ['channels', 'members'].includes(sheet.value));
+watch(compact, () => { sheet.value = ''; });
+watch([draft, input], () => {
+  if (!input.value) return;
+  input.value.style.height = 'auto';
+  input.value.style.height = input.value.scrollHeight + 'px';
+}, { flush: 'post' });
+
+function closeOnBackdrop(event) {
+  if (event.target !== drawer.value) return;
+  const bounds = drawer.value.getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right ||
+      event.clientY < bounds.top || event.clientY > bounds.bottom) sheet.value = '';
+}
+
 const drafts = new Map();
 let disconnect, epoch = 0, pending = null;
 const speaker = m => m.userId ? m.nickname : copy.value.yachiyo;
@@ -64,9 +84,13 @@ watch([() => channel.value.id, () => props.user?.id],([id,userId], previous) => 
   if (userId) loadGrowth().then(s => { if (version===epoch) rewarded.value=!!s?.today.tasks.find(t => t.key==='daily_chatroom')?.completed; }).catch(() => {});
 },{immediate:true});
 onBeforeUnmount(() => { epoch++; disconnect?.(); });
-function select(c) { router.replace({path:'/chatroom',query:{channel:c.id}}); }
+function select(c) {
+  sheet.value = '';
+  router.replace({path:'/chatroom',query:{channel:c.id}});
+}
 function login() { emit('go','/login?redirect='+encodeURIComponent(route.fullPath)); }
 function callYachiyo() {
+  if (compact.value) sheet.value = '';
   if (!props.user) return login();
   if (!shared.mentionsYachiyo(draft.value)) draft.value = mention.value + ' ' + draft.value;
   nextTick(() => input.value?.focus());
@@ -136,69 +160,109 @@ async function command(m, name) {
 </script>
 
 <template>
-  <main class="page moon-chat">
-    <div class="mc-layout">
+  <main class="moon-chat">
+    <dialog ref="drawer" class="mc-drawer" :class="{ 'mc-drawer-right': membersOpen }"
+      :aria-label="membersOpen ? copy.online : copy.channels"
+      @cancel.prevent="sheet=''" @click="closeOnBackdrop"></dialog>
+
+    <Teleport v-if="!compact || (drawer && sheet === 'channels')" :to="drawer" :disabled="!compact">
       <aside class="mc-sidebar">
-        <div class="mc-cover"><img :src="plazaArt" alt=""><div><TsIcon name="moonStar" :size="25"/><h1>{{ copy.title }}</h1></div></div>
-        <h2 class="mc-label">{{ copy.channels }}</h2>
+        <header class="mc-server">
+          <img class="mc-server-art" :src="plazaArt" alt="">
+          <a class="mc-hub" href="/hub" :title="copy.hub" :aria-label="copy.hub"><img :src="brandLogo" alt="" width="34" height="34"></a>
+          <h1>{{ copy.title }}</h1>
+          <button v-if="compact" type="button" class="mc-icon" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x"/></button>
+        </header>
         <nav class="mc-channels" :aria-label="copy.channels">
-          <button v-for="c in shared.channels" :key="c.id" type="button" :class="{selected:c.id===channel.id}" :aria-current="c.id===channel.id?'page':undefined" @click="select(c)">
-            <TsIcon :name="c.icon" :size="19"/><span>{{ label(c) }}</span><i v-if="unread[c.id]" class="mc-unread" :aria-label="copy.jump"></i>
+          <h2 class="mc-label">{{ copy.channels }}</h2>
+          <button v-for="c in shared.channels" :key="c.id" type="button" :aria-current="c.id === channel.id ? 'page' : undefined" @click="select(c)">
+            <span class="mc-hash" aria-hidden="true">#</span><span>{{ label(c) }}</span>
+            <i v-if="unread[c.id]" class="mc-unread" :aria-label="copy.jump"></i>
           </button>
         </nav>
-        <a href="/growth" class="mc-xp" @click.prevent="emit('go',user?'/growth':'/login?redirect=%2Fgrowth')">
-          <TsIcon :name="rewarded?'check':'sparkles'" :size="20"/><span><strong>{{ copy.growth }}</strong><small>{{ rewarded?copy.awarded:copy.xp+' +'+shared.dailyXp+' XP' }}</small></span><TsIcon name="chevronRight" :size="15"/>
-        </a>
+        <div class="mc-sidebar-bottom">
+          <div class="mc-connection"><i :class="{on:status==='live'}"></i>{{ copy[status] }}</div>
+          <div class="mc-xp">
+            <span class="mc-xp-icon"><TsIcon :name="rewarded?'check':'sparkles'" :size="18"/></span>
+            <span><strong>{{ copy.growth }}</strong><small>{{ rewarded ? copy.awarded : copy.xp+' +'+shared.dailyXp+' XP' }}</small></span>
+            <button v-if="moderator" type="button" class="mc-icon" :title="copy.manage" :aria-label="copy.manage" @click="moderate"><TsIcon name="shield" :size="19"/></button>
+          </div>
+        </div>
       </aside>
-      <section class="mc-main" :aria-label="label(channel)">
-        <header class="mc-heading">
-          <div class="mc-channel-mark"><TsIcon :name="channel.icon" :size="26"/></div>
-          <div><h2><span>#</span> {{ label(channel) }}</h2><p>{{ copy.topics[channel.id] }}</p></div>
-          <button type="button" class="mc-presence-trigger" @click="sheet='members'"><TsIcon name="users" :size="17"/>{{ members.length }}</button>
-        </header>
-        <div ref="feed" class="mc-feed" role="log" :aria-label="label(channel)" aria-live="polite" @scroll="nearBottom() && (newBelow=false)">
+    </Teleport>
+
+    <section class="mc-main" :aria-label="label(channel)">
+      <header class="mc-heading">
+        <a v-if="compact" class="mc-hub" href="/hub" :title="copy.hub" :aria-label="copy.hub"><img :src="brandLogo" alt="" width="32" height="32"></a>
+        <h2>
+          <button v-if="compact" type="button" class="mc-picker" :aria-label="copy.choose+' · '+label(channel)" aria-haspopup="dialog" :aria-expanded="sheet==='channels'" @click="sheet='channels'">
+            <span class="mc-hash" aria-hidden="true">#</span>{{ label(channel) }}<TsIcon name="chevronDown" :size="15"/>
+          </button>
+          <template v-else><span class="mc-hash" aria-hidden="true">#</span>{{ label(channel) }}</template>
+        </h2>
+        <p v-if="!compact" class="mc-topic">{{ copy.topics[channel.id] }}</p>
+        <button class="mc-icon mc-presence-trigger" type="button" :title="copy.online" :aria-label="copy.online" :aria-expanded="membersOpen" @click="sheet=membersOpen?'':'members'">
+          <TsIcon name="users" :size="20"/><span>{{ members.length }}</span>
+        </button>
+      </header>
+
+      <div ref="feed" class="mc-feed" role="log" :aria-label="label(channel)" aria-live="polite" @scroll="nearBottom() && (newBelow=false)">
+        <div class="mc-timeline">
           <button v-if="older" class="mc-older" type="button" :disabled="loadingOlder" @click="earlier">{{ copy.older }}</button>
-          <div v-if="!messages.length" class="mc-empty"><span><TsIcon :name="channel.icon" :size="32"/></span><h3>{{ status==='live'?copy.first:copy[status] }}</h3><p>{{ status==='live'?copy.invite:label(channel) }}</p></div>
+          <div v-else-if="!messages.length" class="mc-intro">
+            <span class="mc-intro-mark"><TsIcon :name="channel.icon" :size="29"/></span>
+            <h3>{{ status === 'live' ? copy.first : copy[status] }}</h3>
+            <p>{{ status === 'live' ? copy.invite : label(channel) }}</p>
+          </div>
           <template v-for="(m,index) in messages" :key="m.id">
             <div v-if="!index || date(messages[index-1].createdAt)!==date(m.createdAt)" class="mc-day"><span>{{ date(m.createdAt) }}</span></div>
             <article class="mc-message" :class="{'mc-bot':!m.userId}" :data-id="m.id">
               <span class="mc-avatar"><img v-if="!m.userId||m.avatar" :src="m.userId?m.avatar:portrait" alt="" loading="lazy"><template v-else>{{ [...(speaker(m)||'?')][0] }}</template></span>
-              <div class="mc-message-body"><header><strong>{{ speaker(m) }}</strong><small class="mc-badge">{{ m.userId?'Lv.'+m.level:'AI' }}</small><time :datetime="new Date(m.createdAt).toISOString()">{{ time(m.createdAt) }}</time></header>
+              <div class="mc-message-body">
+                <header><strong>{{ speaker(m) }}</strong><small class="mc-badge">{{ m.userId?'Lv.'+m.level:'AI' }}</small><time :datetime="new Date(m.createdAt).toISOString()">{{ time(m.createdAt) }}</time></header>
                 <blockquote v-if="m.replyTo && !m.removed">↳ {{ m.quote || copy.removed }}</blockquote>
                 <p :class="{quiet:m.removed}">{{ m.removed?copy.removed:m.content }}</p>
                 <small v-if="m.aiStatus==='pending'||m.aiStatus==='failed'" class="mc-ai-status">{{ m.aiStatus==='pending'?copy.waiting:copy.failed }}</small>
               </div>
-              <button v-if="!m.removed && user" type="button" class="mc-more" :aria-label="copy.actions" @click="showActions(m)"><TsIcon name="ellipsis" :size="17"/></button>
+              <button v-if="!m.removed && user" type="button" class="mc-icon mc-more" :aria-label="copy.actions" @click="showActions(m)"><TsIcon name="ellipsis" :size="18"/></button>
             </article>
           </template>
         </div>
+      </div>
+
+      <div class="mc-compose-wrap">
         <button v-if="newBelow" type="button" class="mc-new" @click="bottom">{{ copy.jump }} ↓</button>
-        <div class="mc-compose-wrap">
-          <p v-if="feedback" class="mc-feedback" role="status">{{ feedback }}</p>
-          <form v-if="user" class="mc-compose" @submit.prevent="send">
-            <div v-if="reply" class="mc-quote">{{ copy.reply }} · {{ speaker(reply) }} <button type="button" @click="reply=null">{{ copy.cancel }}</button></div>
-            <textarea ref="input" v-model="draft" rows="2" maxlength="4000" :disabled="working" :aria-label="copy.placeholder+' #'+label(channel)" :placeholder="copy.placeholder+' #'+label(channel)+'…'" @keydown="keydown"></textarea>
-            <div class="mc-compose-tools"><button type="button" class="mc-mention" @click="callYachiyo">{{ mention }} <small>{{ copy.free }}</small></button>
-              <button type="submit" class="mc-send" :disabled="working||!draft.trim()"><TsIcon name="send" :size="16"/>{{ copy.send }}</button></div>
-          </form>
-          <div v-else class="mc-guest"><p>{{ copy.guest }}</p><button type="button" class="mc-send" @click="login">{{ copy.login }} <TsIcon name="arrowRight" :size="15"/></button></div>
-        </div>
-      </section>
-      <aside class="mc-right">
-        <div class="mc-assistant-art"><img :src="portrait" alt=""><span>AI · {{ copy.free }}</span></div>
-        <div class="mc-assistant-copy"><h2>{{ copy.yachiyo }}</h2><p>{{ copy.aiHint }}</p>
-          <button type="button" @click="callYachiyo"><TsIcon name="sparkles" :size="16"/>{{ copy.ask }}</button></div>
-        <div class="mc-members"><h2 class="mc-label">{{ copy.online }} <span>{{ members.length }}</span></h2>
+        <p v-if="feedback" class="mc-feedback" role="status">{{ feedback }}</p>
+        <form v-if="user" class="mc-compose" @submit.prevent="send">
+          <div v-if="reply" class="mc-quote">{{ copy.reply }} · {{ speaker(reply) }} <button type="button" :aria-label="copy.cancel" @click="reply=null"><TsIcon name="x" :size="16"/></button></div>
+          <div class="mc-input-row">
+            <button type="button" class="mc-mention" :title="mention+' · '+copy.free" :aria-label="mention+' · '+copy.free" @click="callYachiyo">
+              <img :src="portrait" alt="" width="26" height="26"><span>{{ mention }}</span><small>{{ copy.free }}</small>
+            </button>
+            <textarea ref="input" v-model="draft" rows="1" maxlength="4000" :disabled="working" :aria-label="copy.placeholder+' #'+label(channel)" :placeholder="copy.placeholder+' #'+label(channel)+'…'" @keydown="keydown"></textarea>
+            <button type="submit" class="mc-icon mc-send" :title="copy.send" :aria-label="copy.send" :disabled="working||!draft.trim()"><TsIcon name="send" :size="20"/></button>
+          </div>
+        </form>
+        <div v-else class="mc-guest"><p>{{ copy.guest }}</p><button type="button" @click="login">{{ copy.login }} <TsIcon name="arrowRight" :size="16"/></button></div>
+      </div>
+    </section>
+
+    <Teleport v-if="membersOpen && (!compact || drawer)" :to="drawer" :disabled="!compact">
+      <aside class="mc-roster">
+        <header><h2>{{ copy.online }} <small>{{ members.length }}</small></h2>
+          <button class="mc-icon" type="button" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x" :size="18"/></button></header>
+        <div class="mc-roster-scroll">
+          <button type="button" class="mc-assistant" :title="copy.ask" @click="callYachiyo">
+            <img :src="portrait" alt="" width="36" height="36"><span><strong>{{ copy.yachiyo }}</strong><small>{{ copy.ai }} · {{ copy.free }}</small></span><TsIcon name="sparkles" :size="16"/>
+          </button>
+          <h3 class="mc-label">{{ members.length }} {{ copy.here }}</h3>
           <p v-if="!members.length">{{ copy.noMembers }}</p>
           <div v-for="member in members" :key="member.id" class="mc-member"><i></i>{{ member.name }}</div>
         </div>
-        <span class="mc-connection"><i :class="{on:status==='live'}"></i>{{ copy[status] }}</span>
       </aside>
-    </div>
-    <button v-if="moderator" type="button" class="mc-admin" @click="moderate"><TsIcon name="shield" :size="16"/>{{ copy.manage }}</button>
-    <MobileSheet :open="!!sheet" :title="sheet==='members'?copy.online:sheet==='manage'?copy.manage:copy.actions" :close-label="copy.close" @close="sheet=''">
+    </Teleport>
+    <MobileSheet :open="sheet==='manage' || sheet==='actions'" :title="sheet==='manage'?copy.manage:copy.actions" :close-label="copy.close" @close="sheet=''">
       <div class="mc-sheet">
-        <template v-if="sheet==='members'"><p>{{ copy[status] }} · {{ members.length }} {{ copy.here }}</p><div v-for="member in members" :key="member.id" class="mc-member"><i></i>{{ member.name }}</div></template>
         <template v-if="sheet==='actions'&&action"><p>{{ speaker(action) }} · {{ action.content.slice(0,96) }}</p>
           <button @click="chooseReply(action)">{{ copy.reply }}</button><button v-if="action.userId===user?.id||moderator" @click="command(action,'remove')">{{ copy.withdraw }}</button><button v-if="action.userId!==user?.id" @click="command(action,'report')">{{ copy.report }}</button></template>
         <template v-if="sheet==='manage'"><p>{{ copy.active }} · {{ activeToday }}</p><p v-if="!reports.length">{{ copy.noReports }}</p><div v-for="m in reports" :key="m.id"><strong>{{ speaker(m) }} · {{ m.reports }}</strong><p>{{ m.content }}</p>

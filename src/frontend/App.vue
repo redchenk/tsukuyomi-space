@@ -76,9 +76,9 @@ const entryActive = computed(() => entryPhase.value !== 'idle');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isRoomRoute = computed(() => route.name === 'room' || route.name === 'roomShared');
-const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value || isRoomRoute.value);
+const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value || isRoomRoute.value || route.name === 'chatroom');
 const guideRequested = ref(false);
-const showSitePet = computed(() => route.name === 'gomoku' || guideRequested.value);
+const showSitePet = computed(() => route.name === 'gomoku' || (guideRequested.value && route.name !== 'chatroom'));
 const performanceProfile = ref(getPerformanceProfile());
 const petReduced = computed(() => performanceProfile.value === 'reduced');
 const isAuthed = computed(() => Boolean(user.value));
@@ -504,7 +504,7 @@ onUnmounted(() => {
     :floating="route.name === 'gomoku'" :open-on-mount="guideRequested" @close="guideRequested = false"
     :lang="lang" :route-name="route.name" :reduced="petReduced" :entry-active="entryActive" @go="go" />
 
-  <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
+  <div v-if="visitPopup.visible && route.name === 'hub'" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
       <span class="visit-popup-kicker">Tsukuyomi Notice</span>
       <h2>{{ visitPopup.title }}</h2>
