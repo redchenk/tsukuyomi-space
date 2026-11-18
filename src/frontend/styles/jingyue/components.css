@@ -15,7 +15,7 @@
 .text-link { display: inline-flex; align-items: center; gap: 10px; color: var(--accent); font-size: 14px; font-weight: 600; min-height: 44px; text-decoration: underline; text-underline-offset: 5px; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .text-link:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
 :where(input:not([type='range']):not([type='checkbox']):not([type='radio']):not([type='color']), textarea, select) { padding: 11px 14px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-control); }
-:where(input, textarea)::placeholder { color: var(--muted); opacity: .85; }
+:where(input, textarea)::placeholder { color: var(--muted); opacity: 1; }
 :where(input, textarea, select):focus-visible { outline-offset: 2px; }
 :where(.form-group, .form-field) { display: grid; gap: 8px; margin-bottom: 18px; }
 :where(.form-group, .form-field) label { font-size: 14px; font-weight: 500; }

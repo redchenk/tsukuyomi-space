@@ -262,7 +262,7 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row:focus-within { border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--chat-line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--chat-accent) 10%, transparent), 0 10px 28px -16px rgb(20 20 30 / 22%); }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row.is-listening { border-color: color-mix(in srgb, var(--chat-accent) 60%, var(--chat-line)); }
   .room-shell .room-conversation-layout .room-chat-panel #chatInput { --ts-readable-input-bg: transparent; grid-area: text; display: block; width: 100%; min-height: 26px; max-height: 200px; margin: 0; padding: 0 6px 4px; border: 0; border-radius: 0; outline: 0; background: none; box-shadow: none; color: var(--chat-ink); font: inherit; font-size: 15px; line-height: 1.65; resize: none; overflow-y: auto; scrollbar-width: thin; }
-  .room-shell .room-conversation-layout .room-chat-panel #chatInput::placeholder { color: var(--chat-muted); font-size: 15px; opacity: .8; }
+  .room-shell .room-conversation-layout .room-chat-panel #chatInput::placeholder { color: var(--chat-muted); font-size: 15px; opacity: 1; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row.is-listening #chatInput::placeholder { color: var(--chat-accent); opacity: 1; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn { position: relative; display: grid; place-items: center; width: 36px; min-width: 36px; height: 36px; min-height: 36px; margin: 0; padding: 0; border: 0; border-radius: 50%; box-shadow: none; font-size: 13px; cursor: pointer; transition: background-color var(--chat-fast) ease, color var(--chat-fast) ease, opacity var(--chat-fast) ease, transform 120ms ease; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn > span:not(.chat-stop-icon):not(.chat-voice-bars) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -295,7 +295,7 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-conversation-layout .room-chat-panel .chat-end-short-label { display: none; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-end-hint { display: block; min-width: 0; overflow: hidden; color: var(--chat-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-end-hint::before { content: '·'; margin-right: 10px; opacity: .6; }
-  .room-shell .room-ai-disclaimer { display: block; flex: none; margin-left: auto; color: var(--chat-muted); font-size: 12px; white-space: nowrap; opacity: .8; }
+  .room-shell .room-ai-disclaimer { display: block; flex: none; margin-left: auto; color: var(--chat-muted); font-size: 12px; white-space: nowrap; }
 
   .room-shell .room-image-upload.upload-progress-card { margin: 0 var(--chat-gutter) 10px; }
 }
@@ -413,7 +413,7 @@ html[data-theme="dark"] .room-shell .room-chat-panel .chat-message-failed { colo
   .room-shell .room-transcript-viewport .room-return-latest::before { content: ''; position: absolute; inset: -4px; }
 
   /* Empty state over the scene */
-  .room-shell .room-conversation-layout .room-chat-welcome { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: auto 8px 14px; padding: 8px; color: var(--room-stage-ink, #fff); text-align: center; text-shadow: var(--room-stage-text-shadow, 0 1px 8px #18132a); }
+  .room-shell .room-conversation-layout .room-chat-welcome { display: flex; flex-direction: column; align-items: center; gap: 6px; align-self: center; max-width: calc(100% - 16px); margin: auto auto 14px; padding: 8px 16px; border-radius: var(--r-control); color: #fff; background: rgb(18 22 32 / 80%); text-align: center; text-shadow: none; }
   .room-shell .room-conversation-layout .room-chat-welcome strong { color: inherit; font-family: 'Songti SC', 'Noto Serif SC', serif; font-size: 22px; font-weight: 500; letter-spacing: .06em; }
   .room-shell .room-conversation-layout .room-chat-welcome p { margin: 0; color: inherit; font-size: 13.5px; line-height: 1.7; opacity: .92; }
   .room-shell .room-conversation-layout .room-chat-welcome p.field-hint { display: none; }

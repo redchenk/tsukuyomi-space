@@ -64,7 +64,7 @@
     display: grid;
     place-items: center;
     border-radius: 999px;
-    color: #fff;
+    color: #202137;
     font-weight: 900;
     background: linear-gradient(135deg, #7b8cf6, #ff7ac8);
     box-shadow: var(--ts-shadow-accent);

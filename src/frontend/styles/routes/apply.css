@@ -25,7 +25,7 @@
 .apply-fields { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; margin:20px 0; }
 .apply-page .apply-check { display:flex; align-items:flex-start; gap:10px; font-size:12px; line-height:1.8; margin:14px 0; cursor:pointer; }
 .apply-check input { margin:4px 0 0; width:16px; height:16px; flex:none; accent-color:var(--ts-accent); }
-.apply-page .apply-button { display:inline-flex; align-items:center; justify-content:center; gap:12px; border:0; border-radius:10px; min-height:46px; padding:11px 20px; background:var(--ts-accent); color:#fff; text-decoration:none; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
+.apply-page .apply-button { display:inline-flex; align-items:center; justify-content:center; gap:12px; border:0; border-radius:10px; min-height:46px; padding:11px 20px; background:var(--ts-accent); color:var(--on-accent); text-decoration:none; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
 .apply-card .apply-button { width:100%; box-sizing:border-box; margin-top:9px; }
 .apply-page button:disabled { opacity:.5; cursor:not-allowed; }
 .apply-page .apply-fine { color:var(--ts-muted); font-size:11px; margin-top:16px; text-align:center; }

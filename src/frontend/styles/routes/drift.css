@@ -193,6 +193,9 @@
 .drift-sea-actions button { flex: 1; }
 
 .drift-workspace-foot {
+    background: var(--pages-surface);
+    border-radius: var(--ts-radius-control);
+    padding: 3px 6px;
     display: flex;
     align-items: flex-start;
     flex-wrap: wrap;

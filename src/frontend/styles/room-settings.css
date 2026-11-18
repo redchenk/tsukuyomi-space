@@ -443,7 +443,7 @@
 .room-settings-page input::placeholder,
 .room-settings-page textarea::placeholder {
   color: var(--muted);
-  opacity: 0.8;
+  opacity: 1;
 }
 .room-settings-page input[type='range'] {
   width: 100%;

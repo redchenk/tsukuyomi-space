@@ -87,7 +87,7 @@ body .page.user-profile-page .profile-avatar img {
     display: block;
     object-fit: cover;
     border-radius: inherit;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--soft);
 }
 
 body .page.user-profile-page .profile-main {
@@ -134,8 +134,8 @@ body .page.user-profile-page .profile-meta span {
     padding: 0.28rem 0.62rem;
     border: 1px solid rgba(177, 205, 238, 0.18);
     border-radius: 999px;
-    color: rgba(238, 246, 255, 0.84);
-    background: rgba(30, 41, 59, 0.58);
+    color: var(--ink);
+    background: var(--soft);
     font-size: 0.76rem;
 }
 
@@ -155,24 +155,24 @@ body .page.user-profile-page .icon-btn {
 }
 
 body .page.user-profile-page .primary-btn {
-    color: #fff;
-    border-color: rgba(131, 216, 236, 0.28);
-    background: linear-gradient(135deg, rgba(98, 191, 219, 0.88), rgba(169, 155, 237, 0.88));
+    color: var(--on-accent);
+    border-color: transparent;
+    background: var(--accent);
 }
 
 body .page.user-profile-page .ghost-btn,
 body .page.user-profile-page .icon-btn {
-    color: rgba(238, 246, 255, 0.9);
+    color: var(--ink);
     border-color: rgba(177, 205, 238, 0.18);
-    background: rgba(30, 41, 59, 0.62);
+    background: var(--soft);
 }
 
 body .page.user-profile-page .primary-btn:hover,
 body .page.user-profile-page .ghost-btn:hover,
 body .page.user-profile-page .icon-btn:hover {
-    color: #fff;
-    border-color: var(--profile-line-bright);
-    background: linear-gradient(135deg, rgba(85, 183, 213, 0.82), rgba(157, 142, 230, 0.82));
+    color: var(--on-accent);
+    border-color: var(--accent-hover);
+    background: var(--accent-hover);
     transform: translateY(-1px);
 }
 
@@ -421,8 +421,8 @@ body .page.user-profile-page .profile-avatar-initial {
     height: 38px;
     border: 1px solid rgba(231, 247, 253, 0.44);
     border-radius: 50%;
-    color: #fff;
-    background: linear-gradient(135deg, rgba(98, 191, 219, 0.9), rgba(169, 155, 237, 0.9));
+    color: var(--on-accent);
+    background: var(--accent);
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
     font-weight: 900;
 }
@@ -528,7 +528,7 @@ body .page.user-profile-page .profile-presence-grid span {
 body .page.user-profile-page .profile-presence-grid b {
     min-width: 0;
     overflow: hidden;
-    color: #fff;
+    color: var(--ink);
     font-size: 1.12rem;
     line-height: 1.05;
     text-overflow: ellipsis;
@@ -643,7 +643,7 @@ body .page.user-profile-page .profile-article h3 a {
 }
 
 body .page.user-profile-page .profile-article h3 a:hover {
-    color: #fff;
+    color: var(--accent-hover);
 }
 
 body .page.user-profile-page .profile-article p {
@@ -718,8 +718,8 @@ body .page.user-profile-page .profile-topic-list > span {
     padding: 0.36rem 0.62rem;
     border: 1px solid rgba(177, 205, 238, 0.16);
     border-radius: 999px;
-    color: rgba(238, 246, 255, 0.82);
-    background: rgba(30, 41, 59, 0.62);
+    color: var(--ink);
+    background: var(--soft);
     font: inherit;
     font-size: 0.78rem;
 }
@@ -938,10 +938,8 @@ body .page.user-profile-page .profile-article,
 body .page.user-profile-page .profile-empty,
 body .page.user-profile-page .profile-presence,
 body .page.user-profile-page .profile-side-card {
-    border-color: rgba(231, 249, 255, 0.14);
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045)),
-        rgba(8, 13, 28, 0.58);
+    border-color: var(--profile-line);
+    background: var(--surface);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.08),
         0 16px 44px rgba(0, 0, 0, 0.2);
@@ -957,8 +955,7 @@ body .page.user-profile-page .profile-hero {
     margin-bottom: 0.82rem;
     padding: clamp(0.95rem, 1.8vw, 1.35rem);
     background:
-        radial-gradient(circle at 10% 10%, rgba(174, 242, 255, 0.16), transparent 30%),
-        linear-gradient(125deg, rgba(8, 13, 28, 0.86), rgba(16, 24, 42, 0.72) 54%, rgba(26, 23, 49, 0.78)),
+        linear-gradient(125deg, color-mix(in srgb, var(--paper) 95%, transparent), color-mix(in srgb, var(--paper) 88%, transparent)),
         url("/assets/images/tsukuyomi-bg.webp") center 44% / cover no-repeat;
 }
 
@@ -1008,7 +1005,7 @@ body .page.user-profile-page .profile-meta {
 
 body .page.user-profile-page .profile-meta span {
     padding: 0.24rem 0.54rem;
-    background: rgba(255, 255, 255, 0.055);
+    background: var(--soft);
 }
 
 body .page.user-profile-page .profile-actions {
@@ -1039,7 +1036,7 @@ body .page.user-profile-page .primary-btn {
 
 body .page.user-profile-page .ghost-btn,
 body .page.user-profile-page .icon-btn {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--soft);
 }
 
 body .page.user-profile-page .primary-btn:hover,
@@ -1084,7 +1081,7 @@ body .page.user-profile-page .profile-presence-grid {
 
 body .page.user-profile-page .profile-presence-grid span {
     padding: 0.56rem;
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--surface);
 }
 
 body .page.user-profile-page .profile-stats {
@@ -1096,9 +1093,7 @@ body .page.user-profile-page .profile-stat {
     min-height: 78px;
     gap: 0.72rem;
     padding: 0.78rem 0.86rem;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)),
-        rgba(8, 13, 28, 0.5);
+    background: var(--surface);
 }
 
 body .page.user-profile-page .profile-stat::before {
@@ -1165,12 +1160,12 @@ body .page.user-profile-page .profile-article {
     grid-template-columns: 112px minmax(0, 1fr) auto;
     min-height: 118px;
     padding: 0.68rem;
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--surface);
 }
 
 body .page.user-profile-page .profile-article:hover {
     border-color: rgba(174, 242, 255, 0.28);
-    background: rgba(255, 255, 255, 0.075);
+    background: var(--soft);
     transform: translate3d(0, -2px, 0);
 }
 
@@ -1208,7 +1203,7 @@ body .page.user-profile-page .profile-side-metrics {
 
 body .page.user-profile-page .profile-side-metrics div {
     padding: 0.62rem;
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--surface);
 }
 
 body .page.user-profile-page .profile-topic-list {
@@ -1219,7 +1214,7 @@ body .page.user-profile-page .profile-topic-list button,
 body .page.user-profile-page .profile-topic-list > span {
     min-height: 30px;
     padding: 0.32rem 0.56rem;
-    background: rgba(255, 255, 255, 0.055);
+    background: var(--soft);
 }
 
 body .page.user-profile-page .profile-empty {

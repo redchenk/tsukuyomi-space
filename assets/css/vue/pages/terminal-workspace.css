@@ -81,7 +81,7 @@ body .page.terminal-page .terminal-login-mark {
     width: 34px;
     height: 34px;
     border-radius: 16px;
-    color: #fff;
+    color: var(--on-accent);
     background: var(--ts-gradient-brand);
     box-shadow: var(--terminal-ui-shadow);
 }
@@ -292,13 +292,13 @@ body .page.terminal-page :is(.primary-btn, .ghost-btn, .danger-btn, .terminal-pa
 
 body .page.terminal-page .primary-btn {
     border-color: var(--terminal-ui-primary);
-    color: #fff;
+    color: var(--on-accent);
     background: var(--ts-gradient-brand);
 }
 
 body .page.terminal-page .primary-btn:hover:not(:disabled) {
     border-color: var(--terminal-ui-primary-hover);
-    color: #fff;
+    color: var(--on-accent);
     background: var(--ts-gradient-brand-hover);
     box-shadow: none;
     transform: none;
@@ -745,7 +745,7 @@ body .page.terminal-page .terminal-page-btn:hover:not(:disabled) {
 
 body .page.terminal-page .terminal-page-btn.active {
     border-color: var(--terminal-ui-primary);
-    color: #fff;
+    color: var(--on-accent);
     background: var(--ts-gradient-brand);
     box-shadow: none;
 }

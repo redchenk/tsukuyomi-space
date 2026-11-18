@@ -43,7 +43,7 @@
 .gallery-card:nth-child(3n+2) .gallery-thumb { aspect-ratio: 4/3.5; }
 .gallery-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 500ms var(--ease); }
 .gallery-thumb:hover img { transform: scale(1.045); }
-.gallery-image-tag { position: absolute; left: 12px; bottom: 12px; color: white; background: rgb(0 0 0 / 45%); padding: 5px 10px; border-radius: var(--r-pill); font-size: 13px; }
+.gallery-image-tag { position: absolute; left: 12px; bottom: 12px; color: white; background: rgb(0 0 0 / 72%); padding: 5px 10px; border-radius: var(--r-pill); font-size: 13px; }
 .gallery-card-body { padding: 15px 0 0; }
 .gallery-card-title { font-size: 16px; line-height: 1.5; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gallery-card-meta, .gallery-uploader { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }

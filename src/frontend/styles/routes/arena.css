@@ -19,7 +19,7 @@
   --ps-line-strong: rgb(255 255 255 / 13%);
   --ps-text: #ebecef;
   --ps-muted: #a2a4ad;
-  --ps-faint: #70727c;
+  --ps-faint: #acafbb;
   --ps-board: #141518;
   --ps-accent: #93a3ff;
   --ps-accent-ink: #0f1222;
@@ -44,9 +44,9 @@ html[data-theme="light"] .ps-theme {
   --ps-line-strong: rgb(20 22 40 / 15%);
   --ps-text: #1e1f25;
   --ps-muted: #5f626d;
-  --ps-faint: #8d909b;
+  --ps-faint: #565965;
   --ps-board: #dfe0e5;
-  --ps-accent: #5867e8;
+  --ps-accent: #4452c1;
   --ps-accent-ink: #ffffff;
   --ps-accent-soft: rgb(88 103 232 / 11%);
   --ps-accent-line: rgb(88 103 232 / 35%);
@@ -362,7 +362,7 @@ body .pixel-studio .pixel-canvas .pixel-canvas-renderer {
 .ps-theme .pw-hex-field { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--ps-faint); background: var(--ps-raised); font-family: var(--ps-mono); font-size: 12px; }
 .ps-theme .pw-hex-field:focus-within { box-shadow: inset 0 0 0 1.5px var(--ps-accent); }
 .ps-theme .pw-hex-field input { flex: 1; width: 100%; min-width: 0; height: auto; padding: 0; border: 0; border-radius: 0; outline: 0; color: var(--ps-text); background: transparent; font: inherit; text-transform: uppercase; }
-.ps-theme .pw-hex-field small { font-size: 10px; opacity: .7; }
+.ps-theme .pw-hex-field small { font-size: 10px; }
 
 /* Swatches */
 .ps-swatch-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }

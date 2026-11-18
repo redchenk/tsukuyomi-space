@@ -3,8 +3,8 @@
     --reality-title: var(--ink);
     --reality-text: var(--text);
     --reality-muted: var(--muted);
-    --reality-accent: #b46c95;
-    --reality-blue: #317fa4;
+    --reality-accent: #924c73;
+    --reality-blue: #246789;
     --reality-card-bg: rgba(255, 255, 255, 0.92);
     --reality-soft-bg: rgba(255, 255, 255, 0.82);
     --reality-table-head: rgba(231, 247, 253, 0.82);
@@ -16,7 +16,7 @@
 html[data-theme="dark"] .reality-page {
     --reality-title: #fff;
     --reality-text: rgba(255, 255, 255, 0.9);
-    --reality-muted: rgba(238, 226, 232, 0.68);
+    --reality-muted: #d5c7d0;
     --reality-accent: #f7d774;
     --reality-blue: #9ed8ff;
     --reality-card-bg: rgba(18, 16, 25, 0.78);
