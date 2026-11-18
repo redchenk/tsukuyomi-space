@@ -45,7 +45,7 @@ app.config.warnHandler = (msg, vm, info) => {
 app.use(router);
 // The immersive entry has no catalog-dependent labels. Never wait for a
 // secondary locale download before exposing its navigation controls.
-if (/^\/(?:access\/?)?$/.test(window.location.pathname)) {
+if (/^\/(?:(?:access|chatroom)\/?)?$/.test(window.location.pathname)) {
   app.mount('#app');
   prepareInterfaceLanguage().catch(() => {});
 } else {
