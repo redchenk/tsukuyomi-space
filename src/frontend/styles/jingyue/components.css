@@ -23,6 +23,8 @@
 :where(.form-row, .form-actions, .actions, .toolbar) { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 :where(.panel, .card) { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-media); padding: 24px; }
 .form-message { padding: 12px 16px; background: var(--soft); border-radius: var(--r-control); margin: 16px 0; font-size: 14px; }
+.ts-field-error:empty { display: none; }
+.ts-field-error:not(:empty) { color: var(--danger); font-size: 14px; line-height: 1.5; }
 .form-message.error, .error { color: var(--danger); }
 .form-message.success, .success { color: var(--success); }
 :where(.form-hint, .muted, .help-text) { font-size: 14px; color: var(--muted); }
