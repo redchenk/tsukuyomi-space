@@ -30,6 +30,54 @@ jobs:
           npm run build:web:overseas
           grep -Fq '/assets/index-Dpv8VoJO.js' dist/frontend/index.html
           cmp src/frontend/assets/entry/yachiyo-room-guide.webp dist/frontend/assets/yachiyo-room-guide-XubTRNZr.webp
+          python3 - "$RUNNER_TEMP" <<'PYMODEL'
+          import json, shutil, sys
+          from pathlib import Path
+          source = Path('models/tsukimi-yachiyo')
+          dest = Path(sys.argv[1]) / 'entry-model'
+          files = set()
+          for config in source.glob('*.model3.json'):
+              refs = json.loads(config.read_bytes())['FileReferences']
+              files.update([config.name, refs['Moc'], refs['Moc'] + '.gzip-r1', *refs['Textures']])
+              files.update(e['File'] for e in refs.get('Expressions', []))
+              if 'Physics' in refs:
+                  files.add(refs['Physics'])
+          assert len(files) == 20
+          for name in sorted(files):
+              path = dest / name
+              path.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(source / name, path)
+          PYMODEL
+          cat > "$RUNNER_TEMP/serve-model.py" <<'PYMODEL'
+          import os, shutil, sys, tempfile
+          from filecmp import cmp
+          from pathlib import Path
+          source, frontend = map(Path, sys.argv[1:])
+          target = frontend / 'models-v4/tsukimi-yachiyo'
+          assets = sorted(f for f in source.rglob('*') if f.is_file())
+          assert len(assets) == 20
+          for asset in assets:
+              dest = target / asset.relative_to(source)
+              dest.resolve().relative_to(frontend.resolve())
+              if dest.exists() and not cmp(asset, dest, shallow=False):
+                  raise SystemExit('Existing model asset differs: ' + dest.name)
+          for asset in assets:
+              dest = target / asset.relative_to(source)
+              if dest.exists():
+                  continue
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              with tempfile.NamedTemporaryFile(dir=dest.parent) as part:
+                  with asset.open('rb') as inp:
+                      shutil.copyfileobj(inp, part)
+                  part.flush()
+                  os.fchmod(part.fileno(), 0o644)
+                  try:
+                      os.link(part.name, dest)
+                  except FileExistsError:
+                      if not cmp(asset, dest, shallow=False):
+                          raise
+          print(f'Verified {len(assets)} local Room model files')
+          PYMODEL
           cat > "$RUNNER_TEMP/activate.sh" <<'REMOTE'
           set -euo pipefail
           stage="$1"
@@ -38,9 +86,16 @@ jobs:
           url=https://tsukuyomi-space.com
           baseline=40769931f28a13818b386d1638ef3f3acf6e694e2f9ce7e7c5707b6339eac7e5
           actual=$(sha256sum "$root/index.html" | cut -d' ' -f1)
+          serve_model() {
+            python3 "$stage/serve-model.py" "$stage/entry-model" "$root"
+            for file in tsukimi-yachiyo.model3.json tsukimi-yachiyo.moc3.gzip-r1 textures/desktop/texture_00.webp; do
+              curl -fsS --max-time 20 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/models-v4/tsukimi-yachiyo/$file" | cmp - "$stage/entry-model/$file"
+            done
+          }
           if [ "$actual" = "3acdcf5d066613432e1c85efaf584f132efd458a79d951525275a5bfa5ea3f08" ]; then
             cmp "$stage/frontend/assets/yachiyo-room-guide-XubTRNZr.webp" "$root/assets/yachiyo-room-guide-XubTRNZr.webp"
             curl -fsS --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/api/health" | python3 -c "import json,sys; assert json.load(sys.stdin)['status']=='ok'"
+            serve_model
             exit 0
           fi
           test "$actual" = "$baseline"
@@ -50,8 +105,9 @@ jobs:
             python3 "$stage/safe-release.py" rollback --state "$state"
             exit 1
           fi
+          serve_model
           REMOTE
-          tar -czf "$RUNNER_TEMP/room-entry-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.sh
+          tar -czf "$RUNNER_TEMP/room-entry-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.sh serve-model.py entry-model
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
