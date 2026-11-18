@@ -32,10 +32,10 @@ const UNREAD_POLL_INTERVAL_MS = 60000;
 let unreadPollId = 0, unreadRequest = null, releaseScroll = null, lastTrigger = null;
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: tr('首页', 'Home', 'ホーム'), icon: 'home', active: props.routeName === 'hub', spa: true },
-  { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
+  { path: '/room', key: 'room', label: props.t.room, dockLabel: tr('八千代', 'Yachiyo'), icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: tr('广场', 'Plaza', '広場'), icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: tr('阅读', 'Read', '読む'), icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
-  { path: '/chatroom', key: 'chatroom', label: tr('月读聊天室', 'Moon Chat', '月読チャット'), icon: 'message', active: props.routeName === 'chatroom', spa: true },
+  { path: '/chatroom', key: 'chatroom', label: tr('月读聊天室', 'Moon Chat', '月読チャット'), dockLabel: tr('聊天室', 'Chat', 'チャット'), icon: 'message', active: props.routeName === 'chatroom', spa: true },
   { path: '/drift', key: 'drift', label: props.lang === 'en' ? 'Starlit Letters' : props.lang === 'ja' ? '星の海からの手紙' : '星海来信', icon: 'moonStar', active: props.routeName === 'drift', spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
@@ -51,8 +51,8 @@ const navItems = computed(() => [
 ]);
 
 
-const desktopItems = computed(() => ['stage', 'gallery', 'plaza', 'wiki', 'game', 'download'].map(key => navItems.value.find(item => item.key === key)));
-const dockItems = computed(() => ['hub', 'stage', 'room', 'plaza'].map(key => navItems.value.find(item => item.key === key)));
+const desktopItems = computed(() => ['chatroom', 'stage', 'gallery', 'plaza', 'wiki', 'game', 'download'].map(key => navItems.value.find(item => item.key === key)));
+const dockItems = computed(() => ['hub', 'stage', 'chatroom', 'room', 'plaza'].map(key => navItems.value.find(item => item.key === key)));
 const footerGroups = computed(() => [
   { title: tr('发现', 'Discover'), keys: ['stage', 'gallery', 'wiki'] },
   { title: tr('相遇', 'Connect'), keys: ['room', 'chatroom', 'plaza', 'drift'] },
@@ -171,7 +171,10 @@ onUnmounted(() => {
     <header v-if="showChrome" class="site-header" :class="{ 'on-hero': routeName === 'hub' && !scrolled }">
       <a href="/hub" class="site-brand" @click="navigate($event, { path: '/hub' })"><img :src="brandLogo" alt="" width="32" height="32"><span>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}</span></a>
       <nav class="desktop-nav" :aria-label="t.navigation">
-        <a v-for="item in desktopItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @click="navigate($event, item)">{{ item.key === 'download' ? tr('下载', 'Download', 'ダウンロード') : item.label }}</a>
+        <a v-for="item in desktopItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @click="navigate($event, item)">
+          <span v-if="item.key === 'chatroom'" class="nav-chatroom-label"><TsIcon :name="item.icon" :size="16" />{{ item.label }}</span>
+          <template v-else>{{ item.key === 'download' ? tr('下载', 'Download', 'ダウンロード') : item.label }}</template>
+        </a>
         <button type="button" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)">{{ tr('更多', 'More', 'もっと') }}<TsIcon name="chevronDown" :size="13" /></button>
       </nav>
       <div class="header-actions">
@@ -211,8 +214,8 @@ onUnmounted(() => {
         <BeianLink />
       </div>
     </footer>
-    <nav v-if="showChrome && !keyboardOpen" class="mobile-dock" :aria-label="t.mobilePrimaryNavigation">
-      <a v-for="item in dockItems" :key="item.key" :href="item.path" :class="{ 'dock-room': item.key === 'room' }" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><span class="dock-icon"><TsIcon :name="item.icon" :size="22" /></span><span class="dock-label">{{ item.key === 'room' ? tr('八千代', 'Yachiyo') : item.label }}</span></a>
+    <nav v-if="showChrome && !keyboardOpen" class="mobile-dock" :style="{ '--dock-count': dockItems.length + 1 }" :aria-label="t.mobilePrimaryNavigation">
+      <a v-for="item in dockItems" :key="item.key" :href="item.path" :class="{ 'dock-room': item.key === 'room' }" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><span class="dock-icon"><TsIcon :name="item.icon" :size="22" /></span><span class="dock-label">{{ item.dockLabel || item.label }}</span></a>
       <button :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)"><span class="dock-icon"><TsIcon name="compass" :size="22" /></span><span class="dock-label">{{ copy.explore }}</span></button>
     </nav>
   </div>
