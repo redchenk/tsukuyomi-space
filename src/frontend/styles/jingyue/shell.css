@@ -5,6 +5,8 @@
 .site-brand img { border-radius: 50%; }
 .desktop-nav { display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 600; height: 100%; }
 .desktop-nav > :is(a, button) { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0; position: relative; white-space: nowrap; }
+.nav-chatroom-label { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--r-pill); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.on-hero .nav-chatroom-label { color: inherit; background: rgb(255 255 255 / 16%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 36%); }
 .desktop-nav [aria-current='page']::after { content: ''; position: absolute; height: 2px; background: var(--accent); inset: auto 0 14px; }
 .desktop-nav a:hover, .desktop-nav button:hover { text-decoration: underline; text-underline-offset: .3em; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 5px; }
@@ -73,7 +75,7 @@
   .header-download { display: inline-grid; }
   .site-brand { font-size: 20px; }
   .site-header { gap: 15px; }
-  .mobile-dock { position: fixed; z-index: 60; bottom: calc(12px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; width: min(440px, calc(100% - 24px)); padding: 6px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 32px rgb(25 20 15 / 18%); view-transition-name: mobile-dock; }
+  .mobile-dock { position: fixed; z-index: 60; bottom: calc(12px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(var(--dock-count), minmax(0, 1fr)); gap: 4px; width: min(440px, calc(100% - 24px)); padding: 6px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 32px rgb(25 20 15 / 18%); view-transition-name: mobile-dock; }
   .mobile-dock > :is(a, button) { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 0; border: 1px solid transparent; border-radius: 16px; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--muted); min-height: 62px; transition: background var(--fast), color var(--fast); }
   .mobile-dock :is([aria-current='page'], [aria-expanded='true']) { color: var(--accent); border-color: var(--accent); font-weight: 700; }
   .dock-icon { display: grid; place-items: center; height: 28px; width: 36px; }

@@ -44,7 +44,7 @@
   .mobile-dock.is-hidden:not(:focus-within) { transform: translateY(calc(100% + var(--dock-gap) + var(--safe-b) + 12px)); }
   .mobile-dock > :is(a, button) { z-index: 1; height: 52px; min-height: 52px; padding: 3px 0; gap: 1px; border: 0; background: transparent; font-size: 12px; font-weight: 600; color: var(--muted); }
   .mobile-dock :is([aria-current='page'], [aria-expanded='true']) { color: var(--accent); border: 0; font-weight: 600; }
-  .dock-indicator { position: absolute; top: 6px; left: 6px; width: calc((100% - 12px) / 5); height: 52px; border-radius: 18px; background: color-mix(in srgb, var(--accent) 10%, transparent); transform: translateX(calc(var(--dock-index, 0) * 100%)); transition: transform 320ms var(--ease-sheet); pointer-events: none; }
+  .dock-indicator { position: absolute; top: 6px; left: 6px; width: calc((100% - 12px) / var(--dock-count)); height: 52px; border-radius: 18px; background: color-mix(in srgb, var(--accent) 10%, transparent); transform: translateX(calc(var(--dock-index, 0) * 100%)); transition: transform 320ms var(--ease-sheet); pointer-events: none; }
   .mobile-dock .dock-room > .dock-icon { background: none; }
   .dock-avatar { width: 28px; height: 28px; object-fit: cover; object-position: 50% 20%; border-radius: 50%; }
   .mobile-dock > :is(a, button):active { transform: scale(.96); }

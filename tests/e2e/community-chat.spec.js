@@ -1,5 +1,19 @@
 const {test,expect} = require('../e2e-fixtures.cjs');
 
+test('the primary navigation opens Moon Chat directly from the hub', async ({ page, isMobile }) => {
+  await page.goto('/hub');
+  const nav = page.locator(isMobile ? '.mobile-dock' : '.desktop-nav');
+  const chat = nav.locator('a[href="/chatroom"]');
+  await expect(chat).toBeInViewport();
+  await expect(chat).toHaveAccessibleName(isMobile ? /^(聊天室|Chat|チャット)$/ : /^(月读聊天室|Moon Chat|月読チャット)$/);
+  await chat.click();
+  await expect(page).toHaveURL(/\/chatroom$/);
+  await expect(page.locator('.moon-chat')).toBeVisible();
+  await expect(page.locator('.site-header, .mobile-dock')).toHaveCount(0);
+  await page.locator('.mc-hub:visible').click();
+  await expect(chat).toBeInViewport();
+});
+
 test('two sessions exchange channel messages, quotes and withdrawals in real time',async({page,browser,baseURL},info)=>{
   const ctx=await browser.newContext({baseURL});
   const other=await ctx.newPage();
