@@ -52,3 +52,13 @@ for (const width of [390, 1280]) {
     });
   }
 }
+
+test.describe('public profile without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('the startup screen clears the server-rendered profile', async ({ page }) => {
+    await page.goto('/users/e2e-user');
+    await expect(page.locator('#boot-splash')).toBeHidden();
+    await expect(page.locator('[data-seo-fallback] h1')).toBeVisible();
+  });
+});
