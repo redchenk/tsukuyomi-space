@@ -60,9 +60,15 @@ test('SPA entry covers route loading, then reveals the same live room and releas
   await expect(splash).toHaveAttribute('data-phase', 'loading');
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   const room = await page.locator('.room-page').elementHandle();
+  const portrait = film.locator('.moon-entry-portrait img');
+  await expect(portrait).toHaveAttribute('src', /yachiyo-room-guide/);
+  await expect.poll(() => portrait.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
+  await expect(film.locator('.moon-entry-slogan')).toHaveCSS('opacity', '1');
+  await expect(portrait).toBeInViewport({ ratio: 1 });
+  const figure = await portrait.boundingBox();
+  const dialogue = await film.locator('.moon-entry-slogan').boundingBox();
+  expect(dialogue.x + dialogue.width <= figure.x + 1 || dialogue.y >= figure.y + figure.height - 1).toBe(true);
   await completeRenderer(page);
-  await expect.poll(() => film.locator('.moon-entry-portrait').evaluate(el =>
-    Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.3);
   await expect(splash).toHaveAttribute('data-captured', 'true');
   const timing = await splash.evaluate(node => node.getAnimations()[0].effect.getTiming().duration);
   expect(timing).toBe(650);

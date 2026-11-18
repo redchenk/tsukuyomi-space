@@ -99,9 +99,9 @@ export function useRoomEntryTransition({ route, router }) {
     if (!element) { reset(); return; }
     const fullReveal = cinematic.value && !document.hidden;
     phase.value = 'revealing';
-    if (fullReveal) glare = film.reveal();
-    animation = animateCircleReveal(element, { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-      { short: !fullReveal });
+    const origin = fullReveal ? film.origin() : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    if (fullReveal) glare = film.reveal(origin);
+    animation = animateCircleReveal(element, origin, { short: !fullReveal });
     if (document.hidden) animation.finish();
     try { await animation.finished; } catch (_) { return; }
     if (run !== revision) return;
