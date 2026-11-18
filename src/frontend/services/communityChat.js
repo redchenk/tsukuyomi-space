@@ -8,83 +8,117 @@ export async function chatRequest(path, method = 'GET', body, signal) {
   return result.data;
 }
 
-// Start with WebSocket. If the network blocks upgrades, try EventSource and
-// switch to bounded JSON requests when the proxy also buffers event streams.
+// HTTP can deliver history even if the edge buffers both streaming transports.
+// Probe for streaming in parallel and hand over only after a real snapshot.
 export function connectChannel(channel, receive, status) {
-  const url = new URL(apiUrl('/api/chatroom/live'), location.href);
-  url.searchParams.set('channel', channel);
-  let socket, source, timer, controller, cursor = '', closed = false;
+  const path = channel + '/sync';
+  const liveUrl = new URL(apiUrl('/api/chatroom/live'), location.href);
+  liveUrl.searchParams.set('channel', channel);
+  let socket, source, probeTimer, pollTimer, controller;
+  let cursor = '', closed = false, streaming = false, failures = 0;
+
+  const entry = window.tsukuyomiChatEntry;
+  delete window.tsukuyomiChatEntry;
+  let initial;
+  if (entry && entry.url === apiUrl('/api/chatroom/' + path) && performance.now() - entry.started < 10000) {
+    initial = entry;
+  } else {
+    entry?.controller.abort();
+  }
+
+  async function poll() {
+    if (closed || streaming || controller) return;
+    const first = initial;
+    initial = null;
+    const request = first?.controller || new AbortController();
+    controller = request;
+    const deadline = setTimeout(() => request.abort(), 12000);
+    let delay = document.hidden ? 12000 : 3500;
+    try {
+      const data = first ? (await first.snapshot)?.data
+        : await chatRequest(path + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''), 'GET', undefined, request.signal);
+      if (closed || streaming || controller !== request) return;
+      if (!data?.cursor || !Array.isArray(data.packets)) throw new Error('Missing channel snapshot');
+      data.packets.forEach(receive);
+      cursor = data.cursor;
+      failures = 0;
+      if (first) delay = Math.max(0, delay - (performance.now() - first.started));
+      status('live');
+    } catch {
+      if (closed || streaming || controller !== request) return;
+      status('reconnecting');
+      delay = Math.min(6000, 300 * 2 ** Math.min(failures++, 5));
+    } finally {
+      clearTimeout(deadline);
+      if (controller === request) {
+        controller = null;
+        if (!closed && !streaming) pollTimer = setTimeout(poll, delay);
+      }
+    }
+  }
 
   function consume(event) {
     if (closed) return;
     const packet = JSON.parse(event.data);
-    clearTimeout(timer);
-    if (packet.type === 'snapshot') status('live');
+    if (!streaming) {
+      if (packet.type !== 'snapshot') return;
+      streaming = true;
+      clearTimeout(probeTimer);
+      clearTimeout(pollTimer);
+      controller?.abort();
+      controller = null;
+      status('live');
+    }
     receive(packet);
   }
 
-  async function poll() {
-    if (closed) return;
-    controller = new AbortController();
-    const deadline = setTimeout(() => controller.abort(), 15000);
-    let delay = document.hidden ? 12000 : 3500;
-    try {
-      const suffix = cursor ? '?cursor=' + encodeURIComponent(cursor) : '';
-      const data = await chatRequest(channel + '/sync' + suffix, 'GET', undefined, controller.signal);
-      if (closed) return;
-      data.packets.forEach(receive);
-      cursor = data.cursor;
-      status('live');
-    } catch {
-      if (!closed) status('reconnecting');
-      delay = 6000;
-    } finally {
-      clearTimeout(deadline);
-      if (!closed) timer = setTimeout(poll, delay);
-    }
-  }
-
-  function startPolling() {
-    if (closed || controller) return;
-    clearTimeout(timer);
-    source?.close();
+  function resumePolling() {
+    if (!streaming || closed) return;
+    streaming = false;
+    status('reconnecting');
     poll();
   }
 
-  function fallback() {
-    if (closed) return;
-    clearTimeout(timer);
-    if (typeof EventSource === 'undefined') return startPolling();
-    source = new EventSource(url.href, {withCredentials:true});
+  function tryEvents() {
+    if (closed || typeof EventSource === 'undefined') return;
+    source = new EventSource(liveUrl.href, {withCredentials:true});
     source.onmessage = consume;
-    source.onerror = startPolling;
-    timer = setTimeout(startPolling, 2200);
+    source.onerror = () => {
+      clearTimeout(probeTimer);
+      source.close();
+      resumePolling();
+    };
+    probeTimer = setTimeout(() => source.close(), 2200);
   }
 
-  function open() {
+  function trySocket() {
     if (closed) return;
-    let ready = false;
-    try { socket = new WebSocket(url.href.replace(/^http/, 'ws')); }
-    catch { fallback(); return; }
-    timer = setTimeout(() => {
-      socket.onclose = null;
-      socket.onmessage = null;
+    try { socket = new WebSocket(liveUrl.href.replace(/^http/, 'ws')); }
+    catch { tryEvents(); return; }
+    probeTimer = setTimeout(() => {
+      socket.onmessage = socket.onclose = null;
       socket.close();
-      fallback();
+      tryEvents();
     }, 2500);
-    socket.onmessage = event => { ready = true; consume(event); };
+    socket.onmessage = consume;
     socket.onclose = () => {
-      clearTimeout(timer);
+      clearTimeout(probeTimer);
       if (closed) return;
-      status('reconnecting');
-      if (ready) timer = setTimeout(open, 900);
-      else fallback();
+      if (streaming) {
+        resumePolling();
+        probeTimer = setTimeout(trySocket, 900);
+      } else {
+        tryEvents();
+      }
     };
   }
-  open();
+
+  poll();
+  trySocket();
   return () => {
     closed = true;
-    clearTimeout(timer);
+    clearTimeout(pollTimer);
+    clearTimeout(probeTimer);
     source?.close();
     socket?.close();
     controller?.abort();

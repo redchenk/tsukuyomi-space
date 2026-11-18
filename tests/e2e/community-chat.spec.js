@@ -110,13 +110,19 @@ test('two clients exchange messages when a CDN buffers both streaming transports
     const reader = await readerContext.newPage();
     for (const client of [reader,page]) {
       await client.addInitScript(() => {
-        window.WebSocket = class { constructor() { throw new Error('Upgrade unavailable'); } };
+        const order = window.chatConnectionEvents = [];
+        const fetch = window.fetch.bind(window);
+        window.fetch = (url, options) => {
+          if (String(url).includes('/api/chatroom/games/sync')) order.push('sync');
+          return fetch(url, options);
+        };
+        window.WebSocket = class { close() { order.push('socket closed'); } };
         window.EventSource = class { close() {} };
       });
     }
     const headers = {Origin:new URL(baseURL).origin, 'X-Requested-With':'XMLHttpRequest'};
     const login = await page.request.post('/api/auth/login',{
-      headers, data:{username:'chatroom-sender-'+info.project.name, password:'e2e-password'}
+      headers, data:{username:'chatroom-sync-'+info.project.name, password:'e2e-password'}
     });
     expect(login.ok()).toBe(true);
     const open = async client => {
@@ -125,6 +131,9 @@ test('two clients exchange messages when a CDN buffers both streaming transports
       await sync;
     };
     await Promise.all([open(page),open(reader)]);
+    const events = await reader.evaluate(() => window.chatConnectionEvents);
+    expect(events[0]).toBe('sync');
+    expect(events.filter(event => event === 'sync')).toHaveLength(1);
     const text = '频道同步 '+info.project.name+' '+Date.now();
     await page.locator('.mc-compose textarea').fill(text);
     await page.locator('.mc-send').click();

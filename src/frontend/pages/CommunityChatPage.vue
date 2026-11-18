@@ -42,7 +42,7 @@ function closeOnBackdrop(event) {
 }
 
 const drafts = new Map();
-let disconnect, epoch = 0, pending = null;
+let disconnect, epoch = 0, pending = null, hasSnapshot = false;
 const speaker = m => m.userId ? m.nickname : copy.value.yachiyo;
 const time = value => new Date(value).toLocaleTimeString(props.lang || 'zh', {hour:'2-digit',minute:'2-digit'});
 const date = value => new Date(value).toLocaleDateString(props.lang || 'zh',{month:'short',day:'numeric'});
@@ -51,7 +51,8 @@ function nearBottom() { const e=feed.value; return !e || e.scrollHeight-e.scroll
 function upsert(message) {
   const index = messages.value.findIndex(m => m.id === message.id);
   if (index >= 0) messages.value[index] = message;
-  else messages.value.push(message);
+  else if (!messages.value.length || messages.value.at(-1).id < message.id) messages.value.push(message);
+  else messages.value.splice(messages.value.findIndex(m => m.id > message.id), 0, message);
   if (message.removed) {
     for (const m of messages.value) if (m.replyTo === message.id) m.quote=null;
     if (reply.value?.id === message.id) reply.value=null;
@@ -60,7 +61,25 @@ function upsert(message) {
 }
 function handle(packet) {
   if (packet.type === 'snapshot') {
-    messages.value=packet.messages; older.value=packet.hasOlder; nextTick(bottom);
+    const firstId = packet.messages[0]?.id;
+    if (!hasSnapshot || (packet.hasOlder && messages.value.at(-1)?.id < firstId)) {
+      const lastId = packet.messages.at(-1)?.id || 0;
+      // A POST can finish while the initial GET is still in flight.
+      messages.value = packet.messages.concat(messages.value.filter(m => m.id > lastId));
+      older.value = packet.hasOlder;
+      hasSnapshot = true;
+      nextTick(bottom);
+    } else {
+      // A stream can take over after HTTP has rendered. Keep older pages and
+      // the reader's scroll position while reconciling the overlapping window.
+      const follow = nearBottom();
+      let added = false;
+      for (const message of packet.messages) {
+        if (upsert(message)) added = true;
+      }
+      if (added && follow) nextTick(bottom);
+      else if (added) newBelow.value = true;
+    }
   } else if (packet.type === 'presence') members.value=packet.members;
   else if (packet.type === 'activity') unread.value[packet.channel]=true;
   else if (packet.type === 'message') {
@@ -72,6 +91,7 @@ function handle(packet) {
 }
 watch([() => channel.value.id, () => props.user?.id],([id,userId], previous) => {
   const version = ++epoch;
+  hasSnapshot = false;
   if (previous?.[0] && previous[1] === userId) drafts.set(previous[0], {text:draft.value,reply:reply.value,pending});
   else drafts.clear();
   disconnect?.();
