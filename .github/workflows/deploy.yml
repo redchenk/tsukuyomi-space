@@ -41,8 +41,8 @@ jobs:
           actual=$(sha256sum "$root/index.html" | cut -d' ' -f1)
           verify_served() {
             cmp "$stage/frontend/index.html" "$root/index.html" &&
-            curl -fsS --max-time 30 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/assets/index-CjMUw5ap.css" | cmp - "$stage/frontend/assets/index-CjMUw5ap.css" &&
-            curl -fsS --max-time 30 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/api/health" | python3 -c "import json,sys; assert json.load(sys.stdin)['status']=='ok'"
+            curl -fsS --retry 4 --retry-all-errors --retry-delay 2 --connect-timeout 7 --max-time 20 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/assets/index-CjMUw5ap.css" | cmp - "$stage/frontend/assets/index-CjMUw5ap.css" &&
+            curl -fsS --retry 4 --retry-all-errors --retry-delay 2 --connect-timeout 7 --max-time 20 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/api/health" | python3 -c "import json,sys; assert json.load(sys.stdin)['status']=='ok'"
           }
           if [ "$actual" = "$after" ]; then verify_served; exit 0; fi
           test "$actual" = "$before"
