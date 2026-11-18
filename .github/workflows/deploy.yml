@@ -30,7 +30,28 @@ jobs:
           npm run build:web:overseas
           grep -Fq '/assets/index-Dpv8VoJO.js' dist/frontend/index.html
           cmp src/frontend/assets/entry/yachiyo-room-guide.webp dist/frontend/assets/yachiyo-room-guide-XubTRNZr.webp
-          tar -czf "$RUNNER_TEMP/room-entry-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh
+          cat > "$RUNNER_TEMP/activate.sh" <<'REMOTE'
+          set -euo pipefail
+          stage="$1"
+          state="/var/backups/tsukuyomi-space/releases/$2"
+          root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
+          url=https://tsukuyomi-space.com
+          baseline=40769931f28a13818b386d1638ef3f3acf6e694e2f9ce7e7c5707b6339eac7e5
+          actual=$(sha256sum "$root/index.html" | cut -d' ' -f1)
+          if [ "$actual" = "3acdcf5d066613432e1c85efaf584f132efd458a79d951525275a5bfa5ea3f08" ]; then
+            cmp "$stage/frontend/assets/yachiyo-room-guide-XubTRNZr.webp" "$root/assets/yachiyo-room-guide-XubTRNZr.webp"
+            curl -fsS --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/api/health" | python3 -c "import json,sys; assert json.load(sys.stdin)['status']=='ok'"
+            exit 0
+          fi
+          test "$actual" = "$baseline"
+          bash "$stage/prepare-lightweight-release.sh" --site overseas --state "$state" --root "$root" --frontend "$root" --artifact "$stage/frontend" --base-url "$url" --resolve tsukuyomi-space.com:443:127.0.0.1 --commit 829a6e5f6e9eceefbf71a5f4f00e8a87138521da --frontend-only
+          test "$(sha256sum "$root/index.html" | cut -d' ' -f1)" = "$baseline"
+          if ! python3 "$stage/safe-release.py" activate --state "$state"; then
+            python3 "$stage/safe-release.py" rollback --state "$state"
+            exit 1
+          fi
+          REMOTE
+          tar -czf "$RUNNER_TEMP/room-entry-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.sh
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -48,32 +69,17 @@ jobs:
         run: |
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
-          label="room-entry-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          stage="/tmp/tsukuyomi-$label"
-          socket="$RUNNER_TEMP/room-entry-ssh"
-          for delay in 0 8 20; do
-            sleep "$delay"
-            if sshpass -e ssh "${opts[@]}" -o ControlPersist=90 -M -S "$socket" -fnNT -p "$PORT" "$LOGIN@$SERVER"; then break; fi
+          for attempt in 1 2 3; do
+            label="room-entry-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            stage="/tmp/tsukuyomi-$label"
+            echo "Starting upload and activation (attempt $attempt)"
+            if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
+              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock bash '$stage/activate.sh' '$stage' '$label'" \
+              < "$RUNNER_TEMP/room-entry-release.tgz"; then
+              exit 0
+            else
+              result=$?
+            fi
+            if [[ "$result" != 255 || "$attempt" == 3 ]]; then exit "$result"; fi
+            sleep 8
           done
-          opts+=(-o "ControlPath=$socket" -o BatchMode=yes)
-          ssh "${opts[@]}" -O check -p "$PORT" "$LOGIN@$SERVER"
-          echo 'Connected. Staging the frontend.'
-          ssh "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" "umask 077 && mkdir '$stage'"
-          scp "${opts[@]}" -P "$PORT" "$RUNNER_TEMP/room-entry-release.tgz" "$LOGIN@$SERVER:$stage/"
-          echo 'Archive uploaded. Checking the currently active frontend.'
-          ssh "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" bash -s -- "$stage" "$label" <<'REMOTE'
-          set -euo pipefail
-          stage="$1"
-          state="/var/backups/tsukuyomi-space/releases/$2"
-          root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
-          url=https://tsukuyomi-space.com
-          baseline=40769931f28a13818b386d1638ef3f3acf6e694e2f9ce7e7c5707b6339eac7e5
-          test "$(sha256sum "$root/index.html" | cut -d' ' -f1)" = "$baseline"
-          tar -xzf "$stage/room-entry-release.tgz" -C "$stage"
-          bash "$stage/prepare-lightweight-release.sh" --site overseas --state "$state" --root "$root" --frontend "$root" --artifact "$stage/frontend" --base-url "$url" --resolve tsukuyomi-space.com:443:127.0.0.1 --commit 829a6e5f6e9eceefbf71a5f4f00e8a87138521da --frontend-only
-          test "$(sha256sum "$root/index.html" | cut -d' ' -f1)" = "$baseline"
-          if ! python3 "$stage/safe-release.py" activate --state "$state"; then
-            python3 "$stage/safe-release.py" rollback --state "$state"
-            exit 1
-          fi
-          REMOTE
