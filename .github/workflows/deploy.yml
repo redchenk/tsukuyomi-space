@@ -1,4 +1,4 @@
-name: Publish the overseas text contrast fixes
+name: Publish Moon Chat overseas
 
 on:
   workflow_dispatch:
@@ -12,48 +12,104 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/contrast-overseas-rollout'
+    if: github.ref == 'refs/heads/codex/moon-chat-overseas-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 638f1310a0a5f418cec1bdfd277a57a09e94ac6d
+          ref: 59ade387c2b3f8aab3bc128497aecdcd991c32b3
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20.20.2
           cache: npm
       - run: npm ci
-      - name: Build the reviewed overseas frontend
+      - name: Build the pinned Moon Chat frontend
         run: |
           set -eu
           npm run build:web:overseas
-          echo '4a8b6216833a2fb4f5200a7717fbd99a37cce38a7ff3ea8d6b44234c4e7b01ef  dist/frontend/index.html' | sha256sum -c -
-          cat > "$RUNNER_TEMP/activate.sh" <<'REMOTE'
-          set -euo pipefail
-          stage="$1"
-          state="/var/backups/tsukuyomi-space/releases/$2"
-          root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
-          url=https://tsukuyomi-space.com
-          before=3acdcf5d066613432e1c85efaf584f132efd458a79d951525275a5bfa5ea3f08
-          after=4a8b6216833a2fb4f5200a7717fbd99a37cce38a7ff3ea8d6b44234c4e7b01ef
-          actual=$(sha256sum "$root/index.html" | cut -d' ' -f1)
-          verify_served() {
-            cmp "$stage/frontend/index.html" "$root/index.html" &&
-            curl -fsS --retry 4 --retry-all-errors --retry-delay 2 --connect-timeout 7 --max-time 20 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/assets/index-CjMUw5ap.css" | cmp - "$stage/frontend/assets/index-CjMUw5ap.css" &&
-            curl -fsS --retry 4 --retry-all-errors --retry-delay 2 --connect-timeout 7 --max-time 20 --resolve tsukuyomi-space.com:443:127.0.0.1 "$url/api/health" | python3 -c "import json,sys; assert json.load(sys.stdin)['status']=='ok'"
-          }
-          if [ "$actual" = "$after" ]; then verify_served; exit 0; fi
-          test "$actual" = "$before"
-          bash "$stage/prepare-lightweight-release.sh" --site overseas --state "$state" --root "$root" --frontend "$root" --artifact "$stage/frontend" --base-url "$url" --resolve tsukuyomi-space.com:443:127.0.0.1 --commit 638f1310a0a5f418cec1bdfd277a57a09e94ac6d --frontend-only
-          test "$(sha256sum "$root/index.html" | cut -d' ' -f1)" = "$before"
-          if ! python3 "$stage/safe-release.py" activate --state "$state" || ! verify_served; then
-            python3 "$stage/safe-release.py" rollback --state "$state"
-            exit 1
-          fi
-          REMOTE
-          tar -czf "$RUNNER_TEMP/contrast-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.sh
+          echo '758b3e50e27d10542c4fa49e2149160138d64aa9d05f35115a2469d8fa09874b  dist/frontend/index.html' | sha256sum -c -
+          cat > "$RUNNER_TEMP/activate.py" <<'RELEASE_DATA'
+          from pathlib import Path
+          import json,hashlib,os,shutil,subprocess,sys,tempfile,time
+          stage=Path(sys.argv[1]); label=sys.argv[2]; config=Path('/opt/1panel/www/conf.d/tsukuyomi-space.com.conf')
+          root=Path('/opt/1panel/www/sites/tsukuyomi-space.com/frontend');state=Path('/var/backups/tsukuyomi-space/releases')/label
+          meta=json.loads((stage/'manifest.json').read_text());host='tsukuyomi-space.com'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          def run(*args):subprocess.run([str(x) for x in args],check=True)
+          def output(*args):return subprocess.check_output([str(x) for x in args])
+          def get(path):return output('curl','-fsS','--retry','3','--retry-all-errors','--retry-delay','2','--max-time','20','--resolve',host+':443:127.0.0.1','https://'+host+path)
+          containers=[s for s in output('docker','ps','--format','{{.Names}}').decode().splitlines() if s.lower().startswith('1panel-openresty-')]
+          assert len(containers)==1
+          def reload():run('docker','exec',containers[0],'nginx','-t');run('docker','exec',containers[0],'nginx','-s','reload')
+          def put(data):
+           stat=config.stat()
+           with tempfile.NamedTemporaryFile(dir=config.parent,delete=False) as f:
+            tmp=f.name;f.write(data);os.fchown(f.fileno(),stat.st_uid,stat.st_gid);os.fchmod(f.fileno(),stat.st_mode&0o777)
+           os.replace(tmp,config)
+          def verify():
+           assert sha(root/'index.html')==meta['after']
+           assert hashlib.sha256(get('/chatroom')).hexdigest()==meta['after']
+           assert json.loads(get('/api/chatroom/lobby/history'))['success']
+           assert json.loads(get('/api/health'))['status']=='ok'
+          if sha(root/'index.html')==meta['after']:
+           verify();sys.exit(0)
+          assert sha(root/'index.html')==meta['before'],'Overseas frontend advanced'
+          original=config.read_bytes();s=original.decode()
+          anchor='location = /api/room/memory/events {'
+          assert s.count(anchor)==1 and 'location = /api/chatroom/live' not in s
+          route='location ~ ^/(?:drift|'
+          if s.count(route)==1:s=s.replace(route,'location ~ ^/(?:chatroom|drift|',1)
+          else:
+           # Keep existing SPA routing intact when this installation uses a separate block.
+           s=s.replace(anchor,(stage/'page.block').read_text()+'\n    '+anchor,1)
+          s=s.replace(anchor,(stage/'live.block').read_text().strip()+'\n\n    '+anchor,1)
+          run('bash',stage/'prepare-lightweight-release.sh','--site','overseas','--state',state,'--root',root,'--frontend',root,'--artifact',stage/'frontend','--base-url','https://'+host,'--resolve',host+':443:127.0.0.1','--commit',meta['commit'],'--frontend-only')
+          assert sha(root/'index.html')==meta['before'] and config.read_bytes()==original
+          shutil.copy2(config,state/'nginx-before.conf')
+          activated=False
+          try:
+           put(s.encode());reload();activated=True
+           run('python3',stage/'safe-release.py','activate','--state',state)
+           verify()
+          except BaseException:
+           put(original);reload()
+           if activated:run('python3',stage/'safe-release.py','rollback','--state',state)
+           raise
+          print('Verified Moon Chat overseas',meta['commit'])
+          RELEASE_DATA
+          cat > "$RUNNER_TEMP/manifest.json" <<'RELEASE_DATA'
+          {"commit": "59ade387c2b3f8aab3bc128497aecdcd991c32b3", "before": "4a8b6216833a2fb4f5200a7717fbd99a37cce38a7ff3ea8d6b44234c4e7b01ef", "after": "758b3e50e27d10542c4fa49e2149160138d64aa9d05f35115a2469d8fa09874b"}
+          RELEASE_DATA
+          cat > "$RUNNER_TEMP/live.block" <<'RELEASE_DATA'
+          location = /api/chatroom/live {
+                  proxy_pass https://yachiyo.hk;
+                  proxy_http_version 1.1;
+                  proxy_ssl_server_name on;
+                  proxy_ssl_verify on;
+                  proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+                  proxy_ssl_name yachiyo.hk;
+                  proxy_buffering off;
+                  proxy_read_timeout 1h;
+                  proxy_set_header Host yachiyo.hk;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $remote_addr;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  include /usr/local/openresty/nginx/conf/conf.d/_tsukuyomi-space-security-headers.inc;
+              }
+          RELEASE_DATA
+          cat > "$RUNNER_TEMP/page.block" <<'RELEASE_DATA'
+          location ~ ^/chatroom/?$ {
+                  try_files /index.html =404;
+                  add_header X-Robots-Tag "noindex, follow" always;
+                  add_header Cache-Control "private, no-store" always;
+                  include /usr/local/openresty/nginx/conf/conf.d/_tsukuyomi-space-security-headers.inc;
+              }
+          RELEASE_DATA
+          tar -czf "$RUNNER_TEMP/moon-chat-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.py manifest.json live.block page.block
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -72,12 +128,12 @@ jobs:
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           for attempt in 1 2 3; do
-            label="text-contrast-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            label="moon-chat-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
             stage="/tmp/tsukuyomi-$label"
             echo "Starting upload and activation (attempt $attempt)"
             if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
-              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock bash '$stage/activate.sh' '$stage' '$label'" \
-              < "$RUNNER_TEMP/contrast-release.tgz"; then
+              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/activate.py' '$stage' '$label'" \
+              < "$RUNNER_TEMP/moon-chat-release.tgz"; then
               exit 0
             else
               result=$?
