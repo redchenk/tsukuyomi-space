@@ -51,9 +51,18 @@ jobs:
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           label="drift-reply-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           stage="/tmp/tsukuyomi-$label"
-          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" "umask 077 && mkdir '$stage'"
-          sshpass -e scp "${opts[@]}" -P "$PORT" "$RUNNER_TEMP/drift-release.tgz" "$LOGIN@$SERVER:$stage/"
-          sshpass -e ssh "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" bash -s -- "$stage" "$label" <<'REMOTE'
+          socket="$RUNNER_TEMP/drift-ssh"
+          for delay in 0 8 20; do
+            sleep "$delay"
+            if sshpass -e ssh "${opts[@]}" -o ControlPersist=90 -M -S "$socket" -fnNT -p "$PORT" "$LOGIN@$SERVER"; then break; fi
+          done
+          opts+=(-o "ControlPath=$socket" -o BatchMode=yes)
+          ssh "${opts[@]}" -O check -p "$PORT" "$LOGIN@$SERVER"
+          echo 'Connected. Staging the frontend.'
+          ssh "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" "umask 077 && mkdir '$stage'"
+          scp "${opts[@]}" -P "$PORT" "$RUNNER_TEMP/drift-release.tgz" "$LOGIN@$SERVER:$stage/"
+          echo 'Archive uploaded. Checking the currently active frontend.'
+          ssh "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" bash -s -- "$stage" "$label" <<'REMOTE'
           set -euo pipefail
           stage="$1"
           state="/var/backups/tsukuyomi-space/releases/$2"
