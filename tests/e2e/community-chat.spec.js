@@ -103,3 +103,31 @@ test('the chat composer follows a resized and panned keyboard viewport', async (
   expect(composer.y + composer.height).toBeLessThanOrEqual(520);
   expect(composer.y + composer.height).toBeGreaterThan(490);
 });
+
+test('two clients exchange messages when a CDN buffers both streaming transports', async ({page, browser, baseURL}, info) => {
+  const readerContext = await browser.newContext({baseURL});
+  try {
+    const reader = await readerContext.newPage();
+    for (const client of [reader,page]) {
+      await client.addInitScript(() => {
+        window.WebSocket = class { constructor() { throw new Error('Upgrade unavailable'); } };
+        window.EventSource = class { close() {} };
+      });
+    }
+    const headers = {Origin:new URL(baseURL).origin, 'X-Requested-With':'XMLHttpRequest'};
+    const login = await page.request.post('/api/auth/login',{
+      headers, data:{username:'chatroom-sender-'+info.project.name, password:'e2e-password'}
+    });
+    expect(login.ok()).toBe(true);
+    const open = async client => {
+      const sync = client.waitForResponse(r => r.url().includes('/api/chatroom/games/sync') && r.ok());
+      await client.goto('/chatroom?channel=games');
+      await sync;
+    };
+    await Promise.all([open(page),open(reader)]);
+    const text = '频道同步 '+info.project.name+' '+Date.now();
+    await page.locator('.mc-compose textarea').fill(text);
+    await page.locator('.mc-send').click();
+    await expect(reader.locator('.mc-message-body p').filter({hasText:text})).toHaveCount(1,{timeout:12000});
+  } finally { await readerContext.close(); }
+});
