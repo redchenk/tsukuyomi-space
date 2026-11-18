@@ -130,6 +130,7 @@ function createApp() {
     // Parse message writes with a small cap before the much larger media-aware API parser.
     const messageIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: 'message-ip' });
     app.use('/api/messages', (req, res, next) => req.method === 'POST' ? messageIpLimiter(req, res, next) : next());
+    app.use('/api/chatroom', strictJson('16kb'));
     app.use('/api/drift', strictJson('16kb'));
     app.use('/api/moderation/drift', strictJson('4kb'));
     app.use('/api/messages', strictJson('16kb'));
@@ -174,6 +175,7 @@ function createApp() {
         friendLinkPreviewRoutes
     );
 
+    app.use('/api/chatroom', require('./routes/community-chat'));
     serveStaticFiles(app);
 
     const liveContentRoutes = express.Router();

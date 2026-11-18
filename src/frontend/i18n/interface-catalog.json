@@ -1,4 +1,12 @@
 {
+  "月读聊天室": {
+    "en": "Moon Chat",
+    "ja": "月読チャット"
+  },
+  "请求失败": {
+    "en": "Request failed",
+    "ja": "リクエストに失敗しました"
+  },
   "这篇故事没有分节标题，可以直接阅读。": {
     "en": "This story has no headings. You can read it directly.",
     "ja": "この記事には見出しがありません。そのままお読みください。"

@@ -738,7 +738,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
         <h1 class="plaza-title">{{ t.plazaTitle }}</h1>
         <p class="plaza-sub">{{ designCopy.intro }}</p>
       </div>
-      <span class="plaza-channel"><TsIcon name="message" :size="16" />{{ t.channelValue }}</span>
+      <RouterLink class="ghost-btn plaza-chatroom-link" to="/chatroom"><TsIcon name="message" :size="17" />{{ lang === 'en' ? 'Moon Chat' : lang === 'ja' ? '月読チャット' : '月读聊天室' }}<TsIcon name="arrowRight" :size="15" /></RouterLink>
     </header>
 
     <MobileSheet v-if="mobileCompose && isAuthed" :open="composeOpen" :return-focus="composeTrigger" :title="designCopy.composer" @close="composeOpen = false"><PlazaComposer v-model="composerDraft" :t="t" :lang="lang" :on-submit="plazaSubmitMessage" /><ModerationNotice :feedback="messageModeration" /></MobileSheet>

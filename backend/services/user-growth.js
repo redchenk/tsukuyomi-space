@@ -1,3 +1,4 @@
+const { dailyXp } = require('../../shared/community-chat.cjs');
 const crypto = require('crypto');
 const db = require('../db');
 const { getDailyPrompt } = require('./drift-prompts');
@@ -40,6 +41,7 @@ const EVENT_LABELS = Object.freeze({
     article_history: '文章历史经验补发',
     checkin: '每日签到',
     daily_chat: '与八千代聊天',
+    daily_chatroom: '聊天室每日首次发言',
     daily_share: '分享月读空间',
     daily_article_publish: '主舞台发布文章',
     daily_stage_visit: '访问主舞台',
@@ -98,7 +100,8 @@ function dailyTasks(userId, eventDate) {
     return [
         { key: 'checkin', ...DAILY_ACTIONS.checkin, path: '/growth', type: 'fixed' },
         { key: 'daily_share', ...DAILY_ACTIONS.daily_share, path: '/growth', type: 'fixed' },
-        { ...rotating, type: 'rotating', ...(rotating.key === 'daily_drift_prompt' ? { prompt: getDailyPrompt(eventDate) } : {}) }
+        { ...rotating, type: 'rotating', ...(rotating.key === 'daily_drift_prompt' ? { prompt: getDailyPrompt(eventDate) } : {}) },
+        { key:'daily_chatroom', xp:dailyXp, label:EVENT_LABELS.daily_chatroom, path:'/chatroom', type:'fixed' }
     ];
 }
 
