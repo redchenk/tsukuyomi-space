@@ -41,6 +41,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: tr('广场', 'Plaza', '広場'), icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: tr('阅读', 'Read', '読む'), icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
+  { path: '/chatroom', key: 'chatroom', label: tr('月读聊天室', 'Moon Chat', '月読チャット'), icon: 'message', active: props.routeName === 'chatroom', spa: true },
   { path: '/drift', key: 'drift', label: props.lang === 'en' ? 'Starlit Letters' : props.lang === 'ja' ? '星の海からの手紙' : '星海来信', icon: 'moonStar', active: props.routeName === 'drift', spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
@@ -62,10 +63,10 @@ const dockIndex = computed(() => {
   const active = dockItems.value.findIndex(item => item.active);
   return navOpen.value && menuMode.value === 'explore' || active < 0 ? 4 : active;
 });
-const tileItems = computed(() => ['stage', 'gallery', 'wiki', 'plaza', 'drift', 'pixel', 'game', 'room'].map(key => navItems.value.find(item => item.key === key)));
+const tileItems = computed(() => ['stage', 'gallery', 'wiki', 'plaza', 'chatroom', 'drift', 'pixel', 'game', 'room'].map(key => navItems.value.find(item => item.key === key)));
 const footerGroups = computed(() => [
   { title: tr('发现', 'Discover'), keys: ['stage', 'gallery', 'wiki'] },
-  { title: tr('相遇', 'Connect'), keys: ['room', 'plaza', 'drift'] },
+  { title: tr('相遇', 'Connect'), keys: ['room', 'chatroom', 'plaza', 'drift'] },
   { title: tr('关于', 'About'), keys: ['reality', 'download', 'rss'] }
 ].map(group => ({ title: group.title, items: group.keys.map(key => ({
   ...navItems.value.find(item => item.key === key),
@@ -83,7 +84,7 @@ const accountItems = computed(() => props.isAuthed ? [
 const searchItems = computed(() => [...navItems.value, ...accountItems.value]);
 const exploreGroups = computed(() => [
   { title: tr('阅读与发现', 'Discover'), keys: ['stage', 'gallery', 'wiki', 'plaza'] },
-  { title: tr('创作与陪伴', 'Create & connect'), keys: ['room', 'drift', 'pixel', 'game'] },
+  { title: tr('创作与陪伴', 'Create & connect'), keys: ['room', 'chatroom', 'drift', 'pixel', 'game'] },
   { title: tr('更多空间', 'More spaces'), keys: ['opening', 'download', 'agentOs', 'friendLinks', 'reality', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => navItems.value.find(item => item.key === key)).filter(Boolean) })));
 function navigate(event, item) {

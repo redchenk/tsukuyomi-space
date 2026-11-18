@@ -128,6 +128,7 @@ export default defineConfig(({ mode }) => {
         allow: [projectRoot]
       },
       proxy: {
+        '/api/chatroom/live': { target: process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000', ws: true },
         '^/api(?!/[^?]+\\.(?:js|mjs)(?:\\?|$))': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000'),
         '/lib': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000'),
         '/models': (process.env.TS_PREVIEW_API || 'http://127.0.0.1:3000'),
