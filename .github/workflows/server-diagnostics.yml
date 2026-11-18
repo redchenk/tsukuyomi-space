@@ -1,45 +1,106 @@
-name: Server diagnostics
-
+name: Verify the published overseas Room
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
-
 jobs:
-  inspect:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+  public-room:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
     steps:
-      - name: Read domestic host resource pressure
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          timeout: 60s
-          command_timeout: 90s
-          script: |
-            export LC_ALL=C
-            date -u
-            uptime
-            free -m
-            df -h / /tmp
-            vmstat 1 3
-            ps -eo pid,ppid,comm,rss,pcpu,stat,wchan:24 --sort=-pcpu | head -20
-            ps -eo pid,ppid,comm,rss,pcpu,stat --sort=-rss | head -15
-            for pressure in cpu memory io; do
-              head -2 "/proc/pressure/$pressure" 2>/dev/null || true
-            done
-            systemctl list-jobs --no-pager
-            systemctl list-units --type=service --state=running --no-pager
-            systemctl list-timers --all --no-pager
-            journalctl -k -b --no-pager -g 'oom-kill|Out of memory|Killed process|I/O error|EXT4-fs error' -n 12 || true
-            journalctl -k -b -1 --no-pager -g 'oom-kill|Out of memory|Killed process|I/O error|EXT4-fs error' -n 12 || true
-            systemd --version | head -1
-            stat -fc %T /sys/fs/cgroup
+          ref: 829a6e5f6e9eceefbf71a5f4f00e8a87138521da
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+          cache: npm
+      - run: npm ci
+      - name: Verify the palm reveal and Live2D from the public English site
+        run: |
+          cat > probe.cjs <<'NODE'
+          const {chromium,expect}=require('@playwright/test');
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          const path=require('node:path');
+          const site=process.argv[2], en=site==='overseas';
+          const base=en ? 'https://tsukuyomi-space.com' : 'https://yachiyo.hk';
+          async function visit(browser,view){
+           const mobile=view==='mobile';
+           const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:800},locale:en?'en-US':'zh-CN',reducedMotion:'no-preference'});
+           const page=await context.newPage();
+           const start=Date.now();
+           page.on('response',r=>{ const u=new URL(r.url()); if(u.pathname.includes('/models-v4/')) console.log(Math.round((Date.now()-start)/1000),view,r.status(),u.pathname); });
+           try{
+            await page.addInitScript(()=>{
+             const result=window.entryCheck={};
+             function sample(){
+              const splash=document.querySelector('.room-entry-splash');
+              if(splash){
+               const img=splash.querySelector('.moon-entry-portrait img');
+               const quote=splash.querySelector('.moon-entry-slogan');
+               if(img?.naturalWidth && quote && Number(getComputedStyle(quote).opacity)>.97) {
+                result.image=new URL(img.currentSrc).pathname;
+                result.words=quote.innerText.replace(/\s+/g,' ').trim();
+                const art=img.getBoundingClientRect(), copy=quote.getBoundingClientRect();
+                result.separate=copy.right<=art.left+1 || copy.top>=art.bottom-1;
+                result.fits=art.left>=-1 && art.top>=-1 && art.right<=innerWidth+1 && art.bottom<=innerHeight+1;
+               }
+               if(!result.aperture && splash.dataset.phase==='revealing'){
+                const frames=splash.getAnimations().map(a=>a.effect?.getKeyframes()[0]).filter(Boolean);
+                const frame=frames.find(f=>f.clipPath?.startsWith('path('));
+                const hand=splash.querySelector('.moon-entry-hand-light')?.getBoundingClientRect();
+                if(frame && hand?.width){
+                 result.aperture=frame.clipPath;
+                 result.hand=[hand.x+hand.width/2,hand.y+hand.height/2];
+                }
+               }
+              }
+              if(!result.aperture || splash) requestAnimationFrame(sample);
+             }
+             requestAnimationFrame(sample);
+            });
+            await page.goto(base+'/room',{waitUntil:'commit',timeout:45000});
+            await expect.poll(()=>page.evaluate(()=>!!window.entryCheck?.image),{timeout:35000}).toBe(true);
+            await expect.poll(()=>page.evaluate(()=>!!window.entryCheck?.aperture),{timeout:55000}).toBe(true);
+            await expect(page.locator('.room-entry-splash')).toHaveCount(0,{timeout:15000});
+            const result=await page.evaluate(()=>({...window.entryCheck,ready:window.TSUKUYOMI_LIVE2D_READY===true,room:!!document.querySelector('.room-page'),canvas:!!document.querySelector('#live2d-container canvas')}));
+            fs.writeFileSync(path.join(__dirname,site+'-'+view+'.json'),JSON.stringify(result,null,2));
+            assert.match(result.image,/yachiyo-room-guide-XubTRNZr\.webp$/);
+            assert(result.words.includes(en?'I saved you a seat.':'给你留了个位子。'),result.words);
+            assert(result.separate && result.fits,'layout overlap or crop');
+            const coords=[...result.aperture.matchAll(/M\s*([-\d.]+)[,\s]+([-\d.]+)/ig)];
+            assert(coords.length>=2,result.aperture);
+            assert(Math.abs(Number(coords[1][1])+.1-result.hand[0])<1.5 && Math.abs(Number(coords[1][2])-result.hand[1])<1.5,'aperture origin differs from hand');
+            assert(result.room && result.canvas && result.ready,'renderer unavailable');
+            console.log(site,view,result.words,'portrait, palm aperture and Live2D verified');
+           } finally{await context.close()}
+          }
+          (async()=>{const browser=await chromium.launch({channel:'chrome'});try{for(const view of ['mobile','desktop'])await visit(browser,view)}finally{await browser.close()}})().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
+          node probe.cjs overseas
+  model-origin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Check how the deployed server serves the entry model
+        env:
+          SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          PORT: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          LOGIN: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          SSHPASS: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+        run: |
+          set -eu
+          command -v sshpass >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq sshpass; }
+          ssh-keyscan -T 12 -p "$PORT" -t ed25519 "$SERVER" > "$RUNNER_TEMP/overseas-host" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/overseas-host" | awk '{print $2}' | sort -u)" = 'SHA256:iWgrq0f82PS81s/NNfMp622ag23vLk83CyHruht53xA'
+          sshpass -e ssh -T -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-host" -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15 -p "$PORT" "$LOGIN@$SERVER" 'bash -s' <<'REMOTE'
+          set -eu
+          folder=models-v4/tsukimi-yachiyo
+          root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
+          for file in tsukimi-yachiyo.model3.json tsukimi-yachiyo.moc3.gzip-r1 textures/desktop/texture_00.webp; do
+            if test -f "$root/$folder/$file"; then echo "$file local"; else echo "$file upstream"; fi
+            curl --max-time 45 -sfo /dev/null --resolve tsukuyomi-space.com:443:127.0.0.1 -w '%{http_code} %{size_download} bytes in %{time_total}s\n' "https://tsukuyomi-space.com/$folder/$file" || true
+          done
+          REMOTE
