@@ -16,6 +16,87 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6ec63e938a525af0341197a893d968df67ce2eb1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+          cache: npm
+      - run: npm ci
+      - name: Build the pinned Moon Chat frontend
+        run: |
+          set -eu
+          npm run build:web:overseas
+          echo '754e0a4dd3c7c440cfd9becb050742b9d855229c5245f83cf3a7e50c34f80153  dist/frontend/index.html' | sha256sum -c -
+          cat > "$RUNNER_TEMP/activate.py" <<'RELEASE_DATA'
+          from pathlib import Path
+          import json,hashlib,os,shutil,subprocess,sys,tempfile,time
+          stage=Path(sys.argv[1]); label=sys.argv[2]; config=Path('/opt/1panel/www/conf.d/tsukuyomi-space.com.conf')
+          root=Path('/opt/1panel/www/sites/tsukuyomi-space.com/frontend');state=Path('/var/backups/tsukuyomi-space/releases')/label
+          meta=json.loads((stage/'manifest.json').read_text());host='tsukuyomi-space.com'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          def run(*args):subprocess.run([str(x) for x in args],check=True)
+          def output(*args):return subprocess.check_output([str(x) for x in args])
+          def get(path):return output('curl','-fsS','--retry','3','--retry-all-errors','--retry-delay','2','--max-time','20','--resolve',host+':443:127.0.0.1','https://'+host+path)
+          containers=[s for s in output('docker','ps','--format','{{.Names}}').decode().splitlines() if s.lower().startswith('1panel-openresty-')]
+          assert len(containers)==1
+          def reload():run('docker','exec',containers[0],'nginx','-t');run('docker','exec',containers[0],'nginx','-s','reload')
+          def put(data):
+           stat=config.stat()
+           with tempfile.NamedTemporaryFile(dir=config.parent,delete=False) as f:
+            tmp=f.name;f.write(data);os.fchown(f.fileno(),stat.st_uid,stat.st_gid);os.fchmod(f.fileno(),stat.st_mode&0o777)
+           os.replace(tmp,config)
+          def update_routes(original):
+           text=original.decode()
+           ws='location = /api/chatroom/live {'
+           assert text.count(ws)==1
+           start=text.index(ws);end=text.index('}',start)
+           assert text[start:end].count('proxy_pass https://yachiyo.hk;')==1
+           assert 'proxy_ssl_verify on;' in text[start:end]
+           block=text[start:end].replace('proxy_pass https://yachiyo.hk;', 'proxy_pass https://origin.yachiyo.hk;').replace('proxy_ssl_verify on;', 'proxy_ssl_verify on;\n        proxy_ssl_verify_depth 4;')
+           text=text[:start]+block+text[end:]
+           api='location ^~ /api/ {'
+           assert text.count(api)==1
+           return text.replace(api,api+'\n'+'        location ~ ^/api/chatroom/[a-z0-9-]+/sync$ {\n            proxy_pass https://origin.yachiyo.hk;\n            proxy_ssl_verify on;\n            proxy_ssl_verify_depth 4;\n            proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;\n        }'+'\n').encode()
+          def verify():
+           assert config.read_text().count('proxy_pass https://origin.yachiyo.hk;')>=2
+           assert config.read_text().count('proxy_ssl_verify_depth 4;')>=2
+           assert sha(root/'index.html')==meta['after']
+           assert hashlib.sha256(get('/chatroom')).hexdigest()==meta['after']
+           assert json.loads(get('/api/chatroom/lobby/sync'))['data']['packets'][0]['type']=='snapshot'
+           assert json.loads(get('/api/health'))['status']=='ok'
+          if sha(root/'index.html')==meta['after']:
+           verify();sys.exit(0)
+          assert sha(root/'index.html')==meta['before'],'Overseas frontend advanced'
+          original=config.read_bytes()
+          candidate=update_routes(original)
+          direct=output('curl','-fsS','--retry','2','--connect-timeout','5','--max-time','12','--connect-to','yachiyo.hk:443:origin.yachiyo.hk:443','https://yachiyo.hk/api/chatroom/lobby/sync')
+          assert json.loads(direct)['data']['packets'][0]['type']=='snapshot'
+          run('bash',stage/'prepare-lightweight-release.sh','--site','overseas','--state',state,'--root',root,'--frontend',root,'--artifact',stage/'frontend','--base-url','https://'+host,'--resolve',host+':443:127.0.0.1','--commit',meta['commit'],'--frontend-only')
+          assert sha(root/'index.html')==meta['before'] and config.read_bytes()==original
+          shutil.copy2(config,state/'nginx-before.conf')
+          activated=False
+          try:
+           put(candidate);reload()
+           activated=True
+           run('python3',stage/'safe-release.py','activate','--state',state)
+           verify()
+          except BaseException:
+           for log in Path('/opt/1panel/www/sites/tsukuyomi-space.com/log').glob('error.log'):
+            with log.open('rb') as f:
+             f.seek(max(0,log.stat().st_size-65536)); lines=f.read().decode(errors='replace').splitlines()
+            for line in [l for l in lines if '/api/chatroom/lobby/sync' in l and '[error]' in l][-2:]:print(line.split(', client:')[0])
+           put(original);reload()
+           if activated:run('python3',stage/'safe-release.py','rollback','--state',state)
+           raise
+          print('Verified Moon Chat overseas',meta['commit'])
+          RELEASE_DATA
+          cat > "$RUNNER_TEMP/manifest.json" <<'RELEASE_DATA'
+          {"commit": "6ec63e938a525af0341197a893d968df67ce2eb1", "before": "55c5454ae051a5e35cc73ea28b77b86a87a67b744d1ae913296349f308a892c5", "after": "754e0a4dd3c7c440cfd9becb050742b9d855229c5245f83cf3a7e50c34f80153"}
+          RELEASE_DATA
+          tar -czf "$RUNNER_TEMP/moon-chat-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.py manifest.json
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -33,28 +114,17 @@ jobs:
         run: |
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
-          sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" python3 - <<'CHECK'
-          from pathlib import Path
-          import re,subprocess
-          config=Path('/opt/1panel/www/conf.d/tsukuyomi-space.com.conf').read_text()
-          print('Parent API proxy settings:')
-          api=config.split('location ^~ /api/ {',1)[1].split('\n    }',1)[0]
-          for line in api.splitlines():
-           if re.match(r'\s*(proxy_ssl_(name|server_name|verify|verify_depth)|proxy_set_header Host|proxy_pass |error_log )',line): print(line.strip())
-          for l in config.splitlines():
-           if l.strip().startswith('error_log '):print(l.strip())
-          for directory in [Path('/opt/1panel/www/sites/tsukuyomi-space.com/log'),Path('/opt/1panel/www/sites/tsukuyomi-space.com/logs'),Path('/opt/1panel/apps/openresty')]:
-           if directory.exists():
-            for f in directory.rglob('error.log'):
-             with f.open('rb') as h:
-              size=f.stat().st_size;h.seek(max(0,size-2000000));lines=h.read().decode(errors='replace').splitlines()
-             found=[s.split(', client:')[0] for s in lines if '/api/chatroom/lobby/sync' in s and '09:56:' in s]
-             if found: print('Reason:',*found[-4:],sep='\n')
-          container=next(x for x in subprocess.check_output(['docker','ps','--format','{{.Names}}'],text=True).splitlines() if x.startswith('1panel-openresty-'))
-          s=subprocess.run(['docker','logs','--since','40m',container],capture_output=True,text=True)
-          found=[l.split(', client:')[0] for l in (s.stdout+s.stderr).splitlines() if '/api/chatroom/lobby/sync' in l and '[error]' in l]
-          if found:print('Container:',*found[-5:],sep='\n')
-          direct=['curl','-fsS','--connect-timeout','5','--max-time','12','--connect-to','yachiyo.hk:443:origin.yachiyo.hk:443','-o','/dev/null','-w','%{http_code} %{time_total}','https://yachiyo.hk/api/chatroom/lobby/sync']
-          for cmd in [direct,['docker','exec',container,*direct]]:
-           result=subprocess.run(cmd,capture_output=True,text=True);print(result.returncode,result.stdout,result.stderr[:250])
-          CHECK
+          for attempt in 1 2 3; do
+            label="moon-chat-fast-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            stage="/tmp/tsukuyomi-$label"
+            echo "Starting upload and activation (attempt $attempt)"
+            if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
+              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/activate.py' '$stage' '$label'" \
+              < "$RUNNER_TEMP/moon-chat-release.tgz"; then
+              exit 0
+            else
+              result=$?
+            fi
+            if [[ "$result" != 255 || "$attempt" == 3 ]]; then exit "$result"; fi
+            sleep 8
+          done
