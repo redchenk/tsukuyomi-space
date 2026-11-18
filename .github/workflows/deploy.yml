@@ -1,4 +1,4 @@
-name: Publish Moon Chat transport fallback overseas
+name: Publish faster Moon Chat entry overseas
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 76a9b9afe7f0aa096f98e8867655b9a7025ed838
+          ref: 61f8cfbd5c7262e8ee4a7aa5b75ad5def91b3ecb
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -29,7 +29,7 @@ jobs:
         run: |
           set -eu
           npm run build:web:overseas
-          echo '55c5454ae051a5e35cc73ea28b77b86a87a67b744d1ae913296349f308a892c5  dist/frontend/index.html' | sha256sum -c -
+          echo '754e0a4dd3c7c440cfd9becb050742b9d855229c5245f83cf3a7e50c34f80153  dist/frontend/index.html' | sha256sum -c -
           cat > "$RUNNER_TEMP/activate.py" <<'RELEASE_DATA'
           from pathlib import Path
           import json,hashlib,os,shutil,subprocess,sys,tempfile,time
@@ -48,7 +48,18 @@ jobs:
            with tempfile.NamedTemporaryFile(dir=config.parent,delete=False) as f:
             tmp=f.name;f.write(data);os.fchown(f.fileno(),stat.st_uid,stat.st_gid);os.fchmod(f.fileno(),stat.st_mode&0o777)
            os.replace(tmp,config)
+          def update_routes(original):
+           text=original.decode()
+           ws='location = /api/chatroom/live {'
+           assert text.count(ws)==1
+           start=text.index(ws);end=text.index('}',start)
+           assert text[start:end].count('proxy_pass https://yachiyo.hk;')==1
+           text=text[:start]+text[start:end].replace('proxy_pass https://yachiyo.hk;', 'proxy_pass https://origin.yachiyo.hk;')+text[end:]
+           api='location ^~ /api/ {'
+           assert text.count(api)==1
+           return text.replace(api,api+'\n'+'        location ~ ^/api/chatroom/[a-z0-9-]+/sync$ {\n            proxy_pass https://origin.yachiyo.hk;\n            proxy_ssl_verify on;\n            proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;\n        }'+'\n').encode()
           def verify():
+           assert config.read_text().count('proxy_pass https://origin.yachiyo.hk;')>=2
            assert sha(root/'index.html')==meta['after']
            assert hashlib.sha256(get('/chatroom')).hexdigest()==meta['after']
            assert json.loads(get('/api/chatroom/lobby/sync'))['data']['packets'][0]['type']=='snapshot'
@@ -56,50 +67,29 @@ jobs:
           if sha(root/'index.html')==meta['after']:
            verify();sys.exit(0)
           assert sha(root/'index.html')==meta['before'],'Overseas frontend advanced'
-          assert 'location = /api/chatroom/live' in config.read_text()
+          original=config.read_bytes()
+          candidate=update_routes(original)
+          direct=output('curl','-fsS','--retry','2','--connect-timeout','5','--max-time','12','--connect-to','yachiyo.hk:443:origin.yachiyo.hk:443','https://yachiyo.hk/api/chatroom/lobby/sync')
+          assert json.loads(direct)['data']['packets'][0]['type']=='snapshot'
           run('bash',stage/'prepare-lightweight-release.sh','--site','overseas','--state',state,'--root',root,'--frontend',root,'--artifact',stage/'frontend','--base-url','https://'+host,'--resolve',host+':443:127.0.0.1','--commit',meta['commit'],'--frontend-only')
-          assert sha(root/'index.html')==meta['before']
+          assert sha(root/'index.html')==meta['before'] and config.read_bytes()==original
+          shutil.copy2(config,state/'nginx-before.conf')
           activated=False
           try:
+           put(candidate);reload()
            activated=True
            run('python3',stage/'safe-release.py','activate','--state',state)
            verify()
           except BaseException:
+           put(original);reload()
            if activated:run('python3',stage/'safe-release.py','rollback','--state',state)
            raise
           print('Verified Moon Chat overseas',meta['commit'])
           RELEASE_DATA
           cat > "$RUNNER_TEMP/manifest.json" <<'RELEASE_DATA'
-          {"commit": "76a9b9afe7f0aa096f98e8867655b9a7025ed838", "before": "758b3e50e27d10542c4fa49e2149160138d64aa9d05f35115a2469d8fa09874b", "after": "55c5454ae051a5e35cc73ea28b77b86a87a67b744d1ae913296349f308a892c5"}
+          {"commit": "61f8cfbd5c7262e8ee4a7aa5b75ad5def91b3ecb", "before": "55c5454ae051a5e35cc73ea28b77b86a87a67b744d1ae913296349f308a892c5", "after": "754e0a4dd3c7c440cfd9becb050742b9d855229c5245f83cf3a7e50c34f80153"}
           RELEASE_DATA
-          cat > "$RUNNER_TEMP/live.block" <<'RELEASE_DATA'
-          location = /api/chatroom/live {
-                  proxy_pass https://yachiyo.hk;
-                  proxy_http_version 1.1;
-                  proxy_ssl_server_name on;
-                  proxy_ssl_verify on;
-                  proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
-                  proxy_ssl_name yachiyo.hk;
-                  proxy_buffering off;
-                  proxy_read_timeout 1h;
-                  proxy_set_header Host yachiyo.hk;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $remote_addr;
-                  proxy_set_header X-Forwarded-Proto https;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  include /usr/local/openresty/nginx/conf/conf.d/_tsukuyomi-space-security-headers.inc;
-              }
-          RELEASE_DATA
-          cat > "$RUNNER_TEMP/page.block" <<'RELEASE_DATA'
-          location ~ ^/chatroom/?$ {
-                  try_files /index.html =404;
-                  add_header X-Robots-Tag "noindex, follow" always;
-                  add_header Cache-Control "private, no-store" always;
-                  include /usr/local/openresty/nginx/conf/conf.d/_tsukuyomi-space-security-headers.inc;
-              }
-          RELEASE_DATA
-          tar -czf "$RUNNER_TEMP/moon-chat-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.py manifest.json live.block page.block
+          tar -czf "$RUNNER_TEMP/moon-chat-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.py manifest.json
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -118,7 +108,7 @@ jobs:
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           for attempt in 1 2 3; do
-            label="moon-chat-sync-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            label="moon-chat-fast-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
             stage="/tmp/tsukuyomi-$label"
             echo "Starting upload and activation (attempt $attempt)"
             if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
