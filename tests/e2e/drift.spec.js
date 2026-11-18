@@ -37,18 +37,30 @@ for (const viewport of [{ name: 'mobile', width: 390, height: 844 }, { name: 'de
             await expect(dialog).toBeVisible();
             await expect(dialog.getByRole('heading')).toHaveText('你捡到了一个漂流瓶');
             await expect(dialog.locator('.drift-original-paper')).toBeHidden();
-            await dialog.getByRole('button', { name: '打开瓶子', exact: true }).click();
-            await expect(dialog.locator('.drift-original-paper')).toHaveText(marker);
-            await dialog.getByRole('button', { name: '扔回海里', exact: true }).click();
+            const returnBottle = dialog.getByRole('button', { name: '丢回海里', exact: true });
+            await expect(returnBottle).toBeInViewport();
+            await dialog.screenshot({ path: `/tmp/drift-pick-actions-${viewport.name}.png` });
+            if (viewport.name === 'desktop') {
+                await dialog.getByRole('button', { name: '打开瓶子', exact: true }).click();
+                await expect(dialog.locator('.drift-original-paper')).toHaveText(marker);
+                await expect(returnBottle).toBeInViewport();
+            }
+            await returnBottle.click();
             await expect(dialog).not.toBeVisible();
+            await expect(page.getByRole('status')).toContainText('瓶子已回到海里');
             expect((await page.request.get(`/api/drift/${bottleId}`)).status()).toBe(404);
             await page.getByRole('button', { name: '捡一个', exact: true }).click();
             await dialog.getByRole('button', { name: '打开瓶子', exact: true }).click();
             await dialog.getByRole('button', { name: '回应', exact: true }).click();
             await page.locator('#drift-reply').fill('谢谢，我也在看月亮');
-            await dialog.getByRole('button', { name: '把回信放进瓶子', exact: true }).click();
+            await dialog.getByRole('button', { name: '发送回信', exact: true }).click();
+            const receipt = dialog.getByRole('status');
+            await expect(receipt).toHaveText('回信已发送');
+            await expect(receipt).toBeInViewport({ ratio: 1 });
+            await expect(receipt).toBeFocused();
             await expect(dialog.locator('.drift-reply')).toContainText('谢谢，我也在看月亮');
-            await expect(dialog.getByRole('button', { name: '扔回海里', exact: true })).toBeHidden();
+            await expect(returnBottle).toBeHidden();
+            await dialog.screenshot({ path: `/tmp/drift-reply-sent-${viewport.name}.png` });
             await page.reload();
             await expect(page.locator('#boot-splash')).toHaveCount(0);
             await expect(dialog.locator('.drift-reply')).toContainText('谢谢，我也在看月亮');
@@ -66,7 +78,7 @@ for (const viewport of [{ name: 'mobile', width: 390, height: 844 }, { name: 'de
                 await page.evaluate(() => window.dispatchEvent(new Event('focus')));
                 await updated;
                 await expect(page.locator('#drift-reply')).toHaveValue(unsent);
-                const submit = dialog.getByRole('button', { name: '把回信放进瓶子', exact: true });
+                const submit = dialog.getByRole('button', { name: '发送回信', exact: true });
                 await expect(submit).toBeInViewport();
                 expect(await submit.evaluate(button => {
                     const r = button.getBoundingClientRect();

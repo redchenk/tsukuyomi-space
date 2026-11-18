@@ -73,11 +73,13 @@ test('saved reply with a lost response retries without duplicate letters or noti
         const content = '这封信只应寄出一次';
         await page.getByRole('button',{ name:'回应',exact:true }).click();
         await page.locator('#drift-reply').fill(content);
-        const send = page.getByRole('button',{ name:'把回信放进瓶子',exact:true });
+        const send = page.getByRole('button',{ name:'发送回信',exact:true });
         await send.click();
         await expect(page.getByRole('status')).toHaveText(unknown);
         await expect(page.locator('#drift-reply')).toHaveValue(content);
+        await expect(page.getByText('回信已发送', { exact: true })).toBeHidden();
         await send.click();
+        await expect(page.getByRole('dialog').getByRole('status')).toHaveText('回信已发送');
         await expect(page.locator('.drift-reply')).toHaveCount(1);
         expect(attempts).toHaveLength(2);
         expect(attempts[0].requestId).toBe(attempts[1].requestId);
@@ -135,5 +137,33 @@ test('confirmed save followed by a failed refresh says not to resend', async ({ 
         expect(rows.filter(row=>row.content === content)).toHaveLength(1);
     } finally {
         if (savedId) await page.request.post(`/api/drift/${savedId}/close`,{ headers:headers(baseURL),data:{} });
+    }
+});
+
+test('a moderated reply shows its receipt even when the thread cannot refresh', async ({ page, browser, baseURL }) => {
+    const owner = await browser.newContext({ baseURL });
+    let id;
+    try {
+        await login(owner.request, baseURL, 'reply-owner');
+        await login(page.request, baseURL, 'reply-reader');
+        const created = await owner.request.post('/api/drift', { headers: headers(baseURL), data: { content: '一封等回信的纸条' } });
+        id = (await created.json()).data.id;
+        const picked = await page.request.post('/api/drift/pick', { headers: headers(baseURL) });
+        expect((await picked.json()).data.id).toBe(id);
+        await page.goto(`/drift?bottle=${id}`);
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('button', { name: '回应', exact: true }).click();
+        await page.route(url => url.pathname === `/api/drift/${id}`, route => route.abort('internetdisconnected'));
+        await dialog.getByRole('textbox').fill('分享给你 https://example.org');
+        await dialog.getByRole('button', { name: '发送回信', exact: true }).click();
+        const receipt = dialog.getByRole('status').filter({ hasText: '回信已提交，审核通过后对方就能看到' });
+        await expect(receipt).toBeInViewport({ ratio: 1 });
+        await expect(dialog.getByText('往返信件暂时无法刷新', { exact: false })).toBeVisible();
+        await expect(dialog.getByRole('button', { name: '丢回海里', exact: true })).toBeHidden();
+        const fromOwner = (await (await owner.request.get(`/api/drift/${id}`)).json()).data;
+        expect(fromOwner.replies).toHaveLength(0);
+    } finally {
+        if (id) await owner.request.post(`/api/drift/${id}/close`, { headers: headers(baseURL), data: {} });
+        await owner.close();
     }
 });
