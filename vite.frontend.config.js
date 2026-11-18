@@ -41,6 +41,12 @@ export function fingerprintedBrandAssets(englishSite = false) {
       for (const [original, replacement] of replacements) {
         html = html.replaceAll(original + '?v=sakura-20261004', replacement).replaceAll(original, replacement);
       }
+      const chatPage = Object.values(bundle).find(file => file.type === 'chunk' && file.facadeModuleId?.endsWith('/CommunityChatPage.vue'));
+      const chatStyle = Object.keys(bundle).find(name => /(?:^|\/)chatroom-[^/]+\.css$/.test(name));
+      if (chatPage && chatStyle) {
+        const bootTag = '<script defer src="' + replacements.get('/boot-splash.js') + '"';
+        html = html.replace(bootTag, '<script defer data-chat-module="/' + chatPage.fileName + '" data-chat-style="/' + chatStyle + '" src="' + replacements.get('/boot-splash.js') + '"');
+      }
       index.source = html;
     }
   };

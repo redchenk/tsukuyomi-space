@@ -67,6 +67,30 @@
 const splash = document.getElementById('boot-splash');
 // Access starts on the Seedance poster, without a separate logo animation.
 const waterMirrorBoot = /^\/(?:access\/?)?$/.test(window.location.pathname);
+const chatroomBoot = /^\/chatroom\/?$/.test(window.location.pathname);
+if (chatroomBoot) {
+  // Fetch the first snapshot while Vue and the route are downloading. Only the
+  // matching channel can consume it, and it is never stored across visits.
+  const query = new URLSearchParams(location.search).getAll('channel');
+  const channel = query.length === 1 && /^[a-z][a-z0-9-]{0,23}$/.test(query[0]) ? query[0] : 'lobby';
+  const url = '/api/chatroom/' + channel + '/sync';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  const snapshot = fetch(url, {cache:'no-store', credentials:'include', signal:controller.signal})
+    .then(response => response.ok ? response.json() : null)
+    .catch(() => null)
+    .finally(() => clearTimeout(timeout));
+  window.tsukuyomiChatEntry = {url, snapshot, controller, started:performance.now()};
+
+  for (const [kind, href] of Object.entries(document.currentScript?.dataset || {})) {
+    if (kind !== 'chatModule' && kind !== 'chatStyle') continue;
+    const link = document.createElement('link');
+    link.href = href;
+    link.rel = kind === 'chatModule' ? 'modulepreload' : 'preload';
+    if (kind === 'chatStyle') link.as = 'style';
+    document.head.append(link);
+  }
+}
 if (waterMirrorBoot && splash) splash.dataset.scene = 'water-mirror';
 // Count the readable brand moment from a painted frame, not script execution.
 // Cached assets or a busy startup must not consume it before the user sees it.
@@ -89,7 +113,7 @@ function completeBootSplash(event) {
   if (dismissed) return;
   dismissed = true;
   window.clearTimeout(watchdog);
-  if (waterMirrorBoot || event?.detail?.handoff) {
+  if (chatroomBoot || waterMirrorBoot || event?.detail?.handoff) {
     // The matching Access scene or Room splash is already painted underneath.
     splash?.remove();
     document.getElementById('app')?.removeAttribute('inert');
