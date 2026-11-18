@@ -84,6 +84,11 @@ for (const scenario of ['publish', 'replies', 'edit', 'terminal']) {
 // Browser scenarios need independent identities: the drift quota is per user,
 // and a full Chromium + mobile WebKit run must not consume a shared account.
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    for (const role of ['sender','reader']) {
+        const username = `chatroom-${role}-${project}`;
+        db.prepare('INSERT INTO users(id,username,email,password_hash) VALUES(?,?,?,?)')
+            .run(username, username, username+'@example.test', bcrypt.hashSync('e2e-password',4));
+    }
     for (const scenario of ['keyboard', 'themes']) {
         for (const role of ['owner', 'reader']) {
             const username = `drift-${scenario}-${role}-${project}`;
@@ -226,6 +231,8 @@ const server = require('node:http').createServer((req, res) => {
     const address = server.address();
     console.log(`E2E server listening on http://${address.address}:${address.port}`);
 });
+
+require('../backend/services/community-live').attach(server);
 
 function shutdown() {
     partnerServer.close();

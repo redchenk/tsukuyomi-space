@@ -1,4 +1,12 @@
 {
+  "月读聊天室": {
+    "en": "Moon Chat",
+    "ja": "月読チャット"
+  },
+  "请求失败": {
+    "en": "Request failed",
+    "ja": "リクエストに失敗しました"
+  },
   "编辑参考角色卡": {
     "en": "Edit reference card",
     "ja": "参考カードを編集"
