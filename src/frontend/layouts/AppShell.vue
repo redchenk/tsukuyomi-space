@@ -179,7 +179,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'content-shell': showChrome, 'site-background-shell': showChrome || ['login', 'register'].includes(routeName), 'room-shell': isRoom, 'pixel-shell': routeName === 'pixel', 'drift-scene-shell': routeName === 'drift', 'hub-shell': routeName === 'hub', 'is-keyboard-open': keyboardOpen, 'has-mini-player': miniPlayer, 'reading-shell': readingPage }" :style="viewportStyle">
+  <div class="app-shell" :class="{ 'content-shell': showChrome, 'site-background-shell': showChrome || ['login', 'register'].includes(routeName), 'room-shell': isRoom, 'chatroom-shell': routeName === 'chatroom', 'pixel-shell': routeName === 'pixel', 'drift-scene-shell': routeName === 'drift', 'hub-shell': routeName === 'hub', 'is-keyboard-open': keyboardOpen, 'has-mini-player': miniPlayer, 'reading-shell': readingPage }" :style="viewportStyle">
     <header v-if="showChrome" class="site-header" :class="{ 'on-hero': routeName === 'hub' && !scrolled }">
       <a href="/hub" class="site-brand" @click="navigate($event, { path: '/hub' })"><img :src="brandLogo" alt="" width="32" height="32"><span>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}</span></a>
       <nav class="desktop-nav" :aria-label="t.navigation">
@@ -210,7 +210,7 @@ onUnmounted(() => {
       <footer class="menu-preferences"><button class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
     </MobileSheet>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="emit('go', $event)" />
-    <SiteMusicDrawer v-if="music?.drawer.open" :music="music" :lang="lang" />
+    <SiteMusicDrawer v-if="routeName !== 'chatroom' && music?.drawer.open" :music="music" :lang="lang" />
     <slot />
     <footer v-if="showChrome && routeName !== 'pixel'" class="site-footer">
       <div class="footer-top">
