@@ -84,3 +84,22 @@ test('reports, moderator mute, request throttling and service failure do not dis
         assert.equal(chat.history('tech').messages[0].content,'');
     } finally { model.ask=ask; }
 });
+
+test('finite HTTP sync preserves presence, edits, unread activity and the current cursor', async () => {
+    const begin = await request('lobby/sync','bob');
+    assert.equal(begin.status,200);
+    assert.equal(begin.data.packets[0].type,'snapshot');
+    assert.ok(begin.data.packets.at(-1).members.some(member => member.id==='bob'));
+    const created = await post('lobby','mod','月读频道同步验证');
+    assert.equal(created.status,200);
+    const cursor = encodeURIComponent(begin.data.cursor);
+    const delta = await request('lobby/sync?cursor='+cursor);
+    assert.ok(delta.data.packets.some(p => p.type==='message' && p.message.id===created.data.message.id));
+    const other = await request('tech/sync?cursor='+cursor);
+    assert.ok(other.data.packets.some(p => p.type==='activity' && p.channel==='lobby'));
+    await request('messages/'+created.data.message.id,'mod','DELETE');
+    const updated = await request('lobby/sync?cursor='+encodeURIComponent(delta.data.cursor));
+    assert.ok(updated.data.packets.some(p => p.type==='message' && p.message.removed));
+    const idle = await request('lobby/sync?cursor='+encodeURIComponent(updated.data.cursor));
+    assert.deepEqual(idle.data.packets.map(p=>p.type),['presence']);
+});

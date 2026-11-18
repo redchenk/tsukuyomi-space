@@ -48,6 +48,7 @@ router.delete('/messages/:id',authenticateToken,replyLimiter,(req,res) => {
     ok(res,message);
 });
 router.param('channel',(req,res,next,channel) => live.knownChannel(channel) ? next() : res.sendStatus(404));
+router.get('/:channel/sync',optionalAuth,live.sync);
 router.get('/:channel/history',(req,res) => {
     const before = req.query.before === undefined ? Number.MAX_SAFE_INTEGER : Number(req.query.before);
     if (!Number.isSafeInteger(before) || before < 1) chat.fail(400,'消息游标无效。');
