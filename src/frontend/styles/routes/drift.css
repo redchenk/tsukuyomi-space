@@ -336,6 +336,22 @@
 .drift-found { display: grid; justify-items: center; padding: 24px 20px; gap: 13px; text-align: center; }
 .drift-found-glow { display: grid; width: 110px; height: 110px; place-items: center; background: radial-gradient(var(--ts-accent-soft), transparent 68%); }
 .drift-found-glow svg { width: 36px; height: 63px; }
+.drift-reply-receipt {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 10px;
+    margin: 12px 16px 0;
+    padding: 12px 14px;
+    border-inline-start: 4px solid var(--ts-accent);
+    border-radius: var(--ts-radius-control);
+    background: var(--ts-accent-soft);
+    color: var(--pages-ink);
+    font-size: 1rem;
+}
+.drift-reply-receipt svg { color: var(--ts-accent); flex-shrink: 0; }
+.drift-reader-footer { flex-shrink: 0; border-top: 1px solid var(--pages-line); }
+.drift-reader-footer .drift-letter-actions > button { flex: 1; }
 .drift-reader-footer, .drift-letter-form { padding: 9px 20px 13px; }
 .drift-reply-context { margin: 0; padding: 8px 10px; border-inline-start: 2px solid var(--pages-line); max-height: 80px; overflow: auto; color: var(--pages-muted); }
 .drift-privacy { padding: 0 20px 13px; color: var(--pages-muted); font-size: .72rem; }

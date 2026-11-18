@@ -30,6 +30,7 @@ const busy = ref(false);
 const loading = ref(true);
 const refreshing = ref(false);
 const notice = ref('');
+const replyStatus = ref(null);
 const translated = ref('');
 const filter = ref('all');
 const bottlePage = ref(1);
@@ -38,6 +39,7 @@ const bottleTotal = ref(0);
 const phase = ref('idle');
 const bottleDialog = ref(null);
 const letterScroll = ref(null);
+const replyReceipt = ref(null);
 const writingArea = ref(null);
 const composeArea = ref(null);
 const panelHeading = ref(null);
@@ -79,7 +81,8 @@ const bottlePageSummary = computed(() => copy.value.pageSummary
   .replace('{pages}', bottleTotalPages.value)
   .replace('{total}', bottleTotal.value));
 const canReply = computed(() => current.value?.bottle.status === 'approved' && current.value.bottle.recipient_id && !current.value.bottle.closed && !current.value.blocked);
-const canReturn = computed(() => current.value && current.value.bottle.user_id !== session.value?.user.id && canReply.value && !current.value.replies.length);
+const canReturn = computed(() => current.value && current.value.bottle.user_id !== session.value?.user.id && canReply.value && !replyStatus.value && !current.value.replies.length);
+const reading = computed(() => phase.value === 'read' || phase.value === 'replied');
 const writing = computed(() => phase.value === 'reply');
 const dialogTitle = computed(() => phase.value === 'sealed' ? copy.value.found : phase.value === 'reply' ? copy.value.replyTitle : copy.value.read);
 const locale = computed(() => ({ zh: 'zh-CN', en: 'en', ja: 'ja' }[props.lang] || 'zh-CN'));
@@ -224,6 +227,7 @@ async function showDialog(nextPhase) {
   document.documentElement.classList.add('drift-dialog-open');
   if (letterScroll.value) letterScroll.value.scrollTop = 0;
   if (nextPhase === 'reply') writingArea.value?.focus();
+  if (nextPhase === 'replied') replyReceipt.value?.focus();
 }
 async function writeBottle() {
   await selectTab('write');
@@ -258,6 +262,7 @@ function dialogClosed() {
 }
 async function open(bottleId, { sealed = false, updateRoute = true } = {}) {
   await loadThread(bottleId);
+  replyStatus.value = null;
   translated.value = '';
   hasNewLetters.value = false;
   if (updateRoute) await router.push({ query: { tab: activeTab.value, bottle: bottleId } });
@@ -320,18 +325,22 @@ async function sendReply() {
   const result = await request(`/api/drift/${bottleId}/replies`, 'POST', payload);
   submissions.complete(scope, payload.requestId);
   if (replyDrafts[bottleId] === submitted) replyDrafts[bottleId] = '';
-  try { await loadThread(bottleId); }
-  catch {
-    await showDialog('read');
-    notice.value = copy.value.savedRefreshFailed;
+  if (disposed) return;
+  replyStatus.value = result.status;
+  if (!bottleDialog.value?.open) {
+    notice.value = copy.value.replyReceipt[result.status];
     return;
   }
-  await showDialog('read');
-  notice.value = `${copy.value.saved} · ${copy.value[result.status]}`;
-  await latestLetters();
+  await showDialog('replied');
+  try {
+    await loadThread(bottleId);
+    await latestLetters();
+  } catch {
+    notice.value = copy.value.lettersRefreshFailed;
+  }
 }
 async function refreshThread() {
-  if (!current.value || refreshing.value || busy.value || !['read', 'reply'].includes(phase.value) || document.visibilityState !== 'visible') return;
+  if (!current.value || refreshing.value || busy.value || !(reading.value || writing.value) || document.visibilityState !== 'visible') return;
   refreshing.value = true;
   try { await loadThread(current.value.bottle.id); }
   catch (_) { /* Keep the current note and unsent letter available; manual refresh reports errors. */ }
@@ -345,12 +354,19 @@ async function refreshDailyPrompt() {
   } catch { /* Opening the daily writer retries; keep the current draft. */ }
 }
 async function throwBack() {
-  await request(`/api/drift/${current.value.bottle.id}/return`, 'POST');
-  closeDialog();
+  const bottleId = current.value.bottle.id;
+  await request(`/api/drift/${bottleId}/return`, 'POST');
+  if (disposed) return;
+  revision++;
+  delete replyDrafts[bottleId];
+  bottles.value = bottles.value.filter(bottle => bottle.id !== bottleId);
   current.value = null;
-  await load();
+  closeDialog();
   await selectTab('sea');
   notice.value = copy.value.returned;
+  panelHeading.value?.focus();
+  try { await load(); }
+  catch { notice.value = `${copy.value.returned} ${copy.value.bottlesRefreshFailed}`; }
 }
 async function act(action) {
   if (!window.confirm(copy.value.confirm)) return;
@@ -547,9 +563,16 @@ watch(() => route.query.daily, value => {
     <dialog ref="bottleDialog" class="drift-bottle-dialog" :class="{ 'is-writing': writing, 'is-sealed': phase === 'sealed' }" aria-labelledby="drift-letter-title" @close="dialogClosed">
       <header class="drift-dialog-header"><div><p class="drift-eyebrow">A MESSAGE IN A BOTTLE</p><h2 id="drift-letter-title">{{ dialogTitle }}</h2></div><button class="drift-icon-button" :aria-label="copy.closeWindow" @click="closeDialog"><TsIcon name="x" :size="21" /></button></header>
       <p v-if="notice" class="drift-dialog-notice" role="status">{{ notice }}</p>
-      <div v-if="phase === 'sealed'" class="drift-found"><div class="drift-found-glow"><DriftBottle /></div><p>{{ copy.foundHint }}</p><button class="drift-primary" @click="showDialog('read')">{{ copy.openBottle }}<TsIcon name="arrowRight" :size="17" /></button></div>
-      <template v-else-if="current && (phase === 'read' || phase === 'reply')">
-        <template v-if="phase === 'read'">
+      <template v-if="current">
+        <div v-if="phase === 'sealed'" class="drift-found">
+          <div class="drift-found-glow"><DriftBottle /></div>
+          <p>{{ copy.foundHint }}</p>
+        </div>
+        <template v-else-if="reading">
+          <div v-if="phase === 'replied'" ref="replyReceipt" class="drift-reply-receipt" role="status" tabindex="-1">
+            <TsIcon :name="replyStatus === 'approved' ? 'check' : 'mail'" :size="22" />
+            <strong>{{ copy.replyReceipt[replyStatus] }}</strong>
+          </div>
           <div ref="letterScroll" class="drift-letter-scroll">
             <div class="drift-letter-byline"><DriftBottle /><div><span>{{ copy.from }} {{ current.bottle.nickname }}</span><time>{{ dateLabel(current.bottle.created_at) }}</time></div><button class="drift-icon-button" :aria-label="copy.refreshChat" :disabled="busy || refreshing" @click="run(() => loadThread(current.bottle.id))"><TsIcon name="refresh" :size="17" /></button></div>
             <article class="drift-paper drift-original-paper"><p class="drift-content" translate="no">{{ current.bottle.content }}</p><small v-if="current.bottle.status !== 'approved'" class="drift-letter-status">{{ copy[current.bottle.status] }}</small></article>
@@ -559,10 +582,35 @@ watch(() => route.query.daily, value => {
             <details v-if="lang === 'en'" class="drift-translation"><summary>{{ copy.translate }}</summary><p>{{ copy.translationHint }}</p><button :disabled="busy" @click="run(translate)">{{ copy.translate }}</button><p v-if="translated" class="drift-content" translate="no">{{ translated }}</p><small>{{ copy.original }}</small></details>
             <details class="drift-letter-options"><summary>{{ copy.more }}</summary><div class="drift-actions"><template v-if="current.peer"><RouterLink :to="`/users/${encodeURIComponent(current.peer.username)}`" @click="closeDialog">{{ copy.profile }}</RouterLink><button :disabled="busy || current.blocked" @click="run(follow)">{{ copy.follow }}</button></template><button :disabled="busy" @click="run(() => act('close'))">{{ copy.close }}</button><template v-if="current.peer"><button :disabled="busy" @click="run(() => act('block'))">{{ copy.block }}</button><button :disabled="busy" @click="run(() => act('report'))">{{ copy.report }}</button></template></div></details>
           </div>
-          <footer class="drift-reader-footer"><p v-if="current.bottle.closed || current.blocked" class="drift-thread-note">{{ copy.closed }}</p><div class="drift-letter-actions"><button v-if="canReturn" :disabled="busy" @click="run(throwBack)">{{ copy.throwBack }}</button><button v-else @click="closeDialog">{{ copy.putAway }}</button><button v-if="canReply" class="drift-primary" @click="showDialog('reply')"><TsIcon name="send" :size="16" />{{ copy.respond }}</button></div></footer>
         </template>
-        <form v-else class="drift-letter-form" @submit.prevent="run(sendReply)"><blockquote class="drift-reply-context" translate="no">{{ current.bottle.content }}</blockquote><div class="drift-writing-paper"><label for="drift-reply">{{ copy.replyTitle }}</label><textarea id="drift-reply" ref="writingArea" v-model="reply" :placeholder="copy.replyPlaceholder" maxlength="2000" rows="6" required /><small>{{ [...reply].length }} / 2000</small></div><footer class="drift-letter-actions"><button type="button" @click="showDialog('read')">{{ copy.cancel }}</button><button class="drift-primary" :disabled="busy || !reply.trim()">{{ copy.sendLetter }}<TsIcon name="send" :size="16" /></button></footer></form>
-        <small class="drift-privacy">{{ copy.privacy }}</small>
+        <footer v-if="phase === 'sealed' || reading" class="drift-reader-footer">
+          <p v-if="current.bottle.closed || current.blocked" class="drift-thread-note">{{ copy.closed }}</p>
+          <div class="drift-letter-actions">
+            <button v-if="canReturn" type="button" :disabled="busy" @click="run(throwBack)">
+              <TsIcon name="undo" :size="17" />{{ copy.throwBack }}
+            </button>
+            <button v-else-if="reading" type="button" @click="closeDialog">{{ copy.putAway }}</button>
+            <button v-if="phase === 'sealed'" type="button" class="drift-primary" :disabled="busy" @click="showDialog('read')">
+              {{ copy.openBottle }}<TsIcon name="arrowRight" :size="17" />
+            </button>
+            <button v-else-if="canReply" type="button" class="drift-primary" :disabled="busy" @click="showDialog('reply')">
+              <TsIcon name="send" :size="16" />{{ copy.respond }}
+            </button>
+          </div>
+        </footer>
+        <form v-else-if="writing" class="drift-letter-form" @submit.prevent="run(sendReply)">
+          <blockquote class="drift-reply-context" translate="no">{{ current.bottle.content }}</blockquote>
+          <div class="drift-writing-paper">
+            <label for="drift-reply">{{ copy.replyTitle }}</label>
+            <textarea id="drift-reply" ref="writingArea" v-model="reply" :readonly="busy" :placeholder="copy.replyPlaceholder" maxlength="2000" rows="6" required />
+            <small>{{ [...reply].length }} / 2000</small>
+          </div>
+          <footer class="drift-letter-actions">
+            <button type="button" :disabled="busy" @click="showDialog('read')">{{ copy.cancel }}</button>
+            <button class="drift-primary" :disabled="busy || !reply.trim()">{{ busy ? lake.sending : copy.sendLetter }}<TsIcon name="send" :size="16" /></button>
+          </footer>
+        </form>
+        <small v-if="phase !== 'sealed'" class="drift-privacy">{{ copy.privacy }}</small>
       </template>
     </dialog>
   </main>
