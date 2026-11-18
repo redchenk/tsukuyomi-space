@@ -190,7 +190,7 @@
   padding: 0 1rem;
   border-radius: 14px;
   background: var(--ts-unified-primary-bg);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .growth-checkin:disabled {

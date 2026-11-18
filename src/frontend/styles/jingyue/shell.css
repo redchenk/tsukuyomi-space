@@ -1,17 +1,17 @@
-.site-header { position: sticky; top: 0; z-index: 50; height: var(--header-height); display: flex; align-items: center; gap: 40px; padding: 0 var(--gutter); background: var(--paper); border-bottom: 1px solid var(--line); transition: background var(--motion), color var(--motion); view-transition-name: site-header; }
+.site-header { position: sticky; top: 0; z-index: 50; height: var(--header-height); display: flex; align-items: center; gap: 40px; padding: 0 var(--gutter); background: var(--paper); border-bottom: 1px solid var(--line); view-transition-name: site-header; }
 .hub-shell .site-header { margin-bottom: calc(-1 * var(--header-height)); }
-.site-header.on-hero { color: #fff; background: transparent; border-color: rgb(255 255 255 / 18%); }
+.site-header.on-hero { color: #fff; background: rgb(11 15 25 / 72%); border-color: rgb(255 255 255 / 18%); }
 .site-brand { display: flex; align-items: center; flex-shrink: 0; gap: 11px; font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: .08em; }
 .site-brand img { border-radius: 50%; }
 .desktop-nav { display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 600; height: 100%; }
 .desktop-nav > :is(a, button) { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0; position: relative; white-space: nowrap; }
 .desktop-nav [aria-current='page']::after { content: ''; position: absolute; height: 2px; background: var(--accent); inset: auto 0 14px; }
-.desktop-nav a:hover, .desktop-nav button:hover { opacity: .65; }
+.desktop-nav a:hover, .desktop-nav button:hover { text-decoration: underline; text-underline-offset: .3em; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 5px; }
 .header-download { display: none; }
 .header-download[aria-current='page'] { color: var(--accent); }
 .header-search { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); margin-right: 5px; }
-.header-search kbd { font: 12px var(--sans); opacity: .6; }
+.header-search kbd { font: 12px var(--sans); opacity: .9; }
 .header-account { position: relative; }
 .header-account img { border-radius: 50%; object-fit: cover; }
 .unread-dot { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }

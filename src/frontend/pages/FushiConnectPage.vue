@@ -58,7 +58,7 @@ async function authorize(approve) {
 <style scoped>
 .fushi-connect { width: min(720px, calc(100% - 32px)); margin: 112px auto 48px; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); }
 .fushi-connect p, .fushi-connect li { line-height: 1.8; }
-.eyebrow { font-size: .75rem; letter-spacing: .12em; opacity: .7; }
+.eyebrow { font-size: .75rem; letter-spacing: .12em; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .actions button { border-radius: var(--ts-radius-button); padding: 12px 22px; }
 .error { color: var(--ts-color-pink-600); }

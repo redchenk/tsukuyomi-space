@@ -7,12 +7,12 @@
   --line: #dfe6f0;
   --line-strong: #c8cddb;
   --ink: #202b46;
-  --muted: #626e84;
-  --accent: #ac4d6d;
+  --muted: #46536b;
+  --accent: #903755;
   --accent-hover: #923d5b;
   --on-accent: #fff;
   --site-background-image: var(--site-background-light);
-  --background-edge: 56%;
+  --background-edge: 83%;
   --background-reading: 90%;
   /* Preserve the original Sakura site's font order and editorial headings. */
   --serif: 'Source Han Serif SC', 'Noto Serif SC', 'Microsoft YaHei', serif;
@@ -32,20 +32,20 @@
   --danger: #ad344b;
   --success: #326b53;
 }
-:root[data-season='spring'] { --accent: #ac4d6d; --accent-hover: #923d5b; }
+:root[data-season='spring'] { --accent: #903755; --accent-hover: #923d5b; }
 :root[data-season='summer'] {
   --paper: #f3f8fa; --surface: #fcfeff; --soft: #e7f0f5;
-  --line: #d4e2e9; --line-strong: #b7cedb; --ink: #203443; --muted: #526b7a;
+  --line: #d4e2e9; --line-strong: #b7cedb; --ink: #203443; --muted: #405966;
   --accent: #28647d; --accent-hover: #1b4b61;
 }
 :root[data-season='autumn'] {
   --paper: #fbf7f1; --surface: #fffdf9; --soft: #f3eade;
-  --line: #e8dccc; --line-strong: #cfc5b8; --ink: #43332a; --muted: #706051;
-  --accent: #97562b; --accent-hover: #78421e;
+  --line: #e8dccc; --line-strong: #cfc5b8; --ink: #43332a; --muted: #594b3f;
+  --accent: #84461f; --accent-hover: #78421e;
 }
 :root[data-season='winter'] {
   --paper: #f5f8fc; --surface: #fdfeff; --soft: #e8edf6;
-  --line: #d8e1ee; --line-strong: #bfcbe0; --ink: #2a3550; --muted: #586a84;
+  --line: #d8e1ee; --line-strong: #bfcbe0; --ink: #2a3550; --muted: #445571;
   --accent: #46628d; --accent-hover: #344b70;
 }
 :root[data-theme='dark'] {
@@ -56,12 +56,12 @@
   --line: #394153;
   --line-strong: #566078;
   --ink: #edf0f7;
-  --muted: #b5bccb;
+  --muted: #c5cddd;
   --accent: #e5a4bc;
   --accent-hover: #edbdd0;
   --on-accent: #151923;
   --site-background-image: var(--site-background-dark);
-  --background-edge: 64%;
+  --background-edge: 85%;
   --background-reading: 91%;
   --danger: #ed8ca0;
   --success: #8fcaaf;
@@ -70,17 +70,17 @@
 :root[data-theme='dark'][data-season='spring'] { --accent: #e5a4bc; --accent-hover: #edbdd0; }
 :root[data-theme='dark'][data-season='summer'] {
   --paper: #111c25; --surface: #1c2b36; --soft: #263946;
-  --line: #3a5263; --line-strong: #5a7788; --ink: #e5f1f7; --muted: #abc1ce;
+  --line: #3a5263; --line-strong: #5a7788; --ink: #e5f1f7; --muted: #c0d3df;
   --accent: #8bc0d5; --accent-hover: #afd7e6;
 }
 :root[data-theme='dark'][data-season='autumn'] {
   --paper: #211b17; --surface: #302721; --soft: #40342a;
-  --line: #594839; --line-strong: #7d6653; --ink: #f6ebdc; --muted: #cfbca5;
+  --line: #594839; --line-strong: #7d6653; --ink: #f6ebdc; --muted: #dfceb9;
   --accent: #d89c72; --accent-hover: #e5b493;
 }
 :root[data-theme='dark'][data-season='winter'] {
   --paper: #151c2c; --surface: #222c40; --soft: #2d3950;
-  --line: #41516d; --line-strong: #607395; --ink: #eaf0ff; --muted: #b2bfd8;
+  --line: #41516d; --line-strong: #607395; --ink: #eaf0ff; --muted: #c8d4ea;
   --accent: #a3bce3; --accent-hover: #c0d1ec;
 }
 /* Compatibility names for existing feature components, all derived here. */

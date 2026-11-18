@@ -6,7 +6,7 @@
 .wiki-entry-notice { display: flex; gap: 12px; padding: 20px; background: var(--soft); border-radius: var(--r-control); margin-bottom: 32px; }
 .wiki-entry-back { display: flex; gap: 8px; align-items: center; color: var(--accent); margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
 .wiki-entry-toc nav a { display: flex; gap: 10px; padding: 6px 0; }
-.wiki-entry-toc nav a span { color: var(--line-strong); }
+.wiki-entry-toc nav a span { color: var(--muted); }
 .wiki-source-profile dl { margin: 0; }
 .wiki-source-profile-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .wiki-source-profile-row dt { color: var(--muted); }

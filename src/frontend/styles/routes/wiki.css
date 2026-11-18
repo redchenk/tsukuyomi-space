@@ -10,7 +10,7 @@
 .wiki-skip-link:focus { top: 10px; }
 .wiki-hero { position: relative; isolation: isolate; min-height: 350px; display: flex; align-items: end; border-radius: var(--r-media); overflow: hidden; color: #fff; }
 .wiki-hero-image, .wiki-hero-shade { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
-.wiki-hero-shade { z-index: -1; background: linear-gradient(90deg, rgb(13 20 32 / 85%), rgb(13 20 32 / 15%)); }
+.wiki-hero-shade { z-index: -1; background: linear-gradient(90deg, rgb(13 20 32 / 85%), rgb(13 20 32 / 50%)); }
 .wiki-hero-content { padding: 40px; max-width: 800px; }
 .wiki-kicker { font-size: 11px; letter-spacing: .15em; opacity: .75; margin-bottom: 22px; }
 .wiki-title-row { display: flex; align-items: center; gap: 24px; }
@@ -18,7 +18,7 @@
 .wiki-original-title { font-size: 14px; opacity: .7; margin-top: 10px; }
 .wiki-unofficial-badge { border: 1px solid rgb(255 255 255 / 30%); border-radius: var(--r-pill); padding: 5px 12px; font-size: 13px; white-space: nowrap; }
 .wiki-hero-lead { font-size: 15px; line-height: 1.9; margin-top: 22px; opacity: .85; }
-.wiki-hero-chips { display: flex; gap: 16px; margin-top: 20px; font-size: 13px; opacity: .7; }
+.wiki-hero-chips { display: flex; gap: 16px; margin-top: 20px; font-size: 13px; opacity: 1; }
 .wiki-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr) 210px; gap: 36px; align-items: start; margin-top: 40px; }
 .wiki-left-column, .wiki-info-panel { position: sticky; top: calc(var(--header-height) + 24px); max-height: calc(100dvh - 130px); overflow-y: auto; }
 .wiki-panel-heading { display: grid; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 12px; }
@@ -26,7 +26,7 @@
 .wiki-panel-heading > strong { font: 600 22px var(--serif); }
 .wiki-toc { display: grid; }
 .wiki-toc a { display: flex; gap: 10px; padding: 9px 0; font-size: 13px; color: var(--muted); }
-.wiki-toc a span { color: var(--line-strong); }
+.wiki-toc a span { color: var(--muted); }
 .wiki-toc a.active, .wiki-toc a:hover { color: var(--accent); }
 .wiki-quick-search { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
 .wiki-quick-search label, .wiki-mobile-search label { display: flex; gap: 8px; font-size: 14px; margin-bottom: 12px; }
@@ -38,7 +38,7 @@
 .wiki-main-content { min-width: 0; }
 .wiki-section { padding-bottom: 40px; margin-bottom: 36px; border-bottom: 1px solid var(--line); scroll-margin-top: 105px; }
 .wiki-section-heading { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-.wiki-section-heading > span { font: italic 28px Georgia, serif; color: var(--line-strong); }
+.wiki-section-heading > span { font: italic 28px Georgia, serif; color: var(--muted); }
 .wiki-section-heading small { font-size: 11px; letter-spacing: .1em; color: var(--accent); }
 .wiki-section-heading h2 { font: 600 28px var(--serif); margin-top: 5px; }
 .wiki-section > p, .wiki-section article > p { font-size: 15px; line-height: 1.9; margin: 14px 0; color: var(--muted); }

@@ -56,17 +56,17 @@
 }
 
 .admin-badge.ok {
-    color: #73d6a1;
+    color: var(--success);
     border-color: color-mix(in srgb, #73d6a1 35%, transparent);
 }
 
 .admin-badge.warn,
 .admin-risk {
-    color: #f0bf70;
+    color: var(--accent);
 }
 
 .admin-badge.hot {
-    color: #ff8cab;
+    color: var(--danger);
     border-color: color-mix(in srgb, #ff8cab 35%, transparent);
 }
 

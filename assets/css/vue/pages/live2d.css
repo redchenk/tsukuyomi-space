@@ -370,6 +370,8 @@ body.vue-live2d-route {
     cursor: pointer;
 }
 
+.live2d-page input::placeholder { color: var(--live2d-muted); opacity: 1; }
+
 .live2d-toggle input {
     width: 1rem;
     height: 1rem;
