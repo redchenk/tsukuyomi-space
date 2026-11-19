@@ -15,7 +15,6 @@ import { animateRouteEnter, cancelRouteMotion } from './utils/motion';
 import { focusRouteHeading, installRouteLinks, routeViewKey } from './utils/routeNavigation';
 import { loadAccessPage, warmRoutePath } from './router';
 import { useAccessTransition } from './composables/useAccessTransition';
-import MoonlightEntry from './components/MoonlightEntry.vue';
 import { useRoomEntryTransition } from './composables/useRoomEntryTransition';
 import RoomEntrySplash from './components/RoomEntrySplash.vue';
 import './styles/access-transition.css';
@@ -56,14 +55,15 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
   ? 'ページを読み込み中'
   : lang.value === 'en' ? 'Loading page' : '页面加载中');
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
-const {
-  gate: accessGate, phase: entryPhase, cinematic: entryCinematic,
-  failed: entryFailed, progress: entryProgress, waiting: entryWaiting,
-  enter: enterSpace, skip: skipEntry
-} = useAccessTransition({
+const { gate: accessGate, phase: entryPhase, failed: entryFailed, enter: enterSpace } = useAccessTransition({
   route, router, onEntrySound: () => music.startEntryMusic(), onEntered: () => {
     try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
-    focusRouteHeading(document.querySelector('[data-route-name="hub"]'));
+    // WebKit needs a layout frame after the overlaid entrance releases inert.
+    requestAnimationFrame(() => {
+      if (route.name === 'hub' && document.activeElement === document.body) {
+        focusRouteHeading(document.querySelector('[data-route-name="hub"]'));
+      }
+    });
     loadVisitPopup();
   }
 });
@@ -429,13 +429,9 @@ onUnmounted(() => {
 
 <template>
   <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
-    :data-phase="entryPhase" :data-cinematic="entryCinematic || undefined"
-    :data-water-mirror="entryCinematic || undefined" :inert="entryPhase === 'revealing'">
-    <AccessPage :t="t" :entering="entryActive" :cinematic="entryCinematic" :entry-failed="entryFailed"
-      :inert="entryCinematic"
+    :data-phase="entryPhase" :inert="entryPhase === 'revealing'">
+    <AccessPage :t="t" :entering="entryActive" :entry-failed="entryFailed"
       @enter="enterSpace" @warm="warmRoutePath('/hub')" />
-    <MoonlightEntry v-if="entryCinematic" :t="t" :lang="lang" from-access
-      :waiting="entryWaiting" :progress="entryProgress" @skip="skipEntry" />
   </div>
   <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang" :t="t"
     :cinematic="roomEntryCinematic" :loaded="roomEntryLoaded" :waiting="roomEntryWaiting" :can-enter="isRoomRoute"

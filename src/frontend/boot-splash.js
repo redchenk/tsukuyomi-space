@@ -1,7 +1,5 @@
 // A small independent entry point paints before the Vue/router bundle is ready.
 const splash = document.getElementById('boot-splash');
-// Access starts on the Seedance poster, without a separate logo animation.
-const waterMirrorBoot = /^\/(?:access\/?)?$/.test(window.location.pathname);
 const chatroomBoot = /^\/chatroom\/?$/.test(window.location.pathname);
 if (chatroomBoot) {
   // Fetch the first snapshot while Vue and the route are downloading. Only the
@@ -26,7 +24,6 @@ if (chatroomBoot) {
     document.head.append(link);
   }
 }
-if (waterMirrorBoot && splash) splash.dataset.scene = 'water-mirror';
 // Count the readable brand moment from a painted frame, not script execution.
 // Cached assets or a busy startup must not consume it before the user sees it.
 const paintedAt = new Promise(resolve => {
@@ -44,13 +41,18 @@ watchdog = window.setTimeout(() => {
   splash.querySelector('.boot-splash-retry').hidden = false;
 }, 10000);
 
+function removeBootCover() {
+  splash?.remove();
+  window.dispatchEvent(new Event('tsukuyomi:boot-dismissed'));
+}
+
 function completeBootSplash(event) {
   if (dismissed) return;
   dismissed = true;
   window.clearTimeout(watchdog);
-  if (chatroomBoot || waterMirrorBoot || event?.detail?.handoff) {
-    // The matching Access scene or Room splash is already painted underneath.
-    splash?.remove();
+  if (chatroomBoot || event?.detail?.handoff) {
+    // The matching chat or Room surface is already painted underneath.
+    removeBootCover();
     document.getElementById('app')?.removeAttribute('inert');
     return;
   }
@@ -61,7 +63,7 @@ function completeBootSplash(event) {
     timer = window.setTimeout(() => {
       document.getElementById('app')?.removeAttribute('inert');
       splash?.classList.add('is-ready');
-      window.setTimeout(() => splash?.remove(), reduced ? 0 : 320);
+      window.setTimeout(removeBootCover, reduced ? 0 : 320);
     }, Math.max(0, 900 - (performance.now() - startedAt)));
   });
 }
@@ -70,7 +72,7 @@ window.addEventListener('pageshow', event => {
   if (!event.persisted) return;
   window.clearTimeout(timer);
   window.clearTimeout(watchdog);
-  splash?.remove();
+  removeBootCover();
   document.getElementById('app')?.removeAttribute('inert');
   dismissed = true;
 });

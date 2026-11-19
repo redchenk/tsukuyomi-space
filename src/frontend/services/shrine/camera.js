@@ -1,0 +1,60 @@
+import { arrival, atGate } from './landmarks.js';
+
+export const nightfallDuration = 2.3;
+const clamp = value => Math.max(0, Math.min(1, value));
+
+function ease(value) {
+  const t = clamp(value);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+// Projected width of the gate's crossbeam in the source 960 px shot.
+// A monotone cubic keeps the dolly velocity continuous at every measured pose.
+const times = [0, .35, .7, 1, 1.2, 1.4, 1.6, 1.8, 2, nightfallDuration];
+const widths = [744, 731, 699, 637, 567, 461, 369, 320, 298, 288];
+const slopes = widths.map((_, i) => {
+  if (i === 0 || i === widths.length - 1) return 0;
+  const before = (widths[i] - widths[i - 1]) / (times[i] - times[i - 1]);
+  const after = (widths[i + 1] - widths[i]) / (times[i + 1] - times[i]);
+  return 2 * before * after / (before + after);
+});
+
+function beamWidth(seconds) {
+  let i = 0;
+  while (i < times.length - 2 && seconds > times[i + 1]) i++;
+  const span = times[i + 1] - times[i];
+  const t = clamp((seconds - times[i]) / span);
+  const mix = t * t * (3 - 2 * t);
+  return widths[i] * (1 - mix) + widths[i + 1] * mix
+    + span * (slopes[i] * t * (1 - t) ** 2 - slopes[i + 1] * t * t * (1 - t));
+}
+
+export function shrinePose(heldSeconds, travelSeconds, aspect, portrait) {
+  const width = beamWidth(travelSeconds);
+  const progress = (744 - width) / (744 - 288);
+  const focal = 944 - 294 * progress;
+  const pitch = Math.atan((218 + 4 * progress) / focal);
+  const eye = .18 + .04 * progress;
+  const depth = focal * 8.426 / width;
+  const distance = (depth - (arrival.height * .7927 - eye) * Math.sin(pitch)) / Math.cos(pitch);
+  const center = atGate(-distance / arrival.scale);
+
+  // Carry both the position and its derivative through the click. The two
+  // envelopes have zero slope at their endpoints, even halfway through a glance.
+  const clock = heldSeconds + travelSeconds;
+  const weight = ease(heldSeconds ? clock / 1.2 : 0) * (1 - ease(travelSeconds / 1.35));
+  const side = weight * (.052 * Math.sin(clock * .91) + .017 * Math.sin(clock * 1.49));
+  const nod = Math.sin(clock * 1.13 + .38);
+  const reference = portrait ? 576 / 1024 : 16 / 9;
+  const lens = portrait ? 1.72 / reference : 1.60 - .44 * ease((travelSeconds - .65) / 1.45);
+
+  return {
+    x: center.x + Math.cos(arrival.yaw) * side,
+    y: eye + weight * .009 * nod,
+    z: center.z - Math.sin(arrival.yaw) * side,
+    yaw: arrival.yaw + weight * (.0055 * Math.sin(clock * .79) + .0013 * Math.sin(clock * 1.37)),
+    pitch: pitch + weight * .0028 * nod,
+    roll: weight * .0014 * Math.sin(clock * .87 - .2),
+    fov: 2 * Math.atan(270 / focal * lens * Math.min(1, reference / aspect)) * 180 / Math.PI
+  };
+}
