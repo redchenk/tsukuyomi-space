@@ -588,6 +588,7 @@ async function putObject({
     cacheControl = '',
     publicRead = false,
     privateRead = false,
+    infrequentAccess = false,
     filePath = ''
 }) {
     const settings = providedSettings || getSettings();
@@ -604,6 +605,7 @@ async function putObject({
     if (contentEncoding) uploadHeaders['Content-Encoding'] = String(contentEncoding);
     if (cacheControl) uploadHeaders['Cache-Control'] = String(cacheControl);
     if (publicRead === true) uploadHeaders['X-Oss-Object-Acl'] = 'public-read';
+    if (infrequentAccess && isAliyunProvider(settings)) uploadHeaders['X-Oss-Storage-Class'] = 'IA';
     if (privateRead === true) uploadHeaders[isAliyunProvider(settings) ? 'X-Oss-Object-Acl' : 'X-Amz-Acl'] = 'private';
     let payloadHash;
     if (filePath) {
@@ -699,6 +701,7 @@ async function getObject(objectKey, { range = '', settings: providedSettings = n
         buffer,
         ...(stream ? { body: response.body } : {}),
         status: response.status,
+        expiration: response.headers.get('x-oss-expiration') || response.headers.get('x-amz-expiration') || '',
         contentType: response.headers.get('content-type') || 'application/octet-stream',
         contentLength: response.headers.get('content-length') || '',
         contentRange: response.headers.get('content-range') || '',

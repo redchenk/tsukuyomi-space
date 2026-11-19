@@ -16,14 +16,18 @@ async function main() {
     const key = prefix + '/' + id + '.cms';
     if (action === 'put') {
         const result = await storage.putObject({ filePath: file, mimeType: 'application/octet-stream',
-            ext: 'cms', id, uploadPath: prefix, privateRead: true, cacheControl: 'private, no-store', settings });
+            ext: 'cms', id, uploadPath: prefix, privateRead: true, infrequentAccess: true, cacheControl: 'private, no-store', settings });
         if (result?.key !== key) throw new Error('Unexpected archive destination');
         const publicCheck = await storage.fetchOutbound(storage.buildRequestUrl(settings, key),
             { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(20000) });
         if (![401,403,404].includes(publicCheck.status)) throw new Error('Could not confirm private object access');
-    } else if (action === 'read') {
+    } else if (action === 'read' || action === 'verify-read') {
         const object = await storage.getObject(key, {stream: true, settings});
         if (object?.status !== 200) throw new Error('Archive could not be read');
+        if (action === 'verify-read' && object.expiration) {
+            await object.body.cancel();
+            throw new Error('Object is scheduled to expire');
+        }
         await pipeline(object.body, process.stdout);
     } else throw new Error('Unknown archive operation');
 }

@@ -1526,6 +1526,10 @@ describe('gallery API', () => {
             assert.equal(headers['cache-control'], 'public, max-age=31536000, immutable');
             assert.equal(headers['x-oss-object-acl'], 'public-read');
             assert.match(headers.Authorization, /^OSS4-HMAC-SHA256 /);
+            assert.equal(headers['x-oss-storage-class'], undefined);
+            await objectStorage.putObject({ buffer: Buffer.from('encrypted fixture'), ext: 'cms', id: 'backup', settings, privateRead: true, infrequentAccess: true });
+            assert.equal(requests[3].options.headers['x-oss-storage-class'], 'IA');
+            assert.equal(requests[3].options.headers['x-oss-object-acl'], 'private');
         } finally {
             globalThis.fetch = originalFetch;
         }

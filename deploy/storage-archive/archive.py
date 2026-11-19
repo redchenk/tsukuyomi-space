@@ -90,8 +90,9 @@ def decrypt():
             str(KEYS/'recipient.pem'), '-inkey', str(KEYS/'recovery.key')]
 
 
-def restore_stream(archive_id, relative):
-    return pipeline([transport('read', archive_id), decrypt(), ['tar', '-xzOf', '-', '--', relative]])
+def restore_stream(archive_id, relative, verify_retention=False):
+    action = 'verify-read' if verify_retention else 'read'
+    return pipeline([transport(action, archive_id), decrypt(), ['tar', '-xzOf', '-', '--', relative]])
 
 
 def receipt_path(path):
@@ -163,7 +164,7 @@ def archive(path, release_local, legacy=False):
             os.fchmod(cipher.fileno(), 0o400)
             subprocess.run(transport('put', archive_id, cipher.name), check=True)
     # Verify the provider's actual copy, including decryption, decompression and original bytes.
-    with restore_stream(archive_id, relative) as restored:
+    with restore_stream(archive_id, relative, verify_retention=True) as restored:
         if digest(restored) != expected:
             raise RuntimeError('Restored backup digest mismatch')
     if stamp(path) != initial or not closed(path):
