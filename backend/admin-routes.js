@@ -311,6 +311,11 @@ router.get('/stats', (req, res) => {
     }
 });
 
+router.get('/growth-report', (req,res) => {
+    res.setHeader('Cache-Control','private, no-store');
+    try { ok(res,require('./services/growth-report').report({group:req.query.group, days:req.query.days})); }
+    catch (error) { console.error('Growth report failed:',error); fail(res,500,'增长报表暂时无法读取'); }
+});
 router.get('/analytics', (req, res) => {
     try {
         const views = statsRepository.analyticsViewCounters();

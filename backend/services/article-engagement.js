@@ -5,7 +5,8 @@ const config = require('../config');
 const growth = require('./user-growth');
 const { getClientIp } = require('../middleware/security');
 
-const READ_SECONDS = 12;
+const measurement = require('./growth-measurement');
+const READ_SECONDS = 10;
 const COOKIE = 'tsukuyomi_reader';
 const RATES = { like: 2, bookmark: 5 };
 const digest = value => crypto.createHmac('sha256', config.jwtSecret).update(`article-reader:${value}`).digest('hex');
@@ -34,9 +35,31 @@ function beginRead(req, res, articleId, now = Date.now()) {
     const reader = readerContext(req, res);
     return {
         seconds: READ_SECONDS,
-        token: jwt.sign({ article: String(articleId), device: reader.device, user: reader.user, iat: Math.floor(now / 1000) }, config.jwtSecret,
+        token: jwt.sign({ article: String(articleId), device: reader.device, user: reader.user, jti: crypto.randomUUID(), started: now, iat: Math.floor(now / 1000) }, config.jwtSecret,
             { algorithm: 'HS256', audience: 'article-read', expiresIn: '1h' })
     };
+}
+
+const recordOpen = db.transaction((req, now = Date.now()) => {
+    let claims;
+    try { claims = jwt.verify(String(req.body?.token || ''), config.jwtSecret, {algorithms:['HS256'], audience:'article-read', clockTimestamp:Math.floor(now/1000)}); }
+    catch { return false; }
+    const device = deviceCookie(req);
+    if (!device || !claims.jti || claims.device !== digest(device) || claims.user !== actorId(req) || claims.article !== String(req.params.id)) return false;
+    const article = db.prepare("SELECT author_id FROM articles WHERE id=? AND COALESCE(status,'published')='published'").get(claims.article);
+    if (!article || ['admin','super_admin','banned'].includes(req.user?.role) || req.user?.scope === 'admin' || (claims.user && claims.user===article.author_id) || measurement.automation.test(req.headers['user-agent'] || '')) return false;
+    db.prepare('DELETE FROM article_read_tickets WHERE expires < ?').run(now);
+    if (db.prepare('INSERT OR IGNORE INTO article_read_tickets VALUES(?,?)').run('open:'+claims.jti,claims.exp*1000).changes) {
+        articleTotal(claims.article,now,1,0);
+        measurement.record(req,'article_open',claims.article + ':' + claims.jti,now);
+    }
+    return true;
+});
+
+function articleTotal(articleId, now, opens, reads) {
+    db.prepare(`INSERT INTO article_read_daily(day,article_id,opens,reads) VALUES(?,?,?,?)
+        ON CONFLICT(day,article_id) DO UPDATE SET opens=opens+excluded.opens,reads=reads+excluded.reads`)
+        .run(growth.hongKongDate(new Date(now)),articleId,opens,reads);
 }
 
 function reward(authorId, kind, sourceId, articleId, xp, now) {
@@ -46,25 +69,41 @@ function reward(authorId, kind, sourceId, articleId, xp, now) {
         sourceId, xp, metadata: { articleId } });
 }
 
-const countRead = db.transaction(({ articleId, user, device, network, now }) => {
-    const article = db.prepare("SELECT id, author_id, view_count FROM articles WHERE id = ? AND COALESCE(status, 'published') = 'published'").get(articleId);
+const countRead = db.transaction(({ articleId, user, device, network, ticket, now, req }) => {
+    const article = db.prepare("SELECT id, author_id, view_count FROM articles WHERE id=? AND COALESCE(status,'published')='published'").get(articleId);
     if (!article) return { counted: false, reason: 'unavailable', viewCount: 0 };
-    const selfRead = Boolean(user && user === article.author_id);
-    const keys = [`device:${device}`, ...(user ? [`account:${digest(user)}`] : [])];
-    // A one-day network/browser fallback also catches anonymous cookie resets.
-    // Never use it to merge different signed-in readers on a shared network.
-    const fallback = `network:${growth.hongKongDate(new Date(now))}:${network}`;
-    const exists = db.prepare('SELECT 1 FROM article_read_identities WHERE article_id = ? AND identity_key = ?');
-    const repeated = keys.some(key => exists.get(article.id, key)) || (!user && Boolean(exists.get(article.id, fallback)));
-    const add = db.prepare('INSERT OR IGNORE INTO article_read_identities(article_id, identity_key, created_at) VALUES (?, ?, ?)');
-    // Record newly seen aliases even on a duplicate (guest -> login, account -> new device).
-    for (const key of [...keys, fallback]) add.run(article.id, key, now);
-    if (selfRead) return { counted: false, reason: 'author', viewCount: article.view_count };
-    if (!repeated) {
-        db.prepare('UPDATE articles SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?').run(article.id);
-        reward(article.author_id, 'view', `${article.id}:${device}`, article.id, 1, now);
-    }
-    return { counted: !repeated, reason: repeated ? 'already_read' : 'counted', viewCount: Number(article.view_count || 0) + (repeated ? 0 : 1) };
+    const viewCount = Number(article.view_count || 0);
+    db.prepare('DELETE FROM article_read_tickets WHERE expires < ?').run(now);
+    const receipt = db.prepare('INSERT OR IGNORE INTO article_read_tickets VALUES (?,?)').run(ticket, now + 3600000);
+    if (!receipt.changes) return { counted: false, reason: 'already_read', viewCount };
+    db.prepare('DELETE FROM article_read_windows WHERE last_seen < ?').run(now - measurement.WINDOW);
+    const account = user ? 'account:' + digest(user) : '';
+    const browser = 'device:' + device;
+    const get = db.prepare('SELECT last_seen,owner FROM article_read_windows WHERE article_id=? AND reader=?');
+    const deviceWindow = get.get(articleId, browser);
+    const anonymousNetwork = 'recent-network:' + network;
+    const resetWindow = !account && !deviceWindow ? get.get(articleId, anonymousNetwork) : null;
+    const previous = Math.max(resetWindow?.last_seen || 0, account ? get.get(articleId, account)?.last_seen || 0 : 0,
+        !account || !deviceWindow?.owner || deviceWindow.owner === account ? deviceWindow?.last_seen || 0 : 0);
+    const save = db.prepare(`INSERT INTO article_read_windows(article_id,reader,last_seen,owner) VALUES(?,?,?,?)
+        ON CONFLICT(article_id,reader) DO UPDATE SET last_seen=excluded.last_seen,owner=excluded.owner`);
+    save.run(articleId,browser,now,account || deviceWindow?.owner || '');
+    if (account) save.run(articleId,account,now,account);
+    else save.run(articleId,anonymousNetwork,now,'');
+    const author = user && user === article.author_id;
+    const keys = [browser, ...(account ? [account] : [])];
+    const fallback = 'network:' + growth.hongKongDate(new Date(now)) + ':' + network;
+    const existing = db.prepare('SELECT 1 FROM article_read_identities WHERE article_id=? AND identity_key=?');
+    const rewarded = keys.some(key => existing.get(articleId,key)) || (!account && existing.get(articleId,fallback));
+    const remember = db.prepare('INSERT OR IGNORE INTO article_read_identities VALUES(?,?,?)');
+    for (const key of [...keys,fallback]) remember.run(articleId,key,now);
+    if (author) return { counted:false, reason:'author', viewCount };
+    if (!rewarded) reward(article.author_id,'view',articleId + ':' + device,article.id,1,now);
+    const counted = !previous || now - previous >= measurement.WINDOW;
+    if (counted) db.prepare('UPDATE articles SET view_count=COALESCE(view_count,0)+1 WHERE id=?').run(articleId);
+    measurement.record(req,'article_read',articleId + ':' + growth.hongKongDate(new Date(now)),now);
+    if (counted) articleTotal(articleId,now,0,1);
+    return { counted, reason: counted ? 'counted' : 'already_read', viewCount: viewCount + Number(counted) };
 });
 
 function completeRead(req, now = Date.now()) {
@@ -78,9 +117,9 @@ function completeRead(req, now = Date.now()) {
     if (!device || claims.device !== digest(device) || claims.user !== actorId(req) || claims.article !== String(req.params.id)) {
         return { counted: false, reason: 'identity_changed' };
     }
-    if (!Number.isFinite(claims.iat) || now - claims.iat * 1000 < READ_SECONDS * 1000) return { counted: false, reason: 'too_soon' };
-    if (/bot|crawler|spider|headless|preview|facebookexternalhit/i.test(req.headers['user-agent'] || '')) return { counted: false, reason: 'automated' };
-    const result = countRead.immediate({ articleId: claims.article, device: claims.device, user: claims.user, now,
+    if (!Number.isFinite(claims.iat) || now - (claims.started ?? claims.iat * 1000) < READ_SECONDS * 1000) return { counted: false, reason: 'too_soon' };
+    if (measurement.automation.test(req.headers['user-agent'] || '') || req.user?.scope === 'admin' || ['admin','super_admin','banned'].includes(req.user?.role)) return { counted: false, reason: 'automated' };
+    const result = countRead.immediate({ articleId: claims.article, device: claims.device, user: claims.user, now, req, ticket: claims.jti || digest(req.body.token),
         network: digest(`${getClientIp(req)}|${String(req.headers['user-agent'] || '').slice(0, 400)}`) });
     if (!['author', 'unavailable'].includes(result.reason)) {
         try { require('./article-discovery-metrics').recordQualified(req, claims.article, now); }
@@ -127,4 +166,4 @@ const backfillHistorical = db.transaction(() => {
     db.prepare("INSERT INTO article_growth_backfills(version, users, xp) VALUES ('v1', ?, ?)").run(users, total);
 });
 
-module.exports = { readerContext, digest, beginRead, completeRead, rewardInteraction, backfillHistorical: () => backfillHistorical.immediate(), READ_SECONDS };
+module.exports = { recordOpen, readerContext, digest, beginRead, completeRead, rewardInteraction, backfillHistorical: () => backfillHistorical.immediate(), READ_SECONDS };

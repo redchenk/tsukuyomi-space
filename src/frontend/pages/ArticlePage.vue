@@ -3,6 +3,7 @@ import MobileSheet from '../components/MobileSheet.vue';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { reportSignal } from '../services/growthSignals';
 import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
 import { useArticleReading } from '../composables/useArticleReading';
 import { readingTimeLabel } from '../utils/reading';
@@ -27,6 +28,7 @@ import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateMinute, formatDateTime } from '../utils/time';
 
 const props = defineProps({
+  user: {type:Object,default:null},
   lang: { type: String, default: 'zh' },
   t: { type: Object, required: true }
 });
@@ -230,7 +232,7 @@ async function loadArticle(options = {}) {
   articleRequests?.abort();
   articleRequests = new AbortController();
   const context = { revision, id: articleId.value, signal: articleRequests.signal };
-  readingReceipt.value = null;
+  if (!background) readingReceipt.value = null;
   if (!background) {
     comments.value = [];
     commentsLoading.value = false;
@@ -258,7 +260,7 @@ async function loadArticle(options = {}) {
     if (revision !== articleLoadRevision) return;
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;
-    readingReceipt.value = result.reading || null;
+    if (!background || options?.renewReceipt || !readingReceipt.value) readingReceipt.value = result.reading || null;
     applySeo(articleSeo(result.data, articlePath.value));
     // Publish the body immediately. Slow or unavailable secondary services must
     // not gate reading, and each result belongs to this navigation revision.
@@ -269,6 +271,7 @@ async function loadArticle(options = {}) {
     void hydrateUserLevels([result.data.author_id]).catch(() => {});
   } catch (error) {
     if (revision !== articleLoadRevision) return;
+    if (!background) reportSignal('article_load_failed');
     showMessage(error.message || props.t.loadFailed || '加载失败');
   } finally {
     if (revision === articleLoadRevision) loading.value = false;
@@ -563,6 +566,28 @@ function jumpToArticleTarget(id) {
   scrollToTarget(target);
 }
 
+let openedToken = '';
+function recordOpen() {
+  const token = readingReceipt.value?.token;
+  if (!token || !article.value || document.visibilityState !== 'visible' || token === openedToken) return;
+  openedToken = token;
+  void authFetch('/api/articles/' + encodeURIComponent(article.value.id) + '/open', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token}), keepalive:true
+  }).then(r => { if (!r.ok && openedToken === token) openedToken = ''; })
+    .catch(() => { if (openedToken === token) openedToken = ''; });
+}
+let hiddenAt = 0;
+function resumeArticle() {
+  if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt >= 30 * 60000 && article.value) {
+    hiddenAt = 0;
+    void loadArticle({background:true, renewReceipt:true});
+  } else recordOpen();
+}
+watch(() => props.user?.id, (next,previous) => { if (next !== previous && article.value) void loadArticle({background:true,renewReceipt:true}); });
+watch(readingReceipt, recordOpen, {flush:'post'});
+onMounted(() => document.addEventListener('visibilitychange',resumeArticle));
+onBeforeUnmount(() => document.removeEventListener('visibilitychange',resumeArticle));
 onMounted(loadArticle);
 useContentTranslationRefresh(() => loadArticle({ background: true }));
 onBeforeUnmount(() => {
@@ -599,7 +624,7 @@ watch(() => route.hash, revealCommentHash);
             >{{ article.author_nickname || article.author_username || 'admin' }}</a>
             <UserLevelBadge v-if="userLevel(article.author_id)" :level="userLevel(article.author_id)" :lang="lang" compact />
             <span>{{ articleReadingTime }}</span>
-            <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
+            <span title="正文连续可见 10 秒计入阅读，同一读者间隔 30 分钟可再次计入。">{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
           </div>
           <section v-if="article.excerpt?.trim()" class="article-excerpt" :aria-label="t.editorFieldExcerpt">
             <h2>{{ t.editorFieldExcerpt }}</h2>

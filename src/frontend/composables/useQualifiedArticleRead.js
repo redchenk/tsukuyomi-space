@@ -29,7 +29,7 @@ export function useQualifiedArticleRead(article, reading) {
       } catch (_) {
         if (current === revision && retries++ < 2) schedule();
       }
-    }, Math.max(12, Number(reading.value.seconds) || 12) * 1000);
+    }, Math.max(10, Number(reading.value.seconds) || 10) * 1000);
   }
   watch(() => reading.value?.token, () => { completed = false; retries = 0; schedule(); });
   onMounted(() => document.addEventListener('visibilitychange', schedule));

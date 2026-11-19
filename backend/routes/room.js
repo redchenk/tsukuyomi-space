@@ -725,6 +725,7 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds });
         }
         if (memoryIds.length) roomMemoryEvents.publish(req.user.id, { action: 'created', memoryIds });
+        if (!opener && messageIds.length) require('../services/growth-measurement').observe(req,'room_reply',turnId);
         const growth = opener || !messageIds.length ? null : userGrowth.recordRoomChat(req.user.id);
         setNoStore(res);
         res.status(messageIds.length ? 201 : 200).json({

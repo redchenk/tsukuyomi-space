@@ -127,6 +127,28 @@ function sendStats(req, res) {
     }
 }
 
+const measurement = require('../services/growth-measurement');
+const { createRateLimiter } = require('../middleware/security');
+const clientSignals = new Set(['room','chatroom','article_load_failed','login','register','room_config','room_attempt','room_login','room_quota','room_timeout','room_failed','room_local_reply','runner_100','gomoku_finish']);
+router.post('/journey', optionalAuth, createRateLimiter({windowMs:60000,max:240,keyPrefix:'growth-journey'}), async (req,res,next) => {
+    try {
+        const {kind='',key='',moves,score} = req.body || {};
+        if (typeof kind !== 'string' || (kind && !clientSignals.has(kind)) || typeof key !== 'string' || !/^[\w.-]{0,100}$/.test(key)) return res.sendStatus(400);
+        let objectKey = key ? measurement.hash(key) : '';
+        if (kind === 'runner_100' && (!Number.isSafeInteger(score) || score < 100)) return res.sendStatus(400);
+        if (kind === 'room_local_reply' && (req.user || !key)) return res.sendStatus(400);
+        if (kind === 'gomoku_finish') {
+            if (!Array.isArray(moves) || moves.length < 9 || moves.length > 225) return res.sendStatus(400);
+            const { restoreGame } = await import('../../shared/gomoku.mjs');
+            const game = restoreGame({version:1,human:1,difficulty:'casual',moves});
+            if (!game || (!game.winner && !game.draw)) return res.sendStatus(400);
+            objectKey = measurement.hash(JSON.stringify(moves));
+        }
+        measurement.record(req,kind,objectKey);
+        return res.sendStatus(204);
+    } catch (error) { next(error); }
+});
+
 router.get('/', sendStats);
 router.get('/live/:nonce', sendStats);
 

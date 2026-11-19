@@ -1,4 +1,5 @@
 <script setup>
+import GrowthReportPanel from '../components/GrowthReportPanel.vue';
 import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { apiFetch, noStoreUrl, saveUserSession, getSession, clearSession } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
@@ -1358,10 +1359,11 @@ onUnmounted(() => {
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'analytics'">
             <div class="terminal-cards">
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon success"><TsIcon name="eye" :size="18" /></span><span class="terminal-stat-copy"><small>今日访问</small><strong>{{ terminal.analytics.todayViews || 0 }}</strong></span></div>
-              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon"><TsIcon name="calendar" :size="18" /></span><span class="terminal-stat-copy"><small>7 日访问</small><strong>{{ terminal.analytics.weekViews || 0 }}</strong></span></div>
-              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon purple"><TsIcon name="layers" :size="18" /></span><span class="terminal-stat-copy"><small>30 日访问</small><strong>{{ terminal.analytics.monthViews || 0 }}</strong></span></div>
-              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon warning"><TsIcon name="sparkles" :size="18" /></span><span class="terminal-stat-copy"><small>总访问</small><strong>{{ terminal.analytics.totalViews || 0 }}</strong></span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon"><TsIcon name="calendar" :size="18" /></span><span class="terminal-stat-copy"><small>7 日访问人天</small><strong>{{ terminal.analytics.weekViews || 0 }}</strong></span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon purple"><TsIcon name="layers" :size="18" /></span><span class="terminal-stat-copy"><small>30 日访问人天</small><strong>{{ terminal.analytics.monthViews || 0 }}</strong></span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon warning"><TsIcon name="sparkles" :size="18" /></span><span class="terminal-stat-copy"><small>累计访问人天</small><strong>{{ terminal.analytics.totalViews || 0 }}</strong></span></div>
             </div>
+            <GrowthReportPanel v-if="authed && terminal.activePanel === 'analytics'" :request="adminApi" :revision="terminal.analyticsRevision" />
             <OfficialUsagePanel v-if="authed && terminal.activePanel === 'analytics'" :request="adminApi" :revision="terminal.analyticsRevision" />
           </div>
 

@@ -254,6 +254,7 @@ router.post('/', authenticateToken, (req, res) => {
         responseCache.delPrefix('public:pixel-art');
         responseCache.delPrefix('public:site-feed');
         const growth = recordPixelGrowth(req.user.id, 'pixel_publish', artwork.id);
+        require('../services/growth-measurement').observe(req,'pixel_publish',artwork.id);
         res.status(201).json({ success: true, data: artwork, growth, message: '像素画已分享' });
     } catch (error) {
         if (error.status === 422) return res.status(422).json({ success: false, code: error.code, message: error.message });

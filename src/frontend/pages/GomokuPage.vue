@@ -1,4 +1,5 @@
 <script setup>
+import { reportSignal } from '../services/growthSignals';
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
@@ -66,6 +67,7 @@ function cancelTurn() {
   thinking.value = false;
   companion.cancel();
 }
+watch(finished, done => { if (done) reportSignal('gomoku_finish','board',{moves:game.value.moves}); });
 function announceResult() {
   react('result');
 }

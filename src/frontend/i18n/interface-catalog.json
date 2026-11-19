@@ -1,4 +1,8 @@
 {
+  "正文连续可见 10 秒计入阅读，同一读者间隔 30 分钟可再次计入。": {
+    "en": "Reads require 10 visible seconds. Re-reading can count after a 30-minute interval.",
+    "ja": "記事が10秒間連続で表示されると閲読を記録します。同じ読者は30分間隔で再度計上されます。"
+  },
   "月读聊天室": {
     "en": "Moon Chat",
     "ja": "月読チャット"
@@ -13362,5 +13366,357 @@
   "这个文件是空的": {
     "en": "This file is empty.",
     "ja": "ファイルが空です。"
+  },
+  "增长报表": {
+    "en": "Growth report",
+    "ja": "成長レポート"
+  },
+  "观察窗口": {
+    "en": "Reporting period",
+    "ja": "集計期間"
+  },
+  "近": {
+    "en": "Last",
+    "ja": "直近"
+  },
+  "天": {
+    "en": "days",
+    "ja": "日間"
+  },
+  "首访分组": {
+    "en": "Group first visits by",
+    "ja": "初回訪問の分類"
+  },
+  "正在读取增长数据…": {
+    "en": "Loading growth data…",
+    "ja": "成長データの読み込み中…"
+  },
+  "北京时间": {
+    "en": "Beijing time",
+    "ja": "北京時間"
+  },
+  "起采集 · 截至": {
+    "en": "through",
+    "ja": "から集計・最終更新"
+  },
+  "。今天和未满周期的窗口显示已采集部分，留存仅纳入已走完整个观察窗口的人。": {
+    "en": ". Partial periods show data collected so far. Retention includes completed observation windows only.",
+    "ja": "。本日および未完の期間は収集済みの分を表示します。継続率は観測期間を終えた利用者のみを対象とします。"
+  },
+  "首次会话激活": {
+    "en": "First-session activation",
+    "ja": "初回セッションの利用開始"
+  },
+  "首次成功耗时 · 中位 / P75": {
+    "en": "Time to first success · median / P75",
+    "ja": "初回成功までの時間 · 中央値 / P75"
+  },
+  "秒": {
+    "en": "seconds",
+    "ja": "秒"
+  },
+  "首次激活后回访": {
+    "en": "Retention after first activation",
+    "ja": "初回利用後の再訪"
+  },
+  "首次观察到的访客 · 按": {
+    "en": "Newly observed visitors by",
+    "ja": "初観測の訪問者の分類："
+  },
+  "新访客": {
+    "en": "New visitors",
+    "ja": "新規訪問者"
+  },
+  "首次会话激活率": {
+    "en": "First-session activation rate",
+    "ja": "初回セッション利用開始率"
+  },
+  "激活后七日内回访": {
+    "en": "Returned within seven days",
+    "ja": "利用開始から7日以内の再訪"
+  },
+  "暂无首访记录": {
+    "en": "No first visits recorded",
+    "ja": "初回訪問の記録はありません"
+  },
+  "首访尚未激活 · 最后观察到的步骤": {
+    "en": "Unactivated first visits · last observed step",
+    "ja": "初回未達 · 最後に観測した操作"
+  },
+  "暂无记录": {
+    "en": "No records yet",
+    "ja": "記録はまだありません"
+  },
+  "人": {
+    "en": "people",
+    "ja": "人"
+  },
+  "有效使用人数": {
+    "en": "Active users by activity",
+    "ja": "行動別の利用者数"
+  },
+  "每类在所选窗口内去重，一个人可以出现在多类。全站活跃按身份去重。": {
+    "en": "Each activity counts distinct users in the selected period. Site-wide totals count each identity once.",
+    "ja": "選択期間内の利用者を行動別に集計します。サイト全体では同じ利用者を一度だけ数えます。"
+  },
+  "尚无核心行为": {
+    "en": "No qualifying activity yet",
+    "ja": "対象となる行動はありません"
+  },
+  "文章阅读": {
+    "en": "Article readership",
+    "ja": "記事の閲覧"
+  },
+  "正文可见时记录浏览。连续可见 10 秒计为有效阅读，同读者同文章 30 分钟无有效阅读后可再计。累计包含旧口径。作者本人、管理员和已识别机器人排除。": {
+    "en": "Views count visible article opens. A read requires 10 continuous visible seconds and can count again after 30 minutes without a qualified read of that article. Totals include legacy counts. Authors, administrators and recognized bots are excluded.",
+    "ja": "記事を表示すると閲覧を記録します。10秒連続表示で有効な閲読となり、同じ記事の有効な閲読から30分経過後は再計上できます。累計は旧方式を含み、本人・管理者・識別済みボットは除外します。"
+  },
+  "文章 · 按新增阅读量取前 50": {
+    "en": "Top 50 articles by new reads",
+    "ja": "新規閲読数の上位50記事"
+  },
+  "浏览次数": {
+    "en": "Page views",
+    "ja": "閲覧回数"
+  },
+  "新增阅读量": {
+    "en": "New reads",
+    "ja": "新規閲読数"
+  },
+  "有效读者": {
+    "en": "Engaged web readers",
+    "ja": "有効なウェブ読者"
+  },
+  "累计阅读量": {
+    "en": "Lifetime reads",
+    "ja": "累計閲読数"
+  },
+  "暂无新口径阅读记录": {
+    "en": "No reads recorded with the new rules yet",
+    "ja": "新方式の閲読記録はまだありません"
+  },
+  "24 小时内获得回应": {
+    "en": "Responses within 24 hours",
+    "ja": "24時間以内の返信"
+  },
+  "分母为已满 24 小时的首次频道发言或发布文章。管理员按账号角色分类，同一条内容可能收到多类回应。": {
+    "en": "Includes first channel posts and published articles at least 24 hours old. Staff are identified by account role. One item may receive multiple reply types.",
+    "ja": "24時間以上経過した初回発言と公開記事を対象にします。管理者はアカウント権限で分類し、同じ投稿に複数種類の返信があり得ます。"
+  },
+  "真人回应率": {
+    "en": "Human response rate",
+    "ja": "人からの返信率"
+  },
+  "普通成员回应": {
+    "en": "Member responses",
+    "ja": "一般会員の返信"
+  },
+  "管理员回应": {
+    "en": "Staff responses",
+    "ja": "管理者の返信"
+  },
+  "AI 回应": {
+    "en": "AI responses",
+    "ja": "AIの返信"
+  },
+  "首次公共发言": {
+    "en": "First public post",
+    "ja": "最初の公開発言"
+  },
+  "发布文章": {
+    "en": "Published article",
+    "ja": "記事公開"
+  },
+  "暂无已满 24 小时的样本": {
+    "en": "No samples have completed 24 hours",
+    "ja": "24時間経過した対象はありません"
+  },
+  "每日有效活跃与统计口径": {
+    "en": "Daily active users and definitions",
+    "ja": "日別の利用者数と定義"
+  },
+  "匿名身份按浏览器估算，登录后按账号。会话连续 30 分钟无观测活动后结束。阅读、问答、公开发言、作品发布或游戏有效使用计入活跃。来源只保存渠道标签和来源域名。": {
+    "en": "Anonymous visitors are estimated by browser and signed-in visitors by account. Sessions expire after 30 minutes without observed activity. Qualifying reads, conversations, posts, publications and game activity count. Attribution stores channel labels and referrer hosts.",
+    "ja": "匿名はブラウザ、ログイン後はアカウントで集計します。観測活動が30分途絶えるとセッションが終了します。閲読・対話・発言・作品公開・ゲーム利用が対象です。流入元はチャネル名と参照元ドメインを保存します。"
+  },
+  "活跃人数": {
+    "en": "Active users",
+    "ja": "利用者数"
+  },
+  "读取失败": {
+    "en": "Could not load report",
+    "ja": "読み込めませんでした"
+  },
+  "媒介": {
+    "en": "Medium",
+    "ja": "メディア"
+  },
+  "活动": {
+    "en": "Campaign",
+    "ja": "キャンペーン"
+  },
+  "渠道内容编号": {
+    "en": "Campaign content ID",
+    "ja": "コンテンツ識別子"
+  },
+  "落地页": {
+    "en": "Landing page",
+    "ja": "ランディングページ"
+  },
+  "设备": {
+    "en": "Device",
+    "ja": "端末"
+  },
+  "首次体验": {
+    "en": "First experience",
+    "ja": "初回体験"
+  },
+  "有效阅读": {
+    "en": "Qualified read",
+    "ja": "有効な閲読"
+  },
+  "打开文章": {
+    "en": "Opened an article",
+    "ja": "記事表示"
+  },
+  "私人问答（已同步）": {
+    "en": "Private conversation (synced)",
+    "ja": "個人対話（同期済み）"
+  },
+  "私人问答（游客本机）": {
+    "en": "Private conversation (local guest)",
+    "ja": "個人対話（ゲストの端末）"
+  },
+  "公共发言": {
+    "en": "Channel post",
+    "ja": "公開発言"
+  },
+  "发布像素画": {
+    "en": "Pixel art published",
+    "ja": "ピクセル作品公開"
+  },
+  "公开图库投稿": {
+    "en": "Gallery publication",
+    "ja": "ギャラリー投稿"
+  },
+  "五子棋终局": {
+    "en": "Gomoku game finished",
+    "ja": "五目並べ終局"
+  },
+  "辉夜快跑达到 100 分": {
+    "en": "Runner reached 100 points",
+    "ja": "ランゲームで100点到達"
+  },
+  "登录页": {
+    "en": "Login page",
+    "ja": "ログインページ"
+  },
+  "注册页": {
+    "en": "Registration page",
+    "ja": "登録ページ"
+  },
+  "需要配置": {
+    "en": "Configuration needed",
+    "ja": "設定が必要"
+  },
+  "已尝试生成": {
+    "en": "Generation attempted",
+    "ja": "応答生成を開始"
+  },
+  "需要登录": {
+    "en": "Sign-in required",
+    "ja": "ログインが必要"
+  },
+  "额度不足": {
+    "en": "Insufficient credit",
+    "ja": "残高不足"
+  },
+  "生成超时": {
+    "en": "Generation timed out",
+    "ja": "生成タイムアウト"
+  },
+  "生成失败": {
+    "en": "Generation failed",
+    "ja": "生成失敗"
+  },
+  "仅观察到访问": {
+    "en": "Visit only",
+    "ja": "訪問のみ"
+  },
+  "直接或来源未知": {
+    "en": "Direct or unknown",
+    "ja": "直接または不明"
+  },
+  "移动端": {
+    "en": "Mobile",
+    "ja": "モバイル"
+  },
+  "桌面端": {
+    "en": "Desktop",
+    "ja": "デスクトップ"
+  },
+  "有效 DAU": {
+    "en": "Active users today",
+    "ja": "本日のアクティブ利用者"
+  },
+  "有效 WAU": {
+    "en": "Active users in 7 days",
+    "ja": "7日間のアクティブ利用者"
+  },
+  "有效 MAU": {
+    "en": "Active users in 30 days",
+    "ja": "30日間のアクティブ利用者"
+  },
+  "次日": {
+    "en": "Day 1",
+    "ja": "翌日"
+  },
+  "第七天": {
+    "en": "Day 7",
+    "ja": "7日目"
+  },
+  "七日内任一天": {
+    "en": "Any of days 1–7",
+    "ja": "1〜7日目のいずれか"
+  },
+  "7 日访问人天": {
+    "en": "7-day visitor-days",
+    "ja": "7日間の延べ訪問者数"
+  },
+  "30 日访问人天": {
+    "en": "30-day visitor-days",
+    "ja": "30日間の延べ訪問者数"
+  },
+  "累计访问人天": {
+    "en": "Total visitor-days",
+    "ja": "累積延べ訪問者数"
+  },
+  "未激活": {
+    "en": "Unactivated",
+    "ja": "未達"
+  },
+  "未标注": {
+    "en": "Unspecified",
+    "ja": "未指定"
+  },
+  "去重访客 · 今天 / 7 天 / 30 天": {
+    "en": "Unique visitors · today / 7 days / 30 days",
+    "ja": "ユニーク訪問者 · 本日 / 7日間 / 30日間"
+  },
+  "访问人数": {
+    "en": "Unique visitors",
+    "ja": "訪問者数"
+  },
+  "正文加载失败": {
+    "en": "Article failed to load",
+    "ja": "記事の読み込みに失敗"
+  },
+  "私人房间": {
+    "en": "Private room",
+    "ja": "個人ルーム"
+  },
+  "公共聊天室": {
+    "en": "Public chat",
+    "ja": "公開チャット"
   }
 }

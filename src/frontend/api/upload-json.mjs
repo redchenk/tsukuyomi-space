@@ -1,3 +1,5 @@
+import { visitHeader } from '../services/visitHeader.mjs';
+
 // XHR reports bytes actually sent. Compression and server processing have no
 // invented percentage, and success remains the caller's API response check.
 export function uploadJson(resolveUrl, path, payload, { method = 'POST', headers = {}, signal, onProgress = () => {} } = {}) {
@@ -37,6 +39,10 @@ export function uploadJson(resolveUrl, path, payload, { method = 'POST', headers
     xhr.timeout = 180000;
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    if (method === 'POST' && (path === '/api/articles' || (path === '/api/assets' && payload?.collection === 'gallery'))) {
+      const visit = visitHeader();
+      if (visit) xhr.setRequestHeader('X-Site-Visit',visit);
+    }
     for (const [key, value] of Object.entries(headers)) {
       // XHR appends repeated headers. Keep one JSON content type so the server
       // can parse callers which already pass authHeaders({ Content-Type }).

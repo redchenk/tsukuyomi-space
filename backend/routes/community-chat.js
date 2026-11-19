@@ -57,6 +57,7 @@ router.get('/:channel/history',(req,res) => {
 router.post('/:channel/messages',authenticateToken,replyLimiter,(req,res) => {
     const result = chat.save.immediate(req.params.channel,req.user,req.body || {});
     if (!result.replay) {
+        require('../services/growth-measurement').observe(req,'chat_post',result.message.id);
         live.publish(result.message,true);
         if (result.message.aiStatus === 'pending') generate(result.message).catch(() => console.error('Channel reply could not be saved'));
     }

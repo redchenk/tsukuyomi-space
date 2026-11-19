@@ -156,6 +156,7 @@ router.post('/', authenticateToken, async (req, res) => {
         });
         const newArticle = articleRepository.createArticle(mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, newArticle.id);
+        require('../services/growth-measurement').observe(req, 'article_publish', newArticle.id);
         invalidateDiscovery();
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:stats');
@@ -187,6 +188,10 @@ function sendArticle(req, res) {
 }
 router.get('/:id/live/:nonce', optionalAuth, sendArticle);
 router.get('/:id', optionalAuth, sendArticle);
+router.post('/:id/open', optionalAuth, createRateLimiter({windowMs:60000,max:90,keyPrefix:'article-open'}), (req,res) => {
+    engagement.recordOpen.immediate(req);
+    res.sendStatus(204);
+});
 router.post('/:id/read', optionalAuth, createRateLimiter({ windowMs: 60000, max: 30, keyPrefix: 'article-read' }), (req, res) => {
     try {
         const result = engagement.completeRead(req);

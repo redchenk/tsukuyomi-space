@@ -712,6 +712,7 @@ router.post('/', authenticateToken, async (req, res) => {
         });
         if (!asset) return fail(res, 400, '文件格式无效');
         if (targetCollection === 'gallery') clearPublicGalleryCache();
+        if (targetCollection === 'gallery') require('../services/growth-measurement').observe(req,'gallery_publish',asset.id);
         const growth = targetCollection === 'gallery' ? recordGalleryGrowth(req.user.id, asset.id) : null;
         res.json({ success: true, message: '附件已上传', data: normalizeAsset(asset, { signUrl: true }), growth });
     } catch (error) {

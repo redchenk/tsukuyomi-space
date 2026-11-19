@@ -63,12 +63,12 @@ test('details including the live alias never increase reads; too-early, tampered
         const response = await fetch(base + route);
         const payload = await response.json();
         assert.equal(payload.success, true);
-        assert.equal(payload.reading.seconds, 12);
+        assert.equal(payload.reading.seconds, 10);
         assert.match(response.headers.get('set-cookie'), /HttpOnly/i);
     }
     assert.equal(views(), before);
     const req = start('alice');
-    assert.equal(engagement.completeRead(req, now + 11999).reason, 'too_soon');
+    assert.equal(engagement.completeRead(req, now + 9999).reason, 'too_soon');
     const stolen = { ...req, headers: { ...req.headers, cookie: start('bob').headers.cookie } };
     assert.equal(engagement.completeRead(stolen, now + 13000).reason, 'identity_changed');
     assert.equal(engagement.completeRead({ ...req, params: { id: '99999' } }, now + 13000).reason, 'identity_changed');
@@ -77,7 +77,7 @@ test('details including the live alias never increase reads; too-early, tampered
     assert.equal(views(), before);
 });
 
-test('read + XP are atomic, device/account aliases deduplicate across tabs, login and days', () => {
+test('read windows deduplicate tabs and guest login, allow later visits and separate accounts, XP stays lifetime-deduplicated', () => {
     const before = views(), beforeXp = xp();
     const guest = start();
     assert.equal(engagement.completeRead(guest, now + 12000).counted, true);
@@ -86,13 +86,13 @@ test('read + XP are atomic, device/account aliases deduplicate across tabs, logi
     assert.equal(engagement.completeRead(login, now + 12000).counted, false);
     const newDevice = start('alice');
     assert.equal(engagement.completeRead(newDevice, now + 12000).counted, false);
-    assert.equal(engagement.completeRead(start('bob', newDevice.headers.cookie), now + 12000).counted, false);
-    const tomorrow = start('alice', '', articleId, now + 86400000);
-    assert.equal(engagement.completeRead(tomorrow, now + 86412000).counted, false);
-    assert.equal(views(), before + 1);
-    assert.equal(xp(), beforeXp + 1);
-    // Resetting an anonymous cookie within the same day does not buy another read.
+    assert.equal(engagement.completeRead(start('bob', newDevice.headers.cookie), now + 12000).counted, true);
+    // Cookie reset inside an active anonymous read window does not buy a second view.
     assert.equal(engagement.completeRead(start(), now + 12000).counted, false);
+    const tomorrow = start('alice', '', articleId, now + 86400000);
+    assert.equal(engagement.completeRead(tomorrow, now + 86412000).counted, true);
+    assert.equal(views(), before + 3);
+    assert.equal(xp(), beforeXp + 1);
 });
 
 test('shared network allows another signed-in reader, author and bots cannot farm XP', () => {
@@ -106,6 +106,21 @@ test('shared network allows another signed-in reader, author and bots cannot far
     assert.equal(engagement.completeRead(start('charlie'), now + 12000).counted, true);
     assert.equal(views(), before + 1);
     assert.equal(xp(), beforeXp + 1);
+});
+
+test('the rolling 30 minute read window, open receipts and daily aggregates remain independent of author XP', () => {
+    const id = Number(db.prepare("INSERT INTO articles(title,author_id) VALUES('Window boundary fixture','author')").run().lastInsertRowid);
+    const req=start('alice','',id,now);
+    assert.equal(engagement.recordOpen(req,now),true);
+    assert.equal(engagement.recordOpen(req,now+1),true);
+    assert.equal(engagement.completeRead(req,now+10000).counted,true);
+    const xpAfter=xp();
+    const near=now+10000+1800000-1;
+    assert.equal(engagement.completeRead(start('alice',req.headers.cookie,id,near-10000),near).counted,false);
+    const next=near+1800000;
+    assert.equal(engagement.completeRead(start('alice',req.headers.cookie,id,next-10000),next).counted,true);
+    assert.equal(xp(),xpAfter);
+    assert.deepEqual(db.prepare('SELECT SUM(opens) opens,SUM(reads) reads FROM article_read_daily WHERE article_id=?').get(id),{opens:1,reads:2});
 });
 
 test('first real like/bookmark reward the author at 2/5 XP; self and cancel/re-add do not', async () => {

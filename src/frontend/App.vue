@@ -1,5 +1,6 @@
 <script setup>
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, shallowRef, watch } from 'vue';
+import { reportSignal } from './services/growthSignals';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
@@ -394,6 +395,23 @@ router.isReady().then(() => {
   refreshUser();
 });
 watch(() => route.name, () => loadVisitPopup());
+watch(() => [route.path, user.value?.id], () => { if (route.name) reportSignal(['room','chatroom','login','register'].includes(route.name) ? route.name : ''); }, { flush: 'post', immediate: true });
+const resumeJourney = () => { if (route.name) reportSignal(); };
+let lastInputReport = Date.now();
+function journeyActivity(event) {
+  if (event.isTrusted && document.visibilityState === 'visible' && Date.now() - lastInputReport >= 5*60000) {
+    lastInputReport = Date.now();
+    reportSignal();
+  }
+}
+onMounted(() => {
+  document.addEventListener('visibilitychange', resumeJourney);
+  for (const event of ['pointerdown','keydown','scroll']) window.addEventListener(event,journeyActivity,{passive:true});
+});
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', resumeJourney);
+  for (const event of ['pointerdown','keydown','scroll']) window.removeEventListener(event,journeyActivity);
+});
 onMounted(() => {
   // Access waits for its poster; Room hands boot off to its own asset splash.
   // Other direct routes are ready once the initial route has rendered.

@@ -7,6 +7,7 @@ import { callRoomMcp, mcpResultText as normalizeMcpResult } from '../../services
 import llmProtocol from '../../../../shared/llm-protocol.cjs';
 import agentProtocol from '../../../../shared/agent-protocol.cjs';
 import { nextTick, ref } from 'vue';
+import { reportSignal } from '../../services/growthSignals';
 import { apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { selectRoomKnowledgeEntries, shouldRetrieveRoomPersona, roomKnowledgeQuery } from '../../services/room/roomKnowledge';
 import { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } from '../../services/room/roomContext.mjs';
@@ -1311,7 +1312,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   async function send({ opener = false, retry = null, replacement = null } = {}) {
     if (sending.value || imageUpload.state.active || deepseekInput.working.value || deepseekInput.recording.value || resetting.value || endChatState.value.status === 'generating') return;
-    if (!checkConfiguration()) return false;
+    if (!checkConfiguration()) { if (!opener) reportSignal('room_config'); return false; }
     if (lastFailedTurn?.kind === 'new' && !retry && !replacement) return false;
     if (opener && !retry && !replacement && !canStartConversation()) return;
     opener = replacement?.opener ?? retry?.opener ?? opener;
@@ -1327,6 +1328,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     const requestConversationRevision = conversationRevision;
     const requestArchiveKey = diaryArchiveKey();
     const turnId = replacement?.turnId || retry?.turnId || uid();
+    if (!opener && !replacement) reportSignal('room_attempt',turnId);
     if (!replacement) writeRoomGenerationDraft({ turnId, message, image, files, opener });
     let userMessage = retry ? messages.value.find((item) => item.id === retry.userMessageId) : null;
     if (!opener && !retry && !replacement) {
@@ -1506,6 +1508,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
         // Finish the same bubble in place, preserving its DOM identity and
         // the reader's scroll position while controls/timestamps appear.
         Object.assign(pendingMessage, { content: reply, speechText: spokenReply, live2d: structured.live2d, pending: false });
+        if (!opener && !getSession()?.user?.id) reportSignal('room_local_reply',turnId);
         if (!opener) currentSessionMessages.value.push({ turnId, role: 'user', content: message || (files.length ? '请阅读这些文件。' : '请看这张图片。') });
         currentSessionMessages.value.push({ turnId, role: 'assistant', content: reply });
         persistDiaryRecording();
@@ -1533,6 +1536,10 @@ export function useRoomChat({ live2d, world, diary = null }) {
       if (destroyed || activeGeneration !== operation || requestConversationRevision !== conversationRevision
         || requestArchiveKey !== diaryArchiveKey()) return false;
       messages.value = messages.value.filter((item) => item.id !== pendingId);
+      if (!opener && !replacement && (operation.timedOut || error?.name !== 'AbortError')) {
+        const reason = operation.timedOut ? 'room_timeout' : error?.statusCode === 401 ? 'room_login' : error?.statusCode === 402 ? 'room_quota' : 'room_failed';
+        reportSignal(reason,turnId);
+      }
       if (userMessage && !replacement) userMessage.failed = true;
       lastFailedTurn = replacement
         ? { kind: 'replacement', replacement }

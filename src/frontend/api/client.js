@@ -1,3 +1,4 @@
+import { visitHeader } from '../services/visitHeader.mjs';
 import { isEnglishSite } from '../utils/siteVariant';
 import { contentTranslationEnabled } from '../services/contentTranslation';
 import { translateFeedback, uiText } from '../i18n/runtime';
@@ -162,6 +163,10 @@ function secureApiOptions(url, options = {}) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(method) || !String(url || '').startsWith('/api')) return options;
   const headers = new Headers(options.headers || {});
   headers.set('X-Requested-With', 'XMLHttpRequest');
+  if (/^\/api\/(?:stats\/journey|articles(?:[/?]|$)|pixel-art(?:[/?]|$)|assets(?:[/?]|$)|room\/chat\/turn|chatroom\/[^/]+\/messages)/.test(url)) {
+    const visit = visitHeader();
+    if (visit) headers.set('X-Site-Visit', visit);
+  }
   return { ...options, headers };
 }
 

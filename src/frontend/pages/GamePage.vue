@@ -1,4 +1,5 @@
 <script setup>
+import { reportSignal } from '../services/growthSignals';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -137,6 +138,7 @@ function handleGameScore(event) {
   if (event.source !== frame.value?.contentWindow || event.data?.type !== 'tsukuyomi:kaguya-score') return;
   const score = Number(event.data.score);
   if (!Number.isSafeInteger(score) || score < 0) return;
+  if (currentScore.value < 100 && score >= 100) reportSignal('runner_100','threshold',{score});
   currentScore.value = score;
   bestScore.value = Math.max(bestScore.value, score);
   pendingScore = Math.max(pendingScore, score);
