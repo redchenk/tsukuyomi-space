@@ -95,7 +95,42 @@ const seconds = (n) => (n == null ? '—' : uiText('{0} 秒', [fmt(n)]));
 const observed = computed(
   () => report.value?.trend.filter((d) => d.visitors !== null && d.active !== null) || []
 );
-const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.visitors, d.active))));
+const plotDays = computed(() => observed.value.slice(-30));
+const historyMonth = ref('');
+const historySeries = ref('site');
+const articlePage = ref(1);
+const articlePageCount = computed(() => Math.max(1, Math.ceil((report.value?.history?.articles.length || 0) / 20)));
+const currentArticlePage = computed(() => Math.min(articlePage.value, articlePageCount.value));
+const articlePageRows = computed(() => report.value?.history?.articles.slice((currentArticlePage.value - 1) * 20, currentArticlePage.value * 20) || []);
+const historyKeys = {
+  site: { visits: '访问人天', accounts: '注册账号', publications: '已发布文章' },
+  discovery: { impressions: '推荐曝光', reads: '归因阅读', likes: '归因点赞', bookmarks: '归因收藏' }
+};
+const monthRows = computed(() => {
+  const months = new Map();
+  for (const row of report.value?.history?.daily || []) {
+    const month = row.day.slice(0, 7);
+    if (!months.has(month)) months.set(month, { day: month });
+    const summary = months.get(month);
+    for (const key of Object.keys(historyKeys[historySeries.value])) {
+      if (row[key] != null) summary[key] = (summary[key] ?? 0) + row[key];
+    }
+  }
+  return [...months.values()].reverse();
+});
+const historyRows = computed(() => historyMonth.value
+  ? (report.value?.history?.daily || []).filter((r) => r.day.startsWith(historyMonth.value)).reverse()
+  : monthRows.value);
+const historicalMetrics = computed(() => {
+  const h = report.value?.history;
+  if (!h) return [];
+  return [
+    { label: '累计访问人天', n: h.totals.visits, note: uiText('有访问记录的天数：{0}', [fmt(h.recordedVisitDays)]) },
+    { label: '普通账号注册数', n: h.totals.accounts, note: uiText('最早记录 {0}', [h.coverage.accounts || '—']) },
+    { label: '已发布文章', n: h.totals.publications, note: uiText('最早记录 {0}', [h.coverage.publications || '—']) }
+  ];
+});
+const peak = computed(() => Math.max(1, ...plotDays.value.map((d) => Math.max(d.visitors, d.active))));
 </script>
 <template>
   <section class="growth-report" :aria-busy="loading" aria-labelledby="growth-report-heading">
@@ -107,17 +142,24 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
         </p>
       </div>
       <div class="gr-ranges" role="group" aria-label="观察窗口">
-        <button v-for="n in [7, 14, 30]" :key="n" type="button" :aria-pressed="n === days" @click="days = n">
-          {{ uiText('{0} 天', [n]) }}
+        <button v-for="n in [7, 14, 30, 'all']" :key="n" type="button" :aria-pressed="n === days" @click="days = n">
+          {{ n === 'all' ? uiText('建站以来') : uiText('{0} 天', [n]) }}
         </button>
       </div>
     </header>
-    <p v-if="loading && !report" class="gr-state" role="status">正在读取增长数据…</p>
+    <p v-if="loading && report?.days !== days" class="gr-state" role="status">正在读取增长数据…</p>
     <p v-else-if="error" class="gr-state" role="alert">
       {{ error }} <button type="button" @click="retry++">重新读取</button>
     </p>
     <template v-else-if="report">
-      <div class="gr-metrics">
+      <div v-if="report.history" class="gr-metrics">
+        <article v-for="(item, i) in historicalMetrics" :key="item.label" class="gr-metric" :class="{ primary: !i }">
+          <div class="gr-metric-heading">{{ uiText(item.label) }}</div>
+          <div class="gr-number">{{ fmt(item.n) }}</div>
+          <div class="gr-metric-foot">{{ item.note }}</div>
+        </article>
+      </div>
+      <div v-else class="gr-metrics">
         <article
           v-for="item in periods"
           :key="item.key"
@@ -143,12 +185,61 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
         </button>
       </nav>
 
+      <p v-if="report.history && section === 'acquisition'" class="gr-coverage gr-note">
+        {{ uiText('新口径自 {0}（北京时间）起采集。', [date(report.began)]) }}
+      </p>
       <div v-if="section === 'overview'" class="gr-stack">
+        <section v-if="report.history" class="gr-panel gr-history">
+          <div class="gr-section-head">
+            <h3>历史趋势</h3>
+            <div class="gr-history-controls">
+              <label class="gr-control">{{ uiText('指标') }}
+                <select v-model="historySeries">
+                  <option value="site">{{ uiText('网站访问与创作') }}</option>
+                  <option value="discovery">{{ uiText('文章推荐') }}</option>
+                </select>
+              </label>
+              <label class="gr-control">{{ uiText('时间粒度') }}
+                <select v-model="historyMonth">
+                  <option value="">{{ uiText('按月汇总') }}</option>
+                  <option v-for="m in monthRows" :key="m.day" :value="m.day">{{ m.day }}</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <p class="gr-note">{{ uiText('建站日 {0} · 截至 {1}（北京时间）', [report.history.launched || '—', report.history.through]) }}</p>
+          <div class="gr-scroll gr-history-table">
+            <table>
+              <thead><tr>
+                <th scope="col">{{ uiText(historyMonth ? '日期' : '月份') }}</th>
+                <th v-for="(label, key) in historyKeys[historySeries]" :key="key" scope="col">{{ uiText(label) }}</th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="row in historyRows" :key="row.day">
+                  <th scope="row">{{ row.day }}</th>
+                  <td v-for="(_, key) in historyKeys[historySeries]" :key="key">{{ fmt(row[key]) }}</td>
+                </tr>
+              </tbody>
+              <tfoot v-if="!historyMonth"><tr>
+                <th scope="row">{{ uiText('合计') }}</th>
+                <td v-for="(_, key) in historyKeys[historySeries]" :key="key">{{ fmt(report.history.totals[key]) }}</td>
+              </tr></tfoot>
+            </table>
+          </div>
+          <p v-if="historySeries === 'site'" class="gr-note">{{
+            uiText('访问始于 {0}，同一身份每天计一次，跨日累加。注册与发文按仍保留的普通账号和已发布文章统计。', [report.history.coverage.visits || '—'])
+          }}</p>
+          <p v-else class="gr-note">{{
+            uiText('推荐记录始于 {0}。这里统计推荐位曝光及归因到这些曝光的阅读、点赞和收藏。', [report.history.coverage.discovery || '—'])
+          }}</p>
+          <p class="gr-note">横线表示没有可用记录。月份合计只累加已知值，选择月份可查看缺失日期。</p>
+        </section>
         <section class="gr-panel">
           <div class="gr-section-head">
             <h3>访问与活跃趋势</h3>
             <div v-if="observed.length > 1" class="gr-legend"><i></i>访问人数 <i></i>活跃人数</div>
           </div>
+          <p v-if="report.history" class="gr-note">{{ uiText('新口径自 {0}（北京时间）起采集。图中最多显示最近 30 天。', [date(report.began)]) }}</p>
           <div v-if="observed.length > 1" class="gr-chart" aria-hidden="true">
             <div class="gr-scale">
               <b>{{ fmt(peak) }}</b
@@ -156,7 +247,7 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
             </div>
             <div class="gr-plot">
               <div
-                v-for="d in observed"
+                v-for="d in plotDays"
                 :key="d.day"
                 class="gr-bar-pair"
                 :title="uiText('{0} · 访客 {1} · 活跃 {2}', [d.day, d.visitors, d.active])"
@@ -166,7 +257,7 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
               </div>
             </div>
             <div class="gr-axis">
-              <b>{{ observed[0].day.slice(5) }}</b
+              <b>{{ plotDays[0].day.slice(5) }}</b
               ><b>{{ observed.at(-1).day.slice(5) }}</b>
             </div>
           </div>
@@ -306,11 +397,37 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
           <p v-else class="gr-empty">暂无记录</p>
         </section>
       </div>
-      <section v-else-if="section === 'articles'" class="gr-panel">
+      <div v-else-if="section === 'articles'" class="gr-stack">
+        <section v-if="report.history" class="gr-panel">
+          <div class="gr-section-head">
+            <h3>已发布文章累计阅读</h3>
+            <strong>{{ fmt(report.history.articleViews) }}</strong>
+          </div>
+          <p class="gr-note">累计值包含历次统计口径。旧计数器仅保存总量，无法拆回每天。</p>
+          <details v-if="report.history.articles.length" class="gr-detail">
+            <summary>{{ uiText('全部 {0} 篇文章', [fmt(report.history.articles.length)]) }}</summary>
+            <div class="gr-scroll">
+              <table>
+                <thead><tr><th>文章</th><th>累计阅读量</th></tr></thead>
+                <tbody><tr v-for="a in articlePageRows" :key="a.id">
+                  <td class="gr-article-link"><a :href="'/articles/' + a.id">{{ a.title }}</a></td>
+                  <td>{{ fmt(a.views) }}</td>
+                </tr></tbody>
+              </table>
+            </div>
+            <div v-if="articlePageCount > 1" class="gr-pager">
+              <button type="button" :disabled="currentArticlePage === 1" @click="articlePage = currentArticlePage - 1">上一页</button>
+              <span>{{ currentArticlePage }} / {{ articlePageCount }}</span>
+              <button type="button" :disabled="currentArticlePage === articlePageCount" @click="articlePage = currentArticlePage + 1">下一页</button>
+            </div>
+          </details>
+        </section>
+        <section class="gr-panel">
         <div class="gr-section-head">
           <h3>文章阅读</h3>
           <small>按新增阅读量取前 50</small>
         </div>
+        <p v-if="report.history" class="gr-note">{{ uiText('新口径自 {0}（北京时间）起采集。', [date(report.began)]) }}</p>
         <div v-if="report.articles.length" class="gr-scroll">
           <table class="gr-rank gr-mobile-rows">
             <thead>
@@ -344,8 +461,10 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
           分钟无有效阅读后可再计。累计包含旧口径。作者本人、管理员和已识别机器人排除。
         </p>
       </section>
+      </div>
       <section v-else class="gr-panel">
         <h3>24 小时内获得回应</h3>
+        <p v-if="report.history" class="gr-note">按现存文章、频道发言及回复时间回溯，覆盖已满 24 小时的样本。</p>
         <div v-if="report.replies.length" class="gr-scroll">
           <table class="gr-mobile-rows">
             <thead>
@@ -375,7 +494,7 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
       </section>
       <details class="gr-footnote">
         <summary>统计口径</summary>
-        <p>{{ uiText('自 {0}（北京时间）起采集。当前窗口仅展示已经采集的数据。', [date(report.began)]) }}</p>
+        <p v-if="!report.history">{{ uiText('自 {0}（北京时间）起采集。当前窗口仅展示已经采集的数据。', [date(report.began)]) }}</p>
         <p>
           匿名身份按浏览器估算，登录后按账号。会话连续 30
           分钟无观测活动后结束。阅读、问答、公开发言、作品发布或游戏有效使用计入活跃。来源只保存渠道标签和来源域名。
@@ -748,6 +867,49 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
   border: 1px solid var(--gr-line);
   border-radius: 8px;
   padding: 6px;
+}
+.gr-article-link a {
+  color: var(--gr-ink);
+}
+.gr-pager {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.gr-pager button {
+  border: 1px solid var(--gr-line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--gr-ink);
+  background: var(--gr-surface);
+}
+.gr-pager button:disabled {
+  opacity: .5;
+}
+.gr-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.gr-history-table {
+  margin-block: 12px;
+}
+.gr-history-table tbody th,
+.gr-history-table tfoot th {
+  position: static;
+  color: var(--gr-ink);
+}
+.gr-history-table tfoot {
+  font-weight: 700;
+  background: var(--gr-tint);
+}
+.gr-history .gr-note + .gr-note {
+  margin-top: 4px;
+}
+.gr-coverage {
+  margin-bottom: 12px !important;
 }
 .gr-empty,
 .gr-state {

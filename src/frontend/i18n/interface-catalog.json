@@ -13806,5 +13806,121 @@
   "官方服务用量": {
     "en": "Official service usage",
     "ja": "公式サービスの利用量"
+  },
+  "建站以来": {
+    "en": "Since launch",
+    "ja": "開設以来"
+  },
+  "新口径自 {0}（北京时间）起采集。": {
+    "en": "The current metrics have been collected since {0} (UTC+8).",
+    "ja": "現行の指標は {0}（UTC+8）から集計しています。"
+  },
+  "历史趋势": {
+    "en": "Historical trends",
+    "ja": "過去の推移"
+  },
+  "指标": {
+    "en": "Metrics",
+    "ja": "指標"
+  },
+  "网站访问与创作": {
+    "en": "Visits and publishing",
+    "ja": "訪問と投稿"
+  },
+  "文章推荐": {
+    "en": "Article recommendations",
+    "ja": "記事のおすすめ"
+  },
+  "时间粒度": {
+    "en": "Date breakdown",
+    "ja": "集計期間"
+  },
+  "按月汇总": {
+    "en": "Monthly totals",
+    "ja": "月別集計"
+  },
+  "建站日 {0} · 截至 {1}（北京时间）": {
+    "en": "Launched {0} · Through {1} (UTC+8)",
+    "ja": "開設日 {0} · {1} 現在（UTC+8）"
+  },
+  "月份": {
+    "en": "Month",
+    "ja": "月"
+  },
+  "合计": {
+    "en": "Total",
+    "ja": "合計"
+  },
+  "已发布文章": {
+    "en": "Published articles",
+    "ja": "公開記事"
+  },
+  "访问始于 {0}，同一身份每天计一次，跨日累加。注册与发文按仍保留的普通账号和已发布文章统计。": {
+    "en": "Visit records start on {0}. Each identity counts once per day. Registration and publication totals cover member accounts and published articles still present.",
+    "ja": "訪問記録は {0} からです。同じ訪問者を1日1回数えて合算します。登録数と投稿数は現存する一般アカウントと公開記事が対象です。"
+  },
+  "推荐记录始于 {0}。这里统计推荐位曝光及归因到这些曝光的阅读、点赞和收藏。": {
+    "en": "Recommendation records start on {0}. Counts include impressions and the reads, likes and bookmarks attributed to them.",
+    "ja": "おすすめの記録は {0} からです。表示回数と、その表示に紐づいた閲読・いいね・ブックマークを集計します。"
+  },
+  "横线表示没有可用记录。月份合计只累加已知值，选择月份可查看缺失日期。": {
+    "en": "A dash means no record is available. Monthly totals include only recorded values. Select a month to see missing dates.",
+    "ja": "横線は記録がないことを示します。月別合計は記録済みの値のみを足しています。月を選ぶと記録のない日を確認できます。"
+  },
+  "新口径自 {0}（北京时间）起采集。图中最多显示最近 30 天。": {
+    "en": "The current metrics start at {0} (UTC+8). The chart shows up to the latest 30 days.",
+    "ja": "現行指標の集計開始は {0}（UTC+8）です。グラフは直近最大30日間を表示します。"
+  },
+  "已发布文章累计阅读": {
+    "en": "Lifetime reads of published articles",
+    "ja": "公開記事の累計閲読数"
+  },
+  "累计值包含历次统计口径。旧计数器仅保存总量，无法拆回每天。": {
+    "en": "Lifetime counts include previous counting methods. Earlier counters only kept totals, so daily reads are unavailable.",
+    "ja": "累計には以前の集計方式も含まれます。旧カウンターは合計値のみを保存したため、日別の閲読数は復元できません。"
+  },
+  "全部 {0} 篇文章": {
+    "en": "All {0} articles",
+    "ja": "全 {0} 記事"
+  },
+  "按现存文章、频道发言及回复时间回溯，覆盖已满 24 小时的样本。": {
+    "en": "Includes surviving articles and first channel posts with a full 24-hour reply window, using recorded reply times.",
+    "ja": "現存する記事・初回チャンネル投稿と返信時刻をもとに、24時間が経過した対象を集計しています。"
+  },
+  "普通账号注册数": {
+    "en": "Member registrations",
+    "ja": "一般アカウント登録数"
+  },
+  "访问人天": {
+    "en": "Visitor-days",
+    "ja": "延べ訪問者数"
+  },
+  "注册账号": {
+    "en": "Registrations",
+    "ja": "登録数"
+  },
+  "推荐曝光": {
+    "en": "Impressions",
+    "ja": "おすすめ表示"
+  },
+  "归因阅读": {
+    "en": "Attributed reads",
+    "ja": "表示経由の閲読"
+  },
+  "归因点赞": {
+    "en": "Attributed likes",
+    "ja": "表示経由のいいね"
+  },
+  "归因收藏": {
+    "en": "Attributed bookmarks",
+    "ja": "表示経由の保存"
+  },
+  "有访问记录的天数：{0}": {
+    "en": "Days with visit records: {0}",
+    "ja": "訪問記録のある日数：{0}"
+  },
+  "最早记录 {0}": {
+    "en": "First record {0}",
+    "ja": "最初の記録 {0}"
   }
 }

@@ -1,8 +1,6 @@
 const db = require('../db');
 const { core } = require('./growth-measurement');
-const DAY = 86400000;
-const dayOf = (t) => new Date(t + 8 * 3600000).toISOString().slice(0, 10);
-const startOf = (day) => Date.parse(day + 'T00:00:00+08:00');
+const { DAY, dayOf, startOf, history } = require('./growth-history');
 const marks = core.map(() => '?').join(',');
 const groupFields = new Set(['source', 'medium', 'campaign', 'content', 'landing', 'device', 'experience']);
 const medianAt = (sorted, p) =>
@@ -38,33 +36,26 @@ function responseStats(since, now) {
 }
 function report({ group = 'source', days = 30, now = Date.now() } = {}) {
   if (!groupFields.has(group)) group = 'source';
-  days = [7, 14, 30].includes(Number(days)) ? Number(days) : 30;
-  const today = startOf(dayOf(now)),
-    since = today - (days - 1) * DAY;
+  days = days === 'all' ? 'all' : [7, 14, 30].includes(Number(days)) ? Number(days) : 30;
+  const today = startOf(dayOf(now));
   const migration = db
     .prepare("SELECT unixepoch(applied_at)*1000 at FROM schema_migrations WHERE version='061'")
     .get();
   const began = migration?.at ?? now;
-  const activity = db
-    .prepare(
-      `SELECT s.actor,a.kind,a.at,s.started FROM growth_actions a JOIN growth_sessions s ON s.id=a.session_id
-        WHERE s.actor<>'staff' AND a.at BETWEEN ? AND ? AND a.kind IN (${marks}) ORDER BY a.at,a.id`
-    )
-    .all(today - 29 * DAY, now, ...core);
-  const dayActors = new Map(),
-    week = new Set(),
-    month = new Set(),
-    byKind = new Map();
-  for (const a of activity) {
-    const d = dayOf(a.at);
-    if (!dayActors.has(d)) dayActors.set(d, new Set());
-    dayActors.get(d).add(a.actor);
-    month.add(a.actor);
-    if (a.at >= today - 6 * DAY) week.add(a.actor);
-    if (a.at >= since) {
-      if (!byKind.has(a.kind)) byKind.set(a.kind, new Set());
-      byKind.get(a.kind).add(a.actor);
-    }
+  const lifetime = days === 'all' ? history(now) : null;
+  const since = lifetime ? startOf(dayOf(began)) : today - (days - 1) * DAY;
+  const activity = db.prepare(`
+      SELECT DISTINCT date(a.at/1000,'unixepoch','+8 hours') day, s.actor
+      FROM growth_actions a JOIN growth_sessions s ON s.id=a.session_id
+      WHERE s.actor<>'staff' AND a.at BETWEEN ? AND ? AND a.kind IN (${marks})
+    `).all(Math.min(today - 29 * DAY, since), now, ...core);
+  const dayActors = new Map(), week = new Set(), month = new Set();
+  const weekStart = dayOf(today - 6 * DAY), monthStart = dayOf(today - 29 * DAY);
+  for (const { day, actor } of activity) {
+    if (!dayActors.has(day)) dayActors.set(day, new Set());
+    dayActors.get(day).add(actor);
+    if (day >= monthStart) month.add(actor);
+    if (day >= weekStart) week.add(actor);
   }
   const newcomers = db
     .prepare(
@@ -134,9 +125,8 @@ function report({ group = 'source', days = 30, now = Date.now() } = {}) {
     .get(dayOf(now),dayOf(today-6*DAY),dayOf(today-29*DAY),dayOf(now));
   const dailyVisitors = new Map(db.prepare("SELECT v.day,COUNT(DISTINCT s.actor) n" + visitorSql + " GROUP BY v.day").all(dayOf(since),dayOf(now)).map(row=>[row.day,row.n]));
   const trend = [];
-  for (let i = 0; i < days; i++) {
-    const t = since + i * DAY,
-      day = dayOf(t);
+  for (let t = since; t <= today; t += DAY) {
+    const day = dayOf(t);
     trend.push({ day, visitors:t+DAY<=began ? null : dailyVisitors.get(day)||0, active: t + DAY <= began ? null : dayActors.get(day)?.size || 0 });
   }
   const articles = db
@@ -153,6 +143,7 @@ function report({ group = 'source', days = 30, now = Date.now() } = {}) {
   return {
     days,
     group,
+    ...(lifetime && { history: lifetime }),
     began,
     exits: Object.fromEntries(exits),
     articles,
@@ -166,9 +157,9 @@ function report({ group = 'source', days = 30, now = Date.now() } = {}) {
     p75: medianAt(times, 0.75),
     retained,
     groups: [...groups.values()].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label)),
-    types: Object.fromEntries([...byKind].map(([k, v]) => [k, v.size])),
+    types: Object.fromEntries(events.filter((row) => core.includes(row.kind)).map((row) => [row.kind, row.people])),
     events,
-    replies: responseStats(Math.max(began, since), now)
+    replies: responseStats(lifetime ? startOf(lifetime.from) : Math.max(began, since), now)
   };
 }
 module.exports = { report: db.transaction(report) };

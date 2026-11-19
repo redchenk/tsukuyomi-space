@@ -89,6 +89,17 @@ function analyticsViewCounters() {
     `).get();
 }
 
+function historicalVisitDays(from, through) {
+    return db.prepare(`
+        WITH views AS (
+            SELECT ${VIEW_DAY_SQL} AS day, ${VIEW_VISITOR_KEY_SQL} AS identity
+            FROM stats WHERE event_type = 'view'
+        )
+        SELECT day, COUNT(DISTINCT CAST(identity AS TEXT)) AS visits
+        FROM views WHERE day BETWEEN ? AND ? GROUP BY day ORDER BY day
+    `).all(from, through);
+}
+
 function pendingMessageCount() {
     return db.prepare("SELECT COUNT(*) AS count FROM messages WHERE COALESCE(status, 'approved') = 'pending'").get().count;
 }
@@ -187,6 +198,7 @@ module.exports = {
     publicViewCounters,
     adminViewCounters,
     analyticsViewCounters,
+    historicalVisitDays,
     pendingMessageCount,
     findRecentView,
     findDailyViewByVisitorKey,
