@@ -73,18 +73,12 @@ test('compatibility probe is self-contained and makes no data requests', async (
   expect(requests).toEqual([]);
 });
 
-test('unsupported MP4 keeps the Seedance poster and entry remains usable', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.addInitScript(() => {
-    const original = HTMLMediaElement.prototype.canPlayType;
-    HTMLMediaElement.prototype.canPlayType = function (type) { return type.includes('mp4') ? '' : original.call(this, type); };
-  });
+test('unavailable shrine media keeps the poster and entry usable', async ({ page }) => {
+  await page.route('**/*shrine*.mp4', route => route.abort());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#boot-splash')).toHaveCount(0);
-  await expect(page.locator('.access-film-poster')).toBeVisible();
-  const hero = await page.locator('.access-hero').boundingBox();
-  expect(Math.abs(hero.x + hero.width / 2 - page.viewportSize().width / 2)).toBeLessThan(1);
-  await expect(page.locator('.access-film-intro')).toHaveCount(0);
+  await expect(page.locator('.access-poster')).toBeVisible();
+  await expect(page.locator('.access-enter')).toBeInViewport();
   await page.locator('.access-enter').click();
   await expect(page.locator('.access-gate')).toHaveCount(0);
   await expect(page.locator('.hub')).toBeVisible();

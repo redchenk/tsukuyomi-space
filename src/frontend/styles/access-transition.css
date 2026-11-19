@@ -1,11 +1,8 @@
-/* The entry stays above the live destination until its circular aperture has
-   covered the viewport. Only this temporary layer owns a clipping context. */
+/* Keep the sky moving over the mounted Hub while the last shot dissolves. */
 .access-gate { position: fixed; inset: 0; z-index: 10000; overflow: auto; background: #263453; }
-.access-gate[data-cinematic] { overflow: hidden; background: #191a2d; }
-.access-gate[data-phase="revealing"] { overflow: hidden; pointer-events: none; will-change: clip-path; }
+.access-gate[data-phase="revealing"] { overflow: hidden; pointer-events: none; will-change: opacity; }
 .access-gate .access-page { min-height: 100%; }
 .entry-destination-preparing .hub img[data-image-state="loaded"] { animation: none; }
-.access-gate[data-cinematic] .access-page :is(.access-media, .access-hero, .access-content) { transition: none; }
 .access-enter-spinner { width: 22px; height: 22px; flex: 0 0 22px; border: 1px solid #fff5ed55; border-top-color: #fff5ed; border-radius: 50%; animation: access-pending 1s linear infinite; }
 .access-entry-error { color: #fff5ed; font-size: 14px; line-height: 1.6; text-shadow: 0 1px 8px #15213e; }
 .access-entry-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -254,20 +251,4 @@
     .moon-entry-speaker::after { content: ''; width: 2.2em; height: 1px; background: currentColor; }
     .moon-entry-slogan .moon-entry-words { font-size: clamp(1.45rem, 5.9vw, 2.5rem); }
     .moon-entry-words span { display: inline-block; }
-}
-
-@property --access-mist-radius {
-    syntax: '<percentage>';
-    inherits: false;
-    initial-value: -35%;
-}
-.access-gate[data-water-mirror][data-phase="revealing"] {
-    mask-image: radial-gradient(circle farthest-corner at 50% 48%,
-      transparent var(--access-mist-radius), #000 calc(var(--access-mist-radius) + 32%));
-    will-change: mask-image, opacity;
-}
-.is-water-mirror .moon-entry-loading {
-    color: #524059;
-    background: #fff7f1e6;
-    width: max-content; max-width: 82%; margin-inline: auto; padding: 5px 10px; border-radius: 99px;
 }

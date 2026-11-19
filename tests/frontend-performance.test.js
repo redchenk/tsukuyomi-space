@@ -170,8 +170,8 @@ describe('constrained-device performance policy', () => {
         assert.match(stage, /\.journal-cover[^}]*aspect-ratio:/);
         assert.match(room, /height: var\(--ts-visual-height, 100dvh\)/);
         assert.match(room, /\.room-utility-panel[^}]*inset: 20% 0 0/);
-        assert.doesNotMatch(accessPage, /<video/);
-        assert.match(accessStyles, /\.water-mirror-scene\s*\{[^}]*pointer-events:\s*none[^}]*touch-action:\s*none/s);
+        assert.match(accessPage, /<video/);
+        assert.match(accessStyles, /\.access-video\s*\{[^}]*pointer-events:\s*none[^}]*touch-action:\s*none/s);
         assert.match(attachments, /let assetLoadController = null/);
         assert.match(attachments, /assetLoadController\?\.abort\(\)/);
         assert.match(attachments, /matchMedia\('\(max-width: 760px\)'\)\.matches \? 18 : 36/);
@@ -181,8 +181,8 @@ describe('constrained-device performance policy', () => {
 
     it('keeps Access copy legible over moving backgrounds', () => {
         const styles = source('assets/css/vue/pages/access.css');
-        assert.match(styles, /--access-ink: #fff6eb/);
-        assert.match(styles, /\.access-film-shade[^}]*gradient/s);
+        assert.match(styles, /--access-ink: #fff6e9/);
+        assert.match(styles, /\.access-overlay[^}]*gradient/s);
         assert.match(styles, /text-shadow:/);
         assert.match(styles, /\.access-copyright/);
     });

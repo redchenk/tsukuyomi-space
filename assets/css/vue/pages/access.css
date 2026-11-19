@@ -1,166 +1,211 @@
+/* The portal keeps the optical core and the gate clear in the center of the shot. */
 body.vue-access-route { overflow-y: auto; }
-
 .page.access-page {
-    --access-ink: #fff6eb;
-    --access-gold: #f5d8ac;
-    --access-night: #0b112c;
-    --water-center-y: 48%;
-    --ts-unified-primary-text: var(--access-ink);
+    --access-ink: #fff6e9;
+    --ts-unified-primary-bg: #f6e6ce;
+    --ts-unified-primary-bg-hover: #fff3df;
+    --ts-unified-primary-text: #352336;
     position: relative;
-    isolation: isolate;
     display: block;
+    isolation: isolate;
     width: 100%;
-    min-height: 100svh;
-    height: 100%;
+    height: 100svh;
+    min-height: 360px;
     padding: 0;
     overflow: hidden;
-    background: var(--access-night);
+    background: #151321;
     color: var(--access-ink);
     animation: none;
-    opacity: 1;
 }
-
-.water-mirror-scene, .access-film-frame, .access-film-shade, .access-film-mist, .access-content {
+.access-media, .access-content, .access-page :is(.access-poster, .access-video, .access-nightfall, .access-overlay) {
     position: absolute;
     inset: 0;
 }
-.water-mirror-scene {
-    z-index: 0;
-    overflow: hidden;
-    pointer-events: none;
-    touch-action: none;
-    user-select: none;
-    background: radial-gradient(ellipse at 50% 57%, #30284d, #151b39 45%, #0b112c 80%);
-}
-.access-film-frame > :is(img, video) {
-    position: absolute;
-    inset: 0;
-    display: block;
+.access-media { z-index: 0; overflow: hidden; pointer-events: none; }
+.access-page :is(.access-poster, .access-video, .access-nightfall) {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 50% 50%;
-    pointer-events: none;
-    transition: none;
+    object-position: center;
+    user-select: none;
 }
-.access-film-frame video { opacity: 0; }
-.access-film-idle.is-painted { opacity: 1; }
-.access-film-intro { z-index: 2; }
-.access-film-shade {
-    background: radial-gradient(ellipse 257px 208px at 50% var(--water-center-y), #0b112cba, #0b112c6e 65%, transparent),
-        linear-gradient(180deg, #06091f79, transparent 22%, transparent 77%, #070a1cac);
-}
-.access-film-mist {
+.access-video {
     opacity: 0;
-    background: radial-gradient(ellipse at 50% 48%, #fff9f2 0%, #fff1f6 41%, #f0d9ea 78%, #d3bddc 100%);
+    pointer-events: none;
+    touch-action: none;
+    transition: opacity 220ms ease;
 }
+.access-page.video-ready .access-video { opacity: 1; }
+.access-page.video-failed .access-video { opacity: 0; }
+.access-nightfall { opacity: 0; transition: opacity 200ms ease-out; }
+.access-shrine {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 220ms ease-in-out;
+}
+.access-shrine:is([data-shot="hold"], [data-shot="entering"], [data-shot="arrived"]) { opacity: 1; }
+.access-shrine[data-shot="hold"] { transition: none; }
+.access-overlay {
+    background: linear-gradient(90deg, #171120a6, #17112033 38%, transparent 65%),
+        linear-gradient(0deg, #151222d9, transparent 46%),
+        linear-gradient(180deg, #15122263, transparent 24%);
+    transition: opacity 280ms ease;
+}
+.access-content {
+    z-index: 1;
+    transform: translateZ(0);
+    isolation: isolate;
+    --edge: clamp(24px, 6vw, 110px);
+    font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif);
+    text-shadow: 0 2px 14px #17132099;
+    transition: opacity 190ms ease-out;
+}
+.access-page[data-nightfall]:not(.uses-live-shrine) .access-nightfall { opacity: 1; }
+.access-page[data-nightfall] :is(.access-overlay, .access-content) { opacity: 0; pointer-events: none; }
 
-.access-content { z-index: 3; isolation: isolate; }
 .access-page .access-brand {
-    position: absolute; top: max(20px, env(safe-area-inset-top)); left: max(30px, env(safe-area-inset-left));
-    display: flex; align-items: center; gap: 9px;
-    color: var(--access-ink); font: 500 clamp(15px, 1.6vw, 23px)/1.2 var(--ts-font-serif, Georgia, serif);
-    letter-spacing: .14em; text-shadow: 0 2px 12px #120c28;
+    position: absolute;
+    top: max(22px, env(safe-area-inset-top));
+    left: max(var(--edge), env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: var(--access-ink);
+    font-size: 17px;
+    letter-spacing: .12em;
 }
-.access-brand img { width: 52px; height: 52px; object-fit: contain; }
+.access-brand img { width: 40px; height: 40px; object-fit: contain; }
 .access-page .access-hero {
-    position: absolute; top: var(--water-center-y); left: 50%;
-    transform: translate(-50%, -50%); width: min(540px, 63vw); padding: 0 10px;
-    text-align: center; font-family: var(--ts-font-serif, Georgia, serif);
-    text-shadow: 0 2px 12px #0b102b, 0 0 22px #0b102b;
-    transform-origin: 50% 50%;
+    position: absolute;
+    left: max(var(--edge), env(safe-area-inset-left));
+    bottom: 18%;
+    width: min(46vw, 680px);
+    text-align: start;
 }
-.access-page .access-kicker {
-    display: flex; align-items: center; justify-content: center; gap: 13px; margin: 0 0 13px;
-    color: var(--access-gold); font: 500 clamp(9px, 1.05vw, 13px)/1.4 Georgia, serif;
-    letter-spacing: .39em; white-space: nowrap;
+.access-kicker {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin: 0 0 12px;
+    color: #ffe7bf;
+    font: 500 clamp(10px, .85vw, 13px)/1.5 Georgia, serif;
+    letter-spacing: .3em;
 }
-.access-page .access-kicker::before, .access-page .access-kicker::after { content: ''; width: 23px; height: 1px; background: #dfb68e89; }
-.access-page .access-title {
-    margin: 0; color: var(--access-ink); font-size: clamp(38px, 6.2vw, 94px);
-    font-weight: 600; line-height: 1.06; letter-spacing: .1em; text-indent: .1em;
-    text-shadow: 0 2px 15px #090b21, 0 0 39px #ffd7b144;
+.access-kicker::before { content: ''; width: 32px; height: 1px; background: currentColor; }
+.access-title {
+    margin: 0;
+    color: var(--access-ink);
+    font-size: clamp(52px, 5.7vw, 98px);
+    line-height: 1.12;
+    letter-spacing: .045em;
+    font-weight: 600;
+    text-wrap: balance;
 }
-.access-page .access-divider { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 10px auto 9px; color: #f3c89e; }
-.access-divider::before, .access-divider::after { content: ''; width: clamp(32px, 5vw, 75px); height: 1px; background: #ecc2967d; }
-.access-page .access-subtitle { margin: 0; color: var(--access-ink); font-size: clamp(13px, 1.6vw, 21px); line-height: 1.5; letter-spacing: .19em; }
-.access-page .access-invitation {
-    margin: 14px auto 0; max-width: 320px;
-    color: #fbebee; font: 400 clamp(10px, 1vw, 13px)/1.55 var(--ts-font-sans, system-ui);
-    letter-spacing: .04em; text-wrap: balance;
+.access-subtitle {
+    margin: 15px 0 26px;
+    color: var(--access-ink);
+    font-size: clamp(16px, 1.4vw, 23px);
+    line-height: 1.5;
+    letter-spacing: .16em;
 }
 .access-page .access-enter {
-    display: inline-flex; justify-content: center; align-items: center; gap: 13px;
-    min-width: min(242px, 100%); min-height: 52px; margin-top: 20px; padding: 9px 21px;
-    border: 1px solid #f2c99db3; border-radius: 999px;
-    color: #fff7ed; background: linear-gradient(135deg, #704758d9, #34283ee8 74%);
-    box-shadow: inset 0 1px 0 #ffefd332, 0 0 24px #efa38c32, 0 5px 22px #090b25ad;
-    font: 600 clamp(14px, 1.45vw, 18px)/1.35 var(--ts-font-sans, system-ui);
-    letter-spacing: .06em; cursor: pointer;
-    transition: transform 180ms, background 180ms, box-shadow 180ms;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 10px 23px;
+    border: 1px solid #ffe7c9;
+    border-radius: 999px;
+    background: #f6e6ce;
+    color: #352336;
+    box-shadow: 0 4px 22px #160e254a;
+    text-shadow: none;
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: .045em;
+    cursor: pointer;
 }
-.access-enter-moon { fill: #f7d6a5; stroke: none; }
-.access-page .access-enter > .ts-icon { flex: 0 0 auto; }
-.access-page .access-enter:not(:disabled):is(:hover, :focus-visible) {
-    background: linear-gradient(135deg, #855765f2, #48334cf2);
-    box-shadow: inset 0 1px 0 #ffefd34d, 0 0 35px #ffc58b65;
-}
-.access-page :is(.access-enter, .access-motion-control):focus-visible { outline: 2px solid #fff0d6; outline-offset: 4px; }
-.access-controls {
-    position: absolute; top: max(24px, env(safe-area-inset-top)); right: max(30px, env(safe-area-inset-right));
-    display: flex; gap: 8px;
-}
+.access-enter-moon { fill: currentColor; stroke: none; }
+.access-page .access-enter > .ts-icon { width: 19px; height: 19px; flex-shrink: 0; }
+.access-page .access-enter:disabled { cursor: progress; }
 .access-page .access-motion-control {
-    display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
-    position: relative; color: var(--access-ink); background: #12152dd6;
-    border: 1px solid #f0ccac65; border-radius: 50%; cursor: pointer;
+    position: absolute;
+    top: max(20px, env(safe-area-inset-top));
+    right: max(var(--edge), env(safe-area-inset-right));
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #ffe4c65c;
+    border-radius: 50%;
+    background: #1e1929a6;
+    color: var(--access-ink);
+    cursor: pointer;
 }
-.access-page .access-motion-control:hover { background: #362846; }
-.access-sound-control[aria-pressed="false"]::after {
-    content: ''; position: absolute; width: 24px; height: 1.5px; rotate: -45deg; border-radius: 5px;
-    background: currentColor; box-shadow: 0 0 2px #14182e;
-}
+.access-page :is(.access-enter, .access-motion-control):focus-visible { outline: 3px solid #fff4e1; outline-offset: 4px; }
 .access-page .access-beian {
-    position: absolute; inset: auto 0 0;
-    display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 20px;
-    padding: 10px 14px max(15px, env(safe-area-inset-bottom)); text-align: center;
+    position: absolute;
+    inset: auto var(--edge) max(16px, env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-between;
+    gap: 6px 20px;
+    color: var(--access-ink);
 }
-.access-copyright { margin: 0; font-size: 11px; line-height: 1.45; }
-.access-page .access-beian .beian-links { flex-direction: row; flex-wrap: wrap; gap: 5px 17px; justify-content: center; }
-.access-page .access-beian .beian-link { font-size: 11px; line-height: 1.45; white-space: nowrap; }
+.access-copyright, .access-page .access-beian .beian-link { margin: 0; font: 12px/1.5 var(--ts-font-sans, sans-serif); }
+.access-page .access-beian .beian-links { flex-flow: row wrap; gap: 4px 18px; }
 .access-page .access-beian .mps-beian-icon { width: 14px; height: 14px; }
-.access-page:lang(en) .access-title { font-size: clamp(36px, 5.1vw, 73px); letter-spacing: .015em; }
-.access-page:lang(en) .access-subtitle { letter-spacing: .04em; }
-
+.access-page .access-entry-status.is-waiting {
+    position: absolute;
+    z-index: 2;
+    bottom: 7%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    height: auto;
+    clip-path: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    color: #fff6e9;
+    background: #181424cc;
+    font-size: 13px;
+    animation: access-wait 200ms 250ms backwards;
+}
+@keyframes access-wait { from { opacity: 0; } }
+:lang(en) .access-title { font-size: clamp(40px, 4.6vw, 78px); letter-spacing: 0; }
+:lang(en) .access-subtitle { letter-spacing: .025em; }
+@media (hover: hover) and (pointer: fine) {
+    .access-page .access-enter:not(:disabled):hover { color: #352336; background: #fff3df; }
+    .access-page .access-motion-control:hover { background: #1e1929d9; }
+}
 @media (max-width: 760px) {
-    .access-page .access-brand { left: max(12px, env(safe-area-inset-left)); top: max(13px, env(safe-area-inset-top)); }
-    .access-brand img { width: 43px; height: 43px; }
-    .access-controls { top: max(13px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); gap: 6px; }
-    .access-page .access-hero { width: min(94vw, 500px); }
-    .access-page .access-title { font-size: clamp(40px, 11vw, 71px); }
-    .access-page .access-enter { margin-top: 16px; min-height: 48px; min-width: min(207px, 100%); }
-    .access-page .access-invitation { display: none; }
-    .access-page .access-beian { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+    .access-page .access-brand { gap: 8px; font-size: 16px; }
+    .access-brand img { width: 36px; height: 36px; }
+    .access-page .access-hero { bottom: max(115px, 16%); width: calc(100% - var(--edge) * 2); }
+    .access-title { font-size: clamp(44px, 11vw, 64px); }
+    .access-subtitle { margin: 10px 0 21px; }
+    .access-overlay { background: linear-gradient(0deg, #161221ee 2%, #1d172a91 35%, transparent 65%), linear-gradient(180deg, #17142163, transparent 20%); }
+    .access-page .access-beian { flex-direction: column; }
+    .access-copyright, .access-page .access-beian .beian-link { font-size: 10px; }
 }
-@media (max-height: 505px) {
-    .access-page .access-brand, .access-controls { top: max(9px, env(safe-area-inset-top)); }
-    .access-page .access-title { font-size: clamp(33px, 9svh, 52px); }
-    .access-page .access-kicker { margin-bottom: 8px; }
-    .access-page .access-divider { margin-block: 6px; }
-    .access-page .access-enter { min-height: 44px; margin-top: 10px; }
-    .access-page .access-invitation { margin-top: 7px; }
-}
-@media (max-aspect-ratio: 5/6) {
-    .page.access-page { --water-center-y: clamp(168px, 28%, 250px); }
-    .access-film-frame {
-        inset: 57% 0 auto;
-        height: min(65svh, 122vw);
-        transform: translateY(-50%);
-        mask-image: linear-gradient(180deg, transparent, #000 15%, #000 84%, transparent);
-    }
-    .access-film-frame > :is(img, video) { object-position: 33% 50%; }
-    .access-film-shade { background: linear-gradient(180deg, #0b112c38, transparent 54%, transparent 82%, #0b112c8c); }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) {
+    .page.access-page { min-height: 300px; }
+    .access-page .access-brand { top: 10px; }
+    .access-brand img { width: 29px; height: 29px; }
+    .access-page .access-hero { bottom: 52px; width: 66%; }
+    .access-title, :lang(en) .access-title { font-size: 38px; }
+    .access-kicker { margin-bottom: 4px; }
+    .access-subtitle { margin: 5px 0 12px; font-size: 14px; }
+    .access-page .access-enter { min-height: 44px; padding-block: 6px; font-size: 15px; }
+    .access-page .access-beian { bottom: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .access-page .access-enter:is(:hover,:active) { transform: none; }
+    .access-page :is(.access-video, .access-nightfall) { display: none; }
+    .access-page :is(.access-overlay, .access-content) { transition: none; }
 }
