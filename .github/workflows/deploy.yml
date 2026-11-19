@@ -1,4 +1,4 @@
-name: Publish Moon Chat primary navigation overseas
+name: Publish shrine entrance overseas
 
 on:
   workflow_dispatch:
@@ -12,61 +12,33 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/moon-chat-overseas-rollout'
+    if: github.ref == 'refs/heads/codex/shrine-entry-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 05fd40301074090f562d58659bd71d58bbb99721
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 73923807bdd50417e3588b3687b2b0052fa88fb0
+          path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20.20.2
           cache: npm
-      - run: npm ci
-      - name: Build the pinned Moon Chat frontend
+          cache-dependency-path: source/package-lock.json
+      - name: Build and check the release
+        working-directory: source
         run: |
           set -eu
+          npm ci
+          node --test tests/frontend-access.test.cjs tests/frontend-shrine-camera.test.mjs
           npm run build:web:overseas
-          echo '24016d87de5591532ebaabc19fa32d805b7c1d3dc64172b1770bb0324e0d5406  dist/frontend/index.html' | sha256sum -c -
-          cat > "$RUNNER_TEMP/activate.py" <<'RELEASE_DATA'
-          from pathlib import Path
-          import json,hashlib,re,subprocess,sys
-          stage=Path(sys.argv[1]); label=sys.argv[2]; config=Path('/opt/1panel/www/conf.d/tsukuyomi-space.com.conf')
-          root=Path('/opt/1panel/www/sites/tsukuyomi-space.com/frontend');state=Path('/var/backups/tsukuyomi-space/releases')/label
-          meta=json.loads((stage/'manifest.json').read_text());host='tsukuyomi-space.com'
-          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-          def run(*args):subprocess.run([str(x) for x in args],check=True)
-          def output(*args):return subprocess.check_output([str(x) for x in args])
-          def get(path):return output('curl','-fsS','--retry','3','--retry-all-errors','--retry-delay','2','--max-time','20','--resolve',host+':443:127.0.0.1','https://'+host+path)
-          def verify():
-           assert config.read_text().count('proxy_pass https://origin.yachiyo.hk;')>=2
-           assert config.read_text().count('proxy_ssl_verify_depth 4;')>=2
-           assert sha(root/'index.html')==meta['after']
-           assert hashlib.sha256(get('/chatroom')).hexdigest()==meta['after']
-           assert next(iter(re.findall(rb'<script[^>]+src="(/assets/index-[^"]+\.js)"', (root/'index.html').read_bytes()))) in get('/hub')
-           assert json.loads(get('/api/chatroom/lobby/sync'))['data']['packets'][0]['type']=='snapshot'
-           assert json.loads(get('/api/health'))['status']=='ok'
-          if sha(root/'index.html')==meta['after']:
-           verify();sys.exit(0)
-          assert sha(root/'index.html')==meta['before'],'Overseas frontend advanced'
-          run('bash',stage/'prepare-lightweight-release.sh','--site','overseas','--state',state,'--root',root,'--frontend',root,'--artifact',stage/'frontend','--base-url','https://'+host,'--resolve',host+':443:127.0.0.1','--commit',meta['commit'],'--frontend-only')
-          assert sha(root/'index.html')==meta['before']
-          activated=False
-          try:
-           activated=True
-           run('python3',stage/'safe-release.py','activate','--state',state)
-           verify()
-          except BaseException:
-           if activated:run('python3',stage/'safe-release.py','rollback','--state',state)
-           raise
-          print('Verified Moon Chat overseas',meta['commit'])
-          RELEASE_DATA
-          cat > "$RUNNER_TEMP/manifest.json" <<'RELEASE_DATA'
-          {"commit": "05fd40301074090f562d58659bd71d58bbb99721", "before": "754e0a4dd3c7c440cfd9becb050742b9d855229c5245f83cf3a7e50c34f80153", "after": "24016d87de5591532ebaabc19fa32d805b7c1d3dc64172b1770bb0324e0d5406"}
-          RELEASE_DATA
-          tar -czf "$RUNNER_TEMP/moon-chat-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/deploy" safe-release.py prepare-lightweight-release.sh -C "$RUNNER_TEMP" activate.py manifest.json
+          echo '24ef27bbd21b2c4e4f446cbf1843b04ce09f85e8f1e37d0d1fed8d050b6bdac3  dist/frontend/index.html' | sha256sum -c -
+          cp ../deploy/shrine-overseas-manifest.json "$RUNNER_TEMP/manifest.json"
+          tar -czf "$RUNNER_TEMP/shrine-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" shrine-release.py dedup-entry-media.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -85,12 +57,12 @@ jobs:
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           for attempt in 1 2 3; do
-            label="moon-chat-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            label="shrine-entry-overseas-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
             stage="/tmp/tsukuyomi-$label"
             echo "Starting upload and activation (attempt $attempt)"
             if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
-              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/activate.py' '$stage' '$label'" \
-              < "$RUNNER_TEMP/moon-chat-release.tgz"; then
+              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/shrine-release.py' '$stage' '$label'; rm -rf -- '$stage'" \
+              < "$RUNNER_TEMP/shrine-release.tgz"; then
               exit 0
             else
               result=$?

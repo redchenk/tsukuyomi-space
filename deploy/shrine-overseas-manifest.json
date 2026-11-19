@@ -1,0 +1,24 @@
+{
+  "site": "overseas",
+  "commit": "73923807bdd50417e3588b3687b2b0052fa88fb0",
+  "before": "24016d87de5591532ebaabc19fa32d805b7c1d3dc64172b1770bb0324e0d5406",
+  "after": "24ef27bbd21b2c4e4f446cbf1843b04ce09f85e8f1e37d0d1fed8d050b6bdac3",
+  "entry": "/assets/index-CHXvBxxH.js",
+  "shrine": {
+    "assets/renderer-C1Fe0evL.js": "b6847465c62905fba40057934408ab223a812f6ba655353a9ab3c914152a00f5",
+    "assets/shrine-nightfall-B2SYaUPv.mp4": "bb7fb2929addbc95922ba0b939ec7c256494f48ee4c53005fba034baa921db66",
+    "assets/shrine-nightfall-mobile-CbB7knCa.mp4": "7550170f0d7ea85c484899f97df346b79aeca34cbcc3fb39351416227a16590f",
+    "assets/shrine-poster-C-bViEOx.webp": "fc58b672956df52150404a9548ed3fa2c79fa22c19fda2520161028aa1a4e4cc",
+    "assets/shrine-poster-mobile-C6Stmg0G.webp": "b0325e3ae65a1d5fba9758f1c39f12b2851591e4fa368b258136337208e27f73",
+    "assets/shrine-standby-C3QzL2SO.mp4": "0522afa7756262afb411fddef1ae07b707f9929bb46dfa5f27b3143a9fb1a550",
+    "assets/shrine-standby-mobile-Dw3q7JNF.mp4": "8d981b64b98589139a049b89e53ea0b994a012703f959877c81e498cd61aca69"
+  },
+  "retired": {
+    "water-mirror-poster-r6Xz--CP.webp": "6bcaad004d2237a99c18131016e5dff7a28772d92452e35f2cd4c2d45e9ea477",
+    "water-mirror-standby-W0RH5DL4.mp4": "38ab27141066945f9b261cf71bcc7fb41797f19784b02b03bff338939939b0d3",
+    "water-mirror-enter-Bn7X4qLa.mp4": "85c54f548caa15fe7ef4cd722f1852ae57ba43931c044874fe203113d53815b4",
+    "moon-gate-desktop-v1-BvVVHxK8.mp4": "f6606984b623f5a49d530ce5ec8735ae67688141936e4ea5bedee2c67f2022ee",
+    "moon-gate-mobile-v1-DkCgH_Is.mp4": "585dc6d15e79598640f52fba44364f0823d3cb450e0e77b4cb2a587a4c9b8c41",
+    "moon-gate-poster-v1-CbcM5pj6.webp": "06e4cb422570d529ce5d15ae01f32c5f68f2217a9ae9aeb2b373f41ceb13678d"
+  }
+}
