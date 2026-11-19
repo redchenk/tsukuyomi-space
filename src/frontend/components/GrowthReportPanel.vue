@@ -398,7 +398,11 @@ const peak = computed(() => Math.max(1, ...observed.value.map((d) => Math.max(d.
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
 }
-:global(html[data-theme='dark']) .growth-report {
+:global(html[data-theme='dark'] .growth-report) {
+  --gr-ink: #f2f4fa;
+  --gr-muted: #bdc9dc;
+  --gr-surface: #222c3b;
+  --gr-line: #45516a;
   --gr-brand: #eda7c1;
   --gr-teal: #7acac9;
 }
