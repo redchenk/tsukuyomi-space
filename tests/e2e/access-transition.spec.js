@@ -184,7 +184,7 @@ test('the shrine dissolves into a single live Hub that updates through the trans
   let releaseData;
   const data = new Promise(resolve => { releaseData = resolve; });
   let requests = 0;
-  await page.route('**/api/hub-preview*', async route => {
+  await page.route(/\/(?:en-)?api\/hub-preview(?:\?|$)/, async route => {
     requests++;
     await data;
     await route.fulfill({ json: { success: true, data: {
