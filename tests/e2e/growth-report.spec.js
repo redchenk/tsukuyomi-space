@@ -27,11 +27,15 @@ test('a visible article, a revisit and the administrator growth report use the r
   await page.getByRole('button', { name: '连接终端' }).click();
   const panel = page.locator('.growth-report');
   await expect(panel.getByRole('heading', { name: '增长报表' })).toBeVisible();
+  await expect(panel.getByRole('heading',{name:'访问与活跃趋势'})).toBeVisible();
+  await panel.getByRole('button',{name:'获客',exact:true}).click();
   await expect(panel.getByText('readerqa', { exact: true })).toBeVisible();
+  await panel.getByRole('button',{name:'文章',exact:true}).click();
   const row = panel.getByRole('row').filter({ hasText: item.title });
   await expect(row.locator('td').nth(1)).toHaveText('2');
   await expect(row.locator('td').nth(2)).toHaveText('1');
   await expect(row.locator('td').nth(3)).toHaveText('1');
+  await panel.getByRole('button',{name:'获客',exact:true}).click();
   await panel.getByLabel('首访分组').selectOption('content');
   await expect(panel.getByText('first', { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });

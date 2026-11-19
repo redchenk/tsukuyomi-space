@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly offload of verified Tsukuyomi backup snapshots
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=8m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

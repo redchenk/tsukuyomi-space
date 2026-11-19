@@ -26,6 +26,7 @@ for (const [width, theme] of [[390, 'dark'], [1440, 'light']]) test(`Terminal da
   await page.getByRole('textbox', { name: '管理员账号' }).fill('admin');
   await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
   await page.getByRole('button', { name: '连接终端' }).click();
+  await page.getByText('官方服务用量', {exact:true}).click();
   const panel = page.locator('.official-usage');
   await expect(panel.getByRole('heading', { name: '官方服务每日调用' })).toBeVisible();
   await expect(panel.locator('tbody tr')).toHaveCount(30);

@@ -978,7 +978,7 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <div class="terminal-layout">
+      <div class="terminal-layout" :class="{ 'terminal-layout-analytics': terminal.activePanel === 'analytics' }">
         <aside class="terminal-sidebar">
           <div class="terminal-sidebar-head">
             <strong>工作台</strong>
@@ -1357,14 +1357,18 @@ onUnmounted(() => {
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'analytics'">
+            <GrowthReportPanel v-if="authed && terminal.activePanel === 'analytics'" :request="adminApi" :revision="terminal.analyticsRevision" />
+            <details class="analytics-supplement"><summary>历史访问人天</summary>
             <div class="terminal-cards">
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon success"><TsIcon name="eye" :size="18" /></span><span class="terminal-stat-copy"><small>今日访问</small><strong>{{ terminal.analytics.todayViews || 0 }}</strong></span></div>
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon"><TsIcon name="calendar" :size="18" /></span><span class="terminal-stat-copy"><small>7 日访问人天</small><strong>{{ terminal.analytics.weekViews || 0 }}</strong></span></div>
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon purple"><TsIcon name="layers" :size="18" /></span><span class="terminal-stat-copy"><small>30 日访问人天</small><strong>{{ terminal.analytics.monthViews || 0 }}</strong></span></div>
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon warning"><TsIcon name="sparkles" :size="18" /></span><span class="terminal-stat-copy"><small>累计访问人天</small><strong>{{ terminal.analytics.totalViews || 0 }}</strong></span></div>
             </div>
-            <GrowthReportPanel v-if="authed && terminal.activePanel === 'analytics'" :request="adminApi" :revision="terminal.analyticsRevision" />
+            </details>
+            <details class="analytics-supplement"><summary>官方服务用量</summary>
             <OfficialUsagePanel v-if="authed && terminal.activePanel === 'analytics'" :request="adminApi" :revision="terminal.analyticsRevision" />
+            </details>
           </div>
 
           <form v-if="!terminal.loading && !terminal.loadError && terminal.activePanel === 'notifications'" class="terminal-settings terminal-notification-settings" :aria-busy="terminal.notificationSaving" @submit.prevent="saveNotificationSettings">
@@ -1566,3 +1570,9 @@ onUnmounted(() => {
     </section>
   </main>
 </template>
+
+<style scoped>
+@media (max-width: 760px) { .terminal-layout.terminal-layout-analytics .terminal-sidebar { position: static; } }
+.analytics-supplement { margin-top: 14px; border-top: 1px solid var(--terminal-border); padding-top: 8px; }
+.analytics-supplement > summary { width: fit-content; padding: 8px 0; cursor: pointer; font-weight: 600; }
+</style>

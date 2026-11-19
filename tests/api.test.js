@@ -4554,7 +4554,7 @@ describe('admin API permissions', () => {
                 size: 2048,
                 etag: 'scan-etag',
                 lastModified: '2026-07-23T00:00:00.000Z'
-            }],
+            }, { key: 'ops-archive/domestic-v1/fixture.cms' }],
             prefix: 'movies/'
         });
 
@@ -4583,6 +4583,8 @@ describe('admin API permissions', () => {
             }, adminToken);
             assert.equal(scanned.response.status, 200);
             assert.equal(scanned.body.data.importedCount, 1);
+            assert.equal(scanned.body.data.skippedCount, 1);
+            assert.equal(scanned.body.data.skipped[0].key, 'ops-archive/domestic-v1/fixture.cms');
             assert.equal(scanned.body.data.imported[0].storage_key, scannedObjectKey);
             assert.equal(scanned.body.data.imported[0].owner_id, linkedSiteUser.id);
             registeredAssetIds.push(scanned.body.data.imported[0].id);

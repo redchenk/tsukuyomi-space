@@ -1,0 +1,17 @@
+[Unit]
+Description=Verify and move old Tsukuyomi database snapshots to private OSS
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/tsukuyomi-archive/recovery.key
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/tsukuyomi-archive/archive.py offload --limit 4
+Nice=12
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true
+TimeoutStartSec=1h

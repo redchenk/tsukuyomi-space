@@ -13718,5 +13718,93 @@
   "公共聊天室": {
     "en": "Public chat",
     "ja": "公開チャット"
+  },
+  "今日活跃": {
+    "en": "Active today",
+    "ja": "今日のアクティブ"
+  },
+  "7 日活跃": {
+    "en": "7-day active",
+    "ja": "7 日間のアクティブ"
+  },
+  "30 日活跃": {
+    "en": "30-day active",
+    "ja": "30 日間のアクティブ"
+  },
+  "概览": {
+    "en": "Overview",
+    "ja": "概要"
+  },
+  "获客": {
+    "en": "Acquisition",
+    "ja": "流入"
+  },
+  "社区回应": {
+    "en": "Responses",
+    "ja": "コミュニティの返信"
+  },
+  "更新于 {0}（北京时间）": {
+    "en": "Updated {0} (UTC+8)",
+    "ja": "{0} 更新（UTC+8）"
+  },
+  "{0} 天": {
+    "en": "{0} days",
+    "ja": "{0} 日"
+  },
+  "去重访客": {
+    "en": "Unique visitors",
+    "ja": "訪問者数"
+  },
+  "访问与活跃趋势": {
+    "en": "Visitors and activity",
+    "ja": "訪問者数とアクティブ数の推移"
+  },
+  "{0} · 访客 {1} · 活跃 {2}": {
+    "en": "{0} · {1} visitors · {2} active",
+    "ja": "{0} · 訪問 {1} · アクティブ {2}"
+  },
+  "每日明细": {
+    "en": "Daily figures",
+    "ja": "日別の内訳"
+  },
+  "已激活 {0} 人 / 首访 {1} 人": {
+    "en": "{0} activated / {1} first-time visitors",
+    "ja": "初回訪問 {1} 人のうち {0} 人が利用"
+  },
+  "首次成功耗时 · 中位数": {
+    "en": "Time to first success · median",
+    "ja": "初回成功までの時間・中央値"
+  },
+  "首次成功耗时 · P75": {
+    "en": "Time to first success · P75",
+    "ja": "初回成功までの時間・P75"
+  },
+  "{0} 秒": {
+    "en": "{0} s",
+    "ja": "{0} 秒"
+  },
+  "等待完整样本": {
+    "en": "Awaiting a full cohort",
+    "ja": "観測期間の完了待ち"
+  },
+  "首访渠道": {
+    "en": "First-visit acquisition",
+    "ja": "初回訪問の流入元"
+  },
+  "按新增阅读量取前 50": {
+    "en": "Top 50 by new reads",
+    "ja": "新規閲読数上位 50 件"
+  },
+  "自 {0}（北京时间）起采集。当前窗口仅展示已经采集的数据。": {
+    "en": "Measurement started {0} (UTC+8). The current window shows available observations.",
+    "ja": "{0}（UTC+8）より集計。現在の期間には収集済みのデータを表示します。"
+  },
+  "历史访问人天": {
+    "en": "Historical visitor-days",
+    "ja": "過去の延べ訪問日数"
+  },
+  "官方服务用量": {
+    "en": "Official service usage",
+    "ja": "公式サービスの利用量"
   }
 }

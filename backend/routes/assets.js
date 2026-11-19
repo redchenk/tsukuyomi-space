@@ -220,7 +220,7 @@ function parseDataUrl(value = '') {
 
 function createOssAssetRecord({ objectKey, title = '', assetType = 'auto', mimeType = '', size = 0, visibility = 'public', description = '', etag = '', lastModified = '', ownerId }) {
     const storageKey = objectStorage.normalizeObjectKey(objectKey);
-    if (!storageKey) return null;
+    if (!storageKey || storageKey.startsWith('ops-archive/')) return null;
     const url = objectStorage.publicUrlForKey(storageKey);
     if (!url) return null;
     const normalizedMimeType = inferMimeType(storageKey, mimeType);
