@@ -23,11 +23,16 @@ const shrine = ref(null);
 const liveAvailable = ref(false);
 const liveEntering = ref(false);
 const nightfall = ref('');
-// Pick one camera for the visit so resizing doesn't rewind either shot.
-const portrait = window.matchMedia('(orientation: portrait)').matches;
-const accessVideoSrc = portrait ? mobileVideo : desktopVideo;
-const accessNightfallSrc = portrait ? mobileNightfall : nightfallVideo;
-const accessPosterSrc = portrait ? mobilePoster : desktopPoster;
+// Keep the opening's playback position when the device rotates. Prepare the
+// matching ending for the current orientation while the visitor is waiting.
+const orientation = window.matchMedia('(orientation: portrait)');
+const accessVideoSrc = orientation.matches ? mobileVideo : desktopVideo;
+const endingPortrait = ref(orientation.matches);
+const accessNightfallSrc = computed(() => endingPortrait.value ? mobileNightfall : nightfallVideo);
+
+function syncEndingOrientation() {
+  if (!nightfall.value && !finishNightfall) endingPortrait.value = orientation.matches;
+}
 const motionAllowed = ref(false);
 const bootDismissed = ref(!document.getElementById('boot-splash'));
 const userPaused = ref(false);
@@ -127,6 +132,7 @@ function playNightfall(signal) {
     signal.addEventListener('abort', () => {
       liveEntering.value = false;
       nightfall.value = '';
+      syncEndingOrientation();
       nextTick(tryPlayAccessVideo);
     }, { once: true });
     return live.then(completed => {
@@ -165,6 +171,7 @@ function playNightfall(signal) {
     signal.addEventListener('abort', () => {
       finish();
       nightfall.value = '';
+      syncEndingOrientation();
       if (!disposed) nextTick(tryPlayAccessVideo);
     }, { once: true });
     finishNightfall = finish;
@@ -196,6 +203,7 @@ function beginOpening() {
 }
 
 onMounted(() => {
+  orientation.addEventListener?.('change', syncEndingOrientation);
   reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   connection = navigator.connection;
   reducedMotionQuery.addEventListener('change', syncMotionPreference);
@@ -214,6 +222,7 @@ onBeforeUnmount(() => {
   playVersion++;
   window.clearTimeout(splashTimer);
   window.dispatchEvent(new Event('tsukuyomi:entry-ready'));
+  orientation.removeEventListener?.('change', syncEndingOrientation);
   reducedMotionQuery?.removeEventListener('change', syncMotionPreference);
   connection?.removeEventListener?.('change', syncMotionPreference);
   document.removeEventListener('visibilitychange', syncVisibility);
@@ -233,8 +242,11 @@ onBeforeUnmount(() => {
     :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed, 'uses-live-shrine': liveEntering }"
     :data-nightfall="nightfall || undefined" :aria-busy="entering">
     <div class="access-media" aria-hidden="true">
-      <img class="access-poster" :src="accessPosterSrc" alt="" fetchpriority="high" decoding="async" data-image-bloom="off"
-        @load="posterReady = true; entryReady()" @error="entryReady">
+      <picture>
+        <source media="(orientation: portrait)" :srcset="mobilePoster">
+        <img class="access-poster" :src="desktopPoster" alt="" fetchpriority="high" decoding="async" data-image-bloom="off"
+          @load="posterReady = true; entryReady()" @error="entryReady">
+      </picture>
       <video v-if="motionAllowed && !(standbyEnded && (posterReady || holdPainted))" ref="videoEl" class="access-video" :src="accessVideoSrc"
         :autoplay="bootDismissed && !standbyEnded && !userPaused" muted playsinline webkit-playsinline disablepictureinpicture disableremoteplayback
         controlslist="nodownload noplaybackrate noremoteplayback" x-webkit-airplay="deny" tabindex="-1"
@@ -242,7 +254,7 @@ onBeforeUnmount(() => {
         @playing="markVideoReady" @canplay="tryPlayAccessVideo" @ended="standbyEnded = true"
         @error="markVideoFailed" @webkitbeginfullscreen="preventVideoFullscreen"></video>
       <AccessShrine v-if="motionAllowed && (videoState.ready || videoState.failed || standbyEnded)"
-        ref="shrine" :portrait="portrait" :holding="(standbyEnded || videoState.failed) && !nightfall"
+        ref="shrine" :holding="(standbyEnded || videoState.failed) && !nightfall"
         :paused="userPaused" @available="liveAvailable = $event" @hold-painted="holdPainted = true" />
       <video v-if="motionAllowed" ref="nightfallEl" class="access-nightfall" :src="accessNightfallSrc"
         preload="metadata" muted playsinline webkit-playsinline disablepictureinpicture disableremoteplayback

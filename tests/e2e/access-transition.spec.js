@@ -63,6 +63,29 @@ for (const timing of ['early', 'after the hold']) {
   });
 }
 
+test('rotation reframes the frontal hold without restarting the opening', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await entry(page);
+  const opening = page.locator('.access-video');
+  const poster = page.locator('.access-poster');
+  const ending = page.locator('.access-nightfall');
+  await expect.poll(() => opening.evaluate(v => v.currentTime)).toBeGreaterThan(.2);
+  const before = await opening.evaluate(v => ({ src: v.currentSrc, time: v.currentTime }));
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect.poll(() => poster.evaluate(img => img.currentSrc)).not.toContain('poster-mobile');
+  await expect(ending).toHaveAttribute('src', /shrine-nightfall-(?!mobile)/);
+  expect(await opening.evaluate(v => v.currentSrc)).toBe(before.src);
+  await expect.poll(() => opening.evaluate(v => v.currentTime)).toBeGreaterThan(before.time);
+  await opening.evaluate(v => { v.currentTime = 9.65; });
+  await expect(opening).toHaveCount(0);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expect.poll(() => poster.evaluate(img => img.currentSrc)).toContain('poster-mobile');
+  await expect(ending).toHaveAttribute('src', /shrine-nightfall-mobile/);
+  await expect(page.locator('.access-enter')).toBeInViewport();
+  await page.locator('.access-enter').click();
+  await expect(page).toHaveURL(/\/hub$/);
+});
+
 test('the end of the side take cuts to the frontal still and live dusk camera', async ({ page }) => {
   let releaseScene;
   const delayed = new Promise(resolve => { releaseScene = resolve; });

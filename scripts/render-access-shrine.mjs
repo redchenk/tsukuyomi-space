@@ -54,7 +54,7 @@ try {
       const { createShrineRenderer } = await import('/services/shrine/renderer.js');
       const { approachPose } = await import('/services/shrine/approach.js');
       const surface = document.querySelector('canvas');
-      const scene = await createShrineRenderer(surface, innerHeight > innerWidth, new AbortController().signal);
+      const scene = await createShrineRenderer(surface, new AbortController().signal);
       const renderer = new T.WebGLRenderer({ alpha: false });
       renderer.setSize(innerWidth, innerHeight, false);
       const video = document.createElement('video');
