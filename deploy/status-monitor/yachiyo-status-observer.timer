@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Tsukuyomi public services every minute
+
+[Timer]
+OnBootSec=35s
+OnUnitActiveSec=60s
+AccuracySec=2s
+Unit=yachiyo-status-observer.service
+
+[Install]
+WantedBy=timers.target
