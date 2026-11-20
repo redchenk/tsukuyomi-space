@@ -201,6 +201,10 @@ body.vue-access-route { overflow-y: auto; }
     .access-kicker { margin-bottom: 6px; }
     .access-subtitle { margin: 7px 0 14px; }
 }
+@media (orientation: portrait) and (max-width: 360px) {
+    :lang(en) .access-page .access-brand { gap: 6px; font-size: 14px; letter-spacing: .06em; }
+    :lang(en) .access-page .access-enter { gap: 7px; padding-inline: 14px; font-size: 15px; }
+}
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) {
     .page.access-page { min-height: 300px; }
     .access-page .access-brand { top: 10px; }
