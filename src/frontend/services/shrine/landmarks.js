@@ -16,3 +16,4 @@ export function atGate(forward,lateral=0){
     z:arrival.z+arrival.scale*(normal.z*forward+across.z*lateral)};
 }
 export const sideEye={x:1.15934,y:.011,z:2.47847,yaw:.073615,pitch:.20235,focal:663.08};
+export const bridge={x:-72,z:295,deck:1.35};

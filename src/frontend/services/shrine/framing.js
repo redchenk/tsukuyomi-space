@@ -5,6 +5,7 @@ export const frame = {
 };
 const centerY = frame.skyTop + frame.height / 2;
 export const openingPitch = Math.atan((frame.horizon - centerY) / frame.focal);
+export const openingFov = 2 * Math.atan(frame.height / (2 * frame.focal)) * 180 / Math.PI;
 
 export function atHeight(pixelX, pixelY, height) {
   const up = (centerY - pixelY) / frame.focal;

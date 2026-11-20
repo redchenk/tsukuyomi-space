@@ -1,16 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { nightfallDuration, shrinePose } from '../src/frontend/services/shrine/camera.js';
+import { shotAt } from '../src/frontend/services/shrine/sequence.js';
 import { approachPose } from '../src/frontend/services/shrine/approach.js';
 
 for (const [name, aspect, portrait] of [['landscape', 1.6, false], ['portrait', 390 / 844, true]]) {
   test(`the ${name} approach settles into the live gate at ten seconds`, () => {
-    const sourceShot = time => {
-      assert.ok(time >= 5 && time < 8, 'stay in the original arriving camera track');
-      return { pose: { x: 1 + time, y: .4, z: -9, yaw: time / 10, pitch: .1, roll: .02, fov: 40 } };
-    };
-    const previous = approachPose(10 - .001, aspect, portrait, sourceShot);
-    const end = approachPose(10, aspect, portrait, sourceShot);
+    for (const t of [5.6, 7.3, 8.1]) {
+      const position = approachPose(t, aspect, portrait);
+      const authored = shotAt(t, true).pose;
+      for (const key of ['x', 'y', 'z', 'pitch', 'yaw', 'roll']) assert.equal(position[key], authored[key]);
+    }
+    const previous = approachPose(10 - .001, aspect, portrait);
+    const end = approachPose(10, aspect, portrait);
     const hold = shrinePose(0, 0, aspect, portrait);
     for (const key of Object.keys(hold)) {
       assert.ok(Math.abs(end[key] - hold[key]) < 1e-12);

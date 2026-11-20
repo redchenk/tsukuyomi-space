@@ -72,13 +72,15 @@ export function createLanterns(lights,light){
   const shader=new T.ShaderMaterial({
     uniforms:{night:light.night},
     vertexShader:`
-      varying vec2 faceUv; varying float side,strength,front;
+      varying vec2 faceUv; varying float side,strength,front,air;
       void main(){
         faceUv=uv; side=normal.y;front=abs(normal.z); strength=.5+.5*dot(normalize(mat3(instanceMatrix)*normal),normalize(vec3(-1.,.3,.45)));
-        gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.);
+        vec4 eye=modelViewMatrix*instanceMatrix*vec4(position,1.);
+        air=1.-exp(-.0052*length(eye.xyz));
+        gl_Position=projectionMatrix*eye;
       }`,
     fragmentShader:`
-      varying vec2 faceUv; varying float side,strength,front;
+      varying vec2 faceUv; varying float side,strength,front,air;
       uniform float night;
       float hash(vec2 v){return fract(sin(dot(v,vec2(127.1,311.7)))*43758.55);}
       void main(){
@@ -98,6 +100,10 @@ export function createLanterns(lights,light){
         vec3 paper=mix(vec3(.982,.865,.545),vec3(1.,.997,.835),.25+.57*center+.15*strength)+fiber*.016;
         paper=mix(paper,vec3(1.,.966,.867)+fiber*.009,night*.93);
         vec3 srgb=side>.5?mix(frame,vec3(.63,.372,.28),.3):mix(frame,paper,open);
+        // Sea haze lowers far-field contrast; a nearby shade retains its dark
+        // frame and the next row remains visible through the haze behind it.
+        vec3 haze=mix(vec3(.764,.576,.588),vec3(.199,.258,.333),night);
+        srgb=mix(srgb,haze,air*(.58-.31*night));
         gl_FragColor=vec4(pow(srgb,vec3(2.2)),1.);
         #include <colorspace_fragment>
       }`,
@@ -117,6 +123,25 @@ export function createLanterns(lights,light){
     stamp(trim,i*2+1,x,h*.988,z,width*1.055,h*.024,width*1.055,yaw);
   });
   group.add(boxes,trim);
+  const close=lights.filter(l=>Math.hypot(l.x-arrival.x,l.z-arrival.z)<29 && l.h>.13);
+  const rails=new T.InstancedMesh(new T.BoxGeometry(),new T.MeshStandardMaterial({
+    color:0x48241e,metalness:0,roughness:.47
+  }),close.length*4);
+  close.forEach(({x,z,h,yaw},i)=>{
+    const w=h*.65,cs=Math.cos(yaw),sn=Math.sin(yaw);
+    for(let k=0;k<4;k++){
+      const dx=(k%2-.5)*w*.982,dz=((k>>1)-.5)*w*.982;
+      stamp(rails,4*i+k,x+cs*dx+sn*dz,h*.505,z-sn*dx+cs*dz,w*.062,h*.92,w*.062,yaw);
+    }
+  });
+  rails.castShadow=rails.receiveShadow=true;group.add(rails);
+  for(const [f,l] of [[-4,-3.25],[-3.1,3.6],[2.8,-3.3]]){
+    const spot=atGate(f,l);
+    const lamp=lights.reduce((a,b)=>Math.hypot(a.x-spot.x,a.z-spot.z)<Math.hypot(b.x-spot.x,b.z-spot.z)?a:b);
+    const bulb=new T.PointLight(0xffbd76,2.1,8,2);
+    bulb.position.set(lamp.x,lamp.h*.54,lamp.z);bulb.userData.andon=true;
+    group.add(bulb);
+  }
   // Low-intensity halos are rendered in one call. They shrink with the paper
   // shade and stay attached to each lamp in both the scene and its reflection.
   const glow=new T.ShaderMaterial({
