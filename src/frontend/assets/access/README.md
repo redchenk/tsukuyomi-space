@@ -1,22 +1,15 @@
 # Sea shrine entrance
 
-The opening plays once from 0 to 10 seconds. Both versions retain the optical tunnel and render the water arrival in their own aspect ratio. From 7.05 seconds the approaching camera settles into the frontal dusk pose. Its position, rotation and field of view reach the live camera's values with zero velocity at the handoff.
+The first five seconds use the optical tunnel from the shrine artwork. At five seconds the camera breaks the water surface. A cut at eight seconds shows the side braces and nearby lanterns. From 8.22 seconds the camera moves into the frontal dusk composition and comes to rest at ten seconds. The editable approach is in `services/shrine/approach.js` under the frontend root.
 
-The editable opening track is `src/frontend/services/shrine/approach.js`. To render seconds 5–10, use the source film's scene, splash optics and lighting at 30 fps. Pass its original `shotAt` sampler to `approachPose` and apply the returned perspective pose directly. Join the first 150 tunnel frames to arrival frames 150 through 299. Use the canvas drawing buffer for the full frame in either aspect ratio.
+The film, live hold and ending all use the same physical timber, sunset lighting, shadows, reflection, focus and film grade. The landscape and portrait shots are rendered separately. The last decoded frame remains visible until the first live frame has painted. At dusk the water keeps moving and the camera drifts gently. Clicking Enter carries that movement into a 2.3-second pullback, followed by the dissolve into Hub. Devices without WebGL2 keep the opening’s last frame and play the matching ending. Reduced-motion and data-saving preferences use the still.
 
-The WebGL drawing buffer outputs sRGB. Encode the clips from that buffer using a limited-range BT.709 Y′CbCr matrix. Mark both the H.264 stream and the MP4 `nclx` container with BT.709 primaries (1), sRGB transfer (13) and BT.709 matrix (1). This lets the browser present the video and canvas at the same brightness. The opening's last decoded frame stays visible until the renderer paints the waiting pose. Devices without WebGL keep that video frame on screen.
-
-After encoding these sRGB frames, write the matching tags to each opening and nightfall clip.
+To regenerate both openings, both endings and both posters, run this command from the repository root with Chrome and an FFmpeg build with libx264 available.
 
 ```sh
-ffmpeg -i encoded.mp4 -map 0:v:0 -map_metadata -1 -c:v copy \
-  -bsf:v 'h264_metadata=colour_primaries=1:transfer_characteristics=13:matrix_coefficients=1:video_full_range_flag=0' \
-  -color_range tv -color_primaries bt709 -color_trc iec61966-2-1 -colorspace bt709 \
-  -movflags +faststart+write_colr web.mp4
+node scripts/render-access-shrine.mjs /path/to/tsukuyomi-shrine
 ```
 
-At 10 seconds `AccessShrine.vue` holds the time of day at dusk. It uses the original gate meshes, instanced lanterns, sky textures, water reflection pass and lantern bloom from `tsukuyomi-shrine`. The editable scene is in `src/frontend/services/shrine/`, with its textures in `shrine/materials/`. A real perspective camera drifts gently sideways and turns. Water has a separate clock and continues to ripple while waiting.
+The artwork directory supplies `assets/entry-tunnel.mp4` and its optical shader in `src/crossing.js`. The rest comes from the site's scene in `src/frontend/services/shrine/` and its textures in `shrine/materials/`. Set `FFMPEG` or `PW_CHANNEL` to override the encoder executable or Chromium channel.
 
-Clicking Enter starts the 2.3-second pullback and night lighting. The camera continues the current head movement and eases it out over the first 1.35 seconds. The measured gate widths of the original shot shape the dolly curve. The scene keeps drawing during the dissolve into the mounted Hub. Pausing the background freezes the hold in its current pose. Hidden tabs suspend drawing and leaving Access releases the WebGL context and its resources.
-
-The H.264 ending and WebP stills support early clicks, reduced motion and devices without WebGL2. To reproduce the still or fallback ending, use the same `createShrineRenderer` at 1440 × 810 or 576 × 1024. Draw with zero held time and sample travel and water time together at 30 fps from 0 through 68/30 seconds. Capture the canvas drawing buffer at its native dimensions. The first frame supplies the still. Reduced-motion and data-saving preferences use only the still.
+Capture uses the canvas drawing buffer at 1440 × 810 or 576 × 1024, at 30 frames per second. Each opening has 300 frames and each ending has 69. Both H.264 and the MP4 container use BT.709 primaries, sRGB transfer and the limited-range BT.709 matrix so video and canvas present the same dusk exposure.
