@@ -27,19 +27,23 @@ jobs:
         run: |
           set -euo pipefail
           command -v sshpass >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq sshpass; }
-          ssh-keyscan -T 12 -p "$PORT" -t ed25519 "$SERVER" > "$RUNNER_TEMP/pin" 2>/dev/null
+          for t in 1 2 3; do ssh-keyscan -T 16 -p "$PORT" -t ed25519 "$SERVER" > "$RUNNER_TEMP/pin" 2>/dev/null && break; sleep 3; done
           test "$(ssh-keygen -lf "$RUNNER_TEMP/pin" | awk '{print $2}' | sort -u)" = 'SHA256:iWgrq0f82PS81s/NNfMp622ag23vLk83CyHruht53xA'
-          conn=(sshpass -e ssh -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/pin" -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=20 -p "$PORT" "$LOGIN@$SERVER")
+          conn=(sshpass -e ssh -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/pin" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=20 -p "$PORT" "$LOGIN@$SERVER")
           case "$OPERATION" in
             prepare)
-              "${conn[@]}" 'set -eu; umask 077; install -d -m 0700 /etc/yachiyo-status; cd /etc/yachiyo-status; if ! test -s transport.pem; then openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out transport.tmp 2>/dev/null; mv transport.tmp transport.pem; fi; openssl pkey -in transport.pem -pubout' > "$RUNNER_TEMP/observer-public.pem"
+              for attempt in 1 2 3; do
+                "${conn[@]}" 'set -eu; umask 077; install -d -m 0700 /etc/yachiyo-status; cd /etc/yachiyo-status; if ! test -s transport.pem; then openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out transport.tmp 2>/dev/null; mv transport.tmp transport.pem; fi; openssl pkey -in transport.pem -pubout' > "$RUNNER_TEMP/observer-public.pem" && break
+                sleep 3
+              done
+              openssl pkey -pubin -in "$RUNNER_TEMP/observer-public.pem" -noout
               ;;
             install)
               mkdir "$RUNNER_TEMP/pkg"
               cp deploy/status-monitor/{observer.py,install-observer.sh,yachiyo-status-observer.service,yachiyo-status-observer.timer} "$RUNNER_TEMP/pkg/"
               printf '%s' "$SEALED" | base64 -d > "$RUNNER_TEMP/pkg/sealed.bin"
               tar czf "$RUNNER_TEMP/pkg.tgz" -C "$RUNNER_TEMP/pkg" .
-              "${conn[@]}" 'set -eu; umask 077; s=$(mktemp -d); trap '''rm -rf -- "$s"''' EXIT; tar xzf - -C "$s"; cd "$s"; bash install-observer.sh' < "$RUNNER_TEMP/pkg.tgz"
+              "${conn[@]}" 'set -eu; umask 077; s=$(mktemp -d); trap "rm -rf -- $s" EXIT; tar xzf - -C "$s"; cd "$s"; bash install-observer.sh' < "$RUNNER_TEMP/pkg.tgz"
               ;;
             verify)
               "${conn[@]}" 'systemctl is-active yachiyo-status-observer.timer; systemctl show yachiyo-status-observer.service -p Result -p ExecMainStatus; journalctl -u yachiyo-status-observer.service -n 16 --no-pager'
