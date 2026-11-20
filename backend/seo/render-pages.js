@@ -41,6 +41,7 @@ function renderSeoCollectionPage({
     description,
     keywords = [],
     heading = title,
+    noindex = false,
     image = DEFAULT_IMAGE,
     items = [],
     actions = [],
@@ -100,7 +101,7 @@ function renderSeoCollectionPage({
   <title>${escapeHtml(fullTitle)}</title>
   <meta name="description" content="${escapeHtml(description)}">
   <meta name="keywords" content="${escapeHtml(keywords.join(', '))}">
-  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="robots" content="${noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large'}">
   <link rel="canonical" href="${escapeHtml(url)}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="${SITE_NAME}">
@@ -243,13 +244,12 @@ function renderWikiHtml(entries = []) {
 }
 
 function renderWikiEntryHtml(entry) {
-    const kindLabel = entry.kind === 'character' ? '角色词条' : '世界观／音乐词条';
+    const document = require('./wiki-documents.json')[`${entry.kind}/${entry.slug}`];
     return renderSeoCollectionPage({
-        ...require('./wiki-documents.json')[`${entry.kind}/${entry.slug}`],
+        ...document,
+        ...document.search,
         path: wikiEntryPath(entry),
-        title: `${entry.title} - ${kindLabel} - 超时空辉夜姬 Wiki`,
         heading: entry.title,
-        description: `${entry.description} 本页整理${entry.title}在《超时空辉夜姬！》中的角色或设定资料，并提供相关词条与官方来源。本站为非官方粉丝 Wiki，资料核验日期为 ${require('./wiki-content').WIKI_VERIFIED_AT}，原作内容以官方发布为准。`,
         keywords: [...entry.keywords, '超时空辉夜姬 Wiki'],
         image: entry.image,
         items: [
@@ -257,7 +257,7 @@ function renderWikiEntryHtml(entry) {
             { href: entry.kind === 'character' ? 'https://www.cho-kaguyahime.com/character/' : 'https://www.cho-kaguyahime.com/', title: '原作官方资料', description: '作品与角色资料请以《超かぐや姫！》官方网站发布为准。' },
             { href: '/topics/cosmic-princess-kaguya-wiki', title: '角色与世界观专题', description: '浏览 Wiki 角色、设定、音乐与相关公开文章。' }
         ],
-        actions: [{ href: `${wikiEntryPath(entry)}?spa=1`, label: '阅读完整互动词条' }]
+        actions: [{ href: wikiEntryPath(entry), label: `引用本词条 · ${entry.title}` }]
     });
 }
 

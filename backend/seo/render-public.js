@@ -2,6 +2,7 @@ const copy = require('../../shared/seo-pages.json');
 const articles = require('../repositories/article-repository');
 const messages = require('../repositories/message-repository');
 const social = require('../repositories/social-repository');
+const { profileDescription } = require('../../shared/profile-search.cjs');
 const { articlePath } = require('./render-article');
 const { renderSeoCollectionPage } = require('./render-pages');
 const { normalizeAppRelease } = require('../../shared/native-app-release.cjs');
@@ -78,10 +79,10 @@ function renderProfilePage(username) {
     const user = social.findUserByUsername(username);
     if (!user) return null;
     const name = user.nickname || user.username;
+    const works = social.listPublicArticlesByAuthor(user.id, { limit: 12 });
     return renderSeoCollectionPage({
-        path: `/users/${encodeURIComponent(user.username)}`, title: `${name}的公开创作者主页｜月读空间`,
-        description: `${name}在月读空间的公开主页。${user.bio || '浏览这位创作者公开发布的文章与作品，了解创作内容、阅读正文并参与讨论。'}这里仅展示公开资料与已发布文章，登录后可通过现有关注和互动功能与创作者交流。`.slice(0, 170),
-        heading: `${name}的公开主页`, items: articleItems(social.listPublicArticlesByAuthor(user.id, { limit: 12 })),
+        path: `/users/${encodeURIComponent(user.username)}`, title: `${name}的公开主页`, description: profileDescription(user, works),
+        heading: `${name}的公开主页`, items: articleItems(works),
         actions: [{ href: '/stage', label: '浏览主舞台' }]
     });
 }

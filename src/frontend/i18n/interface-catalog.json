@@ -1,4 +1,8 @@
 {
+  "引用本词条": {
+    "en": "Cite this entry",
+    "ja": "この項目を引用"
+  },
   "正文连续可见 10 秒计入阅读，同一读者间隔 30 分钟可再次计入。": {
     "en": "Reads require 10 visible seconds. Re-reading can count after a 30-minute interval.",
     "ja": "記事が10秒間連続で表示されると閲読を記録します。同じ読者は30分間隔で再度計上されます。"

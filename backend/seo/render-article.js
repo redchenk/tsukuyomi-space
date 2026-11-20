@@ -1,4 +1,5 @@
 const config = require('../config');
+const { articleSearch } = require('./article-search');
 const pageCopy = require('../../shared/seo-pages.json');
 const { renderMarkdown: renderMarkdownContent } = require('../../shared/markdown.cjs');
 const { renderMediaCard, renderIframeEmbed, sanitizeMarkdownUrl } = require('../../shared/markdown-media.cjs');
@@ -114,14 +115,6 @@ function articleUrl(article) {
     return absoluteUrl(articlePath(article));
 }
 
-function articleDescription(article) {
-    const excerpt = stripMarkdown(article.excerpt || '');
-    const content = stripMarkdown(plainArticleContent(article));
-    const summary = excerpt.length >= 60 ? excerpt : `${excerpt}${excerpt && content ? ' · ' : ''}${content}`;
-    const context = `${article.title}：由${article.author_nickname || article.author_username || '月读空间创作者'}发布的${article.category || '公开'}文章，可阅读正文、查看作者并参与评论。`;
-    return ((summary.length < 60 ? `${summary} ${context}` : summary) || `${article.title}：由${article.author_nickname || article.author_username || '月读空间创作者'}发布的${article.category || '公开'}文章。阅读正文，并查看作者资料与相关讨论。`).slice(0, 170);
-}
-
 function renderPlainContent(content, limit = 12) {
     return stripMarkdown(content)
         .split(/\n{2,}/)
@@ -139,14 +132,14 @@ function isoDate(value) {
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
-function articleSchema(article) {
+function articleSchema(article, description) {
     const url = articleUrl(article);
     const tags = parseTags(article.tags);
     return {
         '@context': 'https://schema.org',
         '@type': 'Article',
         headline: article.title,
-        description: articleDescription(article),
+        description,
         image: [absoluteUrl(article.cover_image || DEFAULT_IMAGE)],
         datePublished: isoDate(article.published_at || article.created_at || article.publish_date),
         dateModified: isoDate(article.updated_at || article.published_at || article.created_at || article.publish_date),
@@ -170,9 +163,9 @@ function articleSchema(article) {
     };
 }
 
-function renderArticleHtml(article) {
-    const title = `${article.title} | ${SITE_NAME}`;
-    const description = articleDescription(article);
+function renderArticleHtml(article, search = articleSearch(article)) {
+    const title = search.title.includes(SITE_NAME) ? search.title : `${search.title} | ${SITE_NAME}`;
+    const { description } = search;
     const url = articleUrl(article);
     const image = absoluteUrl(article.cover_image || DEFAULT_IMAGE);
     const keywords = [...new Set([...parseTags(article.tags), article.category, article.title, '月读空间文章'].filter(Boolean))];
@@ -186,7 +179,7 @@ function renderArticleHtml(article) {
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
   <meta name="keywords" content="${escapeHtml(keywords.join(', '))}">
-  <meta name="robots" content="index,follow">
+  <meta name="robots" content="${search.noindex ? 'noindex' : 'index'},follow">
   <link rel="canonical" href="${escapeHtml(url)}">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
@@ -200,7 +193,7 @@ function renderArticleHtml(article) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
-  <script type="application/ld+json">${safeJsonForHtml(articleSchema(article))}</script>
+  <script type="application/ld+json">${safeJsonForHtml(articleSchema(article, description))}</script>
   <style>
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f7fbff;line-height:1.78}
     main{width:min(860px,calc(100% - 32px));margin:48px auto;padding:32px;border:1px solid rgba(132,167,205,.35);border-radius:24px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(79,109,150,.14)}
@@ -240,7 +233,7 @@ function renderStageHtml(articles = []) {
         ${article.cover_image ? `<img src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" loading="lazy" decoding="async">` : ''}
         <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')}</span>
         <h2>${escapeHtml(article.title)}</h2>
-        <p>${escapeHtml(articleDescription(article))}</p>
+        <p>${escapeHtml(articleSearch(article).description)}</p>
       </a>
     `).join('');
     const topicHtml = TOPIC_LINKS.map(topic => `
@@ -311,7 +304,7 @@ function renderTopicLandingHtml(topic, articles = [], galleryAssets = []) {
         ${article.cover_image ? `<img src="${escapeAttr(article.cover_image)}" alt="${escapeAttr(article.title)}" loading="lazy" decoding="async">` : ''}
         <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')}</span>
         <h2>${escapeHtml(article.title)}</h2>
-        <p>${escapeHtml(articleDescription(article))}</p>
+        <p>${escapeHtml(articleSearch(article).description)}</p>
       </a>
     `).join('');
     const galleryHtml = galleryAssets.slice(0, 6).map((asset, index) => `
@@ -487,15 +480,17 @@ function renderGalleryHtml(assets = []) {
 function renderArticleSpaHtml(indexHtml, article) {
     const englishSite = /<html\s+lang="en"/i.test(indexHtml);
     const siteName = englishSite ? 'Tsukuyomi Space' : SITE_NAME;
-    const title = escapeHtml(`${article.title} | ${siteName}`);
-    const description = escapeHtml(articleDescription(article));
+    const search = articleSearch(article);
+    const title = escapeHtml(`${englishSite ? article.title : search.title} | ${siteName}`);
+    const description = escapeHtml(search.description);
     const url = escapeHtml(articleUrl(article));
     const image = escapeHtml(absoluteUrl(article.cover_image || DEFAULT_IMAGE));
-    const metadata = articleSchema(article);
+    const metadata = articleSchema(article, search.description);
     metadata.inLanguage = englishSite ? 'en' : 'zh-CN';
     metadata.publisher.name = siteName;
     const schema = safeJsonForHtml(metadata);
     return String(indexHtml)
+        .replace(/<meta\s+name="robots"[^>]*>/i, () => `<meta name="robots" content="${search.noindex ? 'noindex' : 'index'},follow">`)
         .replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`)
         .replace(/<meta\s+name="description"[^>]*>/i, () => `<meta name="description" content="${description}">`)
         .replace(/<link\s+rel="canonical"[^>]*>/i, () => `<link rel="canonical" href="${url}">`)

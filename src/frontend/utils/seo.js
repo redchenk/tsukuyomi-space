@@ -192,7 +192,14 @@ export function applySeo({
     upsertAlternate('x-default', absoluteUrl(languagePath));
   }
 
-  if (!structuredData) removeStructuredData('breadcrumb');
+  upsertStructuredData('breadcrumb', noindex ? null : {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: SITE_NAME, item: absoluteUrl('/') },
+      ...(canonicalPath === '/' ? [] : [{ '@type': 'ListItem', position: 2, name: pageTitle, item: url }])
+    ]
+  });
   upsertStructuredData('page', structuredData);
 }
 
@@ -205,12 +212,13 @@ export function applyRouteSeo(route) {
     description: publicCopy?.description || english?.[1] || meta.description || DEFAULT_DESCRIPTION,
     keywords: ENGLISH_SITE ? DEFAULT_KEYWORDS : (meta.keywords || DEFAULT_KEYWORDS),
     path: route.fullPath || route.path || '/',
-    noindex: Boolean(meta.noindex || route.path === '/access' || (route.path === '/stage' && (route.query.q || route.query.category || (route.query.sort && route.query.sort !== 'latest'))))
+    noindex: Boolean(meta.noindex || route.path === '/access' || (route.path === '/stage' && (route.query.q || route.query.category || (route.query.sort && route.query.sort !== 'featured'))))
   });
 }
 
 export function articleSeo(article, path) {
-  const title = String(article?.title || '文章').trim();
+  const search = ENGLISH_SITE ? null : article?.search;
+  const title = search?.title || String(article?.title || '文章').trim();
   const descriptionText = String(article?.excerpt || article?.content || DEFAULT_DESCRIPTION)
     .replace(/!\[[^\]]*]\([^)]+\)/g, '')
     .replace(/[#>*_`~\[\]()]/g, '')
@@ -219,7 +227,7 @@ export function articleSeo(article, path) {
     .slice(0, 170) || DEFAULT_DESCRIPTION;
   const author = article?.author_nickname || article?.author_username || SITE_NAME;
   const context = ENGLISH_SITE ? `${title}: a public ${article?.category || 'community'} article by ${author}. Read the full article, view the author and join the discussion.` : `${title}：${author}的${article?.category || '公开'}文章，可阅读正文、查看作者并参与评论。`;
-  const description = descriptionText.length < 60 ? `${descriptionText} ${context}`.slice(0, 170) : descriptionText;
+  const description = search?.description || (descriptionText.length < 60 ? `${descriptionText} ${context}`.slice(0, 170) : descriptionText);
   const image = article?.cover_image || DEFAULT_IMAGE;
   const canonicalPath = canonicalSeoPath(path);
   const url = absoluteUrl(canonicalPath);
@@ -227,6 +235,7 @@ export function articleSeo(article, path) {
   return {
     title,
     description,
+    noindex: article?.search?.noindex === true,
     keywords: tags.length ? tags : [title, article?.category, ENGLISH_SITE ? 'Tsukuyomi Space article' : '月读空间文章'].filter(Boolean),
     path,
     image,
@@ -234,7 +243,7 @@ export function articleSeo(article, path) {
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'Article',
-      headline: title,
+      headline: article?.title || title,
       description,
       image: [absoluteUrl(image)],
       datePublished: seoDate(article?.published_at || article?.created_at || article?.publish_date),

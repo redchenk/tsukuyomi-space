@@ -66,7 +66,7 @@ export const routes = [
   { path: '/chatroom', name: 'chatroom', component: loadRoute(() => import('../pages/CommunityChatPage.vue'), () => import('../styles/routes/chatroom.css')), meta: { title: '月读聊天室', noindex: true } },
   { path: '/drift', name: 'drift', component: loadRoute(() => import('../pages/DriftPage.vue'), () => import('../styles/routes/drift.css')), meta: { title: '星海来信', noindex: true } },
   { path: '/admin/drift', redirect: { path: '/admin', query: { tab: 'drift' } } },
-  { path: '/apply', name: 'playTestApply', component: loadRoute(() => import('../pages/ApplyPage.vue'), () => import('../styles/routes/apply.css')), meta: { title: '月读空间 Google Play 测试申请', description: '申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。' } },
+  { path: '/apply', name: 'playTestApply', component: loadRoute(() => import('../pages/ApplyPage.vue'), () => import('../styles/routes/apply.css')), meta: { noindex: true, title: '月读空间 Google Play 测试申请', description: '申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。' } },
   { path: '/admin/play-testing', name: 'playTestAdmin', component: loadRoute(() => import('../pages/PlayTestingAdminPage.vue'), () => import('../styles/routes/apply.css')), meta: { title: 'Google Play 测试申请管理', noindex: true } },
   { path: '/privacy', name: 'privacy', component: loadRoute(() => import('../pages/PrivacyPage.vue'), () => import('../styles/routes/privacy.css')), meta: { title: '月读空间隐私政策' } },
   { path: '/delete-account', name: 'deleteAccount', component: loadRoute(() => import('../pages/DeleteAccountPage.vue'), () => import('../styles/routes/privacy.css')), meta: { title: '月读空间账号注销与数据删除' } },

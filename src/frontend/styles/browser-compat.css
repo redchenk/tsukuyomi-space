@@ -3,5 +3,5 @@
 @supports (height: 1dvh) { :root { --ts-dvh: 1dvh; --ts-svh: 1svh; --ts-lvh: 1lvh; } }
 [inert] { pointer-events: none; user-select: none; }
 #browser-compat-notice:not([hidden]) { position: fixed; z-index: 2147483647; inset: 0; overflow: auto; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); color: #202b46; background: #f7f9fc; font: 18px/1.8 system-ui, sans-serif; }
-#browser-compat-notice h1 { font-size: 26px; }
+#browser-compat-notice h2 { font-size: 26px; }
 #browser-compat-notice a { display: inline-block; min-height: 44px; color: #923d5b; }

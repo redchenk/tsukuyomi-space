@@ -7,6 +7,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { assetUrl } from '../utils/assetUrl';
+import profileMetadata from '../../../shared/profile-search.cjs';
 import { applySeo } from '../utils/seo';
 import { formatDateOnly } from '../utils/time';
 
@@ -109,7 +110,7 @@ async function loadProfile() {
     const publicUser = result.data?.user || {};
     await hydrateUserLevels([publicUser.id]).catch(() => {});
     const publicArticles = Array.isArray(result.data?.articles) ? result.data.articles : [];
-    const description = String(publicUser.bio || `${publicUser.nickname || publicUser.username || username.value} 在月读空间发布的公开文章与创作资料。`).trim();
+    const description = profileMetadata.profileDescription(publicUser, publicArticles);
     applySeo({
       title: `${publicUser.nickname || publicUser.username || username.value}的公开主页`,
       description,

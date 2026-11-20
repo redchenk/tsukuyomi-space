@@ -151,3 +151,52 @@ test('IndexNow queues only committed publications, coalesces changes, retries an
     await indexnow.drain({ transport: async () => new Response('', { status: 403 }) });
     assert.ok(db.prepare("SELECT COUNT(*) AS n FROM seo_indexnow_outbox WHERE status='failed'").get().n > 0);
 });
+
+test('direct wiki metadata and breadcrumbs use the editorial page, independently of compatibility UI', async () => {
+    const html = await (await fetch(base + '/wiki/characters/yachiyo')).text();
+    const { search } = require('../backend/seo/wiki-documents.json')['character/yachiyo'];
+    assert.ok(html.includes(`<title>${search.title} | 月读空间</title>`));
+    assert.ok(html.includes(`name="description" content="${search.description}"`));
+    assert.match(html, /<div data-seo-fallback><h1>月见八千代<\/h1><noscript>/);
+    const schema = JSON.parse(html.match(/<script[^>]+data-seo-json="breadcrumb">([^<]+)<\/script>/)[1]);
+    assert.equal(schema.itemListElement.at(-1).name, search.title);
+    for (const route of ['/apply', '/growth']) {
+        const res = await fetch(base + route);
+        assert.match(res.headers.get('x-robots-tag'), /noindex/);
+        const shell = await res.text();
+        assert.ok(shell.includes(`rel="canonical" href="https://yachiyo.hk${route}"`));
+        assert.match(shell, /name="robots" content="noindex,follow"/);
+    }
+});
+
+test('placeholder articles stay readable and eligibility follows edits across HTML, detail API and both sitemaps', async () => {
+    const id = db.prepare("INSERT INTO articles(title,slug,content,category,publish_date,status) VALUES ('1','test-placeholder','1','任务','2026-11-20','published')").run().lastInsertRowid;
+    const route = `/articles/${id}/test-placeholder`;
+    async function check(excluded) {
+        const res = await fetch(base + route);
+        assert.equal(res.status, 200);
+        assert.equal(Boolean(res.headers.get('x-robots-tag')?.includes('noindex')), excluded);
+        const html = await res.text();
+        const api = await (await fetch(base + '/api/articles/' + id)).json();
+        assert.equal(api.data.search.noindex, excluded);
+        assert.ok(html.includes(`name="robots" content="${excluded ? 'noindex' : 'index'},follow"`));
+        assert.ok(html.includes(`name="description" content="${api.data.search.description}"`));
+        const sitemap = await (await fetch(base + '/sitemap.xml')).text();
+        assert.equal(sitemap.includes(route + '</loc>'), !excluded);
+        const images = await (await fetch(base + '/sitemap-images.xml')).text();
+        assert.equal(images.includes(route + '</loc>'), Boolean(api.data.cover_image && !excluded));
+    }
+    try {
+        await check(true);
+        db.prepare("UPDATE articles SET cover_image='/assets/icons/icon-512.png' WHERE id=?").run(id);
+        await check(false);
+        db.prepare("UPDATE articles SET cover_image=NULL, content='![作品](/assets/icons/icon-512.png)' WHERE id=?").run(id);
+        await check(false);
+        db.prepare("UPDATE articles SET title='冬夜', content='一轮月照着未归的人。' WHERE id=?").run(id);
+        await check(false);
+        db.prepare("UPDATE articles SET title='签到', content='签到' WHERE id=?").run(id);
+        await check(true);
+    } finally {
+        db.prepare('DELETE FROM articles WHERE id=?').run(id);
+    }
+});

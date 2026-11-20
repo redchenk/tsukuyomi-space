@@ -11,6 +11,7 @@ const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, r
 const { renderRoomShareHtml } = require('../seo/render-room-share');
 const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require('../seo/wiki-content');
 const {
+    renderSeoCollectionPage,
     renderFriendLinksHtml,
     renderGameHtml,
     renderPixelArtworkHtml,
@@ -19,6 +20,7 @@ const {
     renderWikiHtml
 } = require('../seo/render-pages');
 
+const { articleSearch } = require('../seo/article-search');
 const { composePage, addDiscovery } = require('../seo/compose-page');
 const { renderPublicPage, renderStagePage, renderProfilePage } = require('../seo/render-public');
 const seoRepository = require('../repositories/seo-repository');
@@ -60,7 +62,7 @@ const TOPIC_ROUTES = [
     {
         path: '/topics/chou-kaguya-hime',
         title: '超时空辉夜姬资源、小说与二创',
-        description: '月读空间整理超时空辉夜姬相关资源、小说翻译、电影入口、二创文章与公开图库，方便读者从一个稳定入口继续浏览。',
+        description: '从《超时空辉夜姬！》的小说翻译与电影相关资料出发，按主题浏览月读空间公开发布的文章和同人插画。专题链接到文章原页和公开图库，方便查看作者、作品说明和后续更新。',
         keywords: ['超时空辉夜姬', '超かぐや姫', '超时空辉夜姬小说', '超时空辉夜姬二创', '月读空间'],
         match: ['超', '辉夜', '姫', '小说', '电影'],
         categories: ['传说', '二创'],
@@ -75,7 +77,7 @@ const TOPIC_ROUTES = [
     {
         path: '/topics/yachiyo-live2d',
         title: '八千代 Live2D 房间',
-        description: '八千代 Live2D 房间是月读空间的角色互动入口，包含模型展示、语音播放、AI 对话、天气与移动端交互体验。',
+        description: '了解月见八千代 Live2D 房间中的模型展示、角色对话和语音播放。可以从这里进入房间，在设置中连接聊天模型与语音服务，或阅读社区记录的使用体验及模型相关文章。',
         keywords: ['八千代 Live2D', 'Live2D 房间', '八千代房间', '月读空间 room', 'AI 角色互动'],
         match: ['八千代', 'Live2D', '房间', '模型', '语音'],
         categories: ['技术', '公告', '二创'],
@@ -104,8 +106,8 @@ const TOPIC_ROUTES = [
     },
     {
         path: '/topics/kaguya-yachiyo',
-        title: '超时空辉夜姬 八千代',
-        description: '围绕超时空辉夜姬与八千代整理角色相关内容、二创图片、现实锚点、Live2D 来源说明和月读空间中的互动入口。',
+        title: '月见八千代专题｜角色资料、同人创作与 Live2D 房间',
+        description: '围绕《超时空辉夜姬！》中的月见八千代，浏览角色资料、创作者发布的同人文章与插画。通过现实锚点了解项目及 Live2D 资源来源，或前往八千代房间体验互动。',
         keywords: ['超时空辉夜姬 八千代', '八千代', '超かぐや姫 八千代', '月读空间八千代', '八千代二创'],
         match: ['八千代', '辉夜', '二创', '现实', 'Live2D'],
         categories: ['二创', '传说'],
@@ -120,7 +122,7 @@ const TOPIC_ROUTES = [
     {
         path: '/topics/cosmic-princess-kaguya-wiki',
         title: '超时空辉夜姬角色与世界观 Wiki 专题',
-        description: '集中浏览超时空辉夜姬角色、月读世界观、八千代杯、KASSEN、音乐词条、公开文章与资料来源。',
+        description: '按角色、虚拟空间月读和音乐三个方向探索《超时空辉夜姬！》。从这里进入独立角色词条、八千代杯与 KASSEN 设定，或查找相关公开文章和配图；词条内提供相应的资料来源。',
         keywords: ['超时空辉夜姬 Wiki', '超时空辉夜姬角色', '月读世界观', '八千代杯', 'KASSEN'],
         match: ['辉夜', '彩叶', '八千代', '月读', 'KASSEN', '八千代杯'],
         categories: ['传说', '二创'],
@@ -134,8 +136,8 @@ const TOPIC_ROUTES = [
     },
     {
         path: '/topics/pixel-art-community',
-        title: '在线像素画工坊与作品社区',
-        description: '月读空间提供多种尺寸画布的在线像素画工具，并支持公开发布、作品浏览、点赞和 PNG 导出。',
+        title: '在线像素画专题｜画布工具、社区作品与 PNG 导出',
+        description: '查看月读空间的在线像素画工具与创作者公开分享的作品，了解画布尺寸、缩放、撤销重做和 PNG 导出。进入工坊可亲手绘制或浏览作品，也可到主舞台阅读创作过程。',
         keywords: ['在线像素画', '192×108 像素画', 'Pixel Art 编辑器', '像素画社区', 'PNG 导出'],
         match: ['像素', 'pixel', '画布', '绘画', '作品'],
         categories: ['技术', '二创'],
@@ -383,11 +385,22 @@ function serveStaticFiles(app) {
     const sendPublic = (req, res, html) => {
         setNoStore(res);
         res.set('Content-Language', 'zh-CN');
-        return res.type('html').send(addDiscovery(composePage(frontendIndexHtml, html), req.path));
+        return res.type('html').send(addDiscovery(composePage(frontendIndexHtml, html)));
     };
     app.get('/indexnow-:key.txt', (req, res, next) => indexNow.serveKey(req, res, next));
     for (const pathname of ['/', '/hub', '/plaza', '/room', '/reality', '/privacy', '/delete-account']) {
         app.get(pathname, (req, res) => sendPublic(req, res, renderPublicPage(pathname)));
+    }
+    for (const [path, title, description] of [
+        ['/apply', '月读空间 Google Play 测试申请', '申请参与月读空间 Android 封闭测试，查看加入 Google Play、安装应用与反馈的完整教程。'],
+        ['/growth', '月契成长', '查看每日约定、等级、连续相伴记录与邀请进度。']
+    ]) {
+        app.get(path, (req, res) => {
+            if (!frontendIndexHtml) return res.status(503).send('Frontend build is missing. Run npm run build:web.');
+            const html = renderSeoCollectionPage({ path, title, description, noindex: true });
+            setNoStore(res);
+            return res.set('X-Robots-Tag', 'noindex, follow').type('html').send(composePage(frontendIndexHtml, html));
+        });
     }
     app.get('/download', async (req, res) => {
         const result = await require('../services/native-app-release').getAppReleaseService().get();
@@ -430,7 +443,7 @@ function serveStaticFiles(app) {
         app.get(topic.path, (req, res) => {
             setNoStore(res);
             // Topic landings are standalone documents, not Vue routes.
-            return res.type('html').send(addDiscovery(renderTopicLandingHtml(topic, topicArticles(topic), seoGalleryAssets(12)), req.path));
+            return res.type('html').send(addDiscovery(renderTopicLandingHtml(topic, topicArticles(topic), seoGalleryAssets(12))));
         });
     }
     app.get('/article', (req, res, next) => {
@@ -449,7 +462,9 @@ function serveStaticFiles(app) {
             return res.redirect(301, articlePath(article) + (from ? `?${new URLSearchParams({ from })}` : ''));
         }
         setNoStore(res);
-        return sendPublic(req, res, renderArticleHtml(article));
+        const search = articleSearch(article);
+        if (search.noindex) res.set('X-Robots-Tag', 'noindex, follow');
+        return sendPublic(req, res, renderArticleHtml(article, search));
     });
 
     app.use((req, res, next) => {

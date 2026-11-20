@@ -10,6 +10,7 @@ const compiled = new Module(path.join(root, '.wiki-seo-build.cjs'), module);
 compiled.filename = path.join(root, '.wiki-seo-build.cjs'); compiled.paths = module.paths;
 compiled._compile(result.outputFiles[0].text, compiled.filename);
 const { characterEntries, termEntries, parseMediaWikiArticle } = compiled.exports;
+const { wikiSearch } = require('../shared/wiki-search.cjs');
 const documents = {};
 for (const entry of [...characterEntries, ...termEntries]) {
     let sections = entry.sections.map(([title, paragraphs]) => ({ title, paragraphs }));
@@ -17,7 +18,7 @@ for (const entry of [...characterEntries, ...termEntries]) {
         const source = fs.readFileSync(path.join(root, 'src/frontend/data/wiki-sources', `${entry.sourceArticle}.mediawiki`), 'utf8');
         sections = parseMediaWikiArticle(source).sections.filter(s => ['source-lead', 'source-intro'].includes(s.id)).map(s => ({ title: s.title, html: s.html }));
     }
-    documents[`${entry.kind}/${entry.slug}`] = { facts: entry.facts, sections, sources: entry.sourceLinks, verifiedAt: entry.verifiedAt };
+    documents[`${entry.kind}/${entry.slug}`] = { search: wikiSearch(entry), facts: entry.facts, sections, sources: entry.sourceLinks, verifiedAt: entry.verifiedAt };
 }
 const output = JSON.stringify(documents, null, 2) + '\n';
 const target = path.join(root, 'backend/seo/wiki-documents.json');

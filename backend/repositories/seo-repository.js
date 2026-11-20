@@ -1,8 +1,16 @@
 const db = require('../db');
-// Metadata-only queries never decode full pixel grids or copy article bodies
-// into sitemaps. Bounds also keep hostile crawler requests inexpensive.
+const { articleNoindex, MAX_PLACEHOLDER_SOURCE } = require('../seo/article-search');
+db.function('exclude_article_from_search', { deterministic: true }, (title, category, excerpt, content, format) =>
+    Number(articleNoindex({ title, category, excerpt, content, content_format: format })));
+
 function sitemapArticles() {
-    return db.prepare("SELECT id, slug, cover_image, updated_at, published_at, created_at, publish_date FROM articles WHERE COALESCE(status, 'published') = 'published' ORDER BY id LIMIT 40000").all();
+    return db.prepare(`
+        SELECT id, slug, title, cover_image, updated_at, published_at, created_at, publish_date
+        FROM articles WHERE COALESCE(status, 'published') = 'published'
+          AND (NULLIF(cover_image, '') IS NOT NULL OR NULLIF(cover_image_asset_id, '') IS NOT NULL
+               OR exclude_article_from_search(title, category, substr(excerpt, 1, ?), substr(content, 1, ?), content_format) = 0)
+        ORDER BY id LIMIT 40000
+    `).all(MAX_PLACEHOLDER_SOURCE + 1, MAX_PLACEHOLDER_SOURCE + 1);
 }
 function pixelSummaries(limit = 24, offset = 0) {
     return db.prepare(`SELECT a.id, a.title, a.description, a.width, a.height, a.size, a.created_at, a.updated_at,

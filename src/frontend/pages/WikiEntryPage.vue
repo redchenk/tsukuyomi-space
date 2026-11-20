@@ -10,6 +10,7 @@ import {
 } from '../data/cosmicKaguyaWikiEntries';
 import { interfaceLanguage } from '../i18n/runtime';
 import { localizeWikiData } from '../services/wikiLocalization';
+import wikiMetadata from '../../../shared/wiki-search.cjs';
 import { applySeo } from '../utils/seo';
 import { decodeWikiHash, trustedWikiAssetPath, trustedWikiSourceUrl } from '../utils/wikiSecurity';
 
@@ -62,6 +63,7 @@ function applyEntrySeo() {
     return;
   }
   const path = wikiEntryPath(entry.value.kind, entry.value.slug);
+  const search = wikiMetadata.wikiSearch(entry.value, interfaceLanguage.value);
   const keywords = [
     entry.value.title,
     entry.value.original,
@@ -71,8 +73,7 @@ function applyEntrySeo() {
     '超辉夜姬 Wiki'
   ].filter(Boolean);
   applySeo({
-    title: `${entry.value.title} - ${entry.value.kindLabel} - 超辉夜姬！Wiki`,
-    description: entry.value.headline,
+    ...search,
     keywords,
     path,
     image: entry.value.image || undefined,
@@ -81,7 +82,7 @@ function applyEntrySeo() {
       '@context': 'https://schema.org',
       '@type': 'Article',
       headline: `${entry.value.title} - ${entry.value.kindLabel}`,
-      description: entry.value.headline,
+      description: search.description,
       image: entry.value.image ? [`https://yachiyo.hk${entry.value.image}`] : undefined,
       mainEntityOfPage: `https://yachiyo.hk${path}`,
       inLanguage: interfaceLanguage.value === 'en' ? 'en' : 'zh-CN',
@@ -267,6 +268,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             <ul class="wiki-entry-sources">
               <li v-for="source in trustedSourceLinks" :key="source.url"><a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }} <TsIcon name="external" :size="14" /></a></li>
             </ul>
+            <p class="wiki-entry-source-note"><a rel="bookmark" :href="wikiEntryPath(entry.kind, entry.slug)"><span>引用本词条</span> · <cite>{{ entry.title }}</cite></a></p>
             <p class="wiki-entry-source-note">核验日期：{{ entry.verifiedAt }}。图片、截图与角色立绘的著作权归原权利方；图片使用条件以所列来源为准。</p>
           </section>
         </article>

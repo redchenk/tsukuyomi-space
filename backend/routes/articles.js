@@ -9,6 +9,7 @@ const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
+const { articleSearch } = require('../seo/article-search');
 const engagement = require('../services/article-engagement');
 const { createRateLimiter } = require('../middleware/security');
 const router = express.Router();
@@ -180,7 +181,7 @@ function sendArticle(req, res) {
         const article = findPublicArticle(req.params.id);
         if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         res.setHeader('Cache-Control', 'private, no-store');
-        res.json({ success: true, data: withParsedTags(article), reading: engagement.beginRead(req, res, article.id) });
+        res.json({ success: true, data: { ...withParsedTags(article), search: articleSearch(article) }, reading: engagement.beginRead(req, res, article.id) });
     } catch (error) {
         console.error('Get article failed:', error);
         res.status(500).json({ success: false, message: '文章加载失败' });
