@@ -29,6 +29,14 @@ function beamWidth(seconds) {
     + span * (slopes[i] * t * (1 - t) ** 2 - slopes[i + 1] * t * t * (1 - t));
 }
 
+// Match the reference lens in landscape. The portrait take widens vertically
+// to keep the lateral shot and both gate posts inside the narrower frame.
+export function shrineFov(fov, aspect, portrait) {
+  const reference = portrait ? 576 / 1024 : 16 / 9;
+  const scale = (portrait ? 1.72 / reference : 1) * Math.min(1, reference / aspect);
+  return 2 * Math.atan(Math.tan(fov * Math.PI / 360) * scale) * 180 / Math.PI;
+}
+
 export function shrinePose(heldSeconds, travelSeconds, aspect, portrait) {
   const width = beamWidth(travelSeconds);
   const progress = (744 - width) / (744 - 288);
@@ -45,9 +53,6 @@ export function shrinePose(heldSeconds, travelSeconds, aspect, portrait) {
   const weight = ease(heldSeconds ? clock / 1.2 : 0) * (1 - ease(travelSeconds / 1.35));
   const side = weight * (.052 * Math.sin(clock * .91) + .017 * Math.sin(clock * 1.49));
   const nod = Math.sin(clock * 1.13 + .38);
-  const reference = portrait ? 576 / 1024 : 16 / 9;
-  const lens = portrait ? 1.72 / reference : 1.60 - .44 * ease((travelSeconds - .65) / 1.45);
-
   return {
     x: center.x + Math.cos(arrival.yaw) * side,
     y: eye + weight * .009 * nod,
@@ -55,6 +60,6 @@ export function shrinePose(heldSeconds, travelSeconds, aspect, portrait) {
     yaw: arrival.yaw + weight * (.0055 * Math.sin(clock * .79) + .0013 * Math.sin(clock * 1.37)),
     pitch: pitch + weight * .0028 * nod,
     roll: weight * .0014 * Math.sin(clock * .87 - .2),
-    fov: 2 * Math.atan(270 / focal * lens * Math.min(1, reference / aspect)) * 180 / Math.PI
+    fov: shrineFov(2 * Math.atan(270 / focal) * 180 / Math.PI, aspect, portrait)
   };
 }

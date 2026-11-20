@@ -13,6 +13,8 @@ export async function createShrineRenderer(canvas, portrait, signal) {
   const context = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: true });
   if (!context) throw new Error('WebGL2 unavailable');
   const renderer = new THREE.WebGLRenderer({ canvas, context });
+  // Empty pixels in the reflection target reveal the reflected sky.
+  renderer.setClearColor(0x000000, 0);
   renderer.autoClear = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
