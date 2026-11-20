@@ -14,8 +14,8 @@ from pathlib import Path
 SITE = 'https://yachiyo.hk'
 PAGE = 7223987941812
 API = 'https://api.flashcat.cloud'
-LABELS = {'site':'月读空间主站','api':'API 服务','login':'账号登录','content':'文章与广场',
-          'gallery':'图库与音乐','room':'月读房间（AI 对话）','cdn':'对象存储 / CDN','db':'数据库',
+LABELS = {'site':'月读空间主站','api':'API 服务','login':'账号会话接口','content':'文章与广场',
+          'gallery':'公开图库','room':'月读房间网页','cdn':'对象存储 / CDN','db':'数据库',
           'llm':'官方 LLM 对话','tts':'官方 TTS 语音'}
 HEADER = '站点外部探针每分钟检查公开入口。官方 LLM、TTS 分别核验有效文本和默认音源音频，最近实测见「官方服务实时检测」。邮件投递、第三方登录和音乐播放由人工通报。'
 PROBE_CHANGE = '月读空间自动检测'
