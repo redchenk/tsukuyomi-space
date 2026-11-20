@@ -122,7 +122,9 @@ def flash(key, endpoint, params, post=False):
     query={'app_key':key}
     if not post: query.update(params)
     url=API+endpoint+'?'+urllib.parse.urlencode(query)
-    status,_,body=fetch(url,{'Content-Type':'application/json'},json.dumps(params).encode() if post else None)
+    headers={'Accept':'application/json'}
+    if post: headers['Content-Type']='application/json'
+    status,_,body=fetch(url,headers,json.dumps(params).encode() if post else None)
     response=json.loads(body)
     if status!=200 or response.get('error') or response.get('error_code') or not isinstance(response.get('data'),(dict,type(None))):
         raise RuntimeError('status-page request failed: '+str(status)+' '+str(response.get('error_code',''))[:12])
