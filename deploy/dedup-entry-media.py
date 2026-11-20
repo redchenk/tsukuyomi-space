@@ -18,7 +18,7 @@ linked = 0
 # Only content-addressed files with the reference release's exact bytes qualify.
 # Their old URLs can still be requested by cached tabs or an immediate rollback.
 for name, expected in meta['retired'].items():
-    assert Path(name).name == name and name.startswith(('moon-gate-', 'water-mirror-'))
+    assert Path(name).name == name and name.startswith(('shrine-standby-', 'shrine-nightfall-', 'shrine-poster-', 'arrival-timber-', 'lacquer-relief-', 'pillar-samples-'))
     anchors = {}
     paths = [current / 'assets' / name]
     for top in sorted(Path('/tmp').glob('tsukuyomi-*')):

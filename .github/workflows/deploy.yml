@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/shrine-entry-rollout'
+    if: github.ref == 'refs/heads/codex/shrine-timber-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 73923807bdd50417e3588b3687b2b0052fa88fb0
+          ref: bca7397989637c3d201f017828cbac55dd72224d
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,7 +36,7 @@ jobs:
           npm ci
           node --test tests/frontend-access.test.cjs tests/frontend-shrine-camera.test.mjs
           npm run build:web:overseas
-          echo '24ef27bbd21b2c4e4f446cbf1843b04ce09f85e8f1e37d0d1fed8d050b6bdac3  dist/frontend/index.html' | sha256sum -c -
+          echo 'b4f92236b481eb56872ee0d6e0d8f6629153bba19684a434c85f85ccbbf7612e  dist/frontend/index.html' | sha256sum -c -
           cp ../deploy/shrine-overseas-manifest.json "$RUNNER_TEMP/manifest.json"
           tar -czf "$RUNNER_TEMP/shrine-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" shrine-release.py dedup-entry-media.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
