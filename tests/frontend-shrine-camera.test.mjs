@@ -5,19 +5,23 @@ import { shotAt } from '../src/frontend/services/shrine/sequence.js';
 import { approachPose } from '../src/frontend/services/shrine/approach.js';
 
 for (const [name, aspect, portrait] of [['landscape', 1.6, false], ['portrait', 390 / 844, true]]) {
-  test(`the ${name} approach settles into the live gate at ten seconds`, () => {
-    for (const t of [5.6, 7.3, 8.1]) {
-      const position = approachPose(t, aspect, portrait);
-      const authored = shotAt(t, true).pose;
+  test(`the ${name} side track stays on its authored camera until the frontal cut`, () => {
+    for (let frame = 150; frame < 300; frame++) {
+      const time = frame / 30;
+      const position = approachPose(time, aspect, portrait);
+      const authored = shotAt(time, true).pose;
       for (const key of ['x', 'y', 'z', 'pitch', 'yaw', 'roll']) assert.equal(position[key], authored[key]);
+      if (!portrait) assert.ok(Math.abs(position.fov - authored.fov) < 1e-10);
     }
-    const previous = approachPose(10 - .001, aspect, portrait);
-    const end = approachPose(10, aspect, portrait);
+    const start = approachPose(8, aspect, portrait);
+    const last = approachPose(299 / 30, aspect, portrait);
     const hold = shrinePose(0, 0, aspect, portrait);
-    for (const key of Object.keys(hold)) {
-      assert.ok(Math.abs(end[key] - hold[key]) < 1e-12);
-      assert.ok(Math.abs(end[key] - previous[key]) / .001 < .001);
-    }
+    assert.ok(Math.hypot(last.x - start.x, last.z - start.z) > .04);
+    assert.ok(Math.abs(hold.yaw - last.yaw) > 1);
+    assert.deepEqual(approachPose(10, aspect, portrait), hold);
+    const reference = shotAt(10, true).pose;
+    for (const key of ['x', 'y', 'z', 'pitch', 'yaw']) assert.ok(Math.abs(hold[key] - reference[key]) < 1e-10);
+    if (!portrait) assert.ok(Math.abs(hold.fov - reference.fov) < 1e-10);
   });
 
   test(`the ${name} dolly inherits head position and velocity at any hold phase`, () => {

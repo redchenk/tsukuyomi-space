@@ -43,8 +43,7 @@ for (const timing of ['early', 'after the hold']) {
         await page.locator('.access-motion-control').click();
       }
       await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-      if (live) await expect(standby).toHaveCount(0);
-      else expect(await standby.evaluate(film => film.ended)).toBe(true);
+      await expect(standby).toHaveCount(0);
     }
     expect(await nightfall.evaluate(video => [video.currentTime, video.paused])).toEqual([0, true]);
     await nightfall.evaluate(video => {
@@ -64,49 +63,65 @@ for (const timing of ['early', 'after the hold']) {
   });
 }
 
-test('the last video frame and first live frame show the same dusk brightness', async ({ page }) => {
-  await entry(page);
-  const film = page.locator('.access-video');
-  test.skip(!await film.evaluate(v => v.canPlayType('video/mp4; codecs="avc1.4D4028"')), 'H.264 unavailable');
-  const canvas = page.locator('.access-shrine');
-  await expect(canvas).toHaveAttribute('data-shot', /^(ready|unavailable)$/);
-  test.skip(await canvas.getAttribute('data-shot') === 'unavailable', 'WebGL2 unavailable');
-  await film.evaluate(v => new Promise(resolve => {
-    function onFrame(_, frame) {
-      if (frame.mediaTime < v.duration - .1) v.requestVideoFrameCallback(onFrame);
-      else {
-        v.pause();
-        resolve();
+test('the end of the side take cuts to the frontal still and live dusk camera', async ({ page }) => {
+  let releaseScene;
+  const delayed = new Promise(resolve => { releaseScene = resolve; });
+  await page.route('**/renderer-*.js', async route => { await delayed; await route.continue(); });
+  try {
+    await entry(page);
+    const film = page.locator('.access-video');
+    test.skip(!await film.evaluate(v => v.canPlayType('video/mp4; codecs="avc1.4D4028"')), 'H.264 unavailable');
+    await film.evaluate(v => new Promise(resolve => {
+      v.pause();
+      v.addEventListener('seeked', resolve, { once: true });
+      v.currentTime = 299 / 30;
+    }));
+    const { width, height } = page.viewportSize();
+    const clip = { x: Math.floor(width * .06), y: Math.floor(height * .22),
+      width: Math.floor(width * .88), height: Math.floor(height * .27) };
+    const sample = async () => (await page.screenshot({ clip, scale: 'css' })).toString('base64');
+    const side = await sample();
+    await film.evaluate(v => v.play());
+    await expect(film).toHaveCount(0);
+    const frontal = await sample();
+    releaseScene();
+    const canvas = page.locator('.access-shrine');
+    await expect(canvas).toHaveAttribute('data-shot', /^(hold|unavailable)$/);
+    test.skip(await canvas.getAttribute('data-shot') === 'unavailable', 'WebGL2 unavailable');
+    const live = await sample();
+    const differences = await page.evaluate(async frames => {
+      const planes = await Promise.all(frames.map(async png => {
+        const image = new Image();
+        image.src = 'data:image/png;base64,' + png;
+        await image.decode();
+        const surface = document.createElement('canvas');
+        surface.width = image.width;
+        surface.height = image.height;
+        const ctx = surface.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+        const { data } = ctx.getImageData(0, 0, image.width, image.height);
+        const luma = new Float32Array(data.length / 4);
+        for (let i = 0; i < data.length; i += 4) {
+          luma[i / 4] = .2126 * data[i] + .7152 * data[i + 1] + .0722 * data[i + 2];
+        }
+        return luma;
+      }));
+      let cut = 0, handoff = 0, exposure = 0;
+      for (let i = 0; i < planes[0].length; i++) {
+        cut += Math.abs(planes[0][i] - planes[1][i]);
+        const diff = planes[1][i] - planes[2][i];
+        handoff += Math.abs(diff);
+        exposure += diff;
       }
-    }
-    v.requestVideoFrameCallback(onFrame);
-  }));
-  const { width, height } = page.viewportSize();
-  const clip = { x: Math.floor(width * .77), y: Math.floor(height * .19),
-    width: Math.floor(width * .17), height: Math.floor(height * .30) };
-  const sky = async () => (await page.screenshot({ clip, scale: 'css' })).toString('base64');
-  const last = await sky();
-  await film.evaluate(v => v.play());
-  await expect(canvas).toHaveAttribute('data-shot', 'hold');
-  const first = await sky();
-  // Use screenshots of the composited page so native video color management is included.
-  const means = await page.evaluate(async frames => Promise.all(frames.map(async png => {
-    const image = new Image();
-    image.src = 'data:image/png;base64,' + png;
-    await image.decode();
-    const surface = document.createElement('canvas');
-    surface.width = image.width;
-    surface.height = image.height;
-    const ctx = surface.getContext('2d');
-    ctx.drawImage(image, 0, 0);
-    const { data } = ctx.getImageData(0, 0, image.width, image.height);
-    let sum = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      sum += .2126 * data[i] + .7152 * data[i + 1] + .0722 * data[i + 2];
-    }
-    return sum / (data.length / 4);
-  })), [last, first]);
-  expect(Math.abs(means[0] - means[1])).toBeLessThan(1.5);
+      const count = planes[0].length;
+      return { cut: cut / count, handoff: handoff / count, exposure: Math.abs(exposure / count) };
+    }, [side, frontal, live]);
+    expect(differences.cut).toBeGreaterThan(12);
+    expect(differences.handoff).toBeLessThan(differences.cut / 3);
+    expect(differences.exposure).toBeLessThan(1.5);
+  } finally {
+    releaseScene();
+  }
 });
 
 test('a device without WebGL plays the matched nightfall film on entry', async ({ page }) => {
@@ -123,8 +138,8 @@ test('a device without WebGL plays the matched nightfall film on entry', async (
   await expect(page.locator('.access-shrine')).toHaveAttribute('data-shot', 'unavailable');
   const opening = page.locator('.access-video');
   await opening.evaluate(film => { film.currentTime = film.duration - .25; });
-  await expect.poll(() => opening.evaluate(film => film.ended && film.paused)).toBe(true);
-  await expect(opening).toHaveCSS('opacity', '1');
+  await expect(opening).toHaveCount(0);
+  expect(await page.locator('.access-poster').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
   await video.evaluate(node => node.addEventListener('ended', () => { window.fallbackEnded = node.currentTime; }));
   await page.locator('.access-enter').click();
   await expect(page.locator('.access-gate')).toHaveCount(0);

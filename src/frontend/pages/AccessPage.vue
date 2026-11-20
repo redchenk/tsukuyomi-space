@@ -33,6 +33,7 @@ const bootDismissed = ref(!document.getElementById('boot-splash'));
 const userPaused = ref(false);
 const standbyEnded = ref(false);
 const holdPainted = ref(false);
+const posterReady = ref(false);
 const videoState = reactive({ ready: false, failed: false });
 const isMotionPaused = computed(() => userPaused.value || !motionAllowed.value);
 let splashTimer = 0;
@@ -233,8 +234,8 @@ onBeforeUnmount(() => {
     :data-nightfall="nightfall || undefined" :aria-busy="entering">
     <div class="access-media" aria-hidden="true">
       <img class="access-poster" :src="accessPosterSrc" alt="" fetchpriority="high" decoding="async" data-image-bloom="off"
-        @load="entryReady" @error="entryReady">
-      <video v-if="motionAllowed && !(standbyEnded && holdPainted)" ref="videoEl" class="access-video" :src="accessVideoSrc"
+        @load="posterReady = true; entryReady()" @error="entryReady">
+      <video v-if="motionAllowed && !(standbyEnded && (posterReady || holdPainted))" ref="videoEl" class="access-video" :src="accessVideoSrc"
         :autoplay="bootDismissed && !standbyEnded && !userPaused" muted playsinline webkit-playsinline disablepictureinpicture disableremoteplayback
         controlslist="nodownload noplaybackrate noremoteplayback" x-webkit-airplay="deny" tabindex="-1"
         preload="auto" aria-hidden="true" @loadeddata="!bootDismissed && !videoState.failed && markVideoReady()"
