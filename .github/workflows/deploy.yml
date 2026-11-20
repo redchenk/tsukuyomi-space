@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 0aa2bb35befd7d49a77928eded142ad3da8f8182
+          ref: 5146672c8dc2c136f5cb55f6f75b00076af1ba5b
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,7 +36,7 @@ jobs:
           npm ci
           node --test tests/frontend-access.test.cjs tests/frontend-shrine-camera.test.mjs
           npm run build:web:overseas
-          echo 'e16d314330cc4537464586836065b4976c46d397a19a8aa5c12f7d185b11ad7f  dist/frontend/index.html' | sha256sum -c -
+          echo '0154bee08401c11026bb72e9cf716a9c3c7cff6c36bc58902aa6f4b2e201f897  dist/frontend/index.html' | sha256sum -c -
           cp ../deploy/shrine-overseas-manifest.json "$RUNNER_TEMP/manifest.json"
           tar -czf "$RUNNER_TEMP/shrine-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" shrine-release.py dedup-entry-media.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
