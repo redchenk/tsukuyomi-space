@@ -1,0 +1,19 @@
+[Unit]
+Description=Check public Tsukuyomi services and synchronize the status page
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=yachiyo-status
+Group=yachiyo-status
+ExecStart=/usr/bin/python3 /opt/yachiyo-status-observer/observer.py
+LoadCredential=flashduty:/etc/yachiyo-status/flashduty
+StateDirectory=yachiyo-status-observer
+StateDirectoryMode=0700
+UMask=0077
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+TimeoutStartSec=120

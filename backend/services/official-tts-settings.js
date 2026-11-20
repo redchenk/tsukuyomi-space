@@ -2,7 +2,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const config = require('../config');
-const db = require('../db');
 const fishAudio = require('../../shared/fish-audio.cjs');
 
 const file = path.join(config.dataDir, 'official-tts.json');
@@ -76,6 +75,7 @@ function view(stored = readPrivate()) {
 }
 function reject(message, status = 400) { throw Object.assign(new Error(message), { status }); }
 function save(input) {
+    const db = require('../db');
     return db.transaction(() => {
         const stored = readPrivate();
         if (!input || typeof input !== 'object' || Array.isArray(input)) reject('语音配置无效');

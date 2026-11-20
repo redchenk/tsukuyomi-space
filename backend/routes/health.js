@@ -2,6 +2,7 @@ const express = require('express');
 const adminRepository = require('../repositories/admin-repository');
 const config = require('../config');
 
+const serviceHealth = require('../services/public-service-health');
 const router = express.Router();
 
 function parseSettingValue(value) {
@@ -16,6 +17,17 @@ router.get('/health', (req, res) => {
         message: 'Tsukuyomi Space API is running',
         timestamp: new Date().toISOString()
     });
+});
+
+router.get('/health/official', async (req, res) => {
+    const result = await serviceHealth.snapshot();
+    try {
+        require('../db').prepare('SELECT id FROM articles LIMIT 1').get();
+        result.databaseRead = true;
+    } catch { result.databaseRead = false; }
+    res.set('Cache-Control', 'no-store').set('X-Robots-Tag', 'noindex').vary('Accept');
+    if (req.accepts(['json','html']) === 'html') return res.type('html').send(serviceHealth.render(result));
+    return res.json(result);
 });
 
 router.get('/settings', (req, res) => {

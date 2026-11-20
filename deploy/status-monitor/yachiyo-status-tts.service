@@ -1,0 +1,17 @@
+[Unit]
+Description=Check the public default official voice
+After=network-online.target
+[Service]
+Type=oneshot
+User=tsukuyomi
+Group=www-data
+WorkingDirectory=/var/www/tsukuyomi-space
+EnvironmentFile=/etc/tsukuyomi-space/tsukuyomi-space.env
+ExecStart=/usr/bin/node /opt/yachiyo-status/tts.mjs
+StateDirectory=yachiyo-status-tts
+StateDirectoryMode=0755
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+TimeoutStartSec=55

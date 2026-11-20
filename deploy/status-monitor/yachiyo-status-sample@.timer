@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh %i evidence for the public status page
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+AccuracySec=3
+Unit=yachiyo-status-%i.service
+[Install]
+WantedBy=timers.target
