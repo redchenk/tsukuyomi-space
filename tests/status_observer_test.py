@@ -14,6 +14,19 @@ class ObserverTest(unittest.TestCase):
         for snapshot in ({}, {'services':[]}, {'version':1,'services':{'tts':{'state':'up','checkedAt':1,'observedAt':1}}}):
             self.assertEqual(observer.ai_state(snapshot,'tts',200000), 'unknown')
 
+    def test_read_and_write_use_the_supported_flashduty_encoding(self):
+        with patch.object(observer,'fetch',return_value=(200,{},b'{"data":{}}')) as fetch:
+            observer.flash('fixture','/status-page/info',{'page_id':observer.PAGE})
+            _, headers, body = fetch.call_args.args
+            self.assertIsNone(body)
+            self.assertNotIn('Content-Type',headers)
+            observer.flash('fixture','/status-page/update',{'page_id':observer.PAGE},True)
+            _, headers, body = fetch.call_args.args
+            self.assertEqual(headers['Content-Type'],'application/json')
+            self.assertIsNotNone(body)
+            with self.assertRaises(ValueError):
+                observer.flash('fixture','/status-page/info',{'page_id':0})
+
     def test_incident_lifecycle_is_idempotent_and_silent(self):
         events = []
         writes = []
