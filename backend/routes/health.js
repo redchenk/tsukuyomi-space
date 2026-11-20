@@ -41,6 +41,8 @@ router.get('/settings', (req, res) => {
             publicAssetBaseUrl,
             qqOAuthStartUrl: new URL('/api/auth/oauth/qq/start', config.oauth.qq.redirectUri).toString(),
             qqNativeAppId: config.oauth.qq.nativeAppId,
+            wechatOAuthEnabled: require('../services/wechat-oauth').isConfigured(),
+            wechatOAuthStartUrl: new URL('/api/auth/oauth/wechat/start', config.oauth.wechat.redirectUri).toString(),
             googleOAuthEnabled: Boolean(config.oauth.google.clientId && config.oauth.google.clientSecret),
             googleOAuthStartUrl: new URL('/api/auth/oauth/google/start', config.oauth.google.redirectUri).toString(),
             googleOAuthStartUrls: require('../services/google-oauth').redirectUris().map(uri => {

@@ -58,6 +58,8 @@ function trustedOrigins() {
     if (oauthOrigin) origins.add(oauthOrigin);
     if (qqCallbackOrigin) origins.add(qqCallbackOrigin);
     if (githubCallbackOrigin) origins.add(githubCallbackOrigin);
+    const wechatCallbackOrigin = normalizedOrigin(config.oauth.wechat.redirectUri);
+    if (wechatCallbackOrigin) origins.add(wechatCallbackOrigin);
     if (googleCallbackOrigin) origins.add(googleCallbackOrigin);
     for (const uri of config.oauth.google.additionalRedirectUris) {
         const origin = normalizedOrigin(uri);

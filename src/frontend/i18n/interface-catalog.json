@@ -1,4 +1,52 @@
 {
+  "微信": {
+    "en": "WeChat",
+    "ja": "WeChat"
+  },
+  "请先登录网站，再绑定微信": {
+    "en": "Sign in before linking WeChat.",
+    "ja": "WeChat を連携する前にログインしてください。"
+  },
+  "微信登录暂未配置，请稍后再试": {
+    "en": "WeChat sign-in is not configured yet. Please try later.",
+    "ja": "WeChat ログインはまだ設定されていません。後でもう一度お試しください。"
+  },
+  "微信登录启动失败，请稍后再试": {
+    "en": "Could not start WeChat sign-in. Please try again.",
+    "ja": "WeChat ログインを開始できません。再試行してください。"
+  },
+  "微信授权已取消": {
+    "en": "WeChat authorization cancelled",
+    "ja": "WeChat の認証をキャンセルしました"
+  },
+  "微信登录状态已过期，请重新授权": {
+    "en": "WeChat sign-in expired. Please authorize again.",
+    "ja": "WeChat ログインの有効期限が切れました。再認証してください。"
+  },
+  "微信回调处理失败，请稍后再试": {
+    "en": "Could not complete WeChat authorization. Please try again.",
+    "ja": "WeChat の認証を完了できません。再試行してください。"
+  },
+  "该微信已绑定其他账号": {
+    "en": "This WeChat is already linked to another account.",
+    "ja": "この WeChat は別のアカウントに連携済みです。"
+  },
+  "微信登录": {
+    "en": "Sign in with WeChat",
+    "ja": "WeChat でログイン"
+  },
+  "请验证你在月读空间使用的邮箱": {
+    "en": "Verify the email you use for Tsukuyomi Space.",
+    "ja": "月読空間で使用するメールアドレスを確認してください。"
+  },
+  "我是新用户，设置登录密码": {
+    "en": "I’m new here. Set a sign-in password.",
+    "ja": "新規登録用のパスワードを設定する"
+  },
+  "该邮箱尚未注册，请设置登录密码并重新获取验证码": {
+    "en": "This email is new. Set a password and request another verification code.",
+    "ja": "未登録のメールです。パスワードを設定し、確認コードを再取得してください。"
+  },
   "正文连续可见 10 秒计入阅读，同一读者间隔 30 分钟可再次计入。": {
     "en": "Reads require 10 visible seconds. Re-reading can count after a 30-minute interval.",
     "ja": "記事が10秒間連続で表示されると閲読を記録します。同じ読者は30分間隔で再度計上されます。"

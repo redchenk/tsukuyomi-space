@@ -35,7 +35,7 @@ export function apiUrl(url) {
 }
 
 export async function oauthStartUrl(provider, redirect = '/hub', action = 'login') {
-  if (!['qq', 'github', 'google'].includes(provider)) throw new Error('不支持的登录方式');
+  if (!['qq', 'github', 'google', 'wechat'].includes(provider)) throw new Error('不支持的登录方式');
   const query = new URLSearchParams({ redirect, ...(action === 'bind' ? { action } : {}) });
   const pathname = `/api/auth/oauth/${provider}/start?${query}`;
   if (['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)) return apiUrl(pathname);

@@ -84,6 +84,11 @@ module.exports = {
             additionalRedirectUris: (process.env.GOOGLE_ADDITIONAL_REDIRECT_URIS || '').split(',').map(value => value.trim()).filter(Boolean),
             redirectUri: process.env.GOOGLE_REDIRECT_URI || `${oauthRedirectBaseUrl}/api/auth/oauth/google/callback`
         },
+        wechat: {
+            appId: (process.env.WECHAT_APP_ID || '').trim(),
+            appSecret: (process.env.WECHAT_APP_SECRET || '').trim(),
+            redirectUri: process.env.WECHAT_REDIRECT_URI || `${publicSiteUrl}/api/auth/oauth/wechat/callback`
+        },
         github: {
             clientId: process.env.GITHUB_CLIENT_ID || '',
             clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
