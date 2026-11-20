@@ -194,6 +194,13 @@ body.vue-access-route { overflow-y: auto; }
     .access-page .access-beian { flex-direction: column; }
     .access-copyright, .access-page .access-beian .beian-link { font-size: 10px; }
 }
+@media (orientation: portrait) and (max-width: 760px) and (max-height: 700px) {
+    .access-page .access-hero { bottom: max(72px, calc(env(safe-area-inset-bottom) + 56px)); }
+    :lang(en) .access-title { font-size: clamp(30px, 9vw, 40px); }
+    .access-page .access-enter { gap: 9px; padding-inline: 18px; }
+    .access-kicker { margin-bottom: 6px; }
+    .access-subtitle { margin: 7px 0 14px; }
+}
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) {
     .page.access-page { min-height: 300px; }
     .access-page .access-brand { top: 10px; }

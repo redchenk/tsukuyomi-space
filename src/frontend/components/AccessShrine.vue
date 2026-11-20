@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { nightfallDuration } from '../services/shrine/camera.js';
 
-const props = defineProps({ holding: Boolean, paused: Boolean, portrait: Boolean });
+const props = defineProps({ holding: Boolean, paused: Boolean });
 const emit = defineEmits(['available', 'hold-painted']);
 const canvas = ref(null);
 const shot = ref('preparing');
@@ -105,7 +105,7 @@ onMounted(async () => {
   try {
     const { createShrineRenderer } = await import('../services/shrine/renderer.js');
     if (lifetime.signal.aborted) return;
-    scene = await createShrineRenderer(surface, props.portrait, lifetime.signal);
+    scene = await createShrineRenderer(surface, lifetime.signal);
     if (lifetime.signal.aborted) return;
     shot.value = 'ready';
     emit('available', true);

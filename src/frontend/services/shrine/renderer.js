@@ -9,7 +9,7 @@ import { shrinePose } from './camera.js';
 
 const images = import.meta.glob('../../assets/access/shrine/materials/*.webp', { eager: true, import: 'default' });
 
-export async function createShrineRenderer(canvas, portrait, signal) {
+export async function createShrineRenderer(canvas, signal) {
   const context = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: true });
   if (!context) throw new Error('WebGL2 unavailable');
   const renderer = new THREE.WebGLRenderer({ canvas, context });
@@ -75,7 +75,7 @@ export async function createShrineRenderer(canvas, portrait, signal) {
     }
     function draw(held, travel, ambient, quality) {
       const aspect = Math.max(1, canvas.clientWidth) / Math.max(1, canvas.clientHeight);
-      drawPose(shrinePose(held, travel, aspect, portrait), 10 + travel, 10 + ambient, quality);
+      drawPose(shrinePose(held, travel, aspect, aspect <= 1), 10 + travel, 10 + ambient, quality);
     }
     draw(0, 0, 0, 1); // Compile and paint under the opening before the cut.
     return { draw, drawPose, dispose };

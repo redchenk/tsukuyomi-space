@@ -40,12 +40,15 @@ export function shrineFov(fov, aspect, portrait) {
 export function shrinePose(heldSeconds, travelSeconds, aspect, portrait) {
   const width = beamWidth(travelSeconds);
   const progress = (744 - width) / (744 - 288);
-  const focal = 944 - 294 * progress;
-  const pitch = Math.atan((218 + 4 * progress) / focal);
-  const eye = .18 + .04 * progress;
-  const depth = focal * 8.426 / width;
-  const distance = (depth - (arrival.height * .7927 - eye) * Math.sin(pitch)) / Math.cos(pitch);
-  const center = atGate(-distance / arrival.scale);
+  // Frame the roof tips and the feet at the waterline on the two master
+  // plates. A level lateral offset leaves space for the desktop title.
+  const distance = 16 + 8 * progress;
+  const lateral = portrait ? 0 : -2.35 * (1 - progress);
+  const center = atGate(-distance / arrival.scale, lateral / arrival.scale);
+  const eye = 1.55 - 1.10 * progress;
+  const pitch = portrait ? -.08 + .23 * progress : .135 + .095 * progress;
+  const masterAspect = portrait ? 9 / 16 : 16 / 9;
+  const halfHeight = (portrait ? 1.06 : .56) * Math.min(1, masterAspect / aspect);
 
   // Carry both the position and its derivative through the click. The two
   // envelopes have zero slope at their endpoints, even halfway through a glance.
@@ -60,6 +63,6 @@ export function shrinePose(heldSeconds, travelSeconds, aspect, portrait) {
     yaw: arrival.yaw + weight * (.0055 * Math.sin(clock * .79) + .0013 * Math.sin(clock * 1.37)),
     pitch: pitch + weight * .0028 * nod,
     roll: weight * .0014 * Math.sin(clock * .87 - .2),
-    fov: shrineFov(2 * Math.atan(270 / focal) * 180 / Math.PI, aspect, portrait)
+    fov: 2 * Math.atan(halfHeight) * 180 / Math.PI
   };
 }
