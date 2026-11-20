@@ -88,8 +88,10 @@ test('the end of the side take cuts to the frontal still and live dusk camera', 
     await entry(page);
     const film = page.locator('.access-video');
     test.skip(!await film.evaluate(v => v.canPlayType('video/mp4; codecs="avc1.4D4028"')), 'H.264 unavailable');
+    const pause = page.locator('.access-motion-control');
+    await pause.click();
+    await expect(pause).toHaveAttribute('aria-pressed', 'true');
     await film.evaluate(v => new Promise(resolve => {
-      v.pause();
       v.addEventListener('seeked', resolve, { once: true });
       v.currentTime = 299 / 30;
     }));
@@ -98,7 +100,7 @@ test('the end of the side take cuts to the frontal still and live dusk camera', 
       width: Math.floor(width * .88), height: Math.floor(height * .27) };
     const sample = async () => (await page.screenshot({ clip, scale: 'css' })).toString('base64');
     const side = await sample();
-    await film.evaluate(v => v.play());
+    await pause.click();
     await expect(film).toHaveCount(0);
     const frontal = await sample();
     releaseScene();
