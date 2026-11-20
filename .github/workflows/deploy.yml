@@ -4,7 +4,7 @@ on:
     inputs:
       operation:
         type: choice
-        options: [prepare, install, verify]
+        options: [prepare, check, install, verify]
         required: true
       sealed:
         type: string
@@ -37,6 +37,9 @@ jobs:
                 sleep 3
               done
               openssl pkey -pubin -in "$RUNNER_TEMP/observer-public.pem" -noout
+              ;;
+            check)
+              "${conn[@]}" 'python3 - --check' < deploy/status-monitor/observer.py
               ;;
             install)
               mkdir "$RUNNER_TEMP/pkg"
