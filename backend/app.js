@@ -102,9 +102,6 @@ function createApp() {
         '/api/auth/oauth/github/start',
         '/api/auth/oauth/github/email',
         '/api/auth/oauth/github/unlink',
-        '/api/auth/oauth/wechat/start',
-        '/api/auth/oauth/wechat/email',
-        '/api/auth/oauth/wechat/unlink',
         '/api/auth/oauth/google/start',
         '/api/auth/oauth/google/email',
         '/api/auth/oauth/google/unlink'

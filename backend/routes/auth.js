@@ -67,7 +67,7 @@ function setUserLoginSession(req, res, user) {
 
 function safeRedirectPath(value) {
     const path = String(value || '').trim() || '/hub';
-    if (!path.startsWith('/') || path.startsWith('//') || /[\x00-\x1f\\]/.test(path)) return '/hub';
+    if (!path.startsWith('/') || path.startsWith('//') || /[\r\n\\]/.test(path)) return '/hub';
     return path;
 }
 
@@ -156,7 +156,7 @@ function compactOAuthProfile(profile) {
         providerUserId: profile.providerUserId,
         unionId: profile.unionId || '',
         email: normalizeEmail(profile.email || ''),
-        nickname: String(profile.nickname || '').trim() || ({ github: 'GitHub 用户', google: 'Google 用户', wechat: '微信用户' }[profile.provider] || 'QQ 用户'),
+        nickname: String(profile.nickname || '').trim() || ({ github: 'GitHub 用户', google: 'Google 用户' }[profile.provider] || 'QQ 用户'),
         avatar: profile.avatar || '',
         raw: profile.raw || {}
     };
@@ -214,7 +214,7 @@ function oauthPlaceholderEmail(provider, providerUserId) {
 function createUserFromOAuthProfile(profile, preferredUsername = '', initialPassword = '') {
     const userId = crypto.randomUUID();
     const username = uniqueUsername(preferredUsername || profile.nickname, profile.providerUserId);
-    const email = ['github', 'google', 'wechat'].includes(profile.provider)
+    const email = ['github', 'google'].includes(profile.provider)
         ? profile.email // A concurrent email registration must fail, never create a placeholder account.
         : (profile.email && !authRepository.findUserByEmail(profile.email)
             ? profile.email : oauthPlaceholderEmail(profile.provider, profile.providerUserId));
@@ -739,13 +739,13 @@ router.post('/oauth/qq/unlink', authenticateToken, (req, res) => {
     }
 });
 
-const registerOAuthLogin = require('./oauth-login');
-const oauthHelpers = { httpError, safeRedirectPath, compactOAuthProfile, oauthAccountFromProfile,
-    pendingOAuthResponse, createUserFromOAuthProfile, validatedNewPassword,
-    setUserLoginSession, userResponse, isUserMissingPublicEmail };
-registerOAuthLogin(router, oauthHelpers, 'github', 'GitHub', require('../services/github-oauth'));
-registerOAuthLogin(router, oauthHelpers, 'google', 'Google', require('../services/google-oauth'));
-registerOAuthLogin(router, oauthHelpers, 'wechat', '微信', require('../services/wechat-oauth'));
+require('./github-oauth')(router, { httpError, siteUrl, safeRedirectPath, compactOAuthProfile,
+    oauthAccountFromProfile, pendingOAuthResponse, createUserFromOAuthProfile, validatedNewPassword,
+    setUserLoginSession, userResponse, isUserMissingPublicEmail });
+
+require('./google-oauth')(router, { httpError, siteUrl, safeRedirectPath, compactOAuthProfile,
+    oauthAccountFromProfile, pendingOAuthResponse, createUserFromOAuthProfile, validatedNewPassword,
+    setUserLoginSession, userResponse, isUserMissingPublicEmail });
 
 require('./qq-native')(router, { safeRedirectPath, setUserLoginSession, oauthAccountFromProfile, isUserMissingPublicEmail });
 

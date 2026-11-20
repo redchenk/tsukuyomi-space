@@ -4,13 +4,11 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
 import googleIconUrl from '../assets/icons/google-login.png';
+import { useGoogleOAuthEnabled } from '../services/googleOAuth';
+const googleOAuthEnabled = useGoogleOAuthEnabled();
 import { uiText } from '../i18n/runtime';
-import { apiFetch, qqOAuthStartUrl, githubOAuthStartUrl, googleOAuthStartUrl, oauthStartUrl, loadPublicSettings, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { apiFetch, qqOAuthStartUrl, githubOAuthStartUrl, googleOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 import { getAuthRedirectFromLocation, sanitizeAuthRedirect, withAuthRedirect } from '../utils/authRedirect';
-
-const oauthSettings = ref({});
-const wechatNewAccount = ref(false);
-const wechatLabel = computed(() => uiText('微信登录'));
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -72,10 +70,10 @@ const loginPlaceholder = computed(() => login.method === 'code' ? props.t.emailP
 const hasOAuthTicket = computed(() => Boolean(oauth.ticket));
 const isJapanese = computed(() => props.t.login === 'ログイン');
 const isEnglish = computed(() => props.t.login === 'Sign in');
-const oauthProviderName = computed(() => ({ github: 'GitHub', google: 'Google', qq: 'QQ', wechat: uiText('微信') }[oauth.provider] || 'QQ'));
-const oauthNeedsPassword = computed(() => oauth.provider === 'wechat' ? wechatNewAccount.value : !(['github', 'google'].includes(oauth.provider) && oauth.profile?.hasEmailMatch && oauth.email.trim().toLowerCase() === oauth.profile?.email));
+const oauthProviderName = computed(() => ({ github: 'GitHub', google: 'Google', qq: 'QQ' }[oauth.provider] || 'QQ'));
+const oauthNeedsPassword = computed(() => !(['github', 'google'].includes(oauth.provider) && oauth.profile?.hasEmailMatch && oauth.email.trim().toLowerCase() === oauth.profile?.email));
 const oauthCopy = computed(() => isEnglish.value ? { title: 'Verify your email', subtitle: `${oauthProviderName.value} authorization completed. Verify your email to create an account or link an existing account.`, hint: `A verification code is required, even for a ${oauthProviderName.value} verified email.`, note: 'A registered email links your existing account and keeps its password.', email: 'Email to link', enter: 'Link email and continue', loading: 'Reading authorization', completing: 'Completing sign-in' } : isJapanese.value ? { title: 'メールを確認', subtitle: `${oauthProviderName.value} の認証が完了しました。メールを確認して登録または既存アカウントに連携します。`, hint: `${oauthProviderName.value} で確認済みのメールでも確認コードが必要です。`, note: '登録済みのメールは既存アカウントに連携し、パスワードは変更しません。', email: '連携するメール', enter: 'メールを連携して続行', loading: '認証情報を読み込み中', completing: 'ログイン処理中' } : { title: '绑定邮箱', subtitle: `${oauthProviderName.value} 授权已完成，请验证邮箱来完成账号绑定。邮箱若已注册，会绑定到已有账号。`, hint: `请验证可接收验证码的邮箱，${oauthProviderName.value} 已验证邮箱也需验证码`, note: '邮箱已注册时绑定到已有账号并保留原密码；未注册时创建新账号。', email: '绑定邮箱', enter: '绑定邮箱并进入', loading: '正在读取授权信息', completing: '正在完成登录' });
-const oauthRequiresEmailBinding = computed(() => ['github', 'google', 'wechat'].includes(oauth.provider) || oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
+const oauthRequiresEmailBinding = computed(() => ['github', 'google'].includes(oauth.provider) || oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
 const authTitle = computed(() => (
   hasOAuthTicket.value
     ? (oauthRequiresEmailBinding.value ? oauthCopy.value.title : `${oauthProviderName.value} 登录确认`)
@@ -92,9 +90,7 @@ const authSubtitle = computed(() => (
       : 'QQ 授权已完成，可以直接进入，也可以绑定已有站内账号。')
     : (forgotMode.value ? props.t.resetPasswordSubtitle : props.t.loginSubtitle)
 ));
-const oauthProfileHint = computed(() => oauth.provider === 'wechat'
-  ? uiText('请验证你在月读空间使用的邮箱')
-  : (
+const oauthProfileHint = computed(() => (
   oauthRequiresEmailBinding.value
     ? (['github', 'google'].includes(oauth.provider) ? oauthCopy.value.hint : 'QQ 未提供邮箱，请绑定一个可接收验证码的邮箱')
     : (oauth.profile?.email || 'QQ 未返回邮箱，可手动绑定已有邮箱账号')
@@ -123,14 +119,6 @@ const oauthErrorText = {
   github_already_bound: '该 GitHub 已绑定其他账号',
   github_account_unavailable: '账号不可用',
   github_login_required: '请先登录网站，再在用户中心绑定 GitHub',
-  wechat_not_configured: '微信登录暂未配置，请稍后再试',
-  wechat_start_failed: '微信登录启动失败，请稍后再试',
-  wechat_denied: '微信授权已取消',
-  wechat_invalid_state: '微信登录状态已过期，请重新授权',
-  wechat_callback_failed: '微信回调处理失败，请稍后再试',
-  wechat_already_bound: '该微信已绑定其他账号',
-  wechat_account_unavailable: '账号不可用',
-  wechat_login_required: '请先登录网站，再绑定微信',
   google_not_configured: 'Google 登录暂未配置，请稍后再试',
   google_start_failed: 'Google 登录启动失败，请稍后再试',
   google_denied: 'Google 授权已取消',
@@ -326,13 +314,7 @@ async function startGoogleLogin() {
   catch (_) { showMessage('error', isEnglish.value ? 'Google sign-in is unavailable. Please try again.' : 'Google 登录暂时无法连接，请稍后重试'); }
 }
 
-async function startWeChatLogin() {
-  try { window.location.href = await oauthStartUrl('wechat', authRedirect.value); }
-  catch (_) { showMessage('error', uiText(oauthErrorText.wechat_start_failed)); }
-}
-
 function clearOAuthFlow() {
-  wechatNewAccount.value = false;
   oauth.ticket = '';
   oauth.profile = null;
   oauth.message = '';
@@ -359,7 +341,7 @@ async function loadOAuthPending(ticket) {
     if (!result.success) throw new Error(result.message || `${oauthProviderName.value} 登录状态读取失败`);
     oauth.profile = result.data;
     oauth.createUsername = result.data.suggestedUsername || result.data.nickname || '';
-    oauth.mode = (['github', 'google', 'wechat'].includes(oauth.provider) || result.data.requiresEmailBinding) ? 'email' : (result.data.hasEmailMatch ? 'bind' : 'create');
+    oauth.mode = (['github', 'google'].includes(oauth.provider) || result.data.requiresEmailBinding) ? 'email' : (result.data.hasEmailMatch ? 'bind' : 'create');
     oauth.email = result.data.email || '';
     if (result.data.email) oauth.identity = result.data.email;
   } catch (error) {
@@ -456,7 +438,7 @@ async function submitOAuthEmailBind() {
         email: oauth.email.trim(),
         emailCode: oauth.emailCode.trim(),
         username: oauth.createUsername.trim(),
-        newPassword: oauthNeedsPassword.value ? oauth.newPassword : ''
+        newPassword: oauth.newPassword
       })
     });
     const result = await parseResponse(response);
@@ -496,11 +478,6 @@ function go(path) {
   emit('go', path);
 }
 
-onMounted(async () => {
-  try { oauthSettings.value = await loadPublicSettings(); }
-  catch (_) { /* Continue to offer password and email login if settings are unavailable. */ }
-});
-
 onMounted(() => {
   const params = new URLSearchParams(window.location.search || '');
   const oauthError = params.get('oauth_error');
@@ -508,7 +485,7 @@ onMounted(() => {
     showMessage('error', uiText(oauthErrorText[oauthError] || 'QQ 登录失败，请稍后再试'));
   }
 
-  if (['qq', 'github', 'google', 'wechat'].includes(params.get('oauth')) && params.get('ticket')) {
+  if (['qq', 'github', 'google'].includes(params.get('oauth')) && params.get('ticket')) {
     oauth.provider = params.get('oauth');
     oauth.ticket = params.get('ticket');
     loadOAuthPending(oauth.ticket);
@@ -565,7 +542,7 @@ onMounted(() => {
             <form v-field-validation v-if="oauth.profile && oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
               <div class="oauth-bind-note">
                 <TsIcon name="mail" :size="18" />
-                <span>{{ ['github', 'google', 'wechat'].includes(oauth.provider) ? oauthCopy.note : '邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。' }}</span>
+                <span>{{ ['github', 'google'].includes(oauth.provider) ? oauthCopy.note : '邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。' }}</span>
               </div>
               <div class="form-group">
                 <label for="qqBindEmail">{{ oauthCopy.email }}</label>
@@ -587,10 +564,6 @@ onMounted(() => {
                   </button>
                 </div>
               </div>
-              <label v-if="oauth.provider === 'wechat'" class="wechat-create-account">
-                <input v-model="wechatNewAccount" type="checkbox">
-                <span>{{ uiText('我是新用户，设置登录密码') }}</span>
-              </label>
               <div v-if="oauthNeedsPassword" class="form-group">
                 <label for="qqEmailPassword">{{ t.setLoginPassword }}</label>
                 <div class="auth-input-shell has-action">
@@ -777,15 +750,11 @@ onMounted(() => {
                 <img :src="qqIconUrl" alt="">
                 <span>{{ isEnglish ? 'Sign in with QQ' : 'QQ 登录' }}</span>
               </button>
-              <button v-if="oauthSettings.wechatOAuthEnabled === true" class="oauth-icon-btn wechat" type="button" :aria-label="wechatLabel" :title="wechatLabel" @click="startWeChatLogin">
-                <TsIcon name="wechat" :size="22" />
-                <span>{{ wechatLabel }}</span>
-              </button>
               <button class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
                 <TsIcon name="github" :size="22" />
                 <span>{{ isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录' }}</span>
               </button>
-              <button v-if="oauthSettings.googleOAuthEnabled === true" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
+              <button v-if="googleOAuthEnabled" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
                 <img :src="googleIconUrl" alt="" width="20" height="20">
                 <span>{{ isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录' }}</span>
               </button>
