@@ -49,7 +49,7 @@ jobs:
               "${conn[@]}" 'set -eu; umask 077; s=$(mktemp -d); trap "rm -rf -- $s" EXIT; tar xzf - -C "$s"; cd "$s"; bash install-observer.sh' < "$RUNNER_TEMP/pkg.tgz"
               ;;
             verify)
-              "${conn[@]}" 'systemctl is-active yachiyo-status-observer.timer; systemctl show yachiyo-status-observer.service -p Result -p ExecMainStatus; journalctl -u yachiyo-status-observer.service -n 16 --no-pager'
+              "${conn[@]}" 'set -eu; test "$(stat -c %a:%U /etc/yachiyo-status/flashduty)" = "600:root"; test ! -e /etc/yachiyo-status/transport.pem; systemctl is-enabled yachiyo-status-observer.timer; systemctl is-active yachiyo-status-observer.timer; systemctl show yachiyo-status-observer.service -p Result -p ExecMainStatus; journalctl -u yachiyo-status-observer.service -n 16 --no-pager'
               ;;
             *) exit 2 ;;
           esac
