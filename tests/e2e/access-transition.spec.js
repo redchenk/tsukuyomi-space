@@ -68,7 +68,8 @@ test('the end of the side take cuts to the frontal still and live dusk camera', 
   const delayed = new Promise(resolve => { releaseScene = resolve; });
   await page.route('**/renderer-*.js', async route => { await delayed; await route.continue(); });
   try {
-    await entry(page);
+    await page.goto('/access', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     const film = page.locator('.access-video');
     test.skip(!await film.evaluate(v => v.canPlayType('video/mp4; codecs="avc1.4D4028"')), 'H.264 unavailable');
     const pause = page.locator('.access-motion-control');
