@@ -7,6 +7,7 @@ import { alternateLanguage } from '../i18n';
 import { warmRoutePath } from '../router';
 import MobileSheet from '../components/MobileSheet.vue';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
+import PaymentCenterLink from '../components/PaymentCenterLink.vue';
 import TsIcon from '../components/TsIcon.vue';
 import BeianLink from '../components/BeianLink.vue';
 import SeasonThemePicker from '../components/SeasonThemePicker.vue';
@@ -49,6 +50,7 @@ const navItems = computed(() => [
   { path: '/game', key: 'game', label: tr('游戏', 'Play', 'ゲーム'), icon: 'gamepad', active: ['game', 'gomoku', 'kaguyaRun'].includes(props.routeName), spa: true },
   ...(props.isAuthed ? [{ path: '/growth', key: 'growth', label: growthLabel.value, icon: 'sparkles', active: props.routeName === 'growth', spa: true }] : []),
   { path: '/friend-links', key: 'friendLinks', label: copy.value.friendLinks, icon: 'external', active: ['friendLinks', 'friendLinkApply'].includes(props.routeName), spa: true },
+  { path: '/payments', key: 'payments', label: copy.value.payments, icon: 'creditCard', active: props.routeName === 'payments', spa: true },
   { path: '/download', key: 'download', label: copy.value.download, icon: 'download', active: props.routeName === 'download', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
   { path: '/', key: 'opening', label: tr('重看开场', 'Revisit the entrance', 'オープニングを見る'), icon: 'play', active: false, spa: true },
@@ -190,6 +192,7 @@ onUnmounted(() => {
         <button type="button" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)">{{ tr('更多', 'More', 'もっと') }}<TsIcon name="chevronDown" :size="13" /></button>
       </nav>
       <div class="header-actions">
+        <PaymentCenterLink :lang="lang" />
         <a class="site-tool-button header-download" href="/download" :aria-label="copy.download" :title="copy.download" :aria-current="routeName === 'download' ? 'page' : undefined" @pointerenter="warmRoutePath('/download')" @click="navigate($event, { path: '/download' })"><TsIcon name="download" :size="19" /></a>
         <button class="header-search" :aria-label="copy.search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ tr('搜索', 'Search', '検索') }}</span><kbd>⌘ K</kbd></button>
         <button v-if="music" class="site-tool-button header-music" :class="{ active: music.playing.value }" :aria-label="tr('站内音乐', 'Music')" :aria-expanded="music.drawer.open" @click="music.toggleShell"><TsIcon name="audioLines" :size="19" /></button>

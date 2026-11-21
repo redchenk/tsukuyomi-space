@@ -109,6 +109,26 @@
 }
 @media (max-width: 380px) { .site-brand { font-size: 18px; gap: 8px; } .site-brand > span { max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 
+@media (min-width: 1081px) and (max-width: 1500px) {
+  .site-header { padding-inline: clamp(16px, 2vw, 30px); gap: 12px; }
+  .desktop-nav { gap: 12px; }
+}
+@media (min-width: 1081px) and (max-width: 1220px) {
+  .desktop-nav { gap: 8px; }
+  .header-room { margin-left: 4px; padding-inline: 12px; }
+}
+@media (max-width: 440px) {
+  .site-header .site-brand { min-width: 0; flex-shrink: 1; }
+  .site-header .site-brand img { flex-shrink: 0; }
+  .site-header .site-brand > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (min-width: 381px) and (max-width: 440px) {
+  .site-header:lang(en) .site-brand > span { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+}
+@media (max-width: 380px) {
+  .site-header .site-brand > span { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+}
+
 .site-search-field { display: flex; align-items: center; gap: 12px; margin: 16px 20px 0; border-bottom: 1px solid var(--line); }
 .site-search-field input { width: 100%; min-width: 0; font-size: 16px; }
 .site-search-help { display: flex; justify-content: space-between; padding: 16px 24px; border-top: 1px solid var(--line); }

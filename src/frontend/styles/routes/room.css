@@ -4,7 +4,8 @@
 .room-conversation-layout { position: relative; width: 100%; height: 100dvh; min-height: 560px; overflow: clip; }
 .room-backdrop { position: absolute; inset: 0; background: var(--ts-room-bg-image) center / cover; }
 .room-backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(13 18 25 / 18%), transparent 60%); }
-.room-home-link { position: absolute; top: 28px; left: 32px; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px; border-radius: var(--r-pill); background: var(--room-glass); color: var(--ink); font-size: 14px; }
+.room-site-links { position: absolute; top: 28px; left: 32px; z-index: 30; display: flex; align-items: center; gap: 8px; }
+.room-home-link { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px; border-radius: var(--r-pill); background: var(--room-glass); color: var(--ink); font-size: 14px; }
 .room-stage { position: absolute; inset: 0 480px 0 0; }
 .room-live2d-container { position: absolute; top: 0; bottom: 0; left: 50%; width: 100%; height: 100%; }
 .room-live2d-container canvas { width: 100%; height: 100%; object-fit: contain; }
@@ -113,7 +114,8 @@
 @media (max-width: 860px) {
  body.vue-room-route { position: fixed; inset: 0; overscroll-behavior: none; }
  .room-conversation-layout { position: fixed; inset: var(--ts-visual-offset-top, 0px) 0 auto; height: var(--ts-visual-height, 100dvh); min-height: 0; }
- .room-home-link { top: max(12px, env(safe-area-inset-top)); left: 16px; width: 44px; padding: 0; justify-content: center; }
+ .room-site-links { top: max(12px, env(safe-area-inset-top)); left: 16px; }
+ .room-home-link { width: 44px; padding: 0; justify-content: center; }
  .room-home-link span { display: none; }
  .room-stage { inset: 0 0 auto; height: 100svh; }
  .room-live2d-container { top: -5%; height: 90%; }
