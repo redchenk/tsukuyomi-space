@@ -1,4 +1,12 @@
 {
+  "切换四季，试试每一次点按的手感。": {
+    "en": "Switch seasons and try the controls in each palette.",
+    "ja": "季節を切り替えて、ボタンの手応えを試せます。"
+  },
+  "下一季": {
+    "en": "Next season",
+    "ja": "次の季節"
+  },
   "月白樱粉 · 四季配色与界面组件": {
     "en": "Moon white and sakura · Seasonal colours and interface components",
     "ja": "月白と桜色 · 四季の配色とUIコンポーネント"

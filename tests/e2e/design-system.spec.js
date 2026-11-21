@@ -235,3 +235,81 @@ test('double text size at a fixed viewport on editorial pages', async ({ page })
     expect(await layout(page), route).toEqual([]);
   }
 });
+
+test('native activation draws one non-interactive dot wave and preserves the action', async ({ page }, info) => {
+  test.skip(process.env.DESIGN_PREVIEW !== '1', 'Requires the local component catalogue.');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/design-system');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  const panel = page.locator('.samples-page');
+  const target = panel.locator('.ui-panel button[data-ui="secondary"]:enabled').first();
+  await target.scrollIntoViewIfNeeded();
+  // Record the transient paint in the same frame, independent of runner speed.
+  await page.evaluate(() => {
+    window.controlPaint = [];
+    new MutationObserver(records => {
+      for (const rec of records) for (const node of rec.addedNodes) {
+        if (!(node instanceof HTMLElement) || !node.matches('.ui-dot-echo') || !node.childElementCount) continue;
+        const cols = [...node.children];
+        window.controlPaint.push({
+          trace: node.matches('.ui-dot-trace'), columns: cols.length, pointer: getComputedStyle(node).pointerEvents,
+          inert: node.inert, hidden: node.getAttribute('aria-hidden'), width: node.getBoundingClientRect().width,
+          x: parseFloat(cols[4].style.left), animation: getComputedStyle(cols[4]).animationName,
+          delays: cols.map(el => parseFloat(el.style.animationDelay))
+        });
+      }
+    }).observe(document.body, {childList:true, subtree:true});
+  });
+
+  const box = await target.boundingBox();
+  if (info.project.use.isMobile) {
+    await target.tap({ position: {x:12, y:Math.floor(box.height/2)} });
+  } else {
+    await target.hover();
+    await expect.poll(() => page.evaluate(() => window.controlPaint.filter(p => p.trace).length)).toBeGreaterThan(0);
+    await target.click({ position: {x:12, y:Math.floor(box.height/2)} });
+  }
+  await expect(panel.locator('output')).toHaveText(await target.innerText());
+  const waves = () => page.evaluate(() => window.controlPaint.filter(p => !p.trace));
+  const [wave] = await waves();
+  expect(wave).toMatchObject({columns:9,inert:true,hidden:'true',pointer:'none',animation:'ui-echo-column'});
+  expect(Math.abs(wave.x - 12)).toBeLessThan(3);
+  expect(wave.delays[4]).toBeLessThan(wave.delays[0]);
+  expect(await waves()).toHaveLength(1);
+  await expect(page.locator('.ui-dot-echo')).toHaveCount(0);
+  await target.press('Enter');
+  const events = await waves();
+  expect(events).toHaveLength(2);
+  expect(Math.abs(events[1].x - events[1].width / 2)).toBeLessThan(1);
+  await expect(page.locator('.ui-dot-echo')).toHaveCount(0);
+  const disabled = panel.locator('.ui-panel button:disabled').first();
+  await disabled.scrollIntoViewIfNeeded();
+  await disabled.click({force:true});
+  expect(await waves()).toHaveLength(2);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await expect(target).toHaveCSS('transition-duration', /^(?:0s)(?:, 0s)*$/);
+  await target.press('Enter');
+  expect(await waves()).toHaveLength(2);
+});
+
+test('season display follows the real preference and the payment control opens the wallet', async ({ page }) => {
+  test.skip(process.env.DESIGN_PREVIEW !== '1', 'Requires the local component catalogue.');
+  await page.goto('/design-system');
+  const palette = page.locator('.samples-palette');
+  const next = palette.locator('.samples-plate-controls button');
+  await expect(next).toBeVisible();
+  const before = await page.locator('html').getAttribute('data-season');
+  const mark = () => palette.locator('.plate-mark').evaluateAll(paths => paths.map(path => path.getAttribute('d')).join(''));
+  const initialMark = await mark();
+  await next.click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-season',before);
+  await expect.poll(() => palette.locator('.plate-imprint').count()).toBe(1);
+  await expect.poll(mark).not.toBe(initialMark);
+  await expect(palette.locator('[data-ui="choice"][aria-pressed="true"]')).toHaveCount(1);
+  const link = page.locator('.payment-center-link:visible').first();
+  await expect(link).toHaveAttribute('href','/payments');
+  await link.click();
+  await expect(page).toHaveURL(/\/payments(?:[?#]|$)/);
+  await expect(page.locator('main h1').first()).toBeVisible();
+  await expect(page.locator('.ui-dot-echo')).toHaveCount(0);
+});

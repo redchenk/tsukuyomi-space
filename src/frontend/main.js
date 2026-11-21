@@ -9,6 +9,7 @@ import { configureAssetCssVars } from './utils/assetUrl';
 import { initializePerformanceProfile } from './utils/performance';
 import { uiText, prepareInterfaceLanguage } from './i18n/runtime';
 import { initializeSeasonTheme } from './composables/useSeasonTheme';
+import { installControlMotion } from './runtime/controlMotion';
 import './styles/global.css';
 
 initializePerformanceProfile();
@@ -43,6 +44,12 @@ app.config.warnHandler = (msg, vm, info) => {
 };
 
 app.use(router);
+const controlMotion = installControlMotion();
+const removeMotionHook = router.afterEach(controlMotion.clear);
+if (import.meta.hot) import.meta.hot.dispose(() => {
+  removeMotionHook();
+  controlMotion.dispose();
+});
 // The immersive entry has no catalog-dependent labels. Never wait for a
 // secondary locale download before exposing its navigation controls.
 if (/^\/(?:(?:access|chatroom)\/?)?$/.test(window.location.pathname)) {

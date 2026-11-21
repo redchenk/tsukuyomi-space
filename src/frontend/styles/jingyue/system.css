@@ -123,12 +123,6 @@
   background-color: var(--ui-over);
 }
 .ts-button { position: relative; }
-.ts-button[aria-busy="true"]::after {
-  content: ''; position: absolute; inset-inline: .875rem; inset-block-end: .25rem;
-  height: 2px; border-radius: var(--r-pill); background: currentColor;
-  transform-origin: center; animation: ui-busy 1.2s ease-in-out infinite alternate;
-}
-@keyframes ui-busy { from { transform: scaleX(.25); } to { transform: scaleX(.8); } }
 [data-ui-layout] { min-inline-size: 0; }
 .ui-page { width: min(var(--page-width), calc(100% - 2 * var(--gutter))); margin-inline: auto; padding-block: var(--ui-section); }
 .ui-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-stack); align-content: start; }
@@ -149,7 +143,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --ui-transition-time: 0s; }
-  .ts-button[aria-busy="true"]::after { animation: none; }
 }
 /* Editorial page furniture shared by content, settings and the local catalogue. */
 .ui-page-header {

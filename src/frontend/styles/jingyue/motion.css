@@ -1,0 +1,141 @@
+/* Shared interaction material. Movement uses individual transform properties so authored
+   transforms, responsive placement and the layout box stay independent. */
+:root {
+  --plate-ink: #24232b;
+  --plate-paper: #f9f4ee;
+  --control-motion-enabled: 1;
+  --control-ink: color-mix(in srgb, var(--ink) 78%, var(--accent));
+  --control-echo-color: var(--accent);
+  --control-settle: cubic-bezier(.2, .78, .2, 1);
+  --control-release: cubic-bezier(.2, 1.45, .4, 1);
+  --control-travel: 220ms;
+  --control-flash: 500ms;
+}
+:root :is([data-ui="primary"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
+  --ui-bg: var(--control-ink);
+  --ui-edge: var(--control-ink);
+  --ui-over: color-mix(in srgb, var(--control-ink) 82%, var(--accent));
+}
+:root [data-ui="accent"]:not([data-ui-part]) {
+  --ui-bg: var(--accent);
+  --ui-edge: var(--accent);
+  --ui-fg: var(--on-accent);
+  --ui-over: var(--accent-hover);
+  --control-echo-color: var(--on-accent);
+}
+:root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]) {
+  transition: color var(--fast), background-color var(--fast), border-color var(--fast),
+    box-shadow var(--control-travel) var(--control-settle), translate var(--control-travel) var(--control-release),
+    scale var(--control-travel) var(--control-release), background-size var(--control-travel) var(--control-settle);
+}
+/* Five columns of round points form one material mark. Reserving their own slot
+   keeps the print separate from text at every language and zoom level. */
+:root {
+  --control-beads: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 15' preserveAspectRatio='none'%3E%3Cpath d='M1.5 1.5v12' fill='none' stroke='white' stroke-width='2.3' stroke-linecap='round' stroke-dasharray='.1 3.9'/%3E%3C/svg%3E");
+}
+:root[data-theme='dark'] {
+  --control-beads: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 15' preserveAspectRatio='none'%3E%3Cpath d='M1.5 1.5v12' fill='none' stroke='%23151923' stroke-width='2.3' stroke-linecap='round' stroke-dasharray='.1 3.9'/%3E%3C/svg%3E");
+}
+:root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
+  --control-track: var(--control-beads), var(--control-beads), var(--control-beads), var(--control-beads), var(--control-beads);
+  --track-position: right 6px center, right 9px center, right 12px center, right 15px center, right 18px center;
+  --track-size: 2px 3px, 2px 7px, 2px 13px, 2px 8px, 2px 4px;
+  padding-right: calc(var(--ui-action-inset, .875rem) + 1rem);
+  background-image: var(--control-track);
+  background-position: var(--track-position);
+  background-size: var(--track-size);
+  background-repeat: no-repeat;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--control-ink) 17%, transparent);
+}
+:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is([aria-pressed="true"],[aria-selected="true"],.active,.is-active,.selected) {
+  --ui-bg: var(--control-ink);
+  --ui-edge: var(--control-ink);
+  --ui-fg: var(--on-accent);
+  --ui-over: var(--control-ink);
+  --control-echo-color: var(--on-accent);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part],:disabled,[aria-disabled="true"],[aria-busy="true"]):hover {
+    translate: 0 -2px;
+    box-shadow: 0 4px 9px -4px color-mix(in srgb, var(--control-ink) 37%, transparent);
+  }
+  :root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part],:disabled,[aria-disabled="true"]):hover {
+    background-image: var(--control-track);
+    background-size: 2px 11px, 2px 17px, 2px 8px, 2px 12px, 2px 5px;
+    background-position: var(--track-position);
+    background-repeat: no-repeat;
+  }
+  :root :is([data-ui], [data-ui-part="navigation"], [data-ui-part="tool"]) > svg {
+    transition: scale var(--control-travel) var(--control-release);
+  }
+  :root :is([data-ui], [data-ui-part="navigation"], [data-ui-part="tool"]):not(:disabled,[aria-disabled="true"]):hover > svg {
+    scale: 1.10;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .chip, .filter-btn, .tab-btn, .stage-new-btn, .stage-page-btn):not([data-ui-part],:disabled,[aria-disabled="true"],[aria-busy="true"]):active {
+    translate: 0 1px;
+    scale: .97;
+    transition-duration: 55ms;
+    box-shadow: inset 0 1px 3px color-mix(in srgb, var(--ink) 17%, transparent);
+  }
+}
+:root .ts-button[aria-busy="true"] {
+  opacity: 1;
+  border-style: dashed;
+}
+.ts-button[aria-busy="true"]::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: calc(50% - 9px);
+  width: 18px;
+  height: 4px;
+  background: radial-gradient(circle, currentColor 1.35px, transparent 1.65px) 0 50% / 6px 4px repeat-x;
+  mask-image: linear-gradient(90deg, #0004, black, #0004);
+  mask-size: 200% 100%;
+  animation: ui-loading-dots 860ms linear infinite;
+}
+@keyframes ui-loading-dots { to { mask-position: -200% 0; } }
+.ui-dot-echo {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483647;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  animation: ui-echo-lifetime var(--control-flash) linear both;
+}
+.ui-dot-echo > i {
+  position: absolute;
+  width: var(--dot-pitch);
+  margin-left: calc(var(--dot-pitch) / -2);
+  background: radial-gradient(circle, currentColor 31%, transparent 39%) center top / 100% var(--dot-pitch) repeat-y;
+  animation: ui-echo-column 340ms var(--control-settle) both;
+}
+@keyframes ui-echo-column {
+  0% { opacity: 0; transform: scaleY(.24); }
+  24% { opacity: .86; transform: scaleY(.88); }
+  58% { opacity: .58; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(.70); }
+}
+@keyframes ui-echo-lifetime { from, to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .chip, .filter-btn, .tab-btn, .stage-new-btn, .stage-page-btn):not([data-ui-part]) {
+    transition-duration: 0s;
+  }
+  .ts-button[aria-busy="true"]::after { animation: none; mask-image: none; }
+}
+@media (forced-colors: active) {
+  .ts-button[aria-busy="true"]::after, .ui-dot-echo { display: none; }
+  :root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is([aria-pressed="true"],[aria-selected="true"]) {
+    outline: 2px solid Highlight;
+    outline-offset: -3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce), (forced-colors: active) {
+  :root { --control-motion-enabled: 0; }
+  .ui-dot-echo { display: none; }
+}
