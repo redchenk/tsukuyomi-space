@@ -10,6 +10,7 @@ import { keepModalFocus } from '../composables/useModalDialog';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import PaymentCenterLink from '../components/PaymentCenterLink.vue';
 import TsIcon from '../components/TsIcon.vue';
+import ThemeLens from '../components/ThemeLens.vue';
 import BeianLink from '../components/BeianLink.vue';
 import SeasonThemePicker from '../components/SeasonThemePicker.vue';
 import ContentTranslationControl from '../components/ContentTranslationControl.vue';
@@ -184,7 +185,7 @@ onUnmounted(() => {
         <a class="site-tool-button header-download" href="/download" :aria-label="copy.download" :title="copy.download" :aria-current="routeName === 'download' ? 'page' : undefined" @pointerenter="warmRoutePath('/download')" @click="navigate($event, { path: '/download' })"><TsIcon name="download" :size="19" /></a>
         <button data-ui-part="navigation" class="header-search" :aria-label="copy.search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ tr('搜索', 'Search', '検索') }}</span><kbd>⌘ K</kbd></button>
         <button v-if="music" class="site-tool-button header-music" :class="{ active: music.playing.value }" :aria-label="tr('站内音乐', 'Music')" :aria-expanded="music.drawer.open" @click="music.toggleShell"><TsIcon name="audioLines" :size="19" /></button>
-        <button class="site-tool-button header-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
+        <button class="site-tool-button header-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><ThemeLens :dark="theme === 'dark'" /></button>
         <button class="site-tool-button header-account" :aria-label="copy.account" aria-controls="site-navigation" :aria-expanded="navOpen && menuMode === 'account'" @click="openNavigation('account', $event)"><img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><TsIcon v-else name="user" :size="19" /><span v-if="unreadNotifications" class="unread-dot"></span></button>
         <a data-ui="secondary" class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
@@ -196,7 +197,7 @@ onUnmounted(() => {
       </template>
       <div v-else class="account-menu"><a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><span v-if="item.key === 'notifications' && unreadNotifications">{{ unreadNotifications }}</span></a><button data-ui-part="navigation" v-if="isAuthed" class="menu-link" @click="navOpen = false; emit('logout')"><TsIcon name="logOut" :size="20" />{{ t.logout }}</button></div>
       <button data-ui-part="navigation" class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
-      <footer class="menu-preferences"><button data-ui-part="disclosure" class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button data-ui-part="disclosure" v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
+      <footer class="menu-preferences"><button data-ui-part="disclosure" class="site-preference-button" @click="emit('toggle-theme', $event)"><ThemeLens :dark="theme === 'dark'" />{{ themeLabel }}</button><button data-ui-part="disclosure" v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="emit('go', $event)" />
     <SiteMusicDrawer v-if="routeName !== 'chatroom' && music?.drawer.open" :music="music" :lang="lang" />

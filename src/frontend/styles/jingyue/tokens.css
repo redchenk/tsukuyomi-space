@@ -19,6 +19,15 @@
   --sans: 'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', system-ui, Arial, sans-serif;
   --display: 'Songti SC', 'Noto Serif SC', var(--serif);
   --r-control: 12px;
+  --r-button: 1.75rem .81rem 1.75rem .81rem / 1.5rem .81rem 1.5rem .81rem;
+  --r-button-open: 1.9rem 1.06rem 1.52rem .7rem / 1.6rem .95rem 1.32rem .72rem;
+  --r-button-pressed: 1.35rem 1.12rem 1.35rem 1.12rem;
+  --lens-sky: #efdfce;
+  --lens-hill: #a888a2;
+  --lens-far: #d2a0b1;
+  --lens-orb: #fff8df;
+  --lens-border: rgb(81 51 75 / .27);
+  --lens-star: #f4edf6;
   --r-media: 20px;
   --r-panel: 28px;
   --r-pill: 999px;
@@ -50,6 +59,11 @@
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --lens-sky: #343749;
+  --lens-hill: #575372;
+  --lens-far: #706a86;
+  --lens-orb: #ede6fb;
+  --lens-border: rgb(206 194 225 / .48);
   --paper: #151923;
   --surface: #222836;
   --soft: #2c3342;
@@ -105,7 +119,7 @@
   --ts-font-sans: var(--sans); --ts-font-serif: var(--serif); --ts-panel-serif: 'Songti SC', 'Noto Serif SC', 'Yu Mincho', var(--serif);
   --ts-font-size-xs: 13px; --ts-font-size-sm: 14px; --ts-font-size-md: 16px; --ts-font-size-lg: 18px; --ts-font-size-xl: 24px; --ts-font-size-2xl: 40px;
   --ts-radius-xs: 8px; --ts-radius-sm: var(--r-control); --ts-radius-md: var(--r-control); --ts-radius-lg: var(--r-media); --ts-radius-xl: var(--r-panel);
-  --ts-radius-control: var(--r-control); --ts-radius-card: var(--r-media); --ts-radius-button: var(--r-control); --ts-radius-pill: var(--r-pill);
+  --ts-radius-control: var(--r-control); --ts-radius-card: var(--r-media); --ts-radius-button: var(--r-button); --ts-radius-pill: var(--r-pill);
   --ts-shadow-xs: none; --ts-shadow-sm: none; --ts-shadow-md: var(--shadow); --ts-shadow-lg: var(--shadow); --ts-shadow-accent: none;
   --ts-elevation-rest: none; --ts-elevation-raised: var(--shadow); --ts-focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
   --ts-motion-fast: var(--fast); --ts-motion-base: var(--fast); --ts-motion-slow: var(--motion); --ts-motion-page: 240ms; --ts-motion-slower: 480ms;
@@ -115,7 +129,7 @@
   --ts-readable-panel-bg: var(--surface); --ts-readable-card-bg: var(--surface); --ts-readable-input-bg: var(--surface); --ts-readable-control-bg: var(--soft); --ts-readable-control-hover: var(--soft);
   --ts-unified-primary-bg: var(--accent); --ts-unified-primary-bg-hover: var(--accent-hover); --ts-unified-primary-text: var(--on-accent);
   --ts-unified-button-bg: transparent; --ts-unified-button-hover: var(--soft); --ts-unified-button-border: var(--line); --ts-unified-button-border-hover: var(--line-strong);
-  --ts-unified-button-radius: var(--r-control); --ts-unified-button-height: var(--ui-touch); --ts-unified-button-shadow: none;
+  --ts-unified-button-radius: var(--r-button); --ts-unified-button-height: var(--ui-touch); --ts-unified-button-shadow: none;
   --ts-status-danger: var(--danger); --ts-danger: var(--danger); --ts-status-success: var(--success);
   --ts-state-hover: var(--soft); --ts-glass: var(--surface); --ts-glass-strong: var(--surface); --ts-blur-sm: none; --ts-blur-md: none; --ts-blur-lg: none;
   --ts-color-lilac-50: #f5f0ff; --ts-color-rose-600: var(--accent); --ts-color-pink-600: var(--danger); --ts-color-mint-300: #9ee2cf;

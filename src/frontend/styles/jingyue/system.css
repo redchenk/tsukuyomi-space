@@ -35,7 +35,7 @@
   padding-block: .5rem;
   padding-inline: var(--ui-action-inset, .875rem);
   border: 1px solid var(--ui-edge);
-  border-radius: var(--r-control);
+  border-radius: var(--r-button);
   background: var(--ui-bg);
   color: var(--ui-fg);
   font: 500 var(--ui-control-type)/1.4 var(--sans);
@@ -74,7 +74,6 @@
   --ui-bg: transparent;
   --ui-edge: transparent;
   --ui-fg: var(--muted);
-  border-radius: var(--r-pill);
 }
 /* Selection also applies to toggles embedded in toolbars and older button groups. */
 :root :is([data-ui], .ghost-btn, .primary-btn, .chip, .filter-btn, .tab-btn):is([aria-pressed="true"], [aria-selected="true"]),
@@ -94,7 +93,7 @@
 }
 @media (hover: hover) {
   :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]):not(:disabled):not([aria-disabled="true"]):hover {
-    background: var(--ui-over);
+    background-color: var(--ui-over);
     border-color: var(--ui-edge);
     color: var(--ui-fg);
   }
@@ -117,10 +116,6 @@
     min-inline-size: min(100%, var(--ui-touch));
     min-block-size: max(var(--ui-touch), var(--ui-action-height, 0px));
   }
-}
-:root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .chip):not([data-ui-part]):enabled:active {
-  box-shadow: inset 0 0 0 2px var(--ui-edge);
-  background-color: var(--ui-over);
 }
 .ts-button { position: relative; }
 [data-ui-layout] { min-inline-size: 0; }

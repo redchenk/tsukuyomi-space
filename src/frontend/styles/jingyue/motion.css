@@ -1,141 +1,143 @@
-/* Shared interaction material. Movement uses individual transform properties so authored
-   transforms, responsive placement and the layout box stay independent. */
+/* One surface for site actions. The two long diagonal arcs echo a sakura petal.
+   Only the painted edge moves; width, text metrics and hit targets belong to the layout. */
 :root {
-  --plate-ink: #24232b;
-  --plate-paper: #f9f4ee;
   --control-motion-enabled: 1;
   --control-ink: color-mix(in srgb, var(--ink) 78%, var(--accent));
-  --control-echo-color: var(--accent);
+  --control-echo-color: var(--accent-ink);
   --control-settle: cubic-bezier(.2, .78, .2, 1);
-  --control-release: cubic-bezier(.2, 1.45, .4, 1);
-  --control-travel: 220ms;
-  --control-flash: 500ms;
+  --control-release: cubic-bezier(.21, 1.28, .35, 1);
+  --control-travel: 240ms;
+  --control-glass: color-mix(in srgb, var(--surface) 91%, var(--accent));
+  --control-rim: color-mix(in srgb, var(--ink) 19%, var(--surface));
+  --control-pearl: rgb(255 255 255 / .8);
+  --control-shade: color-mix(in srgb, var(--control-ink) 14%, transparent);
 }
-:root :is([data-ui="primary"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
-  --ui-bg: var(--control-ink);
-  --ui-edge: var(--control-ink);
-  --ui-over: color-mix(in srgb, var(--control-ink) 82%, var(--accent));
-}
-:root [data-ui="accent"]:not([data-ui-part]) {
-  --ui-bg: var(--accent);
-  --ui-edge: var(--accent);
-  --ui-fg: var(--on-accent);
-  --ui-over: var(--accent-hover);
-  --control-echo-color: var(--on-accent);
+:root[data-theme="dark"] {
+  --control-pearl: rgb(255 255 255 / .18);
+  --control-shade: rgb(0 0 0 / .30);
 }
 :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]) {
-  transition: color var(--fast), background-color var(--fast), border-color var(--fast),
-    box-shadow var(--control-travel) var(--control-settle), translate var(--control-travel) var(--control-release),
-    scale var(--control-travel) var(--control-release), background-size var(--control-travel) var(--control-settle);
+  --ui-bg: var(--surface);
+  --ui-over: var(--control-glass);
+  --ui-edge: var(--control-rim);
+  --liquid-finish: radial-gradient(ellipse 56% 47% at var(--lens-x, 29%) -10%, var(--control-pearl), transparent 85%),
+    linear-gradient(165deg, transparent 45%, color-mix(in srgb, var(--accent) 5%, transparent));
+  --liquid-depth: inset 0 1px 0 var(--control-pearl), inset 0 -1px 0 var(--control-shade),
+    0 2px 4px -2px var(--control-shade);
+  border-radius: var(--r-button);
+  background-image: var(--liquid-finish);
+  box-shadow: var(--liquid-depth);
+  transition: border-radius var(--control-travel) var(--control-release), scale var(--control-travel) var(--control-release),
+    translate var(--control-travel) var(--control-release), background-color var(--fast), color var(--fast),
+    border-color var(--fast), box-shadow var(--control-travel);
 }
-/* Five columns of round points form one material mark. Reserving their own slot
-   keeps the print separate from text at every language and zoom level. */
-:root {
-  --control-beads: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 15' preserveAspectRatio='none'%3E%3Cpath d='M1.5 1.5v12' fill='none' stroke='white' stroke-width='2.3' stroke-linecap='round' stroke-dasharray='.1 3.9'/%3E%3C/svg%3E");
-}
-:root[data-theme='dark'] {
-  --control-beads: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 15' preserveAspectRatio='none'%3E%3Cpath d='M1.5 1.5v12' fill='none' stroke='%23151923' stroke-width='2.3' stroke-linecap='round' stroke-dasharray='.1 3.9'/%3E%3C/svg%3E");
-}
+/* The reflection sits on the rim, leaving the central reading area quiet even on a short label. */
 :root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
-  --control-track: var(--control-beads), var(--control-beads), var(--control-beads), var(--control-beads), var(--control-beads);
-  --track-position: right 6px center, right 9px center, right 12px center, right 15px center, right 18px center;
-  --track-size: 2px 3px, 2px 7px, 2px 13px, 2px 8px, 2px 4px;
-  padding-right: calc(var(--ui-action-inset, .875rem) + 1rem);
-  background-image: var(--control-track);
-  background-position: var(--track-position);
-  background-size: var(--track-size);
-  background-repeat: no-repeat;
-  box-shadow: 0 2px 0 color-mix(in srgb, var(--control-ink) 17%, transparent);
-}
-:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is([aria-pressed="true"],[aria-selected="true"],.active,.is-active,.selected) {
   --ui-bg: var(--control-ink);
-  --ui-edge: var(--control-ink);
   --ui-fg: var(--on-accent);
-  --ui-over: var(--control-ink);
+  --ui-over: var(--ui-bg);
+  --ui-edge: color-mix(in srgb, var(--ui-bg) 90%, var(--ink));
   --control-echo-color: var(--on-accent);
+  --liquid-finish: radial-gradient(ellipse 54% 72% at var(--lens-x, 24%) -20%, rgb(255 255 255 / .70), transparent 83%),
+    radial-gradient(ellipse 64% 68% at 94% 126%, color-mix(in srgb, var(--accent) 70%, white), transparent 82%),
+    linear-gradient(165deg, rgb(255 255 255 / .055), transparent 48%, rgb(0 0 0 / .075));
+  --liquid-depth: inset 0 1px 0 rgb(255 255 255 / .42), inset 0 -1px 0 rgb(0 0 0 / .12),
+    0 3px 7px -4px color-mix(in srgb, var(--ui-bg) 59%, transparent);
+}
+:root [data-ui="accent"]:not([data-ui-part]) {
+  --ui-bg: var(--accent-ink);
+}
+:root :is([data-ui="danger"], .danger-btn):not([data-ui-part]) {
+  --ui-bg: var(--surface);
+  --ui-over: var(--ts-unified-danger-bg);
+  --ui-fg: var(--danger);
+  --ui-edge: color-mix(in srgb, var(--danger) 34%, var(--surface));
+  --control-echo-color: var(--danger);
+}
+:root :is([data-ui="quiet"], [data-ui="ghost"], [data-ui="icon"], [data-ui="choice"], .filter-btn, .tab-btn, .chip):not([data-ui-part]) {
+  --ui-bg: transparent;
+  --ui-edge: transparent;
+  --liquid-depth: none;
+  --liquid-finish: none;
+}
+:root :is([data-ui], .tab-btn, .filter-btn, .chip):is([aria-pressed="true"], [aria-selected="true"]),
+:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is(.active, .is-active, .selected, [aria-current="page"]) {
+  --ui-bg: var(--control-glass);
+  --ui-over: var(--control-glass);
+  --ui-edge: color-mix(in srgb, var(--accent) 44%, var(--surface));
+  --ui-fg: var(--accent-ink);
+  --liquid-finish: radial-gradient(ellipse 62% 46% at var(--lens-x, 28%) 0%, var(--control-pearl), transparent);
+  --liquid-depth: inset 0 1px 0 var(--control-pearl), inset 0 -2px 0 var(--accent-line);
+}
+/* Tool, disclosure and overlay buttons have feature-owned layout, colours and sizing. */
+:root :is(.icon-button, .site-tool-button, .header-search, .nav-chatroom-label, .site-preference-button,
+  .mobile-dock > a, .mobile-dock > button, .dock-indicator, .segmented-indicator, .ts-segmented-indicator,
+  button[data-ui-part="tool"], button[data-ui-part="navigation"], button[data-ui-part="disclosure"],
+  button[data-ui-part="overlay"]:not([class*="scrim"]), button[data-ui-part="media"],
+  .ps-icon-btn, .ps-text-btn, .ps-tool, .ps-doc-button, .ps-doc-tab) {
+  border-radius: var(--r-button);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):hover {
+    background-image: var(--liquid-finish);
+    box-shadow: var(--liquid-depth);
+  }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part],:disabled,[aria-disabled="true"],[aria-busy="true"]):hover {
-    translate: 0 -2px;
-    box-shadow: 0 4px 9px -4px color-mix(in srgb, var(--control-ink) 37%, transparent);
-  }
-  :root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part],:disabled,[aria-disabled="true"]):hover {
-    background-image: var(--control-track);
-    background-size: 2px 11px, 2px 17px, 2px 8px, 2px 12px, 2px 5px;
-    background-position: var(--track-position);
-    background-repeat: no-repeat;
-  }
-  :root :is([data-ui], [data-ui-part="navigation"], [data-ui-part="tool"]) > svg {
-    transition: scale var(--control-travel) var(--control-release);
-  }
-  :root :is([data-ui], [data-ui-part="navigation"], [data-ui-part="tool"]):not(:disabled,[aria-disabled="true"]):hover > svg {
-    scale: 1.10;
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):hover {
+    translate: 0 -1px;
+    border-radius: var(--r-button-open);
+    border-top-left-radius: calc(1.9rem - var(--lens-pull, 0px)) calc(1.6rem - var(--lens-pull, 0px));
+    border-top-right-radius: calc(1.06rem + var(--lens-pull, 0px)) calc(.95rem + var(--lens-pull, 0px));
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .chip, .filter-btn, .tab-btn, .stage-new-btn, .stage-page-btn):not([data-ui-part],:disabled,[aria-disabled="true"],[aria-busy="true"]):active {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):active {
     translate: 0 1px;
-    scale: .97;
-    transition-duration: 55ms;
-    box-shadow: inset 0 1px 3px color-mix(in srgb, var(--ink) 17%, transparent);
+    scale: .985 .95;
+    border-radius: var(--r-button-pressed);
+    transition-duration: 65ms;
+    box-shadow: inset 0 2px 4px var(--control-shade);
   }
 }
-:root .ts-button[aria-busy="true"] {
-  opacity: 1;
-  border-style: dashed;
-}
+:root .ts-button[aria-busy="true"] { opacity: 1; border-style: dashed; }
 .ts-button[aria-busy="true"]::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  left: calc(50% - 9px);
-  width: 18px;
-  height: 4px;
+  content: ''; position: absolute; bottom: 2px; left: calc(50% - 9px); width: 18px; height: 4px;
   background: radial-gradient(circle, currentColor 1.35px, transparent 1.65px) 0 50% / 6px 4px repeat-x;
-  mask-image: linear-gradient(90deg, #0004, black, #0004);
-  mask-size: 200% 100%;
+  mask-image: linear-gradient(90deg, #0004, black, #0004); mask-size: 200% 100%;
   animation: ui-loading-dots 860ms linear infinite;
 }
 @keyframes ui-loading-dots { to { mask-position: -200% 0; } }
-.ui-dot-echo {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 2147483647;
-  overflow: hidden;
-  pointer-events: none;
-  contain: strict;
-  animation: ui-echo-lifetime var(--control-flash) linear both;
+.ui-liquid-wave {
+  position: fixed; inset: 0 auto auto 0; z-index: 2147483647; overflow: hidden;
+  pointer-events: none; contain: strict;
 }
-.ui-dot-echo > i {
-  position: absolute;
-  width: var(--dot-pitch);
-  margin-left: calc(var(--dot-pitch) / -2);
-  background: radial-gradient(circle, currentColor 31%, transparent 39%) center top / 100% var(--dot-pitch) repeat-y;
-  animation: ui-echo-column 340ms var(--control-settle) both;
+.ui-liquid-wave i {
+  position: absolute; left: var(--wave-x); top: var(--wave-y);
+  width: var(--wave-span); height: var(--wave-span); margin: calc(var(--wave-span) / -2);
+  border-radius: 50%; border: 1.25px solid currentColor;
+  box-shadow: inset 0 1px 2px currentColor;
+  animation: ui-liquid-ring 540ms cubic-bezier(.19,.64,.29,1) both;
 }
-@keyframes ui-echo-column {
-  0% { opacity: 0; transform: scaleY(.24); }
-  24% { opacity: .86; transform: scaleY(.88); }
-  58% { opacity: .58; transform: scaleY(1); }
-  100% { opacity: 0; transform: scaleY(.70); }
+.ui-liquid-wave i:nth-child(2) { animation-delay: 75ms; }
+.ui-liquid-wave i:nth-child(3) { animation-delay: 150ms; }
+@keyframes ui-liquid-ring {
+  from { opacity: .52; transform: scale(.06, .04); }
+  50% { opacity: .24; }
+  to { opacity: 0; transform: scale(1, .78); }
 }
-@keyframes ui-echo-lifetime { from, to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .chip, .filter-btn, .tab-btn, .stage-new-btn, .stage-page-btn):not([data-ui-part]) {
-    transition-duration: 0s;
-  }
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .tab-btn, .filter-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]) { transition-duration: 0s; }
   .ts-button[aria-busy="true"]::after { animation: none; mask-image: none; }
 }
-@media (forced-colors: active) {
-  .ts-button[aria-busy="true"]::after, .ui-dot-echo { display: none; }
-  :root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is([aria-pressed="true"],[aria-selected="true"]) {
-    outline: 2px solid Highlight;
-    outline-offset: -3px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce), (forced-colors: active) {
   :root { --control-motion-enabled: 0; }
-  .ui-dot-echo { display: none; }
+  .ui-liquid-wave { display: none; }
+}
+@media (forced-colors: active) {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .tab-btn, .filter-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]) {
+    background-image: none; border-color: ButtonText; box-shadow: none;
+  }
+  :root :is([data-ui], .tab-btn, .chip, .filter-btn):is([aria-pressed="true"],[aria-selected="true"]) { outline: 2px solid Highlight; outline-offset: -3px; }
+  .ts-button[aria-busy="true"]::after { display: none; }
 }
