@@ -7,7 +7,7 @@
 围绕《超时空辉夜姬！》世界观构建的非盈利同人社区，以 Vue 3 + Express 连接 Live2D AI 陪伴、内容创作、社区互动与作品百科。
 
 - **[充值官方 AI 余额](https://yachiyo.hk/payments)** · 登录支付中心，为官方聊天和语音服务充值，查看订单与用量。
-- **[在爱发电赞助月读空间](https://ifdian.net/a/redchenk)** · 自愿分担服务器、存储和 CDN 开支，也可以[扫码赞助](#支持项目)。
+- **[在爱发电赞助月读空间](https://www.ifdian.net/a/redchenk?utm_source=copylink&utm_medium=link)** · 自愿分担服务器、存储和 CDN 开支，也可以[扫码赞助](#支持项目)。
 
 [国内站 · 中文 / 日语](https://yachiyo.hk) · [海外站 · English](https://tsukuyomi-space.com) · [部署指南](docs/DEPLOY.md) · [问题反馈](https://github.com/redchenk/tsukuyomi-space/issues)
 
@@ -263,12 +263,12 @@ VITE_SITE_LANGUAGE=en npm run build:web
 如果月读空间为你带来了帮助，可以通过爱发电自愿支持服务器、对象存储、CDN 与持续维护。支持不会影响站内功能、内容审核或用户权限。
 
 <p align="center">
-  <a href="https://ifdian.net/a/redchenk">
+  <a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">
     <img src="assets/images/support/afdian-redchenk.jpg" width="240" alt="通过爱发电支持 redchenk 和月读空间">
   </a>
 </p>
 
-<p align="center"><a href="https://ifdian.net/a/redchenk">前往爱发电支持月读空间</a></p>
+<p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">前往爱发电支持月读空间</a></p>
 
 ## 技术与素材来源
 

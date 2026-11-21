@@ -7,7 +7,7 @@
 Tsukuyomi Space is a nonprofit fan community inspired by the world of *Cosmic Princess Kaguya!*. Built with Vue 3 and Express, it brings together a Live2D AI companion, creative publishing, community interaction, and a public fan wiki.
 
 - **[Top up your AI balance](https://tsukuyomi-space.com/payments)** · Sign in to add credit for official chat and voice services and check your orders and usage.
-- **[Support Tsukuyomi Space on Afdian](https://ifdian.net/a/redchenk)** · Help cover hosting, storage, and CDN costs. You can also [scan the support QR code](#support-the-project).
+- **[Support Tsukuyomi Space on Afdian](https://www.ifdian.net/a/redchenk?utm_source=copylink&utm_medium=link)** · Help cover hosting, storage, and CDN costs. You can also [scan the support QR code](#support-the-project).
 
 [Chinese / Japanese site](https://yachiyo.hk) · [English site](https://tsukuyomi-space.com) · [Deployment guide](docs/DEPLOY.md) · [Report an issue](https://github.com/redchenk/tsukuyomi-space/issues)
 
@@ -253,12 +253,12 @@ VITE_SITE_LANGUAGE=en npm run build:web
 If Tsukuyomi Space has been useful to you, you can support its server, object-storage, CDN, and maintenance costs through Afdian. Contributions do not affect site features, moderation, or user permissions.
 
 <p align="center">
-  <a href="https://ifdian.net/a/redchenk">
+  <a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">
     <img src="assets/images/support/afdian-redchenk.jpg" width="240" alt="Support redchenk and Tsukuyomi Space on Afdian">
   </a>
 </p>
 
-<p align="center"><a href="https://ifdian.net/a/redchenk">Support Tsukuyomi Space on Afdian</a></p>
+<p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">Support Tsukuyomi Space on Afdian</a></p>
 
 ## Technology and asset credits
 
