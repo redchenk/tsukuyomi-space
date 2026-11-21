@@ -1,4 +1,4 @@
-name: Publish shrine entrance overseas
+name: Publish payment centre entry overseas
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/shrine-timber-rollout'
+    if: github.ref == 'refs/heads/codex/payment-visibility-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 5146672c8dc2c136f5cb55f6f75b00076af1ba5b
+          ref: 7af96304bb9f3814200fdf644f9f8d7c35245de6
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -34,11 +34,11 @@ jobs:
         run: |
           set -eu
           npm ci
-          node --test tests/frontend-access.test.cjs tests/frontend-shrine-camera.test.mjs
+          node --test tests/frontend-navigation.test.js
           npm run build:web:overseas
-          echo '0154bee08401c11026bb72e9cf716a9c3c7cff6c36bc58902aa6f4b2e201f897  dist/frontend/index.html' | sha256sum -c -
-          cp ../deploy/shrine-overseas-manifest.json "$RUNNER_TEMP/manifest.json"
-          tar -czf "$RUNNER_TEMP/shrine-release.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" shrine-release.py dedup-entry-media.py -C "$RUNNER_TEMP" manifest.json
+          echo '5a94c621d1d8b330b6e17063c6f3450c4e41c7cf1ee657554ee2bb90d9678f37  dist/frontend/index.html' | sha256sum -c -
+          cp ../deploy/payment-entry-manifest.json "$RUNNER_TEMP/manifest.json"
+          tar -czf "$RUNNER_TEMP/payment-entry.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" payment-visibility-release.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -57,12 +57,12 @@ jobs:
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           for attempt in 1 2 3; do
-            label="shrine-entry-overseas-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            label="payment-entry-overseas-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
             stage="/tmp/tsukuyomi-$label"
             echo "Starting upload and activation (attempt $attempt)"
             if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
-              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/shrine-release.py' '$stage' '$label'; rm -rf -- '$stage'" \
-              < "$RUNNER_TEMP/shrine-release.tgz"; then
+              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/payment-visibility-release.py' '$stage' '$label'; rm -rf -- '$stage'" \
+              < "$RUNNER_TEMP/payment-entry.tgz"; then
               exit 0
             else
               result=$?
