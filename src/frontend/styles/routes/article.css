@@ -42,7 +42,7 @@
 .comment-login { background: var(--soft); border-radius: var(--r-control); padding: 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 14px; }
 .comment-item { padding: 26px 0; border-bottom: 1px solid var(--line); }
 .comment-header, .comment-author-link, .comment-meta, .comment-tools { display: flex; align-items: center; gap: 12px; }
-.comment-header { justify-content: space-between; }
+.comment-header { justify-content: space-between; flex-wrap: wrap; row-gap: 4px; }
 .comment-avatar { display: grid; place-items: center; background: var(--soft); overflow: hidden; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 .comment-content { font-size: 16px; line-height: 1.8; margin: 14px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .comment-date, .comment-time, .comment-tools { font-size: 13px; color: var(--muted); }
@@ -57,5 +57,7 @@
 }
 
 .comment-author-link { display: inline-flex; align-items: center; gap: 10px; }
+.comment-author-name { min-inline-size: 0; overflow-wrap: anywhere; text-align: start; }
+:root .comment-header .comment-author-link > .user-level-badge { flex: none; white-space: nowrap; }
 .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .comment-tool-btn { display: inline-flex; gap: 6px; align-items: center; }

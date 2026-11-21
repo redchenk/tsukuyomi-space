@@ -102,3 +102,42 @@ test('manual scrolling cancels comment alignment even when images finish loading
         await expect.poll(async () => Math.abs((await page.evaluate(() => scrollY)) - manualPosition)).toBeLessThan(5);
     } finally { f.release(); }
 });
+
+test('phone readers keep the contents label and comment levels on one line', async ({ page }) => {
+    const stamp = '2026-11-21 13:42:08';
+    const messages = [
+        { id: 801, article_id: 3, user_id: 'reader-a', author: 'reader-a', author_nickname: '月下同行的读者', content: '评论', created_at: stamp },
+        { id: 802, parent_id: 801, article_id: 3, user_id: 'reader-b', author: 'reader-b', author_nickname: 'MoonlightReaderWithAVeryLongName月下同行', content: '回复', created_at: stamp }
+    ];
+    await page.route(/\/articles\/3\/messages(?:\?|$)/, route => route.fulfill({ json: { success: true, data: messages } }));
+    await page.route(/\/growth\/public\?/, route => route.fulfill({ json: { success: true, data: messages.map(m => ({ userId: m.user_id, level: 9 })) } }));
+    await page.route(/\/articles\/3\/live\//, route => route.fulfill({ json: { success: true, data: { ...article, content: '## 第一节\n\n正文' } } }));
+    await page.setViewportSize({ width: 320, height: 780 });
+    await page.goto('/article?id=3');
+    const toolbar = page.locator('.article-reading-tools');
+    const opener = toolbar.locator('button').first();
+    const levels = page.locator('.comment-header .user-level-badge strong');
+    await expect(levels).toHaveCount(2);
+    for (const width of [320, 375, 390, 430]) {
+        await page.setViewportSize({ width, height: 780 });
+        const targets = [opener.locator('span'), ...await levels.all()];
+        const label = await opener.locator('span').innerText();
+        const lang = await page.locator('html').getAttribute('lang');
+        expect(label).toBe(lang.startsWith('en') ? 'TOC' : lang.startsWith('ja') ? '目次' : '目录');
+        for (const target of targets) {
+            const fits = await target.evaluate(el => {
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                const rects = [...range.getClientRects()].filter(r => r.width && r.height);
+                const box = (el.closest('.user-level-badge') || el).getBoundingClientRect();
+                return rects.length === 1 && rects[0].left >= box.left - 1 && rects[0].right <= box.right + 1;
+            });
+            expect(fits, (await target.innerText()) + ' at ' + width).toBe(true);
+        }
+        expect(await page.locator('.comment-header').evaluateAll(nodes => nodes.every(el => el.scrollWidth <= el.clientWidth + 1))).toBe(true);
+    }
+    await opener.click();
+    const contents = page.getByRole('dialog').filter({ has: page.locator('.mobile-article-toc') });
+    await contents.locator('a').first().click();
+    await expect(page.locator('#article-section-1')).toBeFocused();
+});

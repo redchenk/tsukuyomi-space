@@ -73,7 +73,7 @@
   .mini-player-copy { min-width: 0; display: grid; gap: 2px; }
   .mini-player-copy strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 600; }
   .mini-player-copy small { font-size: 12px; color: var(--muted); }
-  .article-reading-tools { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 60; bottom: calc(var(--dock-gap) + var(--safe-b)); height: var(--dock-h); padding: 6px; border-radius: 24px; view-transition-name: reading-tools; }
+  .article-reading-tools { --ui-action-inset: .125rem; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 60; bottom: calc(var(--dock-gap) + var(--safe-b)); height: var(--dock-h); padding: 6px; border-radius: 24px; view-transition-name: reading-tools; }
   .article-reading-tools button { display: grid; place-content: center; justify-items: center; gap: 4px; min-width: 0; min-height: 52px; font-size: 12px; color: var(--muted); border-radius: 16px; }
   .article-reading-tools button[aria-pressed='true'] { background: var(--soft); color: var(--accent); }
   .article-reading-tools span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

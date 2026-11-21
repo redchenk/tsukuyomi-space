@@ -46,9 +46,9 @@ const { headings, activeHeading, progress, plainText, tocOpen, goToHeading, scro
 // Scrolling updates progress, not the text used to calculate reading time.
 const articleReadingTime = computed(() => readingTimeLabel(article.value, props.lang, plainText.value));
 const readerCopy = computed(() => ({
-  zh: { back: '返回主舞台', toc: '文章目录', share: '分享', views: '次阅读', category: '未分类', bookmark: '收藏', saved: '已收藏', like: '点赞', liked: '已点赞', comments: '评论' },
-  ja: { back: 'ステージに戻る', toc: '目次', share: 'シェア', views: '回閲覧', category: '未分類', bookmark: '保存', saved: '保存済み', like: 'いいね', liked: 'いいね済み', comments: 'コメント' },
-  en: { back: 'Back to the Stage', toc: 'On this page', share: 'Share', views: 'views', category: 'Uncategorized', bookmark: 'Bookmark', saved: 'Bookmarked', like: 'Like', liked: 'Liked', comments: 'Comments' }
+  zh: { back: '返回主舞台', toc: '文章目录', tocButton: '目录', share: '分享', views: '次阅读', category: '未分类', bookmark: '收藏', saved: '已收藏', like: '点赞', liked: '已点赞', comments: '评论' },
+  ja: { back: 'ステージに戻る', toc: '目次', tocButton: '目次', share: 'シェア', views: '回閲覧', category: '未分類', bookmark: '保存', saved: '保存済み', like: 'いいね', liked: 'いいね済み', comments: 'コメント' },
+  en: { back: 'Back to the Stage', toc: 'On this page', tocButton: 'TOC', share: 'Share', views: 'views', category: 'Uncategorized', bookmark: 'Bookmark', saved: 'Bookmarked', like: 'Like', liked: 'Liked', comments: 'Comments' }
 }[props.lang]));
 const comments = ref([]);
 const commentsLoading = ref(false);
@@ -773,7 +773,7 @@ watch(() => route.hash, revealCommentHash);
   </main>
   <MobileSheet :open="contentsOpen" :return-focus="contentsTrigger" :title="readerCopy.toc" @close="contentsOpen = false"><nav class="mobile-article-toc" :aria-label="readerCopy.toc"><button class="ghost-btn" type="button" @click="contentsOpen = false; nextTick(() => jumpToArticleTarget('article-top'))"><TsIcon name="chevronUp" :size="18" />{{ replyLabels.top }}</button><a v-for="heading in headings" :key="heading.id" :href="`#${heading.id}`" :class="{ 'is-subheading': heading.level === 3 }" :aria-current="activeHeading === heading.id ? 'location' : undefined" @click.prevent="selectHeading(heading.id)">{{ heading.text }}</a><p v-if="!headings.length">{{ lang === 'en' ? 'This story has no headings.' : '这篇故事没有分节标题，可以直接阅读。' }}</p></nav></MobileSheet>
   <nav v-if="article && !loading && !keyboardOpen" class="article-reading-tools" :aria-label="replyLabels.navigation">
-    <button data-ui="secondary" ref="contentsTrigger" type="button" :aria-expanded="contentsOpen" @click="contentsOpen = true"><TsIcon name="list" :size="20" /><span>{{ readerCopy.toc }}</span></button>
+    <button data-ui="secondary" ref="contentsTrigger" type="button" :aria-label="lang === 'en' ? 'Table of contents (TOC)' : readerCopy.toc" aria-haspopup="dialog" :aria-expanded="contentsOpen" @click="contentsOpen = true"><TsIcon name="list" :size="20" /><span>{{ readerCopy.tocButton }}</span></button>
     <button data-ui="secondary" type="button" :aria-pressed="articleLike.liked" :disabled="articleLike.loading" @click="toggleArticleLike"><TsIcon name="heart" :size="20" /><span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }}</span></button>
     <button data-ui="secondary" type="button" :aria-pressed="bookmark.bookmarked" :disabled="bookmark.loading" @click="toggleBookmark"><TsIcon name="bookmark" :size="20" /><span>{{ bookmark.bookmarked ? readerCopy.saved : readerCopy.bookmark }}</span></button>
     <button data-ui="secondary" type="button" :aria-label="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="20" /><span>{{ readerCopy.comments }}</span></button>
