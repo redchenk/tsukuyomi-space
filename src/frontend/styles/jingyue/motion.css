@@ -82,13 +82,17 @@
     box-shadow: var(--liquid-depth);
   }
 }
+/* Stretch the native hit area over a positioned media wrapper. Translating the
+   button would make it the containing block and collapse the clickable area. */
+:root button[data-hit-area="parent"] { position: static; }
+button[data-hit-area="parent"]::before { content: ''; position: absolute; inset: 0; }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):hover {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"], [data-hit-area="parent"]):hover {
     translate: 0 -1px;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):active {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"], [data-hit-area="parent"]):active {
     translate: 0 1px;
     scale: .985 .95;
     transition-duration: 65ms;

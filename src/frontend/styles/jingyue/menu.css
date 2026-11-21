@@ -54,7 +54,6 @@
   background: color-mix(in srgb, var(--surface) 68%, transparent);
 }
 :root .site-navigation-dialog .explore-groups .menu-link { padding: 9px 4px; gap: 9px; }
-:root .gallery-thumb,
 :root body .pixel-workspace .pw-workbench button[data-ui-part="canvas"]:not(.pw-properties-scrim) {
   border-radius: var(--r-button);
 }

@@ -10,6 +10,11 @@ async function layout(page) {
   return page.evaluate(selector => {
     const problems = [];
     if (document.documentElement.scrollWidth > innerWidth + 1) problems.push('page exceeds viewport: ' + document.documentElement.scrollWidth);
+    const buttons = document.querySelectorAll('button, input[type="submit"], [role="button"], [data-ui], a.menu-link, .site-search-result, summary');
+    for (const button of buttons) {
+      if (!button.getClientRects().length || button.matches('[class*="scrim"], .gomoku-cell')) continue;
+      if (getComputedStyle(button).borderRadius !== '999px') problems.push('button shape: ' + button.outerHTML.slice(0, 120));
+    }
     for (const el of document.querySelectorAll(selector)) {
       const bounds = el.getBoundingClientRect();
       if (!bounds.width || !bounds.height || bounds.right < 0 || bounds.left > innerWidth || getComputedStyle(el).visibility === 'hidden') continue;
@@ -254,7 +259,7 @@ test('liquid controls follow a pointer and emit one set of rings per native acti
   const panel = page.locator('.samples-page');
   const sample = variant => panel.locator(`.ui-panel [data-ui="${variant}"]`).first();
   for (const variant of ['primary','accent','secondary','choice','danger','ghost']) {
-    await expect(sample(variant)).toHaveCSS('border-radius','12px');
+    await expect(sample(variant)).toHaveCSS('border-radius','999px');
     await expect(sample(variant)).toHaveCSS('clip-path','none');
   }
   const target = panel.locator('.ui-panel button[data-ui="secondary"]:enabled').first();

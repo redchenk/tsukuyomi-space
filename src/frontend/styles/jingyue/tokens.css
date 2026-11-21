@@ -19,7 +19,7 @@
   --sans: 'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', system-ui, Arial, sans-serif;
   --display: 'Songti SC', 'Noto Serif SC', var(--serif);
   --r-control: 12px;
-  --r-button: var(--r-control);
+  --r-button: var(--r-pill);
   --lens-sky: #efdfce;
   --lens-hill: #a888a2;
   --lens-far: #d2a0b1;

@@ -77,7 +77,7 @@
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: var(--r-control);
+  border-radius: var(--r-button);
   color: var(--muted);
 }
 :root .site-search-dialog .site-search-field {
@@ -147,29 +147,33 @@
   min-width: 0;
   min-height: 44px;
   overflow-wrap: anywhere;
-  border-radius: var(--r-control);
+  border-radius: var(--r-button);
   gap: 9px;
   font: 500 .9rem/1.45 var(--sans);
   padding: 8px;
 }
 :root .site-search-dialog .shelf-cover {
-  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 0;
-  padding: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 5px;
   background: var(--surface);
   border: 1px solid var(--shelf-rule);
 }
-.shelf-cover img { width: 100%; aspect-ratio: 2.25; height: auto; object-fit: cover; }
+.shelf-cover img {
+  flex: none;
+  inline-size: 34px;
+  block-size: 34px;
+  object-fit: cover;
+  border-radius: var(--r-pill);
+}
 :root .site-search-dialog .shelf-cover > span {
   display: flex;
+  flex: 1;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  padding: 7px 9px;
 }
 .shelf-cover svg { flex: none; color: var(--shelf-mark); }
 .shelf-index { gap: 0 10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
@@ -246,7 +250,7 @@
   padding: 8px 10px;
   border: 1px solid var(--shelf-rule);
   background: var(--surface);
-  border-radius: var(--r-control);
+  border-radius: var(--r-button);
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -290,9 +294,6 @@
     max-height: calc(var(--ts-visual-height, 100dvh) - 8px);
   }
   .shelf-covers, .shelf-index { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  :root .shelf-covers .shelf-cover { flex-direction: row; align-items: stretch; }
-  .shelf-cover img { width: 34%; aspect-ratio: auto; max-height: 60px; min-height: 44px; }
-  :root .shelf-covers .shelf-cover > span { padding: 5px 6px; }
   :root .shelf-cover > span svg { display: none; }
   :root .site-search-help { display: none; }
 }

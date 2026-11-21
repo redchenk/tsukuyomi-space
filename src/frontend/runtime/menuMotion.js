@@ -49,7 +49,10 @@ function tracks(el, session) {
   const top = (box.height-height) * clamp((anchor.top + anchor.height/2 - box.top) / box.height);
   const radius = getComputedStyle(el).borderTopLeftRadius;
   const inset = [top, box.width-width-left, box.height-height-top, left].map(n => n.toFixed(2)+'px').join(' ');
-  const start = { clipPath: 'inset('+inset+' round 12px)', translate: (anchor.left-box.left-left)+'px '+(anchor.top-box.top-top)+'px' };
+  // Interpolate from the trigger's visible radius, capped to the actual opening size.
+  const triggerRadius = session.source?.el ? parseFloat(getComputedStyle(session.source.el).borderTopLeftRadius) : Infinity;
+  const startRadius = Math.min(width / 2, height / 2, triggerRadius);
+  const start = { clipPath: 'inset('+inset+' round '+startRadius+'px)', translate: (anchor.left-box.left-left)+'px '+(anchor.top-box.top-top)+'px' };
   const end = { clipPath: 'inset(0px 0px 0px 0px round '+radius+')', translate: '0px 0px' };
   const options = { duration, fill: 'both' };
   const shell = el.animate([{...start, offset:0, easing:'cubic-bezier(.24,.78,.2,1)'}, {...end, offset:.71}, {...end, offset:1}], options);

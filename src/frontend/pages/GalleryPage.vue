@@ -613,10 +613,11 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
       </div>
       <div v-else class="gallery-grid" :class="{ 'gallery-grid-spacious': state.columns === 3 }">
         <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
-          <button data-ui-part="canvas" class="gallery-thumb" type="button" :aria-label="t(`查看大图：${imageTitle(asset)}`, `View image: ${imageTitle(asset)}`)" @click="state.selected = asset">
+          <div class="gallery-thumb">
             <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async" data-image-bloom @error="handleImageError($event, asset)" @load="rememberDimensions($event, asset)">
             <span v-if="imageTags(asset).length" class="gallery-image-tag">{{ imageTags(asset)[0] }}</span>
-          </button>
+            <TsButton class="gallery-open" variant="secondary" data-hit-area="parent" :aria-label="t(`查看大图：${imageTitle(asset)}`, `View image: ${imageTitle(asset)}`)" @click="state.selected = asset"><TsIcon name="maximize" :size="18" /></TsButton>
+          </div>
           <div class="gallery-card-body">
             <h3 class="gallery-card-title" :title="imageTitle(asset)">{{ imageTitle(asset) }}</h3>
             <div class="gallery-card-meta">
