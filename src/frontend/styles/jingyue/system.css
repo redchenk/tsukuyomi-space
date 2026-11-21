@@ -10,6 +10,7 @@
   --ui-heading: clamp(1.875rem, 1.25rem + 2vw, 3rem);
   --ui-reading: 72ch;
   --ui-focus: var(--accent);
+  --ui-transition-time: var(--fast);
 }
 @layer components {
   :where([data-ui]) { display: inline-flex; align-items: center; justify-content: center; }
@@ -41,7 +42,7 @@
   text-decoration: none;
   white-space: normal;
   overflow-wrap: anywhere;
-  transition: background-color var(--fast), color var(--fast), border-color var(--fast);
+  transition: background-color var(--ui-transition-time), color var(--ui-transition-time), border-color var(--ui-transition-time);
 }
 :root :is([data-ui="primary"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
   --ui-bg: var(--accent);
@@ -121,5 +122,5 @@
   :is([data-ui], .primary-btn, .ghost-btn, .danger-btn):disabled { border-color: GrayText; color: GrayText; }
 }
 @media (prefers-reduced-motion: reduce) {
-  :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip) { transition: none; }
+  :root { --ui-transition-time: 0s; }
 }
