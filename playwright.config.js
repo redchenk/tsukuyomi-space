@@ -34,7 +34,7 @@ module.exports = defineConfig({
         },
         {
             name: 'webkit-mobile',
-            testMatch: /(?:community-chat|terminal-official-(?:usage|services)|room-dialogue-architecture|room-affection|drift-keyboard|drift-themes|drift-daily|drift-send-film|scroll-motion|access-transition|room-entry|site-knowledge|github-oauth|google-oauth|qq-binding|partner-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-(?:redesign|hub)|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|room-feedback|game-center|kaguya-ride|upload-ui|attachment-upload|article-loading|article-jump|article-sharing|pixel-mobile-canvas|unified-navigation|directed-replies|content-translation-drafts|user-nickname|search-password-forms|netease-music)\.spec\.js/,
+            testMatch: /(?:design-system|community-chat|terminal-official-(?:usage|services)|room-dialogue-architecture|room-affection|drift-keyboard|drift-themes|drift-daily|drift-send-film|scroll-motion|access-transition|room-entry|site-knowledge|github-oauth|google-oauth|qq-binding|partner-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-(?:redesign|hub)|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|room-feedback|game-center|kaguya-ride|upload-ui|attachment-upload|article-loading|article-jump|article-sharing|pixel-mobile-canvas|unified-navigation|directed-replies|content-translation-drafts|user-nickname|search-password-forms|netease-music)\.spec\.js/,
             use: { ...devices['iPhone 13'] }
         }
     ],

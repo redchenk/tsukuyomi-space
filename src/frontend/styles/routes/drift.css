@@ -443,3 +443,7 @@ body:has(.drift-bottle-dialog[open]) .site-music-drawer { visibility: hidden; }
     overflow: hidden;
     clip-path: inset(50%);
 }
+
+@media (max-width: 420px) {
+  .drift-tabs [role="tab"] { flex-direction: column; --ui-action-inset: .25rem; }
+}

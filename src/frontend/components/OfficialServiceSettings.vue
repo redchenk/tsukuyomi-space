@@ -58,7 +58,7 @@ async function reconcile(item, action) {
   <section class="terminal-settings-block llm-settings" aria-labelledby="llm-heading">
     <div class="terminal-settings-title"><h2 id="llm-heading">语言模型</h2><span>LLM</span></div>
     <p v-if="error && !draft" class="form-message error" role="alert">{{ error }}</p>
-    <div class="payment-actions"><button type="button" class="ghost-btn" :disabled="busy" @click="load">重新读取配置</button></div>
+    <div class="payment-actions ui-actions"><button type="button" class="ghost-btn" :disabled="busy" @click="load">重新读取配置</button></div>
     <form v-if="draft" class="payment-settings-form" @submit.prevent="save">
       <fieldset :disabled="busy"><legend>供应商与模型</legend><div class="payment-form-grid"><label>供应商<select v-model="draft.provider" @change="changeProvider"><option v-for="item in settings.providers" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>模型 ID<input v-model="draft.model" required maxlength="128" pattern="[A-Za-z0-9][A-Za-z0-9._:\/\-]{0,127}" /></label></div>
         <p class="payment-fine">{{ provider?.host }} · {{ provider?.hasKey ? '已加密保存密钥' : '尚未配置密钥' }}</p>

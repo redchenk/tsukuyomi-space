@@ -72,6 +72,9 @@ function seedE2EUser() {
 }
 
 const app = createApp();
+if (process.env.JINGYUE_DESIGN_PREVIEW === '1') {
+    app.get('/design-system', (_req, res) => res.sendFile(path.join(fixtureRoot, 'dist/frontend/index.html')));
+}
 seedE2EUser();
 // Each message journey has its own account quota. Sharing e2e-user across the
 // whole suite (and retries) otherwise exhausts the real 12 writes / 10 minutes

@@ -164,15 +164,15 @@ useContentTranslationRefresh(loadLinks);
 </script>
 
 <template>
-  <main class="page friend-link-page friend-links-page" :aria-busy="state.loading">
+  <main data-ui-layout="content" class="page friend-link-page friend-links-page" :aria-busy="state.loading">
     <header class="friend-link-hero" data-material="content">
-      <button class="friend-link-back" type="button" @click="go('/plaza')">
+      <button data-ui="quiet" class="friend-link-back" type="button" @click="go('/plaza')">
         <TsIcon name="arrowLeft" :size="18" />
         <span>{{ copy.back }}</span>
       </button>
       <div class="friend-link-hero-copy">
         <span class="friend-link-eyebrow">{{ copy.eyebrow }}</span>
-        <h1>{{ copy.title }}</h1>
+        <h1 class="ui-page-title">{{ copy.title }}</h1>
         <p>{{ copy.subtitle }}</p>
       </div>
       <div class="friend-links-hero-side">

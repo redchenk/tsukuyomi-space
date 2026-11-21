@@ -31,7 +31,7 @@ const heading = () => props.lang === 'en' ? 'Share' : props.lang === 'ja' ? '共
             <span>TSUKUYOMI SHARE</span>
             <h2 id="social-share-title">{{ heading() }}</h2>
           </div>
-          <button ref="closeButton" data-modal-close class="social-share-close" type="button" aria-label="关闭" @click="emit('close')">
+          <button data-ui="secondary" ref="closeButton" data-modal-close class="social-share-close" type="button" aria-label="关闭" @click="emit('close')">
             <TsIcon name="x" :size="18" />
           </button>
         </header>

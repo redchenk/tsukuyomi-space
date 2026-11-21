@@ -32,9 +32,9 @@ async function authorize(approve) {
 </script>
 
 <template>
-  <main class="fushi-connect" data-material="content">
+  <main data-ui-layout="content" class="fushi-connect" data-material="content">
     <p class="eyebrow">FUSHI · COMMUNITY ASSISTANT</p>
-    <h1>连接社区助手</h1>
+    <h1 class="ui-page-title">连接社区助手</h1>
     <p>允许 {{ clientLabel }} 使用 Fushi 专属账号处理相关讨论。网页账号的管理权限不会授予插件。</p>
     <ul>
       <li>读取其他用户对 Fushi 内容的公开回复和讨论上下文。</li>

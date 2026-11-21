@@ -80,8 +80,8 @@ onMounted(async () => {
     <p v-if="error" class="form-message error" role="alert">{{ error }}</p>
     <p v-if="message" class="form-message success" role="status">{{ message }}</p>
     <nav class="manager-tabs" aria-label="支付管理视图">
-      <button type="button" :aria-pressed="tab === 'orders'" @click="tab = 'orders'">支付订单</button>
-      <button type="button" :aria-pressed="tab === 'products'" @click="tab = 'products'">商品与收款<span v-if="settings">{{ settings.products.length }}</span></button>
+      <button data-ui="choice" type="button" :aria-pressed="tab === 'orders'" @click="tab = 'orders'">支付订单</button>
+      <button data-ui="choice" type="button" :aria-pressed="tab === 'products'" @click="tab = 'products'">商品与收款<span v-if="settings">{{ settings.products.length }}</span></button>
     </nav>
     <p v-if="loading && tab === 'products'" role="status">正在读取支付配置…</p>
     <template v-if="!loading || tab === 'orders'">
@@ -96,13 +96,13 @@ onMounted(async () => {
         </details>
         <label class="terminal-check"><input v-model="settings.enabled" type="checkbox" :disabled="saving || (!settings.enabled && !settings.readiness.configured)"> 开启在线收款</label>
         <p>关闭后停止创建新订单和打开收银台，已有订单仍可验签入账与查单。</p>
-        <div class="payment-actions">
+        <div class="payment-actions ui-actions">
           <button class="ghost-btn" type="button" :disabled="saving || settings.products.length >= 20" @click="addProduct">添加商品</button>
           <button class="primary-btn" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存支付配置' }}</button>
         </div>
         <ul class="product-list" aria-label="商品列表">
           <li v-for="(item, offset) in visibleProducts" :key="offset">
-            <button type="button" :aria-pressed="selectedIndex === (productPage - 1) * pageSize + offset" @click="selectProduct((productPage - 1) * pageSize + offset)">
+            <button data-ui-part="row" type="button" :aria-pressed="selectedIndex === (productPage - 1) * pageSize + offset" @click="selectProduct((productPage - 1) * pageSize + offset)">
               <span><strong>{{ item.title || '未命名商品' }}</strong><small>{{ item.id }}</small></span>
               <span class="product-price">¥{{ item.price || '0.00' }}<small>{{ item.enabled ? '已上架' : '未上架' }}</small></span>
             </button>
@@ -125,7 +125,7 @@ onMounted(async () => {
       </form>
       <section v-if="tab === 'orders'" class="terminal-settings-block">
         <div class="terminal-settings-title"><h2>支付订单</h2><span>充值商品验签后自动入账，其他服务按商品说明交付</span></div>
-        <div class="payment-actions">
+        <div class="payment-actions ui-actions">
           <label>订单状态<select v-model="filter" @change="loadOrders(1)"><option value="">全部</option><option value="pending">待支付</option><option value="paid">已支付</option><option value="closed">已关闭</option></select></label>
           <button class="ghost-btn" type="button" @click="loadOrders(orders.page)">刷新订单列表</button>
         </div>
@@ -138,7 +138,7 @@ onMounted(async () => {
             </tr><tr v-if="!orders.items.length"><td colspan="7">暂无支付订单</td></tr></tbody>
           </table>
         </div>
-        <div class="payment-actions">
+        <div class="payment-actions ui-actions">
           <button class="ghost-btn" type="button" :disabled="orders.page <= 1" @click="loadOrders(orders.page - 1)">上一页</button>
           <span>{{ orders.page }} / {{ orders.totalPages }} · 共 {{ orders.total }} 笔</span>
           <button class="ghost-btn" type="button" :disabled="orders.page >= orders.totalPages" @click="loadOrders(orders.page + 1)">下一页</button>

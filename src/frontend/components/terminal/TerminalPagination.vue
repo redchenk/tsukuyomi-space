@@ -43,7 +43,7 @@ function go(page) {
       {{ rangeStart }}-{{ rangeEnd }} / {{ totalItems }} {{ $ui(itemLabel) }}
     </div>
     <div class="terminal-pagination-controls">
-      <button
+      <button data-ui="secondary"
         class="terminal-page-btn terminal-page-nav"
         type="button"
         :disabled="currentPage <= 1"
@@ -56,7 +56,7 @@ function go(page) {
       </button>
       <template v-for="item in pageItems" :key="item">
         <span v-if="typeof item === 'string'" class="terminal-page-gap" aria-hidden="true">...</span>
-        <button
+        <button data-ui="secondary"
           v-else
           class="terminal-page-btn"
           :class="{ active: item === currentPage }"
@@ -68,7 +68,7 @@ function go(page) {
           {{ item }}
         </button>
       </template>
-      <button
+      <button data-ui="secondary"
         class="terminal-page-btn terminal-page-nav"
         type="button"
         :disabled="currentPage >= totalPages"

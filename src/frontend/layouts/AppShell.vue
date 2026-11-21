@@ -177,16 +177,16 @@ onUnmounted(() => {
           <span v-if="item.key === 'chatroom'" class="nav-chatroom-label"><TsIcon :name="item.icon" :size="16" />{{ item.label }}</span>
           <template v-else>{{ item.key === 'download' ? tr('下载', 'Download', 'ダウンロード') : item.label }}</template>
         </a>
-        <button type="button" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)">{{ tr('更多', 'More', 'もっと') }}<TsIcon name="chevronDown" :size="13" /></button>
+        <button data-ui-part="navigation" type="button" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)">{{ tr('更多', 'More', 'もっと') }}<TsIcon name="chevronDown" :size="13" /></button>
       </nav>
       <div class="header-actions">
         <PaymentCenterLink :lang="lang" />
         <a class="site-tool-button header-download" href="/download" :aria-label="copy.download" :title="copy.download" :aria-current="routeName === 'download' ? 'page' : undefined" @pointerenter="warmRoutePath('/download')" @click="navigate($event, { path: '/download' })"><TsIcon name="download" :size="19" /></a>
-        <button class="header-search" :aria-label="copy.search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ tr('搜索', 'Search', '検索') }}</span><kbd>⌘ K</kbd></button>
+        <button data-ui-part="navigation" class="header-search" :aria-label="copy.search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ tr('搜索', 'Search', '検索') }}</span><kbd>⌘ K</kbd></button>
         <button v-if="music" class="site-tool-button header-music" :class="{ active: music.playing.value }" :aria-label="tr('站内音乐', 'Music')" :aria-expanded="music.drawer.open" @click="music.toggleShell"><TsIcon name="audioLines" :size="19" /></button>
         <button class="site-tool-button header-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
         <button class="site-tool-button header-account" :aria-label="copy.account" aria-controls="site-navigation" :aria-expanded="navOpen && menuMode === 'account'" @click="openNavigation('account', $event)"><img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><TsIcon v-else name="user" :size="19" /><span v-if="unreadNotifications" class="unread-dot"></span></button>
-        <a class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
+        <a data-ui="primary" class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
     </header>
     <dialog ref="navigationRef" id="site-navigation" class="site-navigation-dialog" @keydown="keepModalFocus($event, navigationRef)" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="backdrop">
@@ -194,9 +194,9 @@ onUnmounted(() => {
       <template v-if="menuMode === 'explore'">
         <div class="explore-groups"><section v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
       </template>
-      <div v-else class="account-menu"><a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><span v-if="item.key === 'notifications' && unreadNotifications">{{ unreadNotifications }}</span></a><button v-if="isAuthed" class="menu-link" @click="navOpen = false; emit('logout')"><TsIcon name="logOut" :size="20" />{{ t.logout }}</button></div>
-      <button class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
-      <footer class="menu-preferences"><button class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
+      <div v-else class="account-menu"><a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><span v-if="item.key === 'notifications' && unreadNotifications">{{ unreadNotifications }}</span></a><button data-ui-part="navigation" v-if="isAuthed" class="menu-link" @click="navOpen = false; emit('logout')"><TsIcon name="logOut" :size="20" />{{ t.logout }}</button></div>
+      <button data-ui-part="navigation" class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
+      <footer class="menu-preferences"><button data-ui-part="disclosure" class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button data-ui-part="disclosure" v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="emit('go', $event)" />
     <SiteMusicDrawer v-if="routeName !== 'chatroom' && music?.drawer.open" :music="music" :lang="lang" />
@@ -219,7 +219,7 @@ onUnmounted(() => {
     </footer>
     <nav v-if="showChrome && !keyboardOpen" class="mobile-dock" :style="{ '--dock-count': dockItems.length + 1 }" :aria-label="t.mobilePrimaryNavigation">
       <a v-for="item in dockItems" :key="item.key" :href="item.path" :class="{ 'dock-room': item.key === 'room' }" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><span class="dock-icon"><TsIcon :name="item.icon" :size="22" /></span><span class="dock-label">{{ item.dockLabel || item.label }}</span></a>
-      <button :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)"><span class="dock-icon"><TsIcon name="compass" :size="22" /></span><span class="dock-label">{{ copy.explore }}</span></button>
+      <button data-ui-part="navigation" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)"><span class="dock-icon"><TsIcon name="compass" :size="22" /></span><span class="dock-label">{{ copy.explore }}</span></button>
     </nav>
   </div>
 </template>

@@ -31,9 +31,9 @@ watch(() => props.user?.id, () => { request.value = null; authed.value = false; 
 onUnmounted(() => { revision++; });
 </script>
 <template>
-  <main class="page privacy-page">
-    <header class="privacy-heading"><span class="eyebrow">TSUKUYOMI · ACCOUNT & DATA</span><h1>{{ tr('申请注销账号', 'Request account deletion') }}</h1><p class="privacy-meta">{{ policy.app }}</p><p>{{ tr('由站长核验身份并处理，通常在收到申请后 30 日内完成。提交申请不会立即删除账号或扣除余额。', 'The administrator verifies and handles your request, normally within 30 days of receipt. Submitting does not immediately delete your account or deduct your balance.') }}</p></header>
-    <section class="panel privacy-section privacy-request-layout" aria-labelledby="request-heading">
+  <main data-ui-layout="content" class="page privacy-page">
+    <header class="privacy-heading"><span class="eyebrow">TSUKUYOMI · ACCOUNT & DATA</span><h1 class="ui-page-title">{{ tr('申请注销账号', 'Request account deletion') }}</h1><p class="privacy-meta">{{ policy.app }}</p><p>{{ tr('由站长核验身份并处理，通常在收到申请后 30 日内完成。提交申请不会立即删除账号或扣除余额。', 'The administrator verifies and handles your request, normally within 30 days of receipt. Submitting does not immediately delete your account or deduct your balance.') }}</p></header>
+    <section class="panel privacy-section privacy-request-layout ui-panel" aria-labelledby="request-heading">
       <div class="privacy-request-main">
         <h2 id="request-heading">{{ tr('提交与进度', 'Request and status') }}</h2>
         <p v-if="loading" role="status">{{ tr('正在读取申请状态…', 'Loading request status…') }}</p>
@@ -51,7 +51,7 @@ onUnmounted(() => { revision++; });
         <h3 id="request-help-heading">{{ tr('无法登录或已卸载 App？', 'Cannot sign in or already uninstalled?') }}</h3><p>{{ tr('无需重新安装。请从绑定邮箱发送邮件，说明用户名和注销或部分数据删除请求；不要提供密码、验证码或 API 密钥。', 'No reinstall is required. Email us from your linked address with your username and account or selected-data deletion request. Do not send passwords, verification codes or API keys.') }}</p><a :href="mail">{{ policy.contact }}</a>
       </aside>
     </section>
-    <section v-for="section in sections" :key="section.title" class="panel privacy-section"><h2>{{ section.title }}</h2><p v-for="p in section.paragraphs" :key="p">{{ p }}</p></section>
+    <section v-for="section in sections" :key="section.title" class="panel privacy-section ui-panel"><h2>{{ section.title }}</h2><p v-for="p in section.paragraphs" :key="p">{{ p }}</p></section>
     <RouterLink class="ghost-btn" to="/privacy">{{ tr('阅读完整隐私政策', 'Read the full privacy policy') }}</RouterLink>
   </main>
 </template>

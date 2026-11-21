@@ -22,7 +22,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
     <div class="panel-header" @pointerdown="emit('drag-start', $event)">
       <slot name="header">
         <span class="panel-title"><TsIcon v-if="titleIcon" :name="titleIcon" :size="19" aria-hidden="true" />{{ title }}</span>
-        <button class="panel-close" type="button" aria-label="Close panel" @pointerdown.stop @click.stop="emit('close')"><TsIcon name="x" :size="18" /></button>
+        <button data-ui="icon" class="panel-close" type="button" aria-label="Close panel" @pointerdown.stop @click.stop="emit('close')"><TsIcon name="x" :size="18" /></button>
       </slot>
     </div>
     <slot />

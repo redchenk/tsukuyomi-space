@@ -359,7 +359,7 @@ onBeforeUnmount(() => {
   <div class="site-pet-wrap" :class="routeName ? `site-pet-route-${routeName}` : ''" :inert="entryActive">
     <SitePetGameBubble v-if="gameInteraction" v-show="gameBubbleVisible" :interaction="gameInteraction" :expanded="gameBubbleExpanded"
       @expand="gameBubbleExpanded = true" @close="closeGameBubble" @go="navigate" />
-    <button v-if="floating" ref="petButton" class="site-pet" type="button" :aria-label="gameInteraction ? gameInteraction.copy.petOpen : copy.petLabel"
+    <button data-ui-part="tool" v-if="floating" ref="petButton" class="site-pet" type="button" :aria-label="gameInteraction ? gameInteraction.copy.petOpen : copy.petLabel"
       :aria-expanded="gameInteraction ? gameBubbleExpanded : dialogOpen" :aria-controls="gameInteraction && gameBubbleVisible ? 'site-pet-game-bubble' : undefined"
       :style="petStyle" @click="activatePet"></button>
   </div>
@@ -385,7 +385,7 @@ onBeforeUnmount(() => {
                 <p>{{ copy.subtitle }}</p>
               </div>
             </div>
-            <button class="site-guide-icon-btn" type="button" :aria-label="copy.close" @click="closeGuide">
+            <button data-ui="icon" class="site-guide-icon-btn" type="button" :aria-label="copy.close" @click="closeGuide">
               <TsIcon name="x" :size="20" />
             </button>
           </header>
@@ -396,7 +396,7 @@ onBeforeUnmount(() => {
               <strong>{{ llmStatus.configured ? copy.connected : copy.noModel }}</strong>
               <span>{{ llmStatus.configured ? modelLabel : copy.noModelBody }}</span>
             </div>
-            <button v-if="!llmStatus.configured" class="site-guide-setup" type="button" @click="navigate('/room/settings?setup=1')">
+            <button data-ui="primary" v-if="!llmStatus.configured" class="site-guide-setup" type="button" @click="navigate('/room/settings?setup=1')">
               {{ copy.setup }}
             </button>
           </div>
@@ -414,7 +414,7 @@ onBeforeUnmount(() => {
                     <strong>{{ guideText(guide)[0] }}</strong>
                     <p>{{ guideText(guide)[1] }}</p>
                   </div>
-                  <button type="button" :aria-label="`${copy.open} ${guideText(guide)[0]}`" @click="navigate(guide.path)">
+                  <button data-ui="quiet" type="button" :aria-label="`${copy.open} ${guideText(guide)[0]}`" @click="navigate(guide.path)">
                     <TsIcon name="arrowRight" :size="16" />
                   </button>
                 </article>
@@ -426,7 +426,7 @@ onBeforeUnmount(() => {
                 <h3 id="site-guide-chat-title">{{ copy.ask }}</h3>
               </div>
               <div class="site-guide-suggestions">
-                <button v-for="suggestion in copy.suggestions" :key="suggestion" type="button" :disabled="asking" @click="submitQuestion(suggestion)">
+                <button data-ui-part="tool" v-for="suggestion in copy.suggestions" :key="suggestion" type="button" :disabled="asking" @click="submitQuestion(suggestion)">
                   {{ suggestion }}
                 </button>
               </div>
@@ -457,7 +457,7 @@ onBeforeUnmount(() => {
                   :disabled="asking"
                   @keydown.enter.exact.prevent="submitQuestion()"
                 ></textarea>
-                <button type="submit" :disabled="asking || !question.trim()" :aria-busy="asking">
+                <button data-ui-part="tool" type="submit" :disabled="asking || !question.trim()" :aria-busy="asking">
                   <TsIcon :class="{ 'ts-status-loader-icon': asking }" :name="asking ? 'loader' : 'send'" :size="17" />
                   <span>{{ asking ? copy.sending : copy.send }}</span>
                 </button>

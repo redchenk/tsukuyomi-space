@@ -58,7 +58,7 @@ defineExpose({ reload: load });
 </script>
 
 <template>
-  <section id="models" class="panel payment-models" aria-labelledby="payment-models-title" :aria-busy="loading">
+  <section id="models" class="panel payment-models ui-panel" aria-labelledby="payment-models-title" :aria-busy="loading">
     <div class="payment-section-heading"><div><span class="eyebrow">OFFICIAL API</span><h2 id="payment-models-title">站内直供</h2></div><button type="button" class="ghost-btn" :disabled="loading" @click="load">{{ loading ? '读取中…' : '刷新用量' }}</button></div>
     <p v-if="error" class="form-message error" role="alert">{{ translateFeedback(error) }}</p>
     <p v-if="loading" role="status">正在读取模型与用量…</p>
@@ -80,7 +80,7 @@ defineExpose({ reload: load });
     </template>
   </section>
 
-  <section id="usage" class="panel payment-usage" aria-labelledby="payment-usage-title">
+  <section id="usage" class="panel payment-usage ui-panel" aria-labelledby="payment-usage-title">
     <div class="payment-section-heading"><div><span class="eyebrow">YOUR USAGE</span><h2 id="payment-usage-title">用量账单</h2></div><label class="payment-month">账单月份<input v-model="month" type="month" min="2020-01" :max="maxMonth" :disabled="monthBusy || !dashboard" @change="loadMonth" /></label></div>
     <p v-if="usageError" class="form-message error" role="alert">{{ translateFeedback(usageError) }}</p>
     <p class="payment-fine">按 UTC 自然月统计。余额不按月清零，账单汇总不会再次扣费。</p>

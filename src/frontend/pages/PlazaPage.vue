@@ -716,7 +716,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
 </script>
 
 <template>
-  <main class="page plaza-page">
+  <main data-ui-layout="content" class="page plaza-page">
     <header class="plaza-intro">
       <div>
         <div class="plaza-eyebrow">{{ t.plazaEyebrow }}</div>
@@ -727,7 +727,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
     </header>
 
     <section class="plaza-layout">
-      <section class="panel plaza-compose-panel" :aria-label="t.publish">
+      <section class="panel plaza-compose-panel ui-panel" :aria-label="t.publish">
         <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
           <div class="plaza-compose-icon"><TsIcon name="message" :size="24" /></div>
           <div class="plaza-guest-copy"><h2>{{ designCopy.signIn }}</h2><p>{{ designCopy.guestHint }}</p></div>
@@ -776,7 +776,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
           <article v-for="msg in pagedPlazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card" data-scroll-reveal="off">
             <div class="plaza-msg-meta">
               <div class="plaza-msg-author">
-                <button class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">
+                <button data-ui="quiet" class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">
                 <div class="plaza-avatar">
                   <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author_nickname || msg.author)" loading="lazy" decoding="async">
                   <span v-else>{{ plazaInitial(msg.author_nickname || msg.author) }}</span>
@@ -797,7 +797,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
               @topic="plazaSelectTopic"
             />
             <div class="plaza-msg-footer">
-              <button
+              <button data-ui="quiet"
                 class="icon-btn like-btn"
                 :class="{ liked: isPlazaMessageLiked(msg) }"
                 :aria-pressed="isPlazaMessageLiked(msg)"
@@ -809,11 +809,11 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
                 <TsIcon name="heart" :size="15" />
                 <span>{{ t.like }} {{ msg.like_count || 0 }}</span>
               </button>
-              <button class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">
+              <button data-ui="quiet" class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">
                 <TsIcon name="message" :size="15" />
                 <span>{{ t.reply }} {{ msg.reply_count || 0 }}</span>
               </button>
-              <button class="icon-btn plaza-copy-action" type="button" :aria-label="t.copyLink" :title="t.copyLink" @click="plazaCopyLink(msg.id)">
+              <button data-ui="icon" class="icon-btn plaza-copy-action" type="button" :aria-label="t.copyLink" :title="t.copyLink" @click="plazaCopyLink(msg.id)">
                 <TsIcon name="copy" :size="15" />
               </button>
             </div>
@@ -825,7 +825,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
               <div v-for="reply in plazaVisibleReplies(msg)" :id="'msg-' + reply.id" :key="reply.id" class="plaza-reply-card" :class="{ 'is-preview': !plaza.repliesExpanded[msg.id] }">
                 <div class="plaza-msg-meta" style="margin-bottom:0.45rem;">
                   <div class="plaza-msg-author">
-                    <button class="plaza-author-link" type="button" @click="plazaOpenProfile(reply.author)">
+                    <button data-ui="quiet" class="plaza-author-link" type="button" @click="plazaOpenProfile(reply.author)">
                     <div class="plaza-avatar small">
                       <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author_nickname || reply.author)" loading="lazy" decoding="async">
                       <span v-else>{{ plazaInitial(reply.author_nickname || reply.author) }}</span>
@@ -849,7 +849,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
                   @topic="plazaSelectTopic"
                 />
                 <div class="plaza-msg-footer">
-                  <button class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author_nickname || reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
+                  <button data-ui="quiet" class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author_nickname || reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
                 </div>
                 <div v-if="plaza.replyOpen[reply.id]" class="plaza-reply-form">
                   <PlazaReplyForm v-model="replyDrafts[reply.id]" :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
@@ -857,7 +857,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
                 <ModerationNotice :feedback="replyModeration[reply.id]" />
               </div>
             </div>
-            <button
+            <button data-ui="secondary"
               v-if="(msg.replies || []).length"
               class="plaza-replies-toggle"
               type="button"
@@ -874,7 +874,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
           <nav v-if="plazaTotalPages > 1" class="plaza-pagination" aria-label="Plaza messages pagination">
             <div class="plaza-pagination-info">{{ plazaPageSummary }}</div>
             <div class="plaza-pagination-controls">
-              <button
+              <button data-ui="secondary"
                 class="plaza-page-btn plaza-page-nav"
                 type="button"
                 :disabled="plazaCurrentPage <= 1"
@@ -884,7 +884,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
               </button>
               <template v-for="item in plazaPageItems" :key="item">
                 <span v-if="isPlazaPageGap(item)" class="plaza-page-gap">...</span>
-                <button
+                <button data-ui="secondary"
                   v-else
                   class="plaza-page-btn"
                   :class="{ active: item === plazaCurrentPage }"
@@ -896,7 +896,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
                   {{ item }}
                 </button>
               </template>
-              <button
+              <button data-ui="secondary"
                 class="plaza-page-btn plaza-page-nav"
                 type="button"
                 :disabled="plazaCurrentPage >= plazaTotalPages"
@@ -916,7 +916,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
             <LoadingSkeleton v-if="plaza.topicsLoading" variant="topics" :count="3" :label="t.syncing" />
             <div v-else-if="plaza.topicsError" class="plaza-topic-empty error" role="alert">{{ plaza.topicsError }}</div>
             <template v-else>
-              <button v-for="topic in plaza.topics" :key="topic.topic" class="plaza-topic-chip" :class="{ active: plaza.query === '#' + topic.topic }" :aria-pressed="plaza.query === '#' + topic.topic" type="button" @click="plazaSelectTopic(topic.topic)"><span>#{{ topic.topic }}</span><small>{{ plazaFormatNumber(topic.count) }} {{ designCopy.topicCount }}</small><TsIcon name="chevronRight" :size="14" /></button>
+              <button data-ui="choice" v-for="topic in plaza.topics" :key="topic.topic" class="plaza-topic-chip" :class="{ active: plaza.query === '#' + topic.topic }" :aria-pressed="plaza.query === '#' + topic.topic" type="button" @click="plazaSelectTopic(topic.topic)"><span>#{{ topic.topic }}</span><small>{{ plazaFormatNumber(topic.count) }} {{ designCopy.topicCount }}</small><TsIcon name="chevronRight" :size="14" /></button>
               <div v-if="!plaza.topics.length" class="plaza-topic-empty">{{ isEn ? 'No topics yet. Try posting #TsukuyomiTea#' : isZh ? '还没有话题，试试发布 #月读茶会#' : '最初の #話題# を投稿してみましょう。' }}</div>
             </template>
           </div>
@@ -930,7 +930,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
               <TsIcon name="chevronRight" :size="16" />
             </a>
           </div>
-          <div class="plaza-friend-actions"><a class="ghost-btn" href="/friend-links" @click.prevent="go('/friend-links')">{{ designCopy.directory }}</a><a class="ghost-btn" href="/friend-links/apply" @click.prevent="go('/friend-links/apply')"><TsIcon name="plus" :size="14" />{{ designCopy.apply }}</a></div>
+          <div class="plaza-friend-actions ui-actions"><a class="ghost-btn" href="/friend-links" @click.prevent="go('/friend-links')">{{ designCopy.directory }}</a><a class="ghost-btn" href="/friend-links/apply" @click.prevent="go('/friend-links/apply')"><TsIcon name="plus" :size="14" />{{ designCopy.apply }}</a></div>
         </details>
         <details class="panel plaza-info">
           <summary class="plaza-disclosure-heading"><span><TsIcon name="info" :size="18" />{{ designCopy.info }}</span><TsIcon name="chevronDown" :size="16" /></summary>

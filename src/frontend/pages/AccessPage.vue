@@ -238,7 +238,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="page center-page access-page"
+  <main data-ui-layout="scene" class="page center-page access-page"
     :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed, 'uses-live-shrine': liveEntering }"
     :data-nightfall="nightfall || undefined" :aria-busy="entering">
     <div class="access-media" aria-hidden="true">
@@ -266,12 +266,12 @@ onBeforeUnmount(() => {
         <img :src="brandLogo" alt="" width="64" height="64" decoding="async">
         <span>{{ t.brand }}</span>
       </header>
-      <button v-if="motionAllowed && (liveAvailable || (!standbyEnded && !videoState.failed))" class="access-motion-control" type="button"
+      <button data-ui-part="media" v-if="motionAllowed && (liveAvailable || (!standbyEnded && !videoState.failed))" class="access-motion-control" type="button"
         :aria-label="userPaused ? t.accessPlay : t.accessPause" :title="userPaused ? t.accessPlay : t.accessPause"
         :aria-pressed="userPaused" @click="toggleMotion">
         <TsIcon :name="userPaused ? 'play' : 'pause'" :size="18" />
       </button>
-      <button class="access-sound-control" type="button" :aria-pressed="sound"
+      <button data-ui="secondary" class="access-sound-control" type="button" :aria-pressed="sound"
           :aria-label="t.accessSound" :title="t.accessSound" @click="toggleSound">
           <TsIcon name="volume" :size="18" />
         </button>

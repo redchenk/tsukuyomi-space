@@ -379,14 +379,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page admin-page" :aria-busy="state.checking || state.loading">
+  <main data-ui-layout="workspace" class="page admin-page" :aria-busy="state.checking || state.loading">
     <section v-if="state.checking" class="admin-access-state" aria-busy="true">
       <StatusLoader label="正在验证管理权限" compact />
     </section>
 
     <section v-else-if="state.access !== 'allowed'" class="admin-access-state" role="alert">
       <TsIcon :name="state.access === 'login' ? 'lock' : 'shield'" :size="28" />
-      <h1>{{ state.access === 'login' ? '请先登录' : '无管理权限' }}</h1>
+      <h1 class="ui-page-title">{{ state.access === 'login' ? '请先登录' : '无管理权限' }}</h1>
       <button class="primary-btn" type="button" @click="$emit('go', state.access === 'login' ? `/login?redirect=${encodeURIComponent(route.fullPath)}` : '/hub')">
         {{ state.access === 'login' ? '登录' : '返回大厅' }}
       </button>
@@ -395,7 +395,7 @@ onUnmounted(() => {
     <template v-else>
       <header class="admin-header">
         <div>
-          <h1>内容管理</h1>
+          <h1 class="ui-page-title">内容管理</h1>
         </div>
         <div class="admin-header-actions"><RouterLink v-if="state.admin?.role === 'super_admin'" class="ghost-btn compact" to="/admin/account-deletions">注销申请</RouterLink>
           <span class="admin-role"><TsIcon name="shield" :size="15" />{{ state.admin?.role }}</span>
@@ -406,7 +406,7 @@ onUnmounted(() => {
       </header>
 
       <nav class="admin-tabs" aria-label="管理区域">
-        <button
+        <button data-ui="choice"
           v-for="tab in tabs"
           :key="tab.id"
           type="button"
@@ -431,7 +431,7 @@ onUnmounted(() => {
           </template>
           <template v-else-if="state.active === 'messages'">
             <div class="admin-filter-group" role="group" aria-label="留言状态">
-              <button v-for="filter in messageFilters" :key="filter.id" class="admin-filter-btn" type="button" :class="{ active: state.messageFilter === filter.id }" :aria-pressed="state.messageFilter === filter.id" @click="setMessageFilter(filter.id)">
+              <button data-ui="choice" v-for="filter in messageFilters" :key="filter.id" class="admin-filter-btn" type="button" :class="{ active: state.messageFilter === filter.id }" :aria-pressed="state.messageFilter === filter.id" @click="setMessageFilter(filter.id)">
                 {{ filter.label }} <b>{{ state.summary.messages[filter.id] }}</b>
               </button>
             </div>
@@ -461,7 +461,7 @@ onUnmounted(() => {
             <span v-if="item.pinned_at" class="admin-badge hot">置顶</span>
           </div>
           <div class="admin-row-actions">
-            <button class="icon-btn" type="button" title="编辑" @click="editArticle(item)"><TsIcon name="penLine" :size="17" /></button>
+            <button data-ui="icon" class="icon-btn" type="button" title="编辑" @click="editArticle(item)"><TsIcon name="penLine" :size="17" /></button>
             <button class="ghost-btn compact" type="button" :disabled="isBusy(`article-status-${item.id}`)" @click="toggleArticleStatus(item)">{{ item.status === 'published' ? '下架' : '发布' }}</button>
             <button class="ghost-btn compact" type="button" :disabled="isBusy(`article-pin-${item.id}`)" @click="toggleArticlePin(item)">{{ item.pinned_at ? '取消置顶' : '置顶' }}</button>
             <button class="danger-btn compact" type="button" title="删除文章" :aria-label="`删除文章 ${item.title}`" :disabled="isBusy(`article-delete-${item.id}`)" @click="deleteArticle(item)"><TsIcon name="trash" :size="16" /></button>
@@ -519,7 +519,7 @@ onUnmounted(() => {
             <span>{{ asset.owner_nickname || asset.owner_username || '站点资源' }} · {{ formatDate(asset.created_at) }}</span>
           </div>
           <div class="admin-media-actions">
-            <a class="icon-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer" title="预览"><TsIcon name="eye" :size="17" /></a>
+            <a data-ui="icon" class="icon-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer" title="预览"><TsIcon name="eye" :size="17" /></a>
             <button class="danger-btn compact" type="button" title="删除图片" :aria-label="`删除图片 ${assetName(asset)}`" :disabled="isBusy(`asset-delete-${asset.id}`)" @click="deleteAsset(asset, 'gallery')"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
@@ -537,7 +537,7 @@ onUnmounted(() => {
             <span>{{ asset.owner_nickname || asset.owner_username || '站点资源' }} · {{ asset.mime_type || asset.asset_type }} · {{ formatDate(asset.created_at) }}</span>
           </div>
           <div class="admin-row-actions">
-            <a class="icon-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开"><TsIcon name="external" :size="17" /></a>
+            <a data-ui="icon" class="icon-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开"><TsIcon name="external" :size="17" /></a>
             <button class="danger-btn compact" type="button" title="删除附件" :aria-label="`删除附件 ${assetName(asset)}`" :disabled="isBusy(`asset-delete-${asset.id}`)" @click="deleteAsset(asset, 'attachments')"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
@@ -549,7 +549,7 @@ onUnmounted(() => {
           <TsIcon name="arrowLeft" :size="16" />上一页
         </button>
         <div class="admin-page-numbers">
-          <button v-for="page in pageNumbers" :key="page" type="button" :class="{ active: page === currentPagination.page }" :aria-current="page === currentPagination.page ? 'page' : undefined" @click="goToPage(page)">{{ page }}</button>
+          <button data-ui="secondary" v-for="page in pageNumbers" :key="page" type="button" :class="{ active: page === currentPagination.page }" :aria-current="page === currentPagination.page ? 'page' : undefined" @click="goToPage(page)">{{ page }}</button>
         </div>
         <span>共 {{ currentPagination.total }} 条</span>
         <button class="ghost-btn compact" type="button" :disabled="currentPagination.page >= currentPagination.totalPages" @click="goToPage(currentPagination.page + 1)">

@@ -496,7 +496,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page auth-page auth-page-login">
+  <main data-ui-layout="content" class="page auth-page auth-page-login">
     <section class="auth-shell" :class="{ 'auth-shell-oauth': hasOAuthTicket }">
       <aside class="auth-visual" aria-label="Tsukuyomi Space">
         <div class="auth-visual-sheen" aria-hidden="true"></div>
@@ -521,7 +521,7 @@ onMounted(() => {
         <section v-if="hasOAuthTicket" class="auth-card oauth-panel" data-material="content" :aria-busy="oauth.loading || oauth.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="shield" :size="14" /> OAuth</span>
-            <h1>{{ authTitle }}</h1>
+            <h1 class="ui-page-title">{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ authSubtitle }}</p>
           </div>
 
@@ -544,37 +544,37 @@ onMounted(() => {
                 <TsIcon name="mail" :size="18" />
                 <span>{{ ['github', 'google'].includes(oauth.provider) ? oauthCopy.note : '邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。' }}</span>
               </div>
-              <div class="form-group">
+              <div class="form-group ui-field-group">
                 <label for="qqBindEmail">{{ oauthCopy.email }}</label>
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="mail" :size="18" />
                   <input name="qqBindEmail" id="qqBindEmail" v-model="oauth.email" required type="email" autocomplete="email" placeholder="请输入要绑定的邮箱">
                 </div>
               </div>
-              <div class="form-group">
+              <div class="form-group ui-field-group">
                 <label for="qqEmailBindCode">{{ t.emailCode }}</label>
                 <div class="code-row">
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                     <input autocomplete="one-time-code" name="qqEmailBindCode" id="qqEmailBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                   </div>
-                  <button class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthEmailCode">
+                  <button data-ui="secondary" class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthEmailCode">
                     <TsIcon v-if="oauth.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                     <span :role="oauth.sending.loading ? 'status' : undefined">{{ oauth.sending.label || t.sendCode }}</span>
                   </button>
                 </div>
               </div>
-              <div v-if="oauthNeedsPassword" class="form-group">
+              <div v-if="oauthNeedsPassword" class="form-group ui-field-group">
                 <label for="qqEmailPassword">{{ t.setLoginPassword }}</label>
                 <div class="auth-input-shell has-action">
                   <TsIcon class="auth-field-icon" name="lock" :size="18" />
                   <input name="qqEmailPassword" id="qqEmailPassword" v-model="oauth.newPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
-                  <button class="auth-password-toggle" type="button" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
+                  <button data-ui-part="tool" class="auth-password-toggle" type="button" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
                     <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
                   </button>
                 </div>
               </div>
-              <div v-if="oauthNeedsPassword" class="form-group">
+              <div v-if="oauthNeedsPassword" class="form-group ui-field-group">
                 <label for="qqEmailPasswordConfirm">{{ t.confirmPassword }}</label>
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="shield" :size="18" />
@@ -586,12 +586,12 @@ onMounted(() => {
 
             <template v-else-if="oauth.profile">
               <div class="mode-row">
-                <button class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">QQ 一键进入</button>
-                <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
+                <button data-ui="choice" class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">QQ 一键进入</button>
+                <button data-ui="choice" class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
               </div>
 
               <form v-field-validation v-if="oauth.mode === 'create'" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthCreate">
-                <div class="form-group">
+                <div class="form-group ui-field-group">
                   <label for="qqCreateUsername">用户名</label>
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="user" :size="18" />
@@ -603,34 +603,34 @@ onMounted(() => {
 
               <form v-field-validation v-else :aria-busy="oauth.submitting" @submit.prevent="submitOAuthBind">
                 <div class="mode-row compact">
-                  <button class="mode-btn" :class="{ active: oauth.bindMethod === 'password' }" type="button" @click="setOAuthBindMethod('password')">{{ t.passwordLogin }}</button>
-                  <button class="mode-btn" :class="{ active: oauth.bindMethod === 'code' }" type="button" @click="setOAuthBindMethod('code')">{{ t.codeLogin }}</button>
+                  <button data-ui="choice" class="mode-btn" :class="{ active: oauth.bindMethod === 'password' }" type="button" @click="setOAuthBindMethod('password')">{{ t.passwordLogin }}</button>
+                  <button data-ui="choice" class="mode-btn" :class="{ active: oauth.bindMethod === 'code' }" type="button" @click="setOAuthBindMethod('code')">{{ t.codeLogin }}</button>
                 </div>
-                <div class="form-group">
+                <div class="form-group ui-field-group">
                   <label for="qqBindAccount">{{ t.account }}</label>
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="user" :size="18" />
                     <input name="qqBindAccount" id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" :autocomplete="oauth.bindMethod === 'code' ? 'email' : 'username'">
                   </div>
                 </div>
-                <div v-if="oauth.bindMethod === 'password'" class="form-group">
+                <div v-if="oauth.bindMethod === 'password'" class="form-group ui-field-group">
                   <label for="qqBindPassword">{{ t.password }}</label>
                   <div class="auth-input-shell has-action">
                     <TsIcon class="auth-field-icon" name="lock" :size="18" />
                     <input name="qqBindPassword" id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
-                    <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" @click="showOAuthPassword = !showOAuthPassword">
+                    <button data-ui-part="tool" class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" @click="showOAuthPassword = !showOAuthPassword">
                       <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
                     </button>
                   </div>
                 </div>
-                <div v-else class="form-group">
+                <div v-else class="form-group ui-field-group">
                   <label for="qqBindCode">{{ t.emailCode }}</label>
                   <div class="code-row">
                     <div class="auth-input-shell">
                       <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                       <input autocomplete="one-time-code" name="qqBindCode" id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                     </div>
-                    <button class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthBindCode">
+                    <button data-ui="secondary" class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthBindCode">
                       <TsIcon v-if="oauth.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                       <span :role="oauth.sending.loading ? 'status' : undefined">{{ oauth.sending.label || t.sendCode }}</span>
                     </button>
@@ -648,44 +648,44 @@ onMounted(() => {
         <section v-else class="auth-card" data-material="content" :aria-busy="forgotMode ? forgot.submitting : login.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Gate</span>
-            <h1>{{ authTitle }}</h1>
+            <h1 class="ui-page-title">{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ authSubtitle }}</p>
           </div>
           <div v-if="forgotMode && forgot.message" class="form-message" :class="forgot.type">{{ forgot.message }}</div>
           <div v-else-if="!forgotMode && login.message" class="form-message" :class="login.type">{{ login.message }}</div>
 
           <form v-field-validation v-if="forgotMode" class="forgot-password-form" :aria-busy="forgot.submitting" @submit.prevent="submitForgotPassword">
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="forgotEmail">{{ t.email }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="mail" :size="18" />
                 <input name="forgotEmail" id="forgotEmail" v-model="forgot.email" required type="email" autocomplete="email" :placeholder="t.emailPh">
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="forgotCode">{{ t.emailCode }}</label>
               <div class="code-row">
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                   <input autocomplete="one-time-code" name="forgotCode" id="forgotCode" v-model="forgot.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                 </div>
-                <button class="code-btn" type="button" :disabled="forgot.sending.loading" :aria-busy="forgot.sending.loading" @click="sendForgotCode">
+                <button data-ui="secondary" class="code-btn" type="button" :disabled="forgot.sending.loading" :aria-busy="forgot.sending.loading" @click="sendForgotCode">
                   <TsIcon v-if="forgot.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                   <span :role="forgot.sending.loading ? 'status' : undefined">{{ forgot.sending.label || t.sendCode }}</span>
                 </button>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="forgotNewPassword">{{ t.newPassword }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="forgotNewPassword" id="forgotNewPassword" v-model="forgot.newPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
-                <button class="auth-password-toggle" type="button" :aria-label="showForgotPassword ? t.hidePassword : t.showPassword" :aria-pressed="showForgotPassword" @click="showForgotPassword = !showForgotPassword">
+                <button data-ui-part="tool" class="auth-password-toggle" type="button" :aria-label="showForgotPassword ? t.hidePassword : t.showPassword" :aria-pressed="showForgotPassword" @click="showForgotPassword = !showForgotPassword">
                   <TsIcon :name="showForgotPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="forgotConfirmPassword">{{ t.confirmPassword }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="shield" :size="18" />
@@ -699,40 +699,40 @@ onMounted(() => {
           <template v-else>
           <form v-field-validation :aria-busy="login.submitting" @submit.prevent="submitLogin">
             <div class="mode-row">
-              <button class="mode-btn" :class="{ active: login.method === 'password' }" :aria-pressed="login.method === 'password'" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
-              <button class="mode-btn" :class="{ active: login.method === 'code' }" :aria-pressed="login.method === 'code'" type="button" @click="setMethod('code')">{{ t.codeLogin }}</button>
+              <button data-ui="choice" class="mode-btn" :class="{ active: login.method === 'password' }" :aria-pressed="login.method === 'password'" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
+              <button data-ui="choice" class="mode-btn" :class="{ active: login.method === 'code' }" :aria-pressed="login.method === 'code'" type="button" @click="setMethod('code')">{{ t.codeLogin }}</button>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="loginAccount">{{ t.account }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="user" :size="18" />
                 <input name="loginAccount" id="loginAccount" v-model="login.username" required :placeholder="loginPlaceholder" :autocomplete="login.method === 'code' ? 'email' : 'username'">
               </div>
             </div>
-            <div v-if="login.method === 'password'" class="form-group">
+            <div v-if="login.method === 'password'" class="form-group ui-field-group">
               <label for="loginPassword">{{ t.password }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="loginPassword" id="loginPassword" v-model="login.password" required :type="showLoginPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
-                <button class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" :aria-label="showLoginPassword ? t.hidePassword : t.showPassword" @click="showLoginPassword = !showLoginPassword">
+                <button data-ui-part="tool" class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" :aria-label="showLoginPassword ? t.hidePassword : t.showPassword" @click="showLoginPassword = !showLoginPassword">
                   <TsIcon :name="showLoginPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
               <div class="auth-form-tools">
-                <button class="auth-inline-link" type="button" @click="openForgotPassword">
+                <button data-ui="quiet" class="auth-inline-link" type="button" @click="openForgotPassword">
                   <TsIcon name="keyRound" :size="14" />
                   <span>{{ t.forgotPassword }}</span>
                 </button>
               </div>
             </div>
-            <div v-else class="form-group">
+            <div v-else class="form-group ui-field-group">
               <label for="loginCode">{{ t.emailCode }}</label>
               <div class="code-row">
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                   <input autocomplete="one-time-code" name="loginCode" id="loginCode" v-model="login.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                 </div>
-                <button class="code-btn" type="button" :disabled="login.sending.loading" :aria-busy="login.sending.loading" @click="sendCode">
+                <button data-ui="secondary" class="code-btn" type="button" :disabled="login.sending.loading" :aria-busy="login.sending.loading" @click="sendCode">
                   <TsIcon v-if="login.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                   <span :role="login.sending.loading ? 'status' : undefined">{{ login.sending.label || t.sendCode }}</span>
                 </button>
@@ -746,15 +746,15 @@ onMounted(() => {
           <div class="oauth-login-section">
             <div class="auth-divider"><span>{{ isEnglish ? 'Other sign-in options' : '其他方式登录' }}</span></div>
             <div class="oauth-provider-row">
-              <button class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" :title="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" @click="startQQLogin">
+              <button data-ui-part="tool" class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" :title="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
                 <span>{{ isEnglish ? 'Sign in with QQ' : 'QQ 登录' }}</span>
               </button>
-              <button class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
+              <button data-ui-part="tool" class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
                 <TsIcon name="github" :size="22" />
                 <span>{{ isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录' }}</span>
               </button>
-              <button v-if="googleOAuthEnabled" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
+              <button data-ui-part="tool" v-if="googleOAuthEnabled" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
                 <img :src="googleIconUrl" alt="" width="20" height="20">
                 <span>{{ isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录' }}</span>
               </button>
@@ -767,7 +767,7 @@ onMounted(() => {
           </template>
 
           <div v-if="forgotMode" class="auth-card-footer forgot-password-footer">
-            <button class="auth-inline-link" type="button" @click="closeForgotPassword">
+            <button data-ui="quiet" class="auth-inline-link" type="button" @click="closeForgotPassword">
               <TsIcon name="arrowLeft" :size="14" />
               <span>{{ t.backToLogin }}</span>
             </button>

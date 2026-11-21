@@ -241,11 +241,11 @@ watch(currentUserId, (nextUserId, previousUserId) => {
 </script>
 
 <template>
-  <main class="page game-page">
+  <main data-ui-layout="scene" class="page game-page">
     <section class="game-shell" :aria-label="copy.title">
       <header class="game-toolbar">
         <div class="game-heading">
-          <a class="game-icon-button" href="/game" :aria-label="props.t.game" @click.prevent="emit('go', '/game')"><TsIcon name="arrowLeft" :size="18" /></a>
+          <a data-ui="icon" class="game-icon-button" href="/game" :aria-label="props.t.game" @click.prevent="emit('go', '/game')"><TsIcon name="arrowLeft" :size="18" /></a>
           <TsIcon name="gamepad" :size="22" />
           <h1>{{ copy.title }}</h1>
         </div>
@@ -261,7 +261,7 @@ watch(currentUserId, (nextUserId, previousUserId) => {
             <TsIcon name="external" :size="16" />
             <span>{{ copy.originalAuthor }}</span>
           </a>
-          <button class="game-icon-button" type="button" :title="copy.fullscreen" :aria-label="copy.fullscreen" @click="enterFullscreen">
+          <button data-ui="icon" class="game-icon-button" type="button" :title="copy.fullscreen" :aria-label="copy.fullscreen" @click="enterFullscreen">
             <TsIcon name="maximize" :size="19" />
           </button>
         </div>
@@ -286,7 +286,7 @@ watch(currentUserId, (nextUserId, previousUserId) => {
         ></iframe>
         <div v-if="loadError" class="game-error" role="alert">
           <span>{{ copy.unavailable }}</span>
-          <button type="button" @click="retry">{{ copy.retry }}</button>
+          <button data-ui="secondary" type="button" @click="retry">{{ copy.retry }}</button>
         </div>
       </div>
 
@@ -300,7 +300,7 @@ watch(currentUserId, (nextUserId, previousUserId) => {
             <span>{{ copy.currentScore }} <strong>{{ formatScore(currentScore) }}</strong></span>
             <span>{{ copy.bestScore }} <strong>{{ formatScore(bestScore) }}</strong></span>
             <span v-if="currentRank">#{{ currentRank }}</span>
-            <button class="game-rank-refresh" type="button" :title="copy.retry" :aria-label="copy.retry" :disabled="leaderboardLoading" @click="refreshLeaderboard()">
+            <button data-ui="secondary" class="game-rank-refresh" type="button" :title="copy.retry" :aria-label="copy.retry" :disabled="leaderboardLoading" @click="refreshLeaderboard()">
               <TsIcon name="refresh" :size="16" />
             </button>
           </div>
@@ -326,10 +326,10 @@ watch(currentUserId, (nextUserId, previousUserId) => {
             <strong class="game-rank-score">{{ formatScore(player.score) }}</strong>
           </li>
         </ol>
-        <div v-if="leaderboard.length" class="game-rank-pagination">
-          <button type="button" :disabled="leaderboardLoading || leaderboardPage <= 1" @click="refreshLeaderboard(leaderboardPage - 1)">{{ copy.previous }}</button>
+        <div v-if="leaderboard.length" class="game-rank-pagination ui-actions">
+          <button data-ui="secondary" type="button" :disabled="leaderboardLoading || leaderboardPage <= 1" @click="refreshLeaderboard(leaderboardPage - 1)">{{ copy.previous }}</button>
           <span>{{ leaderboardPage }} / {{ leaderboardTotalPages }}</span>
-          <button type="button" :disabled="leaderboardLoading || leaderboardPage >= leaderboardTotalPages" @click="refreshLeaderboard(leaderboardPage + 1)">{{ copy.next }}</button>
+          <button data-ui="secondary" type="button" :disabled="leaderboardLoading || leaderboardPage >= leaderboardTotalPages" @click="refreshLeaderboard(leaderboardPage + 1)">{{ copy.next }}</button>
         </div>
         <p v-if="leaderboardError && leaderboard.length" class="game-rank-state" role="alert">{{ copy.leaderboardUnavailable }}</p>
         <a

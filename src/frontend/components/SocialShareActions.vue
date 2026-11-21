@@ -187,7 +187,7 @@ function copyShareText() {
 
 <template>
   <div ref="shareRoot" class="social-share-actions">
-    <button v-if="canNativeShare" class="social-share-button primary" type="button" @click="nativeShare()">
+    <button data-ui-part="tool" v-if="canNativeShare" class="social-share-button primary" type="button" @click="nativeShare()">
       <TsIcon name="send" :size="17" />
       <span>{{ labels.system }}</span>
     </button>
@@ -195,31 +195,31 @@ function copyShareText() {
       <TsIcon name="message" :size="17" />
       <span>QQ</span>
     </a>
-    <button v-else class="social-share-button" type="button" :disabled="qqLoading" @click="shareToQQ">
+    <button data-ui-part="tool" v-else class="social-share-button" type="button" :disabled="qqLoading" @click="shareToQQ">
       <TsIcon name="message" :size="17" />
       <span>QQ</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer('qzone', links.qzone)">
+    <button data-ui-part="tool" class="social-share-button" type="button" @click="openComposer('qzone', links.qzone)">
       <TsIcon name="sparkles" :size="17" />
       <span>QQ 空间</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer('weibo', links.weibo)">
+    <button data-ui-part="tool" class="social-share-button" type="button" @click="openComposer('weibo', links.weibo)">
       <TsIcon name="send" :size="17" />
       <span>微博</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer('x', links.x)">
+    <button data-ui-part="tool" class="social-share-button" type="button" @click="openComposer('x', links.x)">
       <TsIcon name="external" :size="17" />
       <span>X</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer('telegram', links.telegram)">
+    <button data-ui-part="tool" class="social-share-button" type="button" @click="openComposer('telegram', links.telegram)">
       <TsIcon name="send" :size="17" />
       <span>Telegram</span>
     </button>
-    <button class="social-share-button" type="button" @click="copyLink">
+    <button data-ui-part="tool" class="social-share-button" type="button" @click="copyLink">
       <TsIcon name="copy" :size="17" />
       <span>{{ labels.copy }}</span>
     </button>
-    <button class="social-share-button" type="button" @click="copyShareText">
+    <button data-ui-part="tool" class="social-share-button" type="button" @click="copyShareText">
       <TsIcon name="copy" :size="17" />
       <span>{{ labels.copyText }}</span>
     </button>

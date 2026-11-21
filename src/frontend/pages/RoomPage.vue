@@ -198,7 +198,7 @@ watch(() => props.shareId, loadSharedConversation);
 </script>
 
 <template>
-  <main
+  <main data-ui-layout="scene"
     class="room-page room-conversation-layout"
     tabindex="-1"
     :class="{ 'room-companion-only': mobileRoom && !room.panels.activePanels.chatPanel }"
@@ -223,15 +223,15 @@ watch(() => props.shareId, loadSharedConversation);
         <summary aria-label="房间功能"><TsIcon name="message" :size="22" /></summary>
         <nav class="room-mobile-tools" aria-label="房间功能">
           <span class="room-tools-heading">这一刻，慢慢聊</span>
-          <button v-if="!shareId" type="button" @click="openHelp"><TsIcon name="helpCircle" :size="18" /><span>开始使用与发现功能</span></button>
-          <button v-if="!shareId" class="room-relationship-trigger" type="button" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /><span>{{ relationshipTitle }}</span></button>
-          <button type="button" :disabled="mobileSessionBusy" @click="newMobileConversation"><TsIcon name="plus" :size="18" /><span>{{ room.chat.resetting.value ? '正在新建' : '新建会话' }}</span></button>
-          <button type="button" @click="showMobileHistory"><TsIcon name="undo" :size="18" /><span>查看对话开头</span></button>
-          <button v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)"><TsIcon :name="button.icon" :size="18" /><span>{{ button.label }}</span></button>
-          <button type="button" :disabled="mobileSessionBusy" aria-label="结束聊天" @click="endMobileConversation"><TsIcon name="book" :size="18" /><span>结束并写日记</span></button>
-          <button type="button" @click="closeMobileTools(); room.music.toggleShell()"><TsIcon name="audioLines" :size="18" /><span>房间音乐</span></button>
-          <button type="button" @click="closeMobileTools(); emit('go', '/growth')"><TsIcon name="sparkles" :size="18" /><span>月契成长</span></button>
-          <button type="button" :aria-pressed="!room.panels.activePanels.chatPanel" @click="closeMobileTools(); room.panels.togglePanel('chatPanel')"><TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" /><span>{{ room.panels.activePanels.chatPanel ? '安静陪伴' : '返回聊天' }}</span></button>
+          <button data-ui-part="navigation" v-if="!shareId" type="button" @click="openHelp"><TsIcon name="helpCircle" :size="18" /><span>开始使用与发现功能</span></button>
+          <button data-ui-part="tool" v-if="!shareId" class="room-relationship-trigger" type="button" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /><span>{{ relationshipTitle }}</span></button>
+          <button data-ui-part="navigation" type="button" :disabled="mobileSessionBusy" @click="newMobileConversation"><TsIcon name="plus" :size="18" /><span>{{ room.chat.resetting.value ? '正在新建' : '新建会话' }}</span></button>
+          <button data-ui-part="navigation" type="button" @click="showMobileHistory"><TsIcon name="undo" :size="18" /><span>查看对话开头</span></button>
+          <button data-ui-part="navigation" v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)"><TsIcon :name="button.icon" :size="18" /><span>{{ button.label }}</span></button>
+          <button data-ui-part="navigation" type="button" :disabled="mobileSessionBusy" aria-label="结束聊天" @click="endMobileConversation"><TsIcon name="book" :size="18" /><span>结束并写日记</span></button>
+          <button data-ui-part="navigation" type="button" @click="closeMobileTools(); room.music.toggleShell()"><TsIcon name="audioLines" :size="18" /><span>房间音乐</span></button>
+          <button data-ui-part="navigation" type="button" @click="closeMobileTools(); emit('go', '/growth')"><TsIcon name="sparkles" :size="18" /><span>月契成长</span></button>
+          <button data-ui-part="navigation" type="button" :aria-pressed="!room.panels.activePanels.chatPanel" @click="closeMobileTools(); room.panels.togglePanel('chatPanel')"><TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" /><span>{{ room.panels.activePanels.chatPanel ? '安静陪伴' : '返回聊天' }}</span></button>
         </nav>
       </details>
       <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="20" /><span>设置</span></a>
@@ -247,11 +247,11 @@ watch(() => props.shareId, loadSharedConversation);
         </div>
       </section>
       <nav v-segmented class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
-        <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
+        <button data-ui="secondary" v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
           <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
         </button>
-        <button v-if="!shareId" type="button" aria-label="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
-        <button v-if="!shareId" class="room-relationship-trigger" type="button" :aria-label="relationshipTitle" :title="relationshipTitle" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /></button>
+        <button data-ui="secondary" v-if="!shareId" type="button" aria-label="开始使用与发现功能" @click="openHelp"><TsIcon name="helpCircle" :size="18" /></button>
+        <button data-ui-part="tool" v-if="!shareId" class="room-relationship-trigger" type="button" :aria-label="relationshipTitle" :title="relationshipTitle" :aria-expanded="relationshipOpen" @click="openRelationship"><TsIcon name="heart" :size="18" /></button>
         <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /><span>设置</span></a>
       </nav>
       <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">

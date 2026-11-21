@@ -3,13 +3,7 @@
 .section-title { font-family: var(--serif); font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: .04em; }
 .section-subtitle { color: var(--muted); margin-top: 14px; line-height: 1.85; max-width: 680px; }
 .eyebrow { display: block; font-size: 13px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
-:where(.primary-btn, .ghost-btn, .danger-btn, .chip, .filter-btn, .tab-btn, .stage-new-btn, .stage-page-btn) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 20px; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; transition: background var(--fast), border-color var(--fast), color var(--fast), transform var(--fast); }
-:where(.primary-btn, .stage-new-btn) { background: var(--accent); border-color: transparent; color: var(--on-accent); }
-:where(.primary-btn, .stage-new-btn):hover { background: var(--accent-hover); }
-:where(.ghost-btn, .chip, .filter-btn, .tab-btn, .stage-page-btn):hover { background: var(--soft); border-color: var(--accent); }
-:where(.chip, .filter-btn, .tab-btn).active, :where(.chip, .filter-btn, .tab-btn)[aria-pressed='true'] { color: var(--accent); background: var(--ts-accent-soft); border-color: var(--accent); }
-.danger-btn { color: var(--danger); }
-:where(.primary-btn, .ghost-btn, .icon-button):active { transform: scale(.97); }
+:where(.primary-btn, .ghost-btn, .danger-btn, .chip, .filter-btn, .tab-btn, .stage-new-btn, .stage-page-btn) { display: inline-flex; }
 .icon-button, .site-tool-button { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; transition: background var(--fast); }
 .icon-button:hover, .site-tool-button:hover { background: var(--soft); }
 .text-link { display: inline-flex; align-items: center; gap: 10px; color: var(--accent); font-size: 14px; font-weight: 600; min-height: 44px; text-decoration: underline; text-underline-offset: 5px; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }

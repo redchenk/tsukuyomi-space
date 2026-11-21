@@ -1592,10 +1592,10 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
 </script>
 
 <template>
-  <main class="page arena-page pixel-workspace" :class="{ 'is-controls-open': controlsOpen, 'is-gallery-open': galleryOpen, 'is-focus-mode': focusMode }">
+  <main data-ui-layout="workspace" class="page arena-page pixel-workspace" :class="{ 'is-controls-open': controlsOpen, 'is-gallery-open': galleryOpen, 'is-focus-mode': focusMode }">
     <section class="pw-workbench" :aria-label="copy.title">
       <header class="pw-document">
-        <div class="pw-document-name"><span class="pw-document-icon"><TsIcon name="grid" :size="19" /></span><button type="button" @click="preparePublish" :title="copy.draftPlaceholder"><h1>{{ form.title || copy.draftTitle }}</h1><TsIcon name="penLine" :size="14" /></button><span class="pw-draft-status" :title="draftSaved ? workspaceCopy.saved : draftSaveFailed ? workspaceCopy.saveFailed : workspaceCopy.saving"><TsIcon :name="draftSaved ? 'check' : 'info'" :size="14" />{{ workspaceCopy.draft }}</span></div>
+        <div class="pw-document-name"><span class="pw-document-icon"><TsIcon name="grid" :size="19" /></span><button data-ui-part="canvas" type="button" @click="preparePublish" :title="copy.draftPlaceholder"><h1>{{ form.title || copy.draftTitle }}</h1><TsIcon name="penLine" :size="14" /></button><span class="pw-draft-status" :title="draftSaved ? workspaceCopy.saved : draftSaveFailed ? workspaceCopy.saveFailed : workspaceCopy.saving"><TsIcon :name="draftSaved ? 'check' : 'info'" :size="14" />{{ workspaceCopy.draft }}</span></div>
         <div class="pw-document-actions">
           <button class="ghost-btn" type="button" :aria-label="copy.gallery" :title="copy.gallery" aria-controls="arena-gallery-panel" @click="toggleGalleryPanel" :aria-expanded="galleryOpen"><TsIcon name="image" :size="17" /><span>{{ copy.gallery }}</span></button>
           <button class="ghost-btn" type="button" :aria-label="workspaceCopy.new" :title="workspaceCopy.new" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="17" /><span>{{ workspaceCopy.new }}</span></button>
@@ -1607,11 +1607,11 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
       <div class="pw-body">
         <aside class="pw-toolbox" :aria-label="copy.drawingGuide">
           <div class="pw-tools" role="group" :aria-label="copy.drawingGuide">
-            <button v-for="item in toolOptions" :key="item.key" class="icon-btn pw-tool" :class="{ active: activeTool === item.key }" :aria-pressed="activeTool === item.key" :aria-label="item.label" :title="`${item.label} (${item.shortcut})`" type="button" @click="tool = item.key"><TsIcon :name="item.icon" :size="21" /><span>{{ item.label }}</span></button>
+            <button data-ui-part="canvas" v-for="item in toolOptions" :key="item.key" class="icon-btn pw-tool" :class="{ active: activeTool === item.key }" :aria-pressed="activeTool === item.key" :aria-label="item.label" :title="`${item.label} (${item.shortcut})`" type="button" @click="tool = item.key"><TsIcon :name="item.icon" :size="21" /><span>{{ item.label }}</span></button>
           </div>
-          <div class="pw-history" role="group" :aria-label="copy.undo"><button class="icon-btn" type="button" :disabled="!hasUndo" :aria-label="copy.undo" :title="copy.undo" @click="undo"><TsIcon name="undo" :size="20" /></button><button class="icon-btn" type="button" :disabled="!hasRedo" :aria-label="copy.redo" :title="copy.redo" @click="redo"><TsIcon name="redo" :size="20" /></button></div>
-          <button class="pw-selected-color" type="button" :style="{ backgroundColor: selectedColor }" :aria-label="copy.moreColors" @click="showColorSettings"></button>
-          <button class="icon-btn pw-tool-help" type="button" :aria-label="copy.drawingGuide" @click="openPenSettings"><TsIcon name="helpCircle" :size="19" /></button>
+          <div class="pw-history" role="group" :aria-label="copy.undo"><button data-ui-part="canvas" class="icon-btn" type="button" :disabled="!hasUndo" :aria-label="copy.undo" :title="copy.undo" @click="undo"><TsIcon name="undo" :size="20" /></button><button data-ui-part="canvas" class="icon-btn" type="button" :disabled="!hasRedo" :aria-label="copy.redo" :title="copy.redo" @click="redo"><TsIcon name="redo" :size="20" /></button></div>
+          <button data-ui-part="canvas" class="pw-selected-color" type="button" :style="{ backgroundColor: selectedColor }" :aria-label="copy.moreColors" @click="showColorSettings"></button>
+          <button data-ui-part="canvas" class="icon-btn pw-tool-help" type="button" :aria-label="copy.drawingGuide" @click="openPenSettings"><TsIcon name="helpCircle" :size="19" /></button>
         </aside>
         <div class="pw-center arena-canvas-panel">
           <div class="pw-context" role="toolbar" :aria-label="copy.drawingGuide">
@@ -1639,35 +1639,35 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
           <footer class="pw-statusbar">
             <span>{{ canvasWidth }} × {{ canvasHeight }} px</span><span class="pw-shortcuts">{{ workspaceCopy.drag }}</span>
             <span class="pw-coordinates">X: {{ coordinates?.x ?? '—' }} &nbsp; Y: {{ coordinates?.y ?? '—' }}</span>
-            <div class="arena-zoom-controls" role="group" :aria-label="copy.zoom"><button class="icon-btn" type="button" :aria-label="`${copy.zoom} -`" @click="adjustZoom(-10)"><TsIcon name="minus" :size="15" /></button><strong>{{ zoom }}%</strong><button class="icon-btn" type="button" :aria-label="`${copy.zoom} +`" @click="adjustZoom(10)"><TsIcon name="plus" :size="15" /></button><button class="ghost-btn" type="button" @click="resetCanvasZoom">{{ copy.fitCanvas }}</button></div>
+            <div class="arena-zoom-controls" role="group" :aria-label="copy.zoom"><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="`${copy.zoom} -`" @click="adjustZoom(-10)"><TsIcon name="minus" :size="15" /></button><strong>{{ zoom }}%</strong><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="`${copy.zoom} +`" @click="adjustZoom(10)"><TsIcon name="plus" :size="15" /></button><button class="ghost-btn" type="button" @click="resetCanvasZoom">{{ copy.fitCanvas }}</button></div>
           </footer>
           <div class="pw-mobile-hint" role="status"><TsIcon :name="activeTool === 'move' ? 'move' : 'brush'" :size="15" /><span>{{ drawingHint }}</span></div>
         </div>
         <aside id="arena-controls-panel" class="arena-controls pw-properties" :aria-label="copy.palette" :inert="!controlsOpen">
-          <header class="pw-properties-head"><h2>{{ workspaceCopy.colors }}</h2><button class="icon-btn" type="button" :aria-label="copy.closeTools" :aria-expanded="controlsOpen" aria-controls="arena-controls-panel" @click="toggleControlsPanel"><TsIcon name="chevronRight" :size="18" /></button></header>
+          <header class="pw-properties-head"><h2>{{ workspaceCopy.colors }}</h2><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="copy.closeTools" :aria-expanded="controlsOpen" aria-controls="arena-controls-panel" @click="toggleControlsPanel"><TsIcon name="chevronRight" :size="18" /></button></header>
           <div class="pw-property-section">
             <PixelColorPicker ref="customColorInputRef" :model-value="selectedColor" :label="copy.freeColor" @update:model-value="chooseColor" />
             <div class="pw-property-label"><strong>{{ copy.presets }}</strong><span>{{ copy.kicker }}</span></div>
-            <div class="pixel-palette pw-palette" role="group" :aria-label="copy.presets"><button v-for="color in [...presetPalette, ...studioColors]" :key="color" class="pixel-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ backgroundColor: color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"><TsIcon v-if="selectedColor === color" name="check" :size="14" /></button></div>
-            <div v-if="recentColors.length" class="pw-recent"><span>{{ workspaceCopy.recent }}</span><div class="pixel-palette pw-palette"><button v-for="color in recentColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${workspaceCopy.recent} ${color}`" type="button" @click="chooseColor(color)"></button></div></div>
-            <details v-if="customColors.length" class="pw-custom-colors"><summary>{{ copy.freeColor }} <span>{{ customColors.length }}</span></summary><div class="pixel-palette pw-palette"><button v-for="color in customColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-pressed="selectedColor === color" :aria-label="`${copy.freeColor} ${color}`" type="button" @click="chooseColor(color)"></button></div></details>
+            <div class="pixel-palette pw-palette" role="group" :aria-label="copy.presets"><button data-ui-part="canvas" v-for="color in [...presetPalette, ...studioColors]" :key="color" class="pixel-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ backgroundColor: color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"><TsIcon v-if="selectedColor === color" name="check" :size="14" /></button></div>
+            <div v-if="recentColors.length" class="pw-recent"><span>{{ workspaceCopy.recent }}</span><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in recentColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${workspaceCopy.recent} ${color}`" type="button" @click="chooseColor(color)"></button></div></div>
+            <details v-if="customColors.length" class="pw-custom-colors"><summary>{{ copy.freeColor }} <span>{{ customColors.length }}</span></summary><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in customColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-pressed="selectedColor === color" :aria-label="`${copy.freeColor} ${color}`" type="button" @click="chooseColor(color)"></button></div></details>
           </div>
-          <details class="pw-setting"><summary><TsIcon name="grid" :size="16" />{{ workspaceCopy.canvasSettings }}<small>{{ canvasWidth }} × {{ canvasHeight }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label>{{ copy.background }}<input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label><div class="pixel-palette pw-palette"><button v-for="color in backgroundPresets" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${copy.background} ${color}`" type="button" @click="setBackgroundColor(color)"></button></div><button class="ghost-btn" type="button" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="15" />{{ workspaceCopy.create }}</button><button class="ghost-btn" type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="15" />{{ workspaceCopy.example }}</button><button class="ghost-btn" type="button" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="15" />{{ copy.clear }}</button></div></details>
+          <details class="pw-setting"><summary><TsIcon name="grid" :size="16" />{{ workspaceCopy.canvasSettings }}<small>{{ canvasWidth }} × {{ canvasHeight }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label>{{ copy.background }}<input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in backgroundPresets" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${copy.background} ${color}`" type="button" @click="setBackgroundColor(color)"></button></div><button class="ghost-btn" type="button" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="15" />{{ workspaceCopy.create }}</button><button class="ghost-btn" type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="15" />{{ workspaceCopy.example }}</button><button class="ghost-btn" type="button" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="15" />{{ copy.clear }}</button></div></details>
           <details ref="penSettingsRef" class="pw-setting"><summary><TsIcon name="sliders" :size="16" />{{ workspaceCopy.penSettings }}<TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label><input v-model="pressureEnabled" type="checkbox">{{ copy.pressure }}</label><label><input v-model="stabilizerEnabled" type="checkbox">{{ copy.stabilizer }}</label><p>{{ drawingHint }}</p><ol><li v-for="step in copy.guideSteps" :key="step">{{ step }}</li></ol></div></details>
           <details class="pw-setting"><summary><TsIcon name="penLine" :size="16" />{{ workspaceCopy.notes }}<small>{{ chatMessages.length }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><p>{{ copy.notesEmpty }}</p><div v-for="message in chatMessages" :key="message.id" class="pw-note"><time>{{ message.time }}</time><p>{{ message.text }}</p></div><form @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button class="ghost-btn" type="submit">{{ copy.sendMessage }}</button></form></div></details>
           <div class="pw-navigator"><div class="pw-property-label"><span>{{ workspaceCopy.preview }}</span><TsIcon name="eye" :size="15" /></div><div class="pw-navigator-frame"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="workspaceCopy.preview" /></div><p>{{ canvasWidth }} × {{ canvasHeight }}</p></div>
         </aside>
-        <button v-if="controlsOpen" class="pw-properties-scrim" type="button" :aria-label="copy.closeTools" @click="controlsOpen = false"></button>
+        <button data-ui-part="canvas" v-if="controlsOpen" class="pw-properties-scrim" type="button" :aria-label="copy.closeTools" @click="controlsOpen = false"></button>
       </div>
     </section>
     <Teleport to="body">
       <dialog ref="galleryDialogRef" class="pw-dialog pw-gallery-dialog" :aria-label="copy.gallery" @close="galleryOpen = false" @click.self="galleryDialogRef.close()">
     <section
       id="arena-gallery-panel"
-      class="arena-gallery panel"
+      class="arena-gallery panel ui-panel"
       :aria-busy="sideTab === 'gallery' && gallery.loading"
     >
-      <button class="pw-gallery-close icon-btn" type="button" :aria-label="workspaceCopy.close" @click="galleryDialogRef.close()"><TsIcon name="x" :size="20" /></button>
+      <button data-ui-part="canvas" class="pw-gallery-close icon-btn" type="button" :aria-label="workspaceCopy.close" @click="galleryDialogRef.close()"><TsIcon name="x" :size="20" /></button>
       <div class="arena-section-head arena-gallery-head">
         <div>
           <span>03</span>
@@ -1695,7 +1695,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
           :key="artwork.id"
           class="pixel-art-card"
         >
-          <button
+          <button data-ui-part="canvas"
             class="pixel-art-preview"
             type="button"
             :title="artwork.title || copy.gallery"
@@ -1737,7 +1737,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
             </div>
           </div>
           <div class="pixel-art-actions">
-            <button
+            <button data-ui-part="canvas"
               class="icon-btn like-btn"
               :class="{ liked: isArtworkLiked(artwork) }"
               :aria-pressed="isArtworkLiked(artwork)"
@@ -1747,11 +1747,11 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
               <TsIcon name="heart" :size="15" />
               <span>{{ isArtworkLiked(artwork) ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
             </button>
-            <button class="icon-btn" type="button" @click="downloadArtwork(artwork)">
+            <button data-ui-part="canvas" class="icon-btn" type="button" @click="downloadArtwork(artwork)">
               <TsIcon name="download" :size="15" />
               <span>{{ copy.download }}</span>
             </button>
-            <button class="icon-btn" type="button" @click="openArtworkShare(artwork)">
+            <button data-ui-part="canvas" class="icon-btn" type="button" @click="openArtworkShare(artwork)">
               <TsIcon name="external" :size="15" />
               <span>{{ copy.shareLink }}</span>
             </button>
@@ -1759,11 +1759,11 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
         </article>
       </div>
       <nav v-if="sideTab === 'gallery' && !gallery.loading && gallery.totalPages > 1" class="arena-gallery-pager" aria-label="作品分页">
-        <button class="icon-btn" type="button" :disabled="gallery.page <= 1" aria-label="上一页" @click="loadArtworks(gallery.page - 1)">
+        <button data-ui-part="canvas" class="icon-btn" type="button" :disabled="gallery.page <= 1" aria-label="上一页" @click="loadArtworks(gallery.page - 1)">
           <TsIcon name="arrowLeft" :size="16" />
         </button>
         <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
-        <button class="icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" aria-label="下一页" @click="loadArtworks(gallery.page + 1)">
+        <button data-ui-part="canvas" class="icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" aria-label="下一页" @click="loadArtworks(gallery.page + 1)">
           <TsIcon name="arrowRight" :size="16" />
         </button>
       </nav>
@@ -1771,7 +1771,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
 
       </dialog>
       <dialog ref="publishDialogRef" class="pw-dialog pw-publish-dialog" :aria-label="copy.publishDetails" @click.self="publishDialogRef.close()">
-        <header><h2>{{ copy.publishDetails }}</h2><button class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="publishDialogRef.close()"><TsIcon name="x" :size="20" /></button></header>
+        <header><h2>{{ copy.publishDetails }}</h2><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="publishDialogRef.close()"><TsIcon name="x" :size="20" /></button></header>
         <div class="pw-dialog-preview"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="workspaceCopy.preview" /></div>
         <form @submit.prevent="shareArtwork">
           <label>{{ copy.draftPlaceholder }}<input ref="titleInputRef" v-model="form.title" maxlength="40" type="text" autocomplete="off" required :placeholder="copy.draftPlaceholder"></label>
@@ -1780,13 +1780,13 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
         </form>
       </dialog>
       <dialog ref="exportDialogRef" class="pw-dialog pw-export-dialog" :aria-label="copy.download" @click.self="exportDialogRef.close()" @close="exportPreview = ''">
-        <header><h2>{{ copy.download }}</h2><button class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="exportDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <header><h2>{{ copy.download }}</h2><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="exportDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
         <img v-if="exportPreview" class="pw-export-preview" :src="exportPreview" :alt="exportFilename">
         <p>{{ workspaceCopy.exportHint }}</p>
         <footer><button class="ghost-btn" type="button" @click="exportDialogRef.close()">{{ workspaceCopy.close }}</button><a class="primary-btn" :href="exportPreview" :download="exportFilename"><TsIcon name="download" :size="16" />{{ workspaceCopy.saveImage }}</a></footer>
       </dialog>
       <dialog ref="newDialogRef" class="pw-dialog" :aria-label="workspaceCopy.create" @click.self="newDialogRef.close()">
-        <header><h2>{{ workspaceCopy.create }}</h2><button class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="newDialogRef.close()"><TsIcon name="x" :size="20" /></button></header>
+        <header><h2>{{ workspaceCopy.create }}</h2><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="workspaceCopy.close" @click="newDialogRef.close()"><TsIcon name="x" :size="20" /></button></header>
         <p>{{ workspaceCopy.newHint }}</p><form @submit.prevent="createCanvas"><label>{{ copy.canvasSize }}<select v-model="newSize"><option v-for="preset in CANVAS_PRESETS" :key="preset.width" :value="`${preset.width}x${preset.height}`">{{ preset.width }} × {{ preset.height }}</option></select></label><footer><button class="ghost-btn" type="button" @click="newDialogRef.close()">{{ workspaceCopy.cancel }}</button><button class="primary-btn" type="submit">{{ workspaceCopy.create }}</button></footer></form>
       </dialog>
     </Teleport>
@@ -1802,7 +1802,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
         @click.self="closeArtworkPreview"
       >
         <section class="arena-art-lightbox-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
-          <button
+          <button data-ui-part="canvas"
             class="arena-art-lightbox-close"
             type="button"
             :aria-label="props.lang === 'en' ? 'Close' : (props.lang === 'ja' ? '閉じる' : '关闭')"

@@ -565,10 +565,10 @@ watch(currentArticleId, initEditor);
 </script>
 
 <template>
-  <main class="page editor-page" :aria-busy="editor.loading || editor.submitting">
+  <main data-ui-layout="workspace" class="page editor-page" :aria-busy="editor.loading || editor.submitting">
     <div class="editor-container">
       <header class="editor-header">
-        <h1 class="section-title">{{ t.editorTitle }}</h1>
+        <h1 class="section-title ui-page-title">{{ t.editorTitle }}</h1>
         <p class="section-subtitle">{{ t.editorSubtitle }}</p>
       </header>
 
@@ -584,7 +584,7 @@ watch(currentArticleId, initEditor);
       <form v-field-validation v-else class="editor-form" :aria-busy="editor.submitting" @submit.prevent="handleEditorSubmit">
         <div v-if="editor.message" class="form-message" :class="editor.messageType">{{ editor.message }}</div>
 
-        <div class="form-group">
+        <div class="form-group ui-field-group">
           <label>{{ t.editorFieldCover }}</label>
           <UploadProgress :state="coverPreparation.state" @dismiss="coverPreparation.clear" />
           <div class="editor-cover-upload" :class="{ 'has-image': editor.coverImageBase64 }">
@@ -606,7 +606,7 @@ watch(currentArticleId, initEditor);
               alt=""
               data-image-bloom
             >
-            <button
+            <button data-ui="quiet"
               v-if="editor.coverImageBase64"
               type="button"
               class="editor-cover-remove"
@@ -618,35 +618,35 @@ watch(currentArticleId, initEditor);
           <button class="ghost-btn editor-asset-library-btn" type="button" :disabled="coverPreparation.state.active || editor.submitting" @click="openAssetPicker('cover')">从附件库选择封面</button>
         </div>
 
-        <div class="form-group">
+        <div class="form-group ui-field-group">
           <label for="editorTitle">{{ t.editorFieldTitle }}</label>
-          <input id="editorTitle" v-model="editor.form.title" type="text" required :placeholder="t.editorTitlePh">
+          <input class="ui-field" id="editorTitle" v-model="editor.form.title" type="text" required :placeholder="t.editorTitlePh">
         </div>
 
         <div class="form-row">
-          <div class="form-group">
+          <div class="form-group ui-field-group">
             <label for="editorCategory">{{ t.editorFieldCategory }}</label>
-            <select id="editorCategory" v-model="editor.form.category" required>
+            <select class="ui-field" id="editorCategory" v-model="editor.form.category" required>
               <option value="">{{ t.editorCategorySelect }}</option>
               <option v-for="category in availableCategories" :key="category.id" :value="category.name">
                 {{ t[categoryLabelKeys[category.name]] || category.name }}
               </option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group ui-field-group">
             <label for="editorReadTime">{{ t.editorFieldReadTime }}</label>
-            <input id="editorReadTime" v-model="editor.form.readTime" type="text" required :placeholder="t.editorReadTimePh">
+            <input class="ui-field" id="editorReadTime" v-model="editor.form.readTime" type="text" required :placeholder="t.editorReadTimePh">
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group ui-field-group">
           <div class="editor-excerpt-heading">
             <label for="editorExcerpt">{{ t.editorFieldExcerpt }}</label>
             <button class="ghost-btn" type="button" :disabled="editor.summarizing || editor.submitting" :aria-busy="editor.summarizing" @click="generateExcerpt">
               {{ editor.summarizing ? t.editorSummaryGenerating : t.editorSummaryGenerate }}
             </button>
           </div>
-          <textarea
+          <textarea class="ui-field"
             id="editorExcerpt"
             v-model="editor.form.excerpt"
             maxlength="200"
@@ -661,7 +661,7 @@ watch(currentArticleId, initEditor);
           <div class="editor-workbench-head">
             <label for="editorContent">{{ t.editorFieldContent }}</label>
             <div class="editor-view-switch" role="group" :aria-label="copy.preview">
-              <button v-for="view in ['write', 'split', 'preview']" :key="view" type="button" :aria-pressed="editorView === view" @click="editorView = view">{{ copy[view] }}</button>
+              <button data-ui="choice" v-for="view in ['write', 'split', 'preview']" :key="view" type="button" :aria-pressed="editorView === view" @click="editorView = view">{{ copy[view] }}</button>
             </div>
           </div>
           <div class="markdown-toolbar" role="group" aria-label="Markdown toolbar">
@@ -742,7 +742,7 @@ watch(currentArticleId, initEditor);
             <div v-else-if="editor.assetPicker.loadError" class="editor-asset-status error" role="alert">{{ editor.assetPicker.loadError }}</div>
             <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用附件。可以在这里直接上传，或点击“管理附件”进入附件库。</div>
             <div v-else class="editor-asset-grid">
-              <button
+              <button data-ui-part="row"
                 v-for="asset in editor.assetPicker.assets"
                 :key="asset.id"
                 type="button"

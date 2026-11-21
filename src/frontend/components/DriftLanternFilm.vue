@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
           <p v-if="replyVisible" class="drift-film-reply"><span>{{ copy.speaker }}</span>{{ copy.reply }}</p>
         </Transition>
       </div>
-      <button ref="skip" class="drift-film-skip" type="button" @click="finish">{{ copy.skip }}</button>
+      <button data-ui-part="overlay" ref="skip" class="drift-film-skip" type="button" @click="finish">{{ copy.skip }}</button>
     </div>
   </Teleport>
 </template>

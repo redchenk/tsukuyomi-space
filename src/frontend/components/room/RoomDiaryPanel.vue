@@ -59,15 +59,15 @@ function onImportFile(event) {
     <div class="panel-content diary-body">
       <div class="diary-toolbar">
         <span class="diary-count">{{ entries.length }} &#31687; · {{ personaName }}</span>
-        <button class="panel-btn diary-tool-btn" type="button" @click="diary.exportArchive?.()">
+        <button data-ui="secondary" class="panel-btn diary-tool-btn" type="button" @click="diary.exportArchive?.()">
           <TsIcon name="download" :size="15" aria-hidden="true" />
           <span>&#23548;&#20986;</span>
         </button>
-        <button class="panel-btn diary-tool-btn" type="button" @click="fileInputRef?.click()">
+        <button data-ui="secondary" class="panel-btn diary-tool-btn" type="button" @click="fileInputRef?.click()">
           <TsIcon name="upload" :size="15" aria-hidden="true" />
           <span>&#23548;&#20837;</span>
         </button>
-        <button class="panel-btn diary-tool-btn" type="button" @click="diary.sync?.()">同步</button>
+        <button data-ui="secondary" class="panel-btn diary-tool-btn" type="button" @click="diary.sync?.()">同步</button>
         <input ref="fileInputRef" type="file" accept="application/json,.json" hidden @change="onImportFile">
       </div>
 
@@ -99,12 +99,12 @@ function onImportFile(event) {
             class="diary-list-item"
             :class="{ 'is-active': entry.diaryId === selectedId }"
           >
-            <button class="diary-entry-select" type="button" :aria-pressed="entry.diaryId === selectedId" @click="selectEntry(entry)">
+            <button class="diary-entry-select" type="button" data-ui-part="row" :aria-pressed="entry.diaryId === selectedId" @click="selectEntry(entry)">
             <span class="diary-list-date">{{ entry.date }}</span>
             <span class="diary-list-time">{{ entry.time }}</span>
             <span class="diary-list-preview">{{ String(entry.content || '').replace(/^【日记】\s*/, '').slice(0, 40) }}</span>
             </button>
-            <button
+            <button data-ui="danger"
               class="diary-list-delete"
               type="button"
               :aria-label="`删除 ${entry.date} 的日记`"
@@ -117,7 +117,7 @@ function onImportFile(event) {
           <div class="diary-detail-head">
             <strong>{{ selected.date }} {{ selected.time }}</strong>
             <span class="field-hint">好感度 {{ selected.affection }} · {{ selected.mode || 'LLM' }}</span>
-            <button
+            <button data-ui="danger"
               class="diary-detail-delete"
               type="button"
               aria-label="删除这篇日记"

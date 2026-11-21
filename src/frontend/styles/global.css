@@ -5,3 +5,4 @@
 @import './jingyue/shell.css' layer(components);
 @import './jingyue/background.css' layer(components);
 @import './loading-states.css' layer(components);
+@import './jingyue/system.css';

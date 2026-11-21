@@ -894,13 +894,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page uc-page" :aria-busy="sessionChecking">
+  <main data-ui-layout="content" class="page uc-page" :aria-busy="sessionChecking">
     <LoadingSkeleton v-if="sessionChecking" variant="profile" :count="1" :label="t.ucLoadingArticles" />
 
     <div v-else-if="!isAuthed" class="panel uc-login-notice">
       <div class="uc-login-notice-body">
         <div class="uc-eyebrow">User Center</div>
-        <h1>{{ t.ucNeedLogin }}</h1>
+        <h1 class="ui-page-title">{{ t.ucNeedLogin }}</h1>
         <p>{{ t.ucLoginPrompt }}</p>
         <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.ucGoLogin }}</a>
       </div>
@@ -913,7 +913,7 @@ onUnmounted(() => {
       <UploadProgress :state="avatarUpload.state" @dismiss="avatarUpload.clear" />
       <section class="uc-hero" :aria-busy="uc.avatarUploading">
         <div class="uc-avatar-block">
-          <button class="uc-avatar-upload" type="button" :disabled="uc.avatarUploading" :aria-label="ucCopy.avatarHint" :title="ucCopy.avatarHint" @click="ucAvatarInput?.click()">
+          <button data-ui="secondary" class="uc-avatar-upload" type="button" :disabled="uc.avatarUploading" :aria-label="ucCopy.avatarHint" :title="ucCopy.avatarHint" @click="ucAvatarInput?.click()">
             <img :src="ucAvatarSrc" alt="">
             <span class="uc-avatar-edit" aria-hidden="true"><TsIcon :name="uc.avatarUploading ? 'loader' : 'penLine'" :size="14" /></span>
           </button>
@@ -922,7 +922,7 @@ onUnmounted(() => {
         <div class="uc-hero-info">
           <div class="uc-eyebrow">YOUR SPACE</div>
           <div class="uc-identity-line">
-            <h1 class="uc-username">{{ ucUser?.nickname || ucUser?.username || '-' }}</h1>
+            <h1 class="uc-username ui-page-title">{{ ucUser?.nickname || ucUser?.username || '-' }}</h1>
             <a v-if="ucGrowth?.level" class="uc-level-link" href="/growth" @click.prevent="go('/growth')"><UserLevelBadge :level="ucGrowth.level" :lang="lang" /></a>
           </div>
           <p class="uc-bio-preview">{{ ucUser?.bio || t.ucNoBio }}</p>
@@ -960,22 +960,22 @@ onUnmounted(() => {
           <select id="ucSection" v-model="uc.tab">
             <optgroup v-for="group in ucNavigationGroups.slice(0, 2)" :key="group.label" :label="group.label"><option v-for="entry in group.entries" :key="entry.key" :value="entry.key">{{ entry.label }}</option></optgroup>
           </select>
-          <details class="uc-mobile-more"><summary>{{ ucCopy.materials }}<TsIcon name="chevronDown" :size="15" /></summary><div><a href="/gallery/manage" @click.prevent="go('/gallery/manage')"><TsIcon name="image" :size="17" />{{ ucCopy.gallery }}</a><a href="/attachments" @click.prevent="go('/attachments')"><TsIcon name="paperclip" :size="17" />{{ ucCopy.attachments }}</a><button type="button" @click="logout"><TsIcon name="logOut" :size="17" />{{ t.ucLogout }}</button></div></details>
+          <details class="uc-mobile-more"><summary>{{ ucCopy.materials }}<TsIcon name="chevronDown" :size="15" /></summary><div><a href="/gallery/manage" @click.prevent="go('/gallery/manage')"><TsIcon name="image" :size="17" />{{ ucCopy.gallery }}</a><a href="/attachments" @click.prevent="go('/attachments')"><TsIcon name="paperclip" :size="17" />{{ ucCopy.attachments }}</a><button data-ui="secondary" type="button" @click="logout"><TsIcon name="logOut" :size="17" />{{ t.ucLogout }}</button></div></details>
         </div>
 
-        <section ref="ucContentPanel" class="panel uc-content-panel" tabindex="-1">
+        <section ref="ucContentPanel" class="panel uc-content-panel ui-panel" tabindex="-1">
           <form v-if="uc.tab === 'profile'" :aria-busy="uc.profileSaving" @submit.prevent="ucSaveProfile">
             <div class="uc-section-head"><div><h2 class="uc-section-title">{{ t.ucProfile }}</h2><p class="uc-section-intro">{{ ucCopy.profileHint }}</p></div><TsIcon name="user" :size="24" /></div>
             <div v-if="uc.profileMsg" class="form-message" :class="uc.profileMsgType" :role="uc.profileMsgType === 'error' ? 'alert' : 'status'">{{ uc.profileMsg }}</div>
             <div class="form-grid">
-              <div class="form-group">
+              <div class="form-group ui-field-group">
                 <label for="ucNickname">{{ t.ucNickname }}</label>
-                <input id="ucNickname" name="nickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required aria-describedby="ucNicknameHint">
+                <input class="ui-field" id="ucNickname" name="nickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required aria-describedby="ucNicknameHint">
                 <div id="ucNicknameHint" class="help-text">{{ t.ucNicknameHint }}</div>
               </div>
-              <div class="form-group">
+              <div class="form-group ui-field-group">
                 <label for="ucBio">{{ t.ucBio }}</label>
-                <textarea id="ucBio" v-model="uc.profileBio" class="uc-profile-bio" autocomplete="off" maxlength="300" :disabled="uc.profileSaving" :placeholder="t.ucBioPlaceholder" aria-describedby="ucBioCount"></textarea>
+                <textarea id="ucBio" v-model="uc.profileBio" class="uc-profile-bio ui-field" autocomplete="off" maxlength="300" :disabled="uc.profileSaving" :placeholder="t.ucBioPlaceholder" aria-describedby="ucBioCount"></textarea>
                 <div id="ucBioCount" class="help-text uc-character-count">{{ uc.profileBio.length || 0 }} / 300</div>
               </div>
               <div class="uc-profile-footer">
@@ -1037,11 +1037,11 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="uc-article-actions">
-                  <a class="icon-btn uc-icon-action" :href="articlePath(article)" @click.prevent="go(articlePath(article))">
+                  <a data-ui="quiet" class="icon-btn uc-icon-action" :href="articlePath(article)" @click.prevent="go(articlePath(article))">
                     <TsIcon name="eye" :size="16" />
                     <span>{{ t.ucView }}</span>
                   </a>
-                  <button class="icon-btn uc-icon-action" type="button" @click="ucEditArticle(article.id)">
+                  <button data-ui="quiet" class="icon-btn uc-icon-action" type="button" @click="ucEditArticle(article.id)">
                     <TsIcon name="penLine" :size="16" />
                     <span>{{ t.ucEdit }}</span>
                   </button>
@@ -1087,7 +1087,7 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="uc-article-actions">
-                  <a class="icon-btn uc-icon-action" :href="articlePath(article)" @click.prevent="go(articlePath(article))">
+                  <a data-ui="quiet" class="icon-btn uc-icon-action" :href="articlePath(article)" @click.prevent="go(articlePath(article))">
                     <TsIcon name="eye" :size="16" />
                     <span>&#38405;&#35835;</span>
                   </a>
@@ -1150,11 +1150,11 @@ onUnmounted(() => {
                     </button>
                   </template>
                   <template v-else>
-                    <a class="icon-btn uc-icon-action" :href="messagePath(message)" @click.prevent="go(messagePath(message))">
+                    <a data-ui="quiet" class="icon-btn uc-icon-action" :href="messagePath(message)" @click.prevent="go(messagePath(message))">
                       <TsIcon name="eye" :size="16" />
                       <span>查看</span>
                     </a>
-                    <button class="icon-btn uc-icon-action" type="button" @click="ucStartMessageEdit(message)">
+                    <button data-ui="quiet" class="icon-btn uc-icon-action" type="button" @click="ucStartMessageEdit(message)">
                       <TsIcon name="penLine" :size="16" />
                       <span>编辑</span>
                     </button>
@@ -1225,11 +1225,11 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="uc-article-actions uc-pixel-actions">
-                  <a class="icon-btn uc-icon-action" :href="pixelArtworkPath(artwork)" @click.prevent="go(pixelArtworkPath(artwork))">
+                  <a data-ui="quiet" class="icon-btn uc-icon-action" :href="pixelArtworkPath(artwork)" @click.prevent="go(pixelArtworkPath(artwork))">
                     <TsIcon name="eye" :size="16" />
                     <span>查看</span>
                   </a>
-                  <button class="icon-btn uc-icon-action" type="button" @click="ucEditPixelArtwork(artwork)">
+                  <button data-ui="quiet" class="icon-btn uc-icon-action" type="button" @click="ucEditPixelArtwork(artwork)">
                     <TsIcon name="penLine" :size="16" />
                     <span>编辑</span>
                   </button>
@@ -1253,21 +1253,21 @@ onUnmounted(() => {
               <form id="uc-password-form" autocomplete="on" @submit.prevent="ucChangePassword">
                 <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
                 <div class="form-grid">
-                  <div class="form-group">
+                  <div class="form-group ui-field-group">
                     <label for="ucCurrentPassword">{{ t.ucCurrentPassword }}</label>
-                    <input id="ucCurrentPassword" name="current-password" v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
-                    <button v-if="ucUser?.has_real_email" class="uc-password-reset-link" type="button" @click="go('/login?forgot=1&redirect=%2Fuser-center')">
+                    <input class="ui-field" id="ucCurrentPassword" name="current-password" v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
+                    <button data-ui="quiet" v-if="ucUser?.has_real_email" class="uc-password-reset-link" type="button" @click="go('/login?forgot=1&redirect=%2Fuser-center')">
                       <TsIcon name="mail" :size="14" />
                       <span>没有当前密码？使用邮箱验证</span>
                     </button>
                   </div>
-                  <div class="form-group">
+                  <div class="form-group ui-field-group">
                     <label for="ucNewPassword">{{ t.ucNewPassword }}</label>
-                    <input id="ucNewPassword" name="new-password" v-model="uc.password.next" type="password" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
+                    <input class="ui-field" id="ucNewPassword" name="new-password" v-model="uc.password.next" type="password" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
                   </div>
-                  <div class="form-group">
+                  <div class="form-group ui-field-group">
                     <label for="ucConfirmNewPassword">{{ t.ucConfirmNewPassword }}</label>
-                    <input id="ucConfirmNewPassword" name="confirm-password" v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
+                    <input class="ui-field" id="ucConfirmNewPassword" name="confirm-password" v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
                   </div>
                   <div>
                     <button class="primary-btn uc-icon-action" type="submit" :disabled="uc.passwordChanging" :aria-busy="uc.passwordChanging">
@@ -1312,7 +1312,7 @@ onUnmounted(() => {
                             <TsIcon name="x" :size="16" />
                             <span>{{ uc.qqUnlinking ? '正在解绑' : '确认解绑' }}</span>
                           </button>
-                          <button class="icon-btn uc-icon-action" type="button" :disabled="uc.qqUnlinking" @click="ucToggleQQUnlink">
+                          <button data-ui="quiet" class="icon-btn uc-icon-action" type="button" :disabled="uc.qqUnlinking" @click="ucToggleQQUnlink">
                             取消
                           </button>
                         </div>
@@ -1328,7 +1328,7 @@ onUnmounted(() => {
                     <p>{{ ucGitHubAccount ? ucGitHubCopy.linked : ucGitHubCopy.hint }}</p>
                     <small v-if="ucGitHubAccount?.nickname">{{ ucGitHubAccount.nickname }}</small>
                     <div class="uc-oauth-actions">
-                      <button v-if="!ucGitHubAccount" class="icon-btn uc-icon-action" type="button" :disabled="uc.githubStarting || uc.profileLoading" @click="ucBindGitHub"><TsIcon name="link" :size="16" /><span>{{ ucGitHubCopy.bind }}</span></button>
+                      <button data-ui="quiet" v-if="!ucGitHubAccount" class="icon-btn uc-icon-action" type="button" :disabled="uc.githubStarting || uc.profileLoading" @click="ucBindGitHub"><TsIcon name="link" :size="16" /><span>{{ ucGitHubCopy.bind }}</span></button>
                       <button v-else-if="!uc.githubUnlinkOpen" class="danger-btn uc-icon-action" type="button" @click="ucToggleGitHubUnlink"><TsIcon name="x" :size="16" /><span>{{ ucGitHubCopy.unlink }}</span></button>
                       <form v-else class="uc-oauth-unlink-form" :aria-busy="uc.githubUnlinking" @submit.prevent="ucUnlinkGitHub">
                         <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
@@ -1336,7 +1336,7 @@ onUnmounted(() => {
                         <input id="ucGitHubUnlinkPassword" v-model="uc.githubPassword" name="current-password" type="password" required maxlength="128" autocomplete="current-password">
                         <div class="uc-oauth-unlink-buttons">
                           <button class="danger-btn" type="submit" :disabled="uc.githubUnlinking">{{ ucGitHubCopy.confirm }}</button>
-                          <button class="icon-btn" type="button" :disabled="uc.githubUnlinking" @click="ucToggleGitHubUnlink">{{ ucGitHubCopy.cancel }}</button>
+                          <button data-ui="quiet" class="icon-btn" type="button" :disabled="uc.githubUnlinking" @click="ucToggleGitHubUnlink">{{ ucGitHubCopy.cancel }}</button>
                         </div>
                       </form>
                     </div>
@@ -1350,7 +1350,7 @@ onUnmounted(() => {
                     <p>{{ ucGoogleAccount ? ucGoogleCopy.linked : ucGoogleCopy.hint }}</p>
                     <small v-if="ucGoogleAccount?.nickname">{{ ucGoogleAccount.nickname }}</small>
                     <div class="uc-oauth-actions">
-                      <button v-if="!ucGoogleAccount" class="icon-btn uc-icon-action" type="button" :disabled="uc.googleStarting || uc.profileLoading" @click="ucBindGoogle"><TsIcon name="link" :size="16" /><span>{{ ucGoogleCopy.bind }}</span></button>
+                      <button data-ui="quiet" v-if="!ucGoogleAccount" class="icon-btn uc-icon-action" type="button" :disabled="uc.googleStarting || uc.profileLoading" @click="ucBindGoogle"><TsIcon name="link" :size="16" /><span>{{ ucGoogleCopy.bind }}</span></button>
                       <button v-else-if="!uc.googleUnlinkOpen" class="danger-btn uc-icon-action" type="button" @click="ucToggleGoogleUnlink"><TsIcon name="x" :size="16" /><span>{{ ucGoogleCopy.unlink }}</span></button>
                       <form v-else class="uc-oauth-unlink-form" :aria-busy="uc.googleUnlinking" @submit.prevent="ucUnlinkGoogle">
                         <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
@@ -1358,7 +1358,7 @@ onUnmounted(() => {
                         <input id="ucGoogleUnlinkPassword" v-model="uc.googlePassword" name="current-password" type="password" required maxlength="128" autocomplete="current-password">
                         <div class="uc-oauth-unlink-buttons">
                           <button class="danger-btn" type="submit" :disabled="uc.googleUnlinking">{{ ucGoogleCopy.confirm }}</button>
-                          <button class="icon-btn" type="button" :disabled="uc.googleUnlinking" @click="ucToggleGoogleUnlink">{{ ucGoogleCopy.cancel }}</button>
+                          <button data-ui="quiet" class="icon-btn" type="button" :disabled="uc.googleUnlinking" @click="ucToggleGoogleUnlink">{{ ucGoogleCopy.cancel }}</button>
                         </div>
                       </form>
                     </div>
@@ -1379,7 +1379,7 @@ onUnmounted(() => {
         </section>
         <aside class="uc-support" :aria-label="ucCopy.account">
           <PaymentEntry />
-          <section class="panel uc-support-card">
+          <section class="panel uc-support-card ui-panel">
             <h2><TsIcon name="sparkles" :size="19" />{{ ucCopy.growth }}</h2>
             <template v-if="ucGrowth?.level">
               <UserLevelBadge :level="ucGrowth.level" :lang="lang" />
@@ -1389,7 +1389,7 @@ onUnmounted(() => {
             <p v-else>{{ ucCopy.growthUnavailable }}</p>
             <a class="ghost-btn uc-icon-action" href="/growth" @click.prevent="go('/growth')"><span>{{ ucCopy.growthOpen }}</span><TsIcon name="arrowRight" :size="16" /></a>
           </section>
-          <section class="panel uc-support-card">
+          <section class="panel uc-support-card ui-panel">
             <h2><TsIcon name="shield" :size="19" />{{ ucCopy.security }}</h2>
             <dl class="uc-binding-status"><div><dt>{{ ucCopy.email }}</dt><dd>{{ ucUser?.has_real_email ? ucCopy.linked : ucCopy.unlinked }}</dd></div><div><dt>{{ ucCopy.qq }}</dt><dd>{{ ucQQBound ? ucCopy.linked : ucCopy.unlinked }}</dd></div></dl>
             <button class="ghost-btn uc-icon-action" type="button" @click="ucOpenSecurity"><span>{{ ucCopy.securityOpen }}</span><TsIcon name="arrowRight" :size="16" /></button>

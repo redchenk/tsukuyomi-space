@@ -42,10 +42,10 @@ onMounted(() => { if (props.expanded) focusInput(); });
   <section id="site-pet-game-bubble" ref="bubble" tabindex="-1" class="site-pet-game-bubble" :class="{ 'is-expanded': expanded }"
     :role="expanded ? 'dialog' : 'region'" :aria-label="copy.conversation" :aria-modal="expanded ? 'false' : undefined"
     @keydown.esc.stop.prevent="emit('close')">
-    <header><div><strong>{{ copy.yachiyo }}</strong><span>{{ status }}</span></div><button class="bubble-close" type="button" :aria-label="copy.closeChat" @click="emit('close')"><TsIcon name="x" :size="16" /></button></header>
+    <header><div><strong>{{ copy.yachiyo }}</strong><span>{{ status }}</span></div><button data-ui-part="tool" class="bubble-close" type="button" :aria-label="copy.closeChat" @click="emit('close')"><TsIcon name="x" :size="16" /></button></header>
     <template v-if="!expanded">
       <p class="site-pet-speech" aria-live="polite" :aria-busy="chatting">{{ preview }}</p>
-      <button class="bubble-expand" type="button" @click="emit('expand')">{{ copy.chatLabel }} <TsIcon name="message" :size="14" /></button>
+      <button data-ui-part="tool" class="bubble-expand" type="button" @click="emit('expand')">{{ copy.chatLabel }} <TsIcon name="message" :size="14" /></button>
     </template>
     <div v-else class="site-pet-chat-body">
       <div ref="log" class="gomoku-chat-log" role="log" :aria-label="copy.conversation" aria-live="polite" :aria-busy="chatting">
@@ -56,12 +56,12 @@ onMounted(() => { if (props.expanded) focusInput(); });
         </article>
       </div>
       <p v-if="chat.error" class="gomoku-chat-error" role="alert">{{ copy.errors[chat.error] }}</p>
-      <div class="gomoku-chat-actions"><button v-if="chatting" type="button" @click="interaction.stop()">{{ copy.stop }}</button><button v-else-if="chat.canRetry" type="button" :disabled="interaction.busy" @click="interaction.retry()">{{ copy.retry }}</button></div>
-      <div class="gomoku-banter"><button v-for="event in ['tease', 'ponder', 'cheer']" :key="event" type="button" :disabled="!chat.configured || chatting || interaction.busy" @click="send(copy[event])">{{ copy[event] }}</button></div>
+      <div class="gomoku-chat-actions"><button data-ui-part="tool" v-if="chatting" type="button" @click="interaction.stop()">{{ copy.stop }}</button><button data-ui-part="tool" v-else-if="chat.canRetry" type="button" :disabled="interaction.busy" @click="interaction.retry()">{{ copy.retry }}</button></div>
+      <div class="gomoku-banter"><button data-ui-part="tool" v-for="event in ['tease', 'ponder', 'cheer']" :key="event" type="button" :disabled="!chat.configured || chatting || interaction.busy" @click="send(copy[event])">{{ copy[event] }}</button></div>
       <form class="gomoku-chat-form" @submit.prevent="send()">
         <label for="pet-game-chat-input">{{ copy.chatLabel }}</label>
         <textarea id="pet-game-chat-input" ref="input" v-model="draft" :placeholder="copy.chatPlaceholder" maxlength="500" rows="2" :disabled="!chat.configured" @keydown="keydown"></textarea>
-        <div><small>{{ draft.length }}/500</small><button type="submit" :disabled="!chat.configured || chatting || interaction.busy || !draft.trim()">{{ copy.send }}</button></div>
+        <div><small>{{ draft.length }}/500</small><button data-ui-part="tool" type="submit" :disabled="!chat.configured || chatting || interaction.busy || !draft.trim()">{{ copy.send }}</button></div>
       </form>
       <div class="gomoku-chat-options"><label><input type="checkbox" :checked="interaction.autoTalk" :disabled="!chat.configured" @change="interaction.setAutoTalk($event.target.checked)">{{ copy.autoTalk }}</label><a href="/room/settings" @click.prevent="emit('go', '/room/settings')">{{ copy.modelSettings }}</a></div>
       <small class="gomoku-model" v-if="chat.configured">{{ copy.selectedModel }} {{ chat.model }} · {{ copy.modelUsage }}</small>

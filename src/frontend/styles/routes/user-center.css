@@ -174,7 +174,7 @@
     .uc-inline-stats > div { gap: 6px; }
     .uc-inline-stats dd { font-size: 14px; }
     .uc-hero-actions { grid-column: 1 / -1; gap: 8px; }
-    .uc-hero-actions > a { flex: 1; padding-inline: 10px; font-size: 12px; }
+    .uc-hero-actions > a { flex: 1 1 8rem; padding-inline: 10px; font-size: 12px; }
     .uc-page .uc-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .uc-page .uc-tabs-panel { display: none; }
     .uc-mobile-navigation { display: flex; align-items: center; gap: 10px; min-width: 0; }

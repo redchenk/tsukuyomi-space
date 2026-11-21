@@ -128,7 +128,7 @@ async function startQQLogin() {
 </script>
 
 <template>
-  <main class="page auth-page auth-page-register">
+  <main data-ui-layout="content" class="page auth-page auth-page-register">
     <section class="auth-shell">
       <aside class="auth-visual" aria-label="Tsukuyomi Space">
         <div class="auth-visual-sheen" aria-hidden="true"></div>
@@ -153,54 +153,54 @@ async function startQQLogin() {
         <section class="auth-card" data-material="content" :aria-busy="register.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="userPlus" :size="14" /> Tsukuyomi Gate</span>
-            <h1>{{ authTitle }}</h1>
+            <h1 class="ui-page-title">{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ t.registerSubtitle }}</p>
           </div>
           <div v-if="register.message" class="form-message" :class="register.type">{{ register.message }}</div>
           <form v-field-validation :aria-busy="register.submitting" @submit.prevent="submitRegister">
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="registerUsername">{{ t.ucUsername }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="user" :size="18" />
                 <input name="registerUsername" id="registerUsername" v-model="register.username" required maxlength="32" :placeholder="t.usernamePh" autocomplete="username">
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="registerEmail">{{ t.email }}</label>
               <div class="code-row">
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="mail" :size="18" />
                   <input name="registerEmail" id="registerEmail" v-model="register.email" required type="email" :placeholder="t.emailInputPh" autocomplete="email">
                 </div>
-                <button class="code-btn" type="button" :disabled="register.sending.loading" :aria-busy="register.sending.loading" @click="sendCode">
+                <button data-ui="secondary" class="code-btn" type="button" :disabled="register.sending.loading" :aria-busy="register.sending.loading" @click="sendCode">
                   <TsIcon v-if="register.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                   <span :role="register.sending.loading ? 'status' : undefined">{{ register.sending.label || t.sendCode }}</span>
                 </button>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="registerCode">{{ t.emailCode }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                 <input autocomplete="one-time-code" name="registerCode" id="registerCode" v-model="register.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="registerPassword">{{ t.password }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="registerPassword" id="registerPassword" v-model="register.password" required minlength="8" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
-                <button class="auth-password-toggle" type="button" :aria-pressed="showPassword" :aria-label="showPassword ? t.hidePassword : t.showPassword" @click="showPassword = !showPassword">
+                <button data-ui-part="tool" class="auth-password-toggle" type="button" :aria-pressed="showPassword" :aria-label="showPassword ? t.hidePassword : t.showPassword" @click="showPassword = !showPassword">
                   <TsIcon :name="showPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group ui-field-group">
               <label for="registerConfirm">{{ t.confirmPassword }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
                 <input name="registerConfirm" id="registerConfirm" v-model="register.confirmPassword" required minlength="6" :type="showConfirmPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
-                <button class="auth-password-toggle" type="button" :aria-pressed="showConfirmPassword" :aria-label="showConfirmPassword ? t.hidePassword : t.showPassword" @click="showConfirmPassword = !showConfirmPassword">
+                <button data-ui-part="tool" class="auth-password-toggle" type="button" :aria-pressed="showConfirmPassword" :aria-label="showConfirmPassword ? t.hidePassword : t.showPassword" @click="showConfirmPassword = !showConfirmPassword">
                   <TsIcon :name="showConfirmPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
               </div>
@@ -211,15 +211,15 @@ async function startQQLogin() {
           <div class="oauth-login-section">
             <div class="auth-divider"><span>{{ isEnglish ? 'Other sign-up options' : '其他方式登录' }}</span></div>
             <div class="oauth-provider-row">
-              <button class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Continue with QQ' : 'QQ 登录'" :title="isEnglish ? 'Continue with QQ' : 'QQ 登录'" @click="startQQLogin">
+              <button data-ui-part="tool" class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Continue with QQ' : 'QQ 登录'" :title="isEnglish ? 'Continue with QQ' : 'QQ 登录'" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
                 <span>{{ isEnglish ? 'Continue with QQ' : 'QQ 登录' }}</span>
               </button>
-              <button class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
+              <button data-ui-part="tool" class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
                 <TsIcon name="github" :size="22" />
                 <span>{{ isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录' }}</span>
               </button>
-              <button v-if="googleOAuthEnabled" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
+              <button data-ui-part="tool" v-if="googleOAuthEnabled" class="oauth-icon-btn google" type="button" :aria-label="isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录'" @click="startGoogleLogin">
                 <img :src="googleIconUrl" alt="" width="20" height="20">
                 <span>{{ isEnglish ? 'Sign in with Google' : isJapanese ? 'Google でログイン' : 'Google 登录' }}</span>
               </button>

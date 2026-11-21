@@ -27,10 +27,10 @@ onBeforeUnmount(() => clearTimeout(timer));
 <template>
   <Teleport to="body">
     <dialog v-if="open" ref="modal" class="room-relationship-drawer" aria-labelledby="relationship-drawer-title" @cancel.prevent="emit('close')" @click.self="emit('close')">
-      <header><h2 id="relationship-drawer-title"><TsIcon name="heart" :size="19" />{{ title }}</h2><button class="relationship-drawer-close" type="button" :aria-label="closeLabel" data-modal-close @click="emit('close')"><TsIcon name="x" :size="20" /></button></header>
+      <header><h2 id="relationship-drawer-title"><TsIcon name="heart" :size="19" />{{ title }}</h2><button data-ui="icon" class="relationship-drawer-close" type="button" :aria-label="closeLabel" data-modal-close @click="emit('close')"><TsIcon name="x" :size="20" /></button></header>
       <RoomRelationshipCard :relationship="relationship" :lang="lang" expanded />
     </dialog>
-    <button v-if="notice && !open" class="room-relationship-notice" type="button" @click="emit('open')"><TsIcon name="heart" :size="15" /><span role="status" aria-live="polite" aria-atomic="true">{{ noticeText }}</span><TsIcon name="chevronRight" :size="14" /></button>
+    <button data-ui="secondary" v-if="notice && !open" class="room-relationship-notice" type="button" @click="emit('open')"><TsIcon name="heart" :size="15" /><span role="status" aria-live="polite" aria-atomic="true">{{ noticeText }}</span><TsIcon name="chevronRight" :size="14" /></button>
   </Teleport>
 </template>
 

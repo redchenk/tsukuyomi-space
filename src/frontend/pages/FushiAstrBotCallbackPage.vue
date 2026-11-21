@@ -23,9 +23,9 @@ async function copy() {
 </script>
 
 <template>
-  <main class="fushi-callback" data-material="content">
+  <main data-ui-layout="content" class="fushi-callback" data-material="content">
     <p class="eyebrow">FUSHI × ASTRBOT</p>
-    <h1>{{ command ? '最后一步，回到机器人私聊' : denied ? '已取消连接' : '授权链接已失效' }}</h1>
+    <h1 class="ui-page-title">{{ command ? '最后一步，回到机器人私聊' : denied ? '已取消连接' : '授权链接已失效' }}</h1>
     <template v-if="command">
       <p>复制下方指令，在发起登录的机器人私聊中发送。请在 90 秒内完成，超时后重新发送 /Fushi登录。</p>
       <textarea aria-label="一次性授权确认指令" readonly :value="command" rows="5"></textarea>

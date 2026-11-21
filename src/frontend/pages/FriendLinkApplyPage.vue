@@ -253,15 +253,15 @@ watch(() => form.avatar_url, () => {
 </script>
 
 <template>
-  <main class="page friend-link-page">
+  <main data-ui-layout="content" class="page friend-link-page">
     <header class="friend-link-hero" data-material="content">
-      <button class="friend-link-back" type="button" @click="go('/friend-links')">
+      <button data-ui="quiet" class="friend-link-back" type="button" @click="go('/friend-links')">
         <TsIcon name="arrowLeft" :size="18" />
         <span>{{ copy.back }}</span>
       </button>
       <div class="friend-link-hero-copy">
         <span class="friend-link-eyebrow">{{ copy.eyebrow }}</span>
-        <h1>{{ copy.title }}</h1>
+        <h1 class="ui-page-title">{{ copy.title }}</h1>
         <p>{{ copy.subtitle }}</p>
       </div>
       <div class="friend-link-hero-icon" aria-hidden="true">
@@ -270,7 +270,7 @@ watch(() => form.avatar_url, () => {
     </header>
 
     <section class="friend-link-layout">
-      <section class="friend-link-form-panel" data-material="content">
+      <section class="friend-link-form-panel ui-panel" data-material="content">
         <div class="friend-link-panel-head">
           <TsIcon name="external" :size="20" />
           <h2>{{ copy.formTitle }}</h2>
@@ -292,26 +292,26 @@ watch(() => form.avatar_url, () => {
 
         <form v-else class="friend-link-form" :aria-busy="submitting || discoveringAvatar" @submit.prevent="submitApplication">
           <div class="friend-link-field-grid">
-            <label class="friend-link-field">
+            <label class="friend-link-field ui-field-group">
               <span>{{ copy.name }}</span>
-              <input name="form-name" v-model="form.name" type="text" maxlength="40" minlength="2" autocomplete="organization" :placeholder="copy.namePlaceholder" required>
+              <input class="ui-field" name="form-name" v-model="form.name" type="text" maxlength="40" minlength="2" autocomplete="organization" :placeholder="copy.namePlaceholder" required>
             </label>
-            <label class="friend-link-field">
+            <label class="friend-link-field ui-field-group">
               <span>{{ copy.url }}</span>
-              <input name="form-url" v-model="form.url" type="url" maxlength="2048" inputmode="url" autocomplete="url" :placeholder="copy.urlPlaceholder" required>
+              <input class="ui-field" name="form-url" v-model="form.url" type="url" maxlength="2048" inputmode="url" autocomplete="url" :placeholder="copy.urlPlaceholder" required>
             </label>
           </div>
 
-          <label class="friend-link-field">
+          <label class="friend-link-field ui-field-group">
             <span>{{ copy.description }}</span>
-            <textarea v-model="form.description" maxlength="160" minlength="6" rows="3" :placeholder="copy.descriptionPlaceholder" required></textarea>
+            <textarea class="ui-field" v-model="form.description" maxlength="160" minlength="6" rows="3" :placeholder="copy.descriptionPlaceholder" required></textarea>
             <small>{{ form.description.length }}/160</small>
           </label>
 
           <div class="friend-link-avatar-entry">
-            <label class="friend-link-field">
+            <label class="friend-link-field ui-field-group">
               <span>{{ copy.avatar }}</span>
-              <input v-model="form.avatar_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.avatarPlaceholder">
+              <input class="ui-field" v-model="form.avatar_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.avatarPlaceholder">
             </label>
             <button
               class="ghost-btn friend-link-avatar-action"
@@ -333,9 +333,9 @@ watch(() => form.avatar_url, () => {
             <span>{{ form.name || copy.namePlaceholder }}</span>
           </div>
 
-          <label class="friend-link-field">
+          <label class="friend-link-field ui-field-group">
             <span>{{ copy.backlink }}</span>
-            <input v-model="form.backlink_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.backlinkPlaceholder">
+            <input class="ui-field" v-model="form.backlink_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.backlinkPlaceholder">
             <span class="friend-link-field-hint">{{ copy.backlinkHint }}</span>
           </label>
 
@@ -345,9 +345,9 @@ watch(() => form.avatar_url, () => {
               <TsIcon name="chevronDown" :size="17" />
             </summary>
             <div class="friend-link-advanced-body">
-              <label class="friend-link-field">
+              <label class="friend-link-field ui-field-group">
                 <span>{{ copy.note }}</span>
-                <textarea v-model="form.note" maxlength="300" rows="3" :placeholder="copy.notePlaceholder"></textarea>
+                <textarea class="ui-field" v-model="form.note" maxlength="300" rows="3" :placeholder="copy.notePlaceholder"></textarea>
                 <small>{{ form.note.length }}/300</small>
               </label>
             </div>
@@ -355,7 +355,7 @@ watch(() => form.avatar_url, () => {
 
           <p v-if="errorMessage" class="friend-link-error" role="alert">{{ errorMessage }}</p>
 
-          <div class="friend-link-form-actions">
+          <div class="friend-link-form-actions ui-actions">
             <button class="primary-btn" type="submit" :disabled="submitting || discoveringAvatar">
               <TsIcon name="send" :size="18" />
               <span>{{ submitting ? copy.submitting : copy.submit }}</span>

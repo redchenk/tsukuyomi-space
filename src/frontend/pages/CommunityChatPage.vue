@@ -180,7 +180,7 @@ async function command(m, name) {
 </script>
 
 <template>
-  <main class="moon-chat">
+  <main data-ui-layout="workspace" class="moon-chat">
     <dialog ref="drawer" class="mc-drawer" :class="{ 'mc-drawer-right': membersOpen }"
       :aria-label="membersOpen ? copy.online : copy.channels"
       @cancel.prevent="sheet=''" @click="closeOnBackdrop"></dialog>
@@ -191,11 +191,11 @@ async function command(m, name) {
           <img class="mc-server-art" :src="plazaArt" alt="">
           <a class="mc-hub" href="/hub" :title="copy.hub" :aria-label="copy.hub"><img :src="brandLogo" alt="" width="34" height="34"></a>
           <h1>{{ copy.title }}</h1>
-          <button v-if="compact" type="button" class="mc-icon" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x"/></button>
+          <button data-ui="icon" v-if="compact" type="button" class="mc-icon" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x"/></button>
         </header>
         <nav class="mc-channels" :aria-label="copy.channels">
           <h2 class="mc-label">{{ copy.channels }}</h2>
-          <button v-for="c in shared.channels" :key="c.id" type="button" :aria-current="c.id === channel.id ? 'page' : undefined" @click="select(c)">
+          <button data-ui-part="row" v-for="c in shared.channels" :key="c.id" type="button" :aria-current="c.id === channel.id ? 'page' : undefined" @click="select(c)">
             <span class="mc-hash" aria-hidden="true">#</span><span>{{ label(c) }}</span>
             <i v-if="unread[c.id]" class="mc-unread" :aria-label="copy.jump"></i>
           </button>
@@ -205,7 +205,7 @@ async function command(m, name) {
           <div class="mc-xp">
             <span class="mc-xp-icon"><TsIcon :name="rewarded?'check':'sparkles'" :size="18"/></span>
             <span><strong>{{ copy.growth }}</strong><small>{{ rewarded ? copy.awarded : copy.xp+' +'+shared.dailyXp+' XP' }}</small></span>
-            <button v-if="moderator" type="button" class="mc-icon" :title="copy.manage" :aria-label="copy.manage" @click="moderate"><TsIcon name="shield" :size="19"/></button>
+            <button data-ui="icon" v-if="moderator" type="button" class="mc-icon" :title="copy.manage" :aria-label="copy.manage" @click="moderate"><TsIcon name="shield" :size="19"/></button>
           </div>
         </div>
       </aside>
@@ -215,20 +215,20 @@ async function command(m, name) {
       <header class="mc-heading">
         <a v-if="compact" class="mc-hub" href="/hub" :title="copy.hub" :aria-label="copy.hub"><img :src="brandLogo" alt="" width="32" height="32"></a>
         <h2>
-          <button v-if="compact" type="button" class="mc-picker" :aria-label="copy.choose+' · '+label(channel)" aria-haspopup="dialog" :aria-expanded="sheet==='channels'" @click="sheet='channels'">
+          <button data-ui-part="disclosure" v-if="compact" type="button" class="mc-picker" :aria-label="copy.choose+' · '+label(channel)" aria-haspopup="dialog" :aria-expanded="sheet==='channels'" @click="sheet='channels'">
             <span class="mc-hash" aria-hidden="true">#</span>{{ label(channel) }}<TsIcon name="chevronDown" :size="15"/>
           </button>
           <template v-else><span class="mc-hash" aria-hidden="true">#</span>{{ label(channel) }}</template>
         </h2>
         <p v-if="!compact" class="mc-topic">{{ copy.topics[channel.id] }}</p>
-        <button class="mc-icon mc-presence-trigger" type="button" :title="copy.online" :aria-label="copy.online" :aria-expanded="membersOpen" @click="sheet=membersOpen?'':'members'">
+        <button data-ui="quiet" class="mc-icon mc-presence-trigger" type="button" :title="copy.online" :aria-label="copy.online" :aria-expanded="membersOpen" @click="sheet=membersOpen?'':'members'">
           <TsIcon name="users" :size="20"/><span>{{ members.length }}</span>
         </button>
       </header>
 
       <div ref="feed" class="mc-feed" role="log" :aria-label="label(channel)" aria-live="polite" @scroll="nearBottom() && (newBelow=false)">
         <div class="mc-timeline">
-          <button v-if="older" class="mc-older" type="button" :disabled="loadingOlder" @click="earlier">{{ copy.older }}</button>
+          <button data-ui="secondary" v-if="older" class="mc-older" type="button" :disabled="loadingOlder" @click="earlier">{{ copy.older }}</button>
           <div v-else-if="!messages.length" class="mc-intro">
             <span class="mc-intro-mark"><TsIcon :name="channel.icon" :size="29"/></span>
             <h3>{{ status === 'live' ? copy.first : copy[status] }}</h3>
@@ -244,35 +244,35 @@ async function command(m, name) {
                 <p :class="{quiet:m.removed}">{{ m.removed?copy.removed:m.content }}</p>
                 <small v-if="m.aiStatus==='pending'||m.aiStatus==='failed'" class="mc-ai-status">{{ m.aiStatus==='pending'?copy.waiting:copy.failed }}</small>
               </div>
-              <button v-if="!m.removed && user" type="button" class="mc-icon mc-more" :aria-label="copy.actions" @click="showActions(m)"><TsIcon name="ellipsis" :size="18"/></button>
+              <button data-ui="icon" v-if="!m.removed && user" type="button" class="mc-icon mc-more" :aria-label="copy.actions" @click="showActions(m)"><TsIcon name="ellipsis" :size="18"/></button>
             </article>
           </template>
         </div>
       </div>
 
       <div class="mc-compose-wrap">
-        <button v-if="newBelow" type="button" class="mc-new" @click="bottom">{{ copy.jump }} ↓</button>
+        <button data-ui="secondary" v-if="newBelow" type="button" class="mc-new" @click="bottom">{{ copy.jump }} ↓</button>
         <p v-if="feedback" class="mc-feedback" role="status">{{ feedback }}</p>
         <form v-if="user" class="mc-compose" @submit.prevent="send">
-          <div v-if="reply" class="mc-quote">{{ copy.reply }} · {{ speaker(reply) }} <button type="button" :aria-label="copy.cancel" @click="reply=null"><TsIcon name="x" :size="16"/></button></div>
+          <div v-if="reply" class="mc-quote">{{ copy.reply }} · {{ speaker(reply) }} <button data-ui="secondary" type="button" :aria-label="copy.cancel" @click="reply=null"><TsIcon name="x" :size="16"/></button></div>
           <div class="mc-input-row">
-            <button type="button" class="mc-mention" :title="mention+' · '+copy.free" :aria-label="mention+' · '+copy.free" @click="callYachiyo">
+            <button data-ui-part="tool" type="button" class="mc-mention" :title="mention+' · '+copy.free" :aria-label="mention+' · '+copy.free" @click="callYachiyo">
               <img :src="portrait" alt="" width="26" height="26"><span>{{ mention }}</span><small>{{ copy.free }}</small>
             </button>
             <textarea ref="input" v-model="draft" rows="1" maxlength="4000" :disabled="working" :aria-label="copy.placeholder+' #'+label(channel)" :placeholder="copy.placeholder+' #'+label(channel)+'…'" @keydown="keydown"></textarea>
-            <button type="submit" class="mc-icon mc-send" :title="copy.send" :aria-label="copy.send" :disabled="working||!draft.trim()"><TsIcon name="send" :size="20"/></button>
+            <button data-ui="icon" type="submit" class="mc-icon mc-send" :title="copy.send" :aria-label="copy.send" :disabled="working||!draft.trim()"><TsIcon name="send" :size="20"/></button>
           </div>
         </form>
-        <div v-else class="mc-guest"><p>{{ copy.guest }}</p><button type="button" @click="login">{{ copy.login }} <TsIcon name="arrowRight" :size="16"/></button></div>
+        <div v-else class="mc-guest"><p>{{ copy.guest }}</p><button data-ui="secondary" type="button" @click="login">{{ copy.login }} <TsIcon name="arrowRight" :size="16"/></button></div>
       </div>
     </section>
 
     <Teleport v-if="membersOpen && (!compact || drawer)" :to="drawer" :disabled="!compact">
       <aside class="mc-roster">
         <header><h2>{{ copy.online }} <small>{{ members.length }}</small></h2>
-          <button class="mc-icon" type="button" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x" :size="18"/></button></header>
+          <button data-ui="icon" class="mc-icon" type="button" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x" :size="18"/></button></header>
         <div class="mc-roster-scroll">
-          <button type="button" class="mc-assistant" :title="copy.ask" @click="callYachiyo">
+          <button data-ui-part="tool" type="button" class="mc-assistant" :title="copy.ask" @click="callYachiyo">
             <img :src="portrait" alt="" width="36" height="36"><span><strong>{{ copy.yachiyo }}</strong><small>{{ copy.ai }} · {{ copy.free }}</small></span><TsIcon name="sparkles" :size="16"/>
           </button>
           <h3 class="mc-label">{{ members.length }} {{ copy.here }}</h3>
@@ -284,9 +284,9 @@ async function command(m, name) {
     <MobileSheet :open="sheet==='manage' || sheet==='actions'" :title="sheet==='manage'?copy.manage:copy.actions" :close-label="copy.close" @close="sheet=''">
       <div class="mc-sheet">
         <template v-if="sheet==='actions'&&action"><p>{{ speaker(action) }} · {{ action.content.slice(0,96) }}</p>
-          <button @click="chooseReply(action)">{{ copy.reply }}</button><button v-if="action.userId===user?.id||moderator" @click="command(action,'remove')">{{ copy.withdraw }}</button><button v-if="action.userId!==user?.id" @click="command(action,'report')">{{ copy.report }}</button></template>
+          <button data-ui="secondary" @click="chooseReply(action)">{{ copy.reply }}</button><button data-ui="secondary" v-if="action.userId===user?.id||moderator" @click="command(action,'remove')">{{ copy.withdraw }}</button><button data-ui="secondary" v-if="action.userId!==user?.id" @click="command(action,'report')">{{ copy.report }}</button></template>
         <template v-if="sheet==='manage'"><p>{{ copy.active }} · {{ activeToday }}</p><p v-if="!reports.length">{{ copy.noReports }}</p><div v-for="m in reports" :key="m.id"><strong>{{ speaker(m) }} · {{ m.reports }}</strong><p>{{ m.content }}</p>
-          <button @click="command(m,'dismiss')">{{ copy.dismiss }}</button><button @click="command(m,'remove')">{{ copy.withdraw }}</button><button v-if="m.userId" @click="command(m,'mute')">{{ copy.mute }}</button></div></template>
+          <button data-ui="secondary" @click="command(m,'dismiss')">{{ copy.dismiss }}</button><button data-ui="secondary" @click="command(m,'remove')">{{ copy.withdraw }}</button><button data-ui="secondary" v-if="m.userId" @click="command(m,'mute')">{{ copy.mute }}</button></div></template>
       </div>
     </MobileSheet>
   </main>

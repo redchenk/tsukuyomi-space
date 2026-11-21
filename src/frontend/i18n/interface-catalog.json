@@ -1,4 +1,32 @@
 {
+  "月读设计系统": {
+    "en": "Tsukuyomi design system",
+    "ja": "月読デザインシステム"
+  },
+  "按钮、输入框和页面布局的实际组件。切换语言和内容宽度，可以检查长标签、选中和键盘焦点。": {
+    "en": "Explore the components used on the site. Change the language and content width to check long labels, selection and keyboard focus.",
+    "ja": "サイトで使うボタン、入力欄、レイアウトを確認できます。言語や幅を変えて、長いラベルや選択状態、キーボードフォーカスをお試しください。"
+  },
+  "示例语言": {
+    "en": "Sample language",
+    "ja": "サンプルの言語"
+  },
+  "窄栏预览": {
+    "en": "Narrow column",
+    "ja": "狭い幅で表示"
+  },
+  "忙碌状态": {
+    "en": "Busy state",
+    "ja": "処理中の状態"
+  },
+  "操作层级": {
+    "en": "Button hierarchy",
+    "ja": "操作の優先度"
+  },
+  "筛选与表单": {
+    "en": "Filters and form",
+    "ja": "絞り込みとフォーム"
+  },
   "月读聊天室": {
     "en": "Moon Chat",
     "ja": "月読チャット"
