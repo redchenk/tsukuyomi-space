@@ -87,7 +87,10 @@ test('catalogue demonstrates shared actions, focus, busy state and wrapping', as
   await saved.press('Enter');
   await expect(saved).toHaveAttribute('aria-pressed', 'true');
   const fill = control => control.evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(await fill(saved)).not.toBe(await fill(unread));
+  await page.mouse.move(0, 0);
+  await expect.poll(async () => (await fill(saved)) !== (await fill(unread))).toBe(true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(saved).toHaveCSS('transition-duration', /^(?:0s)(?:, 0s)*$/);
   expect((await saved.boundingBox()).height).toBeGreaterThanOrEqual(44);
   const save = sample.locator('button[type="submit"]');
   await sample.locator('input[type="checkbox"]').nth(1).check();
