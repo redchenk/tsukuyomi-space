@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 7af96304bb9f3814200fdf644f9f8d7c35245de6
+          ref: f527430ebba81909de594174b2e60033769d0e41
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,7 +36,7 @@ jobs:
           npm ci
           node --test tests/frontend-navigation.test.js
           npm run build:web:overseas
-          echo '5a94c621d1d8b330b6e17063c6f3450c4e41c7cf1ee657554ee2bb90d9678f37  dist/frontend/index.html' | sha256sum -c -
+          echo '4c783163296dac6ee6259059eb6118e7f39c452cf2dec25ba9a6f4b7ef43cb9c  dist/frontend/index.html' | sha256sum -c -
           cp ../deploy/payment-entry-manifest.json "$RUNNER_TEMP/manifest.json"
           tar -czf "$RUNNER_TEMP/payment-entry.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" payment-visibility-release.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
