@@ -28,9 +28,9 @@ const introCopy = computed(() => ({ ...props.t, title: copy.value[0], subtitle: 
       <div class="boot-splash-line" aria-hidden="true"></div>
       <p class="room-entry-detail" role="status">{{ copy[phase === 'error' ? 3 : phase === 'stalled' ? 2 : 1] }}</p>
       <div v-if="phase === 'error' || phase === 'stalled'" class="room-entry-actions">
-        <button type="button" @click="$emit('retry')">{{ copy[4] }}</button>
-        <button v-if="canEnter" type="button" @click="$emit('continue')">{{ copy[6] }}</button>
-        <button type="button" @click="$emit('leave')">{{ copy[5] }}</button>
+        <button data-ui-part="overlay" type="button" @click="$emit('retry')">{{ copy[4] }}</button>
+        <button data-ui-part="overlay" v-if="canEnter" type="button" @click="$emit('continue')">{{ copy[6] }}</button>
+        <button data-ui-part="overlay" type="button" @click="$emit('leave')">{{ copy[5] }}</button>
       </div>
     </div>
   </div>

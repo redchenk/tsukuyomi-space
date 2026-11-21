@@ -41,10 +41,10 @@ const active = computed(() => props.music.playing.value || props.music.playPendi
         </div>
 
         <div class="site-music-quick-actions">
-          <button class="site-music-play" type="button" :aria-label="active ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
+          <button data-ui-part="media" class="site-music-play" type="button" :aria-label="active ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
             <TsIcon :name="active ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
-          <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
+          <button data-ui-part="media" class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
             <TsIcon name="x" :size="17" :stroke-width="2.4" />
             <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
           </button>
@@ -71,19 +71,19 @@ const active = computed(() => props.music.playing.value || props.music.playPendi
         </div>
 
         <div class="site-music-controls">
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
+          <button data-ui="secondary" class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
             <TsIcon name="skipBack" :size="17" />
           </button>
-          <button class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="active ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
+          <button data-ui="secondary" class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="active ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
             <TsIcon :name="active ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
+          <button data-ui="secondary" class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
             <TsIcon name="skipForward" :size="17" />
           </button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">
+          <button data-ui-part="media" class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">
             <TsIcon name="volume" :size="17" />
           </button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">
+          <button data-ui-part="media" class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">
             <TsIcon name="list" :size="17" />
           </button>
         </div>

@@ -34,7 +34,7 @@ function label(value) { return props.lang === 'zh' ? value : labels[value]?.[pro
           <p>{{ copy.legacy }}</p>
         </div>
       </details>
-      <button v-if="status === 'error'" class="relationship-retry" type="button" @click="relationship.refresh(4)">{{ copy.error }}</button>
+      <button data-ui="secondary" v-if="status === 'error'" class="relationship-retry" type="button" @click="relationship.refresh(4)">{{ copy.error }}</button>
       <p v-else-if="state" class="relationship-feedback" role="status" aria-live="polite" aria-atomic="true">
         <template v-if="feedback"><strong>{{ copy.last }} {{ feedback.delta > 0 ? `+${feedback.delta}` : feedback.delta < 0 ? feedback.delta : copy.unchanged }}</strong> · {{ label(feedback.reason) }}</template>
         <template v-else>{{ state.totalRecords ? copy.saved : copy.empty }}</template>

@@ -63,7 +63,7 @@ watch(() => props.lang, load);
 </script>
 
 <template>
-  <main class="hub" :aria-busy="loading">
+  <main data-ui-layout="scene" class="hub" :aria-busy="loading">
     <section class="home-hero" aria-labelledby="home-title">
       <img class="home-hero-art" :src="siteArt.hero" :alt="tr('月光湖畔的八千代', 'Yachiyo by the moonlit lake')" width="1672" height="941" fetchpriority="high">
       <div class="hero-shade" aria-hidden="true"></div>
@@ -75,10 +75,10 @@ watch(() => props.lang, load);
           <TsIcon name="message" :size="21" />
           <label class="sr-only" for="home-chat">{{ tr('和八千代说点什么', 'Say something to Yachiyo') }}</label>
           <input id="home-chat" v-model="draft" maxlength="2000" autocomplete="off" :placeholder="tr('和八千代说点什么…', 'Say something to Yachiyo…', '八千代に話しかけて…')">
-          <button type="submit" :aria-label="tr('带着这句话进入房间', 'Enter the room with your message')"><TsIcon name="arrowRight" :size="22" /></button>
+          <button data-ui-part="tool" type="submit" :aria-label="tr('带着这句话进入房间', 'Enter the room with your message')"><TsIcon name="arrowRight" :size="22" /></button>
         </form>
         <p v-if="draftError" class="hero-draft-error" role="alert">{{ draftError }}</p>
-        <div class="hero-suggestions"><button v-for="text in suggestions" :key="text" @click="enterRoom(text)">{{ text }}<TsIcon name="arrowUpRight" :size="13" /></button></div>
+        <div class="hero-suggestions"><button data-ui-part="tool" v-for="text in suggestions" :key="text" @click="enterRoom(text)">{{ text }}<TsIcon name="arrowUpRight" :size="13" /></button></div>
       </div>
       <div class="hero-footnote"><span>{{ lang === 'en' ? season[1] : season[0] }} <i></i> {{ tr('月见八千代', 'TSUKIMI YACHIYO') }}</span><a href="#under-the-moon">{{ tr('向下，发现更多', 'A little more to discover') }}<TsIcon name="chevronDown" :size="17" /></a></div>
     </section>

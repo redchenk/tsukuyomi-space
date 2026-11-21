@@ -149,7 +149,7 @@ watch(() => props.open, async (open) => {
             <span>ROOM MEMORY</span>
             <h2 id="room-share-title">对话分享卡</h2>
           </div>
-          <button ref="closeButton" data-modal-close class="room-share-close" type="button" aria-label="关闭" @click="emit('close')">
+          <button data-ui="icon" ref="closeButton" data-modal-close class="room-share-close" type="button" aria-label="关闭" @click="emit('close')">
             <TsIcon name="x" :size="18" />
           </button>
         </header>
@@ -187,7 +187,7 @@ watch(() => props.open, async (open) => {
             <span>更新预览</span>
           </button>
         </div>
-        <button v-if="share" class="room-share-revoke" type="button" :disabled="publishing" @click="revokeShare">撤销公开链接</button>
+        <button data-ui="danger" v-if="share" class="room-share-revoke" type="button" :disabled="publishing" @click="revokeShare">撤销公开链接</button>
       </section>
     </dialog>
   </Teleport>

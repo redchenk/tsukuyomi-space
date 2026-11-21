@@ -124,7 +124,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
 </script>
 
 <template>
-  <main class="page wiki-entry-page">
+  <main data-ui-layout="content" class="page wiki-entry-page">
     <div v-if="entry" class="wiki-entry-shell">
       <nav class="wiki-entry-breadcrumb" aria-label="面包屑导航">
         <RouterLink to="/wiki">超辉夜姬！Wiki</RouterLink>
@@ -138,7 +138,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
         <div class="wiki-entry-hero-copy">
           <p>{{ entry.kind === 'character' ? 'CHARACTER ARCHIVE' : 'TSUKUYOMI GLOSSARY' }}</p>
           <span v-if="!entry.sourceArticle">{{ $ui(entry.kindLabel) }}</span>
-          <h1>{{ entry.title }}</h1>
+          <h1 class="ui-page-title">{{ entry.title }}</h1>
           <div class="wiki-entry-original">{{ entry.original }}</div>
           <p class="wiki-entry-headline">{{ entry.headline }}</p>
           <div class="wiki-entry-tags"><span v-for="tag in entry.tags" :key="tag">{{ tag }}</span></div>
@@ -153,7 +153,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
           }"
         >
           <div v-if="imageVariants.length > 1" class="wiki-entry-image-variants" role="group" aria-label="辉夜形象切换">
-            <button
+            <button data-ui-part="canvas"
               v-for="variant in imageVariants"
               :key="variant.id"
               type="button"
@@ -287,7 +287,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
 
     <section v-else class="wiki-entry-not-found" data-material="content">
       <TsIcon name="search" :size="42" />
-      <h1>没有找到这个词条</h1>
+      <h1 class="ui-page-title">没有找到这个词条</h1>
       <p>链接可能已更名，或者词条仍在整理中。</p>
       <RouterLink to="/wiki">返回超辉夜姬！Wiki</RouterLink>
     </section>

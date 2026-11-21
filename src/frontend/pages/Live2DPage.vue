@@ -520,7 +520,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="live2d-page" :data-live-state="liveDirector.running ? 'on' : 'off'" :aria-busy="live2d.loading.value || llmState.loading" aria-label="Live2D preview">
+  <main data-ui-layout="workspace" class="live2d-page" :data-live-state="liveDirector.running ? 'on' : 'off'" :aria-busy="live2d.loading.value || llmState.loading" aria-label="Live2D preview">
     <div class="live2d-backdrop" aria-hidden="true"></div>
     <section class="live2d-stage" aria-label="Yachiyo Live2D stage">
       <div
@@ -558,14 +558,14 @@ onUnmounted(() => {
       <section class="live2d-start-help" aria-label="舞台使用指引">
         <strong>第一次玩舞台？</strong><p>① 等待角色就绪 → ② 点一次“试试点头” → ③ 再尝试 AI 演出。</p>
         <p role="status">{{ live2d.error.value ? '角色加载失败，请重新进入舞台重试。文字输出不代表动作已执行。' : live2d.ready.value ? '角色已就绪，可以试表情和动作。' : '正在加载角色，动作按钮将在就绪后开放。' }}</p>
-        <button class="live2d-action-btn" type="button" :disabled="!live2d.ready.value" @click="checkStageAction">试试点头</button>
+        <button data-ui="secondary" class="live2d-action-btn" type="button" :disabled="!live2d.ready.value" @click="checkStageAction">试试点头</button>
         <p v-if="actionNotice" role="status">{{ actionNotice }}</p>
         <details><summary>有文字，却没动作或声音？</summary><p>文字、动作与语音分别运行。先用点头按钮检查角色；AI 演出需要配置聊天模型，声音还需要语音服务。没有声音时也可以先试动作。</p><a href="/room/settings?setup=1">配置聊天模型</a> · <a href="/room/settings">语音与其他设置</a></details>
       </section>
       <section class="live2d-live-director" :aria-busy="llmState.loading" aria-label="Live director">
         <input v-model="liveTopic" type="text" spellcheck="false" placeholder="Stream topic">
         <div class="live2d-live-actions">
-          <button
+          <button data-ui="secondary"
             class="live2d-action-btn live2d-run-btn"
             type="button"
             :disabled="!live2d.ready.value || (!liveDirector.running && llmState.loading)"
@@ -582,7 +582,7 @@ onUnmounted(() => {
         </div>
         <div class="live2d-audience-row">
           <input v-model="audienceInput" type="text" spellcheck="false" placeholder="Audience line" @keydown.enter="sendAudienceLine">
-          <button class="live2d-icon-btn" type="button" title="Send audience line" aria-label="Send audience line" @click="sendAudienceLine">
+          <button data-ui="icon" class="live2d-icon-btn" type="button" title="Send audience line" aria-label="Send audience line" @click="sendAudienceLine">
             <TsIcon name="send" :size="17" />
           </button>
         </div>
@@ -592,7 +592,7 @@ onUnmounted(() => {
       </section>
 
       <div class="live2d-actions">
-        <button
+        <button data-ui="secondary"
           v-for="action in testActions"
           :key="action.expression"
           class="live2d-action-btn"
@@ -604,7 +604,7 @@ onUnmounted(() => {
         </button>
       </div>
       <div class="live2d-actions live2d-body-actions">
-        <button
+        <button data-ui="secondary"
           v-for="action in bodyActions"
           :key="action.bodyPose"
           class="live2d-action-btn"
@@ -616,20 +616,20 @@ onUnmounted(() => {
         </button>
       </div>
       <div class="live2d-icon-actions">
-        <button class="live2d-icon-btn" type="button" :disabled="!live2d.ready.value" title="Greeting" aria-label="Greeting" @click="runGreeting">
+        <button data-ui="icon" class="live2d-icon-btn" type="button" :disabled="!live2d.ready.value" title="Greeting" aria-label="Greeting" @click="runGreeting">
           <TsIcon name="star" :size="20" />
         </button>
-        <button class="live2d-icon-btn" type="button" :disabled="!live2d.ready.value" title="Speak caption" aria-label="Speak caption" @click="speak">
+        <button data-ui="icon" class="live2d-icon-btn" type="button" :disabled="!live2d.ready.value" title="Speak caption" aria-label="Speak caption" @click="speak">
           <TsIcon name="audioLines" :size="20" />
         </button>
       </div>
       <form class="live2d-llm-form" :aria-busy="llmState.loading" @submit.prevent="runLLMControl">
         <textarea v-model="prompt" rows="3" spellcheck="false" placeholder="Ask LLM to control Live2D"></textarea>
         <div class="live2d-llm-actions">
-          <button class="live2d-action-btn live2d-run-btn" type="submit" :disabled="!live2d.ready.value || llmState.loading" :aria-busy="llmState.loading">
+          <button data-ui="secondary" class="live2d-action-btn live2d-run-btn" type="submit" :disabled="!live2d.ready.value || llmState.loading" :aria-busy="llmState.loading">
             {{ llmState.loading ? 'Thinking' : 'LLM Act' }}
           </button>
-          <button class="live2d-icon-btn" type="button" title="Clear history" aria-label="Clear history" @click="resetLLMHistory">
+          <button data-ui="icon" class="live2d-icon-btn" type="button" title="Clear history" aria-label="Clear history" @click="resetLLMHistory">
             <TsIcon name="trash" :size="18" />
           </button>
         </div>

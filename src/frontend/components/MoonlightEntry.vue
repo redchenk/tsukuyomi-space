@@ -67,6 +67,6 @@ const frames = [moonHouse, kaguya, wiki, iroha, gallery, yachiyo];
       <div class="moon-entry-glare"></div>
     </div>
     <span v-if="waiting" class="moon-entry-loading" role="status">{{ t.accessOpening }} · {{ progress }}%</span>
-    <button class="moon-entry-skip" type="button" @click="$emit('skip')">{{ copy.skip }}</button>
+    <button data-ui-part="overlay" class="moon-entry-skip" type="button" @click="$emit('skip')">{{ copy.skip }}</button>
   </div>
 </template>

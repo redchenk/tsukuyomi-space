@@ -63,7 +63,7 @@ function exportCard() {
     <p class="hint">只保存在当前账号的这个浏览器中。长期记忆关闭后，下面“长期记忆”中的记录不会用于聊天；这里主动填写的介绍仍会使用。</p>
     <div class="actions">
       <label class="file-button">导入参考角色卡<input type="file" accept=".json,application/json" :disabled="loading" @change="importReference" /></label>
-      <button type="button" @click="exportCard">导出八千代角色卡</button>
+      <button data-ui="secondary" type="button" @click="exportCard">导出八千代角色卡</button>
     </div>
     <p class="hint">支持 Character Card V2 JSON。借鉴表达与场景，不替换八千代身份。不会执行扩展脚本，也不会把示例当作你们经历过的对话。</p>
     <div v-if="draft.reference" class="reference-preview">
@@ -85,7 +85,7 @@ function exportCard() {
           <textarea v-model="entry.content" maxlength="2000" :aria-label="`世界书内容 ${index + 1}`" />
         </article>
       </details>
-      <button type="button" @click="draft.reference = null; draft.referenceEnabled = false; draft.worldBookEnabled = false">移除参考卡</button>
+      <button data-ui-part="row" type="button" @click="draft.reference = null; draft.referenceEnabled = false; draft.worldBookEnabled = false">移除参考卡</button>
     </div>
     <details><summary>预览本轮会参考什么</summary>
       <label>试写一句话<input v-model="previewMessage" maxlength="1000" /></label>
@@ -94,7 +94,7 @@ function exportCard() {
       <p>世界书命中 {{ preview.worldBook.selected.length }} 条<span v-if="preview.worldBook.omitted.length">，{{ preview.worldBook.omitted.length }} 条因篇幅限制省略</span>。</p>
       <ol><li v-for="block in preview.blocks" :key="block.id">{{ block.title }}<span v-if="block.truncated">（已缩短）</span></li></ol>
     </details>
-    <div class="actions"><button type="button" :disabled="loading || !dirty" @click="save">保存对话设置</button><button type="button" :disabled="loading || !dirty" @click="cancel">撤销未保存修改</button></div>
+    <div class="actions"><button data-ui="secondary" type="button" :disabled="loading || !dirty" @click="save">保存对话设置</button><button data-ui="secondary" type="button" :disabled="loading || !dirty" @click="cancel">撤销未保存修改</button></div>
     <p v-if="feedback" role="status">{{ feedback }}</p><p v-if="error" role="alert" class="error">{{ error }}</p>
   </div>
 </details>

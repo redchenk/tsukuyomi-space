@@ -1,0 +1,125 @@
+/* Public design primitives. Page styles own placement, not the appearance of an action. */
+:root {
+  --ui-unit: .25rem;
+  --ui-gap: calc(2 * var(--ui-unit));
+  --ui-stack: clamp(1rem, 2vw, 1.5rem);
+  --ui-section: clamp(1.75rem, 4vw, 3rem);
+  --ui-touch: 2.75rem;
+  --ui-compact: 2.25rem;
+  --ui-control-type: .875rem;
+  --ui-heading: clamp(1.875rem, 1.25rem + 2vw, 3rem);
+  --ui-reading: 72ch;
+  --ui-focus: var(--accent);
+}
+@layer components {
+  :where([data-ui]) { display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* Layout may hide a control at a breakpoint or position a floating button.
+   Leave display, position, width, margin and flex placement with the caller. */
+:root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]) {
+  --ui-fg: var(--ink);
+  --ui-bg: var(--surface);
+  --ui-edge: var(--line-strong);
+  --ui-over: var(--soft);
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-gap);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  min-block-size: var(--ui-action-height, var(--ui-touch));
+  block-size: auto;
+  padding-block: .5rem;
+  padding-inline: var(--ui-action-inset, .875rem);
+  border: 1px solid var(--ui-edge);
+  border-radius: var(--r-control);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  font: 600 var(--ui-control-type)/1.4 var(--sans);
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transition: background-color var(--fast), color var(--fast), border-color var(--fast);
+}
+:root :is([data-ui="primary"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
+  --ui-bg: var(--accent);
+  --ui-over: var(--accent-hover);
+  --ui-edge: var(--accent);
+  --ui-fg: var(--on-accent);
+}
+:root :is([data-ui="accent"], [data-ui="danger"], .danger-btn):not([data-ui-part]) {
+  --ui-fg: var(--accent);
+  --ui-edge: currentColor;
+}
+:root :is([data-ui="danger"], .danger-btn):not([data-ui-part]) {
+  --ui-fg: var(--danger);
+  --ui-over: var(--ts-unified-danger-bg);
+}
+:root :is([data-ui="quiet"], [data-ui="icon"]):not([data-ui-part]) {
+  --ui-bg: transparent;
+  --ui-edge: transparent;
+  --ui-fg: var(--accent);
+  --ui-action-inset: .5rem;
+}
+:root :is([data-ui="choice"], .chip, .tab-btn, .filter-btn):not([data-ui-part]) {
+  --ui-action-inset: .75rem;
+  border-radius: var(--r-pill);
+}
+/* Selection also applies to toggles embedded in toolbars and older button groups. */
+:root :is([data-ui], .ghost-btn, .primary-btn, .chip, .filter-btn, .tab-btn):is([aria-pressed="true"], [aria-selected="true"]),
+:root :is([data-ui="choice"], .chip, .tab-btn, .filter-btn):is(.active, .is-active, .selected, [aria-current="page"]) {
+  --ui-bg: var(--ts-accent-soft);
+  --ui-edge: var(--accent);
+  --ui-fg: var(--accent);
+}
+:root [data-ui="icon"]:not([data-ui-part]) {
+  inline-size: var(--ui-action-height, var(--ui-touch));
+  padding: 0;
+}
+:root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]) > :where(span:not(.sr-only):not(.ts-visually-hidden), strong, small) {
+  min-inline-size: 0;
+  white-space: inherit;
+  overflow-wrap: inherit;
+}
+@media (hover: hover) {
+  :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part]):not(:disabled):not([aria-disabled="true"]):hover {
+    background: var(--ui-over);
+    border-color: var(--ui-fg);
+    color: var(--ui-fg);
+  }
+}
+:root :is([data-ui], [data-ui-part], .primary-btn, .ghost-btn, .danger-btn, .icon-button, .site-tool-button, .tab-btn, .filter-btn, .chip, .ui-field):focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+:root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn):disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+:root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn)[aria-busy="true"] { cursor: progress; }
+@media (min-width: 681px) and (pointer: fine) {
+  :is(.compact, [data-size="compact"]) { --ui-action-height: var(--ui-compact); }
+}
+[data-ui-layout] { min-inline-size: 0; }
+.ui-page { width: min(var(--page-width), calc(100% - 2 * var(--gutter))); margin-inline: auto; padding-block: var(--ui-section); }
+.ui-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-stack); align-content: start; }
+.ui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: var(--ui-stack); }
+.ui-actions { display: flex; flex-flow: row wrap; align-items: center; gap: var(--ui-gap); }
+.ui-heading { display: grid; gap: .625rem; min-width: 0; }
+:root .ui-page-title, .ui-heading h1 { font: 600 var(--ui-heading)/1.25 var(--serif); }
+.ui-heading p { max-width: var(--ui-reading); color: var(--muted); }
+.ui-panel { min-width: 0; padding: var(--ui-stack); border: 1px solid var(--line); border-radius: var(--r-media); background: var(--surface); }
+.ui-panel h2 { font: 600 clamp(1.25rem, 1rem + .6vw, 1.5rem)/1.4 var(--serif); }
+:root .ui-field { min-inline-size: 0; max-inline-size: 100%; min-block-size: var(--ui-touch); padding: .625rem .875rem; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--surface); color: var(--ink); font: inherit; }
+.ui-field[aria-invalid="true"] { border-color: var(--danger); }
+.ui-field-group { display: grid; align-content: start; gap: .375rem; min-width: 0; }
+:where(.ui-heading, .ui-panel, .ui-page, .page) :where(h1, h2, h3, legend, label) { overflow-wrap: anywhere; }
+@media (forced-colors: active) {
+  :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip) { border-color: ButtonText; }
+  :is([data-ui], .primary-btn, .ghost-btn, .danger-btn):disabled { border-color: GrayText; color: GrayText; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip) { transition: none; }
+}

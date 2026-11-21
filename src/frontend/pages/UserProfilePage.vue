@@ -185,7 +185,7 @@ onMounted(loadProfile);
 </script>
 
 <template>
-  <main class="page user-profile-page" :aria-busy="loading">
+  <main data-ui-layout="content" class="page user-profile-page" :aria-busy="loading">
     <LoadingSkeleton v-if="loading" variant="profile" :count="1" label="正在读取公开主页" />
     <div v-else-if="message && !profile" class="user-profile-status panel" role="alert">{{ message }}</div>
 
@@ -199,7 +199,7 @@ onMounted(loadProfile);
         </div>
         <div class="profile-main">
           <div class="profile-kicker"><TsIcon name="star" :size="15" /> User Profile</div>
-          <h1>{{ profileUser?.nickname || profileUser?.username }}</h1>
+          <h1 class="ui-page-title">{{ profileUser?.nickname || profileUser?.username }}</h1>
           <UserLevelBadge v-if="profileUser?.id" :level="userLevel(profileUser.id)" :lang="lang" />
           <p>{{ profileUser?.bio || '这位创作者还没有写下个人简介。' }}</p>
           <div class="profile-meta">
@@ -255,7 +255,7 @@ onMounted(loadProfile);
       </section>
 
       <div class="profile-content-grid">
-        <section class="panel profile-articles">
+        <section class="panel profile-articles ui-panel">
           <div class="profile-section-head">
             <div>
               <span>Published Notes</span>
@@ -297,7 +297,7 @@ onMounted(loadProfile);
                 </h3>
                 <p>{{ article.excerpt || '这篇文章还没有摘要。' }}</p>
               </div>
-              <a class="icon-btn profile-icon-action" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
+              <a data-ui="quiet" class="icon-btn profile-icon-action" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
                 <TsIcon name="eye" :size="16" />
                 <span>阅读</span>
               </a>
@@ -322,7 +322,7 @@ onMounted(loadProfile);
               </div>
             </div>
             <div class="profile-topic-list">
-              <button v-for="category in profileCategoryChips" :key="category" type="button">{{ category }}</button>
+              <button data-ui-part="row" v-for="category in profileCategoryChips" :key="category" type="button">{{ category }}</button>
               <span v-if="!profileCategoryChips.length">还没有可展示的文章分类</span>
             </div>
           </section>

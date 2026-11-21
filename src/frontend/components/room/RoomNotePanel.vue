@@ -22,7 +22,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start', 'save']);
   >
     <div class="panel-content">
       <textarea id="noteContent" v-model="note.value" aria-label="便签" placeholder="&#25226;&#28789;&#24863;&#20808;&#25918;&#22312;&#36825;&#37324;"></textarea>
-      <button id="saveNoteBtn" class="panel-btn" type="button" @click="emit('save')">&#20445;&#23384;&#20415;&#31614;</button>
+      <button data-ui="secondary" id="saveNoteBtn" class="panel-btn" type="button" @click="emit('save')">&#20445;&#23384;&#20415;&#31614;</button>
     </div>
   </RoomDraggablePanel>
 </template>

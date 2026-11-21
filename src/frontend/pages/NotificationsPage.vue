@@ -179,15 +179,15 @@ onMounted(loadNotifications);
 </script>
 
 <template>
-  <main class="page notifications-page">
+  <main data-ui-layout="content" class="page notifications-page">
     <section class="notifications-shell" :aria-busy="inbox.loading">
       <header class="notifications-hero">
-        <div>
+        <div class="ui-heading">
           <span class="notifications-kicker">Inbox</span>
-          <h1>站内信</h1>
+          <h1 class="ui-page-title">站内信</h1>
           <p>这里会收纳你收到的回复、点赞和互动提醒。</p>
         </div>
-        <div class="notifications-actions">
+        <div class="notifications-actions ui-actions">
           <span class="notifications-count">{{ unreadLabel }}</span>
           <button class="ghost-btn" type="button" :disabled="!inbox.unread" @click="markAllRead">全部已读</button>
           <button class="primary-btn" type="button" :disabled="inbox.loading" :aria-busy="inbox.loading" @click="loadNotifications()">刷新</button>
@@ -233,7 +233,7 @@ onMounted(loadNotifications);
       >
         <span class="notifications-page-summary">{{ pageSummary }}</span>
         <div class="notifications-page-controls">
-          <button
+          <button data-ui="secondary"
             class="notifications-page-button notifications-page-nav"
             type="button"
             :disabled="inbox.page <= 1"
@@ -245,7 +245,7 @@ onMounted(loadNotifications);
           </button>
           <template v-for="item in paginationItems" :key="item">
             <span v-if="isPageGap(item)" class="notifications-page-gap" aria-hidden="true">...</span>
-            <button
+            <button data-ui="secondary"
               v-else
               class="notifications-page-button"
               :class="{ active: item === inbox.page }"
@@ -257,7 +257,7 @@ onMounted(loadNotifications);
               {{ item }}
             </button>
           </template>
-          <button
+          <button data-ui="secondary"
             class="notifications-page-button notifications-page-nav"
             type="button"
             :disabled="inbox.page >= inbox.totalPages"

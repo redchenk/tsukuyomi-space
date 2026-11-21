@@ -1,4 +1,5 @@
 <script setup>
+import TsButton from './TsButton.vue';
 import TsIcon from './TsIcon.vue';
 import { contentTranslationAvailable, contentTranslationEnabled, setContentTranslationEnabled } from '../services/contentTranslation';
 
@@ -11,7 +12,7 @@ defineProps({ compact: { type: Boolean, default: false } });
       <TsIcon name="languages" :size="16" />
       <span>{{ contentTranslationEnabled ? 'English translation' : 'Original content' }}</span>
       <span aria-hidden="true">·</span>
-      <button type="button" @click="setContentTranslationEnabled(!contentTranslationEnabled)">{{ contentTranslationEnabled ? 'Show original' : 'Translate to English' }}</button>
+      <TsButton type="button" @click="setContentTranslationEnabled(!contentTranslationEnabled)">{{ contentTranslationEnabled ? 'Show original' : 'Translate to English' }}</TsButton>
     </template>
     <label v-else class="content-translation-preference">
       <TsIcon name="languages" :size="20" />

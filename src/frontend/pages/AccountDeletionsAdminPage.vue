@@ -23,11 +23,11 @@ async function update(item, next) {
 onMounted(() => load()); onUnmounted(() => { epoch++; });
 </script>
 <template>
-  <main class="page privacy-page">
-    <header class="privacy-heading"><span class="eyebrow">TSUKUYOMI · PRIVATE REQUESTS</span><h1>注销申请工作台</h1><p>仅超级管理员可查看。核验后按清单处理；“开始处理”不会删除用户，“完成”也不会代替实际清理。</p><RouterLink to="/admin">返回管理中心</RouterLink></header>
+  <main data-ui-layout="content" class="page privacy-page">
+    <header class="privacy-heading"><span class="eyebrow">TSUKUYOMI · PRIVATE REQUESTS</span><h1 class="ui-page-title">注销申请工作台</h1><p>仅超级管理员可查看。核验后按清单处理；“开始处理”不会删除用户，“完成”也不会代替实际清理。</p><RouterLink to="/admin">返回管理中心</RouterLink></header>
     <div class="privacy-actions"><label>申请状态 <select v-model="status" :disabled="busy" @change="load(1)"><option v-for="(label, value) in labels" :key="value" :value="value">{{ $ui(label) }}</option></select></label><button class="ghost-btn" :disabled="busy" @click="load(state.page)">刷新</button><span>共 {{ state.total }} 条</span></div>
     <p v-if="error" class="form-message error" role="alert">{{ error }}</p><p v-if="busy" role="status">正在处理…</p><p v-else-if="!state.items.length && !error">暂无此状态的申请。</p>
-    <section v-for="item in state.items" :key="item.id" class="panel privacy-section">
+    <section v-for="item in state.items" :key="item.id" class="panel privacy-section ui-panel">
       <h2>{{ item.username || '账号已移除' }} · {{ $ui(labels[item.status]) }}</h2><p>编号：<code>{{ item.id }}</code></p><p>核验邮箱：{{ item.email || '请查阅受控处理回执' }}</p><p>收到：{{ item.requested_at.slice(0, 10) }} · 预计处理：{{ item.due_at.slice(0, 10) }} <strong v-if="['pending','processing'].includes(item.status) && Date.parse(item.due_at) < Date.now()">（已逾期，请优先联系）</strong></p>
       <button v-if="item.status === 'pending'" class="primary-btn" :disabled="busy" @click="update(item, 'processing')">开始核验处理</button>
       <template v-if="item.status === 'processing'">

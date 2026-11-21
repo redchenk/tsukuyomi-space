@@ -29,7 +29,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start', 'save']);
         <label for="signatureInput">&#31614;&#21517;</label>
         <textarea id="signatureInput" v-model="profile.signature" placeholder="&#20889;&#19968;&#21477;&#20170;&#22825;&#24819;&#30041;&#19979;&#30340;&#35805;"></textarea>
       </div>
-      <button id="saveProfileBtn" class="panel-btn" type="button" @click="emit('save')">&#20445;&#23384;&#36164;&#26009;</button>
+      <button data-ui="secondary" id="saveProfileBtn" class="panel-btn" type="button" @click="emit('save')">&#20445;&#23384;&#36164;&#26009;</button>
       <div id="profileDisplay" class="panel-section">
         <div><strong>{{ profile.nickname || '未命名访客' }}</strong></div>
         <div>{{ profile.signature || '今夜也在月光里慢慢整理思绪。' }}</div>

@@ -1924,12 +1924,12 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
 </script>
 
 <template>
-  <main class="page arena-page pixel-workspace pixel-studio ps-theme" :class="studioClasses">
+  <main data-ui-layout="workspace" class="page arena-page pixel-workspace pixel-studio ps-theme" :class="studioClasses">
     <h1 class="ps-visually-hidden">{{ copy.pageTitle }}</h1>
     <section class="ps-app" :aria-label="copy.pageTitle">
       <header class="ps-bar">
         <div class="ps-brand" aria-hidden="true"><span class="ps-brand-mark"><TsIcon name="moon" :size="15" /></span><span>{{ copy.appName }}</span></div>
-        <button class="ps-doc-button" type="button" :aria-label="copy.renameArtwork" @click="preparePublish">
+        <button data-ui-part="canvas" class="ps-doc-button" type="button" :aria-label="copy.renameArtwork" @click="preparePublish">
           <span class="ps-doc-name">{{ form.title || copy.draftTitle }}</span>
           <span class="ps-save-dot" :class="saveState" :title="saveStateText"></span>
         </button>
@@ -1938,9 +1938,9 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
           <template v-if="activeTool === 'brush' || activeTool === 'eraser'">
             <div class="ps-size-control">
               <span class="ps-field-name">{{ copy.brushSize }}</span>
-              <button class="ps-icon-btn is-small" type="button" :disabled="brushSize <= 1" :aria-label="`${copy.brushSize} -`" @click="setBrushSize(brushSize - 1)"><TsIcon name="minus" :size="13" /></button>
+              <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :disabled="brushSize <= 1" :aria-label="`${copy.brushSize} -`" @click="setBrushSize(brushSize - 1)"><TsIcon name="minus" :size="13" /></button>
               <input class="ps-range" :value="brushSize" type="range" min="1" :max="MAX_BRUSH_SIZE" step="1" :aria-label="copy.brushSize" @input="setBrushSize($event.target.value)">
-              <button class="ps-icon-btn is-small" type="button" :disabled="brushSize >= MAX_BRUSH_SIZE" :aria-label="`${copy.brushSize} +`" @click="setBrushSize(brushSize + 1)"><TsIcon name="plus" :size="13" /></button>
+              <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :disabled="brushSize >= MAX_BRUSH_SIZE" :aria-label="`${copy.brushSize} +`" @click="setBrushSize(brushSize + 1)"><TsIcon name="plus" :size="13" /></button>
               <output class="ps-value">{{ brushSize }} {{ copy.pixels }}</output>
             </div>
             <label class="ps-check"><input v-model="pressureEnabled" type="checkbox"><span>{{ copy.pressure }}</span></label>
@@ -1950,44 +1950,44 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
         </div>
         <div class="ps-bar-actions">
           <div class="ps-history" role="group" :aria-label="copy.undo">
-            <button class="ps-icon-btn" type="button" :disabled="!hasUndo" :aria-label="copy.undo" :data-tip="`${copy.undo} · Ctrl Z`" @click="undo"><TsIcon name="undo" :size="18" /></button>
-            <button class="ps-icon-btn" type="button" :disabled="!hasRedo" :aria-label="copy.redo" :data-tip="`${copy.redo} · Ctrl Shift Z`" @click="redo"><TsIcon name="redo" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :disabled="!hasUndo" :aria-label="copy.undo" :data-tip="`${copy.undo} · Ctrl Z`" @click="undo"><TsIcon name="undo" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :disabled="!hasRedo" :aria-label="copy.redo" :data-tip="`${copy.redo} · Ctrl Shift Z`" @click="redo"><TsIcon name="redo" :size="18" /></button>
           </div>
           <span class="ps-bar-sep ps-hide-mobile" aria-hidden="true"></span>
-          <button class="ps-btn ps-hide-mobile" type="button" aria-controls="arena-gallery-panel" :aria-expanded="galleryOpen" @click="toggleGalleryPanel"><TsIcon name="image" :size="16" /><span>{{ copy.gallery }}</span></button>
-          <button class="ps-btn ps-hide-mobile ps-hide-compact" type="button" @click="openNewDialog"><TsIcon name="plus" :size="16" /><span>{{ copy.newCanvas }}</span></button>
-          <label class="ps-btn ps-hide-mobile ps-hide-compact"><TsIcon name="upload" :size="16" /><span>{{ copy.imageImport }}</span><input class="ps-visually-hidden" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
-          <button class="ps-btn ps-hide-mobile" type="button" @click="downloadDraft"><TsIcon name="download" :size="16" /><span>{{ copy.download }}</span></button>
-          <button class="ps-icon-btn ps-show-mobile" type="button" :aria-label="copy.more" :aria-expanded="sheet === 'file'" aria-controls="arena-controls-panel" @click="openSheet('file')"><TsIcon name="ellipsis" :size="20" /></button>
-          <button class="ps-btn ps-btn-primary" type="button" @click="preparePublish"><TsIcon name="send" :size="15" /><span>{{ editingArtwork ? copy.saveUpdate : copy.share }}</span></button>
+          <button data-ui="secondary" data-size="compact" class="ps-btn ps-hide-mobile" type="button" aria-controls="arena-gallery-panel" :aria-expanded="galleryOpen" @click="toggleGalleryPanel"><TsIcon name="image" :size="16" /><span>{{ copy.gallery }}</span></button>
+          <button data-ui="secondary" data-size="compact" class="ps-btn ps-hide-mobile ps-hide-compact" type="button" @click="openNewDialog"><TsIcon name="plus" :size="16" /><span>{{ copy.newCanvas }}</span></button>
+          <label data-ui="secondary" data-size="compact" class="ps-btn ps-hide-mobile ps-hide-compact"><TsIcon name="upload" :size="16" /><span>{{ copy.imageImport }}</span><input class="ps-visually-hidden" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"></label>
+          <button data-ui="secondary" data-size="compact" class="ps-btn ps-hide-mobile" type="button" @click="downloadDraft"><TsIcon name="download" :size="16" /><span>{{ copy.download }}</span></button>
+          <button data-ui-part="canvas" class="ps-icon-btn ps-show-mobile" type="button" :aria-label="copy.more" :aria-expanded="sheet === 'file'" aria-controls="arena-controls-panel" @click="openSheet('file')"><TsIcon name="ellipsis" :size="20" /></button>
+          <button data-ui="primary" data-size="compact" class="ps-btn ps-btn-primary" type="button" @click="preparePublish"><TsIcon name="send" :size="15" /><span>{{ editingArtwork ? copy.saveUpdate : copy.share }}</span></button>
         </div>
       </header>
 
       <div class="ps-body">
         <nav class="ps-toolbar" :aria-label="copy.tools">
           <div class="ps-tool-group" role="group" :aria-label="copy.tools">
-            <button v-for="item in toolOptions" :key="item.key" class="ps-tool" :class="{ active: activeTool === item.key }" type="button" :aria-pressed="activeTool === item.key" :aria-label="item.label" :data-tip="`${item.label} · ${item.shortcut}`" @click="setTool(item.key)"><TsIcon :name="item.icon" :size="20" /></button>
+            <button data-ui-part="canvas" v-for="item in toolOptions" :key="item.key" class="ps-tool" :class="{ active: activeTool === item.key }" type="button" :aria-pressed="activeTool === item.key" :aria-label="item.label" :data-tip="`${item.label} · ${item.shortcut}`" @click="setTool(item.key)"><TsIcon :name="item.icon" :size="20" /></button>
           </div>
           <span class="ps-toolbar-sep" aria-hidden="true"></span>
-          <button class="ps-dock-size ps-show-mobile" type="button" :aria-label="`${copy.brushSize} ${brushSize} ${copy.pixels}`" :aria-expanded="sheet === 'brush'" aria-controls="arena-controls-panel" :style="brushDotStyle" @click="openSheet('brush')"><span class="ps-dot"></span><small>{{ brushSize }}</small></button>
+          <button data-ui-part="canvas" class="ps-dock-size ps-show-mobile" type="button" :aria-label="`${copy.brushSize} ${brushSize} ${copy.pixels}`" :aria-expanded="sheet === 'brush'" aria-controls="arena-controls-panel" :style="brushDotStyle" @click="openSheet('brush')"><span class="ps-dot"></span><small>{{ brushSize }}</small></button>
           <div class="ps-color-chips">
-            <button :key="pickPulse" class="ps-chip-fg" :class="{ 'is-picked': pickPulse }" type="button" :style="{ '--chip': selectedColor }" :aria-label="copy.currentColor" :data-tip="copy.currentColor" :aria-expanded="sheet === 'color'" @click="revealPanel('color')"></button>
-            <button class="ps-chip-bg" type="button" :style="{ '--chip': backgroundColor }" :aria-label="copy.background" :data-tip="copy.background" @click="revealPanel('canvas')"></button>
+            <button data-ui-part="canvas" :key="pickPulse" class="ps-chip-fg" :class="{ 'is-picked': pickPulse }" type="button" :style="{ '--chip': selectedColor }" :aria-label="copy.currentColor" :data-tip="copy.currentColor" :aria-expanded="sheet === 'color'" @click="revealPanel('color')"></button>
+            <button data-ui-part="canvas" class="ps-chip-bg" type="button" :style="{ '--chip': backgroundColor }" :aria-label="copy.background" :data-tip="copy.background" @click="revealPanel('canvas')"></button>
           </div>
           <div class="ps-toolbar-end">
-            <button class="ps-tool" :class="{ active: showGrid }" type="button" :aria-pressed="showGrid" :aria-label="copy.grid" :data-tip="`${copy.grid} · '`" @click="showGrid = !showGrid"><TsIcon name="grid" :size="18" /></button>
-            <button class="ps-tool" :class="{ active: focusMode }" type="button" :aria-pressed="focusMode" :aria-label="focusMode ? copy.exitFocus : copy.focus" :data-tip="`${focusMode ? copy.exitFocus : copy.focus} · F`" @click="toggleFocus"><TsIcon :name="focusMode ? 'minimize' : 'maximize'" :size="18" /></button>
-            <button class="ps-tool" type="button" :aria-label="copy.shortcuts" :data-tip="copy.shortcuts" @click="openShortcuts"><TsIcon name="helpCircle" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-tool" :class="{ active: showGrid }" type="button" :aria-pressed="showGrid" :aria-label="copy.grid" :data-tip="`${copy.grid} · '`" @click="showGrid = !showGrid"><TsIcon name="grid" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-tool" :class="{ active: focusMode }" type="button" :aria-pressed="focusMode" :aria-label="focusMode ? copy.exitFocus : copy.focus" :data-tip="`${focusMode ? copy.exitFocus : copy.focus} · F`" @click="toggleFocus"><TsIcon :name="focusMode ? 'minimize' : 'maximize'" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-tool" type="button" :aria-label="copy.shortcuts" :data-tip="copy.shortcuts" @click="openShortcuts"><TsIcon name="helpCircle" :size="18" /></button>
           </div>
         </nav>
 
         <div class="ps-stage arena-canvas-panel">
           <div class="ps-doc-tabs">
-            <button class="ps-doc-tab" type="button" :aria-label="copy.renameArtwork" @click="preparePublish">
+            <button data-ui-part="canvas" class="ps-doc-tab" type="button" :aria-label="copy.renameArtwork" @click="preparePublish">
               <TsIcon name="image" :size="13" /><span class="ps-doc-name">{{ form.title || copy.draftTitle }}</span><small>@ {{ zoom }}%</small>
             </button>
             <span class="ps-doc-status"><span class="ps-save-dot" :class="saveState"></span>{{ saveStateText }}</span>
-            <button class="ps-icon-btn is-small ps-panels-toggle" type="button" :aria-expanded="panelsOpen && !focusMode" aria-controls="arena-controls-panel" :aria-label="panelsOpen ? copy.hidePanels : copy.showPanels" :data-tip="panelsOpen ? copy.hidePanels : copy.showPanels" @click="togglePanels"><TsIcon name="panelRight" :size="16" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn is-small ps-panels-toggle" type="button" :aria-expanded="panelsOpen && !focusMode" aria-controls="arena-controls-panel" :aria-label="panelsOpen ? copy.hidePanels : copy.showPanels" :data-tip="panelsOpen ? copy.hidePanels : copy.showPanels" @click="togglePanels"><TsIcon name="panelRight" :size="16" /></button>
           </div>
           <div
             ref="canvasViewportRef"
@@ -2027,57 +2027,57 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
             <span class="ps-status-item ps-status-color"><i :style="{ backgroundColor: selectedColor }"></i>{{ selectedColor.toUpperCase() }}</span>
             <span class="ps-status-hint">{{ toolHint }}</span>
             <div class="arena-zoom-controls ps-zoom" role="group" :aria-label="copy.zoom">
-              <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} -`" @click="stepZoom(-1)"><TsIcon name="minus" :size="14" /></button>
-              <button class="ps-zoom-value" type="button" :aria-label="copy.fitCanvas" :data-tip="`${copy.fitCanvas} · Ctrl 0`" @click="resetCanvasZoom"><strong>{{ zoom }}%</strong></button>
-              <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} +`" @click="stepZoom(1)"><TsIcon name="plus" :size="14" /></button>
-              <button class="ps-text-btn" type="button" :data-tip="`${copy.actualPixels} · Ctrl 1`" @click="zoomTo(100)">1:1</button>
-              <button class="ps-icon-btn is-small" type="button" :aria-label="copy.fitCanvas" :data-tip="`${copy.fitCanvas} · Ctrl 0`" @click="resetCanvasZoom"><TsIcon name="scan" :size="14" /></button>
+              <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} -`" @click="stepZoom(-1)"><TsIcon name="minus" :size="14" /></button>
+              <button data-ui-part="canvas" class="ps-zoom-value" type="button" :aria-label="copy.fitCanvas" :data-tip="`${copy.fitCanvas} · Ctrl 0`" @click="resetCanvasZoom"><strong>{{ zoom }}%</strong></button>
+              <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} +`" @click="stepZoom(1)"><TsIcon name="plus" :size="14" /></button>
+              <button data-ui-part="canvas" class="ps-text-btn" type="button" :data-tip="`${copy.actualPixels} · Ctrl 1`" @click="zoomTo(100)">1:1</button>
+              <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :aria-label="copy.fitCanvas" :data-tip="`${copy.fitCanvas} · Ctrl 0`" @click="resetCanvasZoom"><TsIcon name="scan" :size="14" /></button>
             </div>
           </footer>
         </div>
 
-        <button v-if="panelsOpen && !focusMode && !isMobileLayout" class="ps-panels-scrim" type="button" tabindex="-1" :aria-label="copy.hidePanels" @click="panelsOpen = false"></button>
+        <button data-ui-part="canvas" v-if="panelsOpen && !focusMode && !isMobileLayout" class="ps-panels-scrim" type="button" tabindex="-1" :aria-label="copy.hidePanels" @click="panelsOpen = false"></button>
         <aside id="arena-controls-panel" class="ps-panels arena-controls" :data-sheet="sheetPanel" :style="sheetStyle" :aria-label="copy.panels" :inert="!panelsVisible">
           <div class="ps-sheet-head" @pointerdown="startSheetDrag" @pointermove="moveSheetDrag" @pointerup="endSheetDrag" @pointercancel="endSheetDrag">
             <span class="ps-sheet-grip" aria-hidden="true"></span>
             <div class="ps-sheet-tabs" role="tablist" :aria-label="copy.panels">
-              <button v-for="tab in sheetTabs" :key="tab.key" type="button" role="tab" :aria-selected="sheet === tab.key" @click="sheet = tab.key"><TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
+              <button data-ui-part="canvas" v-for="tab in sheetTabs" :key="tab.key" type="button" role="tab" :aria-selected="sheet === tab.key" @click="sheet = tab.key"><TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
             </div>
-            <button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="closeSheet"><TsIcon name="x" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="closeSheet"><TsIcon name="x" :size="18" /></button>
           </div>
           <div class="ps-panels-scroll" data-lenis-prevent>
             <section id="ps-panel-color" class="ps-panel" data-panel="color" :class="{ 'is-collapsed': collapsedPanels.color }">
-              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.color" @click="toggleCollapsed('color')"><TsIcon name="chevronDown" :size="13" />{{ copy.colorPanel }}</button><span class="ps-panel-meta">{{ selectedColor.toUpperCase() }}</span></h2>
+              <h2 class="ps-panel-head"><button data-ui-part="canvas" type="button" :aria-expanded="!collapsedPanels.color" @click="toggleCollapsed('color')"><TsIcon name="chevronDown" :size="13" />{{ copy.colorPanel }}</button><span class="ps-panel-meta">{{ selectedColor.toUpperCase() }}</span></h2>
               <div class="ps-panel-body">
                 <PixelColorPicker ref="customColorInputRef" :model-value="selectedColor" :label="copy.freeColor" @update:model-value="chooseColor" />
               </div>
             </section>
             <section id="ps-panel-swatches" class="ps-panel" data-panel="swatches" :class="{ 'is-collapsed': collapsedPanels.swatches }">
-              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.swatches" @click="toggleCollapsed('swatches')"><TsIcon name="chevronDown" :size="13" />{{ copy.swatchesPanel }}</button><button class="ps-icon-btn is-small" type="button" :aria-label="copy.addColor" :data-tip="copy.addColor" @click="saveSelectedColor"><TsIcon name="plus" :size="14" /></button></h2>
+              <h2 class="ps-panel-head"><button data-ui-part="canvas" type="button" :aria-expanded="!collapsedPanels.swatches" @click="toggleCollapsed('swatches')"><TsIcon name="chevronDown" :size="13" />{{ copy.swatchesPanel }}</button><button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :aria-label="copy.addColor" :data-tip="copy.addColor" @click="saveSelectedColor"><TsIcon name="plus" :size="14" /></button></h2>
               <div class="ps-panel-body">
                 <div class="ps-swatch-grid" role="group" :aria-label="copy.presets">
-                  <button v-for="color in [...presetPalette, ...studioColors]" :key="color" class="ps-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"></button>
+                  <button data-ui-part="canvas" v-for="color in [...presetPalette, ...studioColors]" :key="color" class="ps-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"></button>
                 </div>
                 <template v-if="customColors.length">
                   <p class="ps-panel-label">{{ copy.savedColors }} <span>{{ customColors.length }}</span></p>
                   <div class="ps-swatch-grid" role="group" :aria-label="copy.savedColors">
-                    <button v-for="color in customColors" :key="color" class="ps-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.savedColors} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"></button>
+                    <button data-ui-part="canvas" v-for="color in customColors" :key="color" class="ps-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.savedColors} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"></button>
                   </div>
                 </template>
                 <template v-if="recentColors.length">
                   <p class="ps-panel-label">{{ copy.recent }}</p>
                   <div class="ps-swatch-grid is-recent" role="group" :aria-label="copy.recent">
-                    <button v-for="color in recentColors" :key="color" class="ps-swatch" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.recent} ${color}`" @click="chooseColor(color)"></button>
+                    <button data-ui-part="canvas" v-for="color in recentColors" :key="color" class="ps-swatch" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.recent} ${color}`" @click="chooseColor(color)"></button>
                   </div>
                 </template>
               </div>
             </section>
             <section id="ps-panel-brush" class="ps-panel" data-panel="brush" :class="{ 'is-collapsed': collapsedPanels.brush }">
-              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.brush" @click="toggleCollapsed('brush')"><TsIcon name="chevronDown" :size="13" />{{ copy.brushPanel }}</button><span class="ps-panel-meta">{{ brushSize }} {{ copy.pixels }}</span></h2>
+              <h2 class="ps-panel-head"><button data-ui-part="canvas" type="button" :aria-expanded="!collapsedPanels.brush" @click="toggleCollapsed('brush')"><TsIcon name="chevronDown" :size="13" />{{ copy.brushPanel }}</button><span class="ps-panel-meta">{{ brushSize }} {{ copy.pixels }}</span></h2>
               <div class="ps-panel-body">
                 <div class="ps-brush-preview" :style="brushDotStyle"><span class="ps-dot" :style="{ backgroundColor: selectedColor }"></span></div>
                 <div class="ps-brush-sizes" role="group" :aria-label="copy.brushSize">
-                  <button v-for="size in MAX_BRUSH_SIZE" :key="size" type="button" :class="{ active: brushSize === size }" :aria-pressed="brushSize === size" :aria-label="`${copy.brushSize} ${size} ${copy.pixels}`" @click="setBrushSize(size)">{{ size }}</button>
+                  <button data-ui-part="canvas" v-for="size in MAX_BRUSH_SIZE" :key="size" type="button" :class="{ active: brushSize === size }" :aria-pressed="brushSize === size" :aria-label="`${copy.brushSize} ${size} ${copy.pixels}`" @click="setBrushSize(size)">{{ size }}</button>
                 </div>
                 <label class="ps-switch-row"><span>{{ copy.pressure }}</span><input v-model="pressureEnabled" class="ps-switch" type="checkbox"></label>
                 <label class="ps-switch-row"><span>{{ copy.stabilizer }}</span><input v-model="stabilizerEnabled" class="ps-switch" type="checkbox"></label>
@@ -2085,52 +2085,52 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
               </div>
             </section>
             <section id="ps-panel-navigator" class="ps-panel" data-panel="navigator" :class="{ 'is-collapsed': collapsedPanels.navigator }">
-              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.navigator" @click="toggleCollapsed('navigator')"><TsIcon name="chevronDown" :size="13" />{{ copy.navigatorPanel }}</button><span class="ps-panel-meta">{{ zoom }}%</span></h2>
+              <h2 class="ps-panel-head"><button data-ui-part="canvas" type="button" :aria-expanded="!collapsedPanels.navigator" @click="toggleCollapsed('navigator')"><TsIcon name="chevronDown" :size="13" />{{ copy.navigatorPanel }}</button><span class="ps-panel-meta">{{ zoom }}%</span></h2>
               <div class="ps-panel-body">
                 <div ref="navigatorRef" class="ps-navigator" :style="{ aspectRatio: `${canvasWidth} / ${canvasHeight}`, backgroundColor }" @pointerdown="startNavigatorDrag" @pointermove="moveNavigatorDrag" @pointerup="endNavigatorDrag" @pointercancel="endNavigatorDrag">
                   <PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="copy.navigatorPanel" />
                   <span class="ps-navigator-view" :style="navigatorStyle" aria-hidden="true"></span>
                 </div>
                 <div class="ps-navigator-zoom">
-                  <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} -`" @click="stepZoom(-1)"><TsIcon name="zoomOut" :size="14" /></button>
+                  <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} -`" @click="stepZoom(-1)"><TsIcon name="zoomOut" :size="14" /></button>
                   <input class="ps-range" type="range" min="0" max="1000" :value="zoomSliderValue" :aria-label="copy.zoom" :aria-valuetext="`${zoom}%`" @input="zoomFromSlider($event.target.value)">
-                  <button class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} +`" @click="stepZoom(1)"><TsIcon name="zoomIn" :size="14" /></button>
+                  <button data-ui-part="canvas" class="ps-icon-btn is-small" type="button" :aria-label="`${copy.zoom} +`" @click="stepZoom(1)"><TsIcon name="zoomIn" :size="14" /></button>
                 </div>
               </div>
             </section>
             <section id="ps-panel-canvas" class="ps-panel" data-panel="canvas" :class="{ 'is-collapsed': collapsedPanels.canvas }">
-              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.canvas" @click="toggleCollapsed('canvas')"><TsIcon name="chevronDown" :size="13" />{{ copy.canvasPanel }}</button><span class="ps-panel-meta">{{ canvasWidth }} × {{ canvasHeight }}</span></h2>
+              <h2 class="ps-panel-head"><button data-ui-part="canvas" type="button" :aria-expanded="!collapsedPanels.canvas" @click="toggleCollapsed('canvas')"><TsIcon name="chevronDown" :size="13" />{{ copy.canvasPanel }}</button><span class="ps-panel-meta">{{ canvasWidth }} × {{ canvasHeight }}</span></h2>
               <div class="ps-panel-body">
                 <p class="ps-panel-label">{{ copy.background }}</p>
                 <div class="ps-bg-row">
                   <label class="ps-bg-picker" :style="{ '--swatch': backgroundColor }"><input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label>
-                  <button v-for="color in backgroundPresets" :key="color" class="ps-swatch" :class="{ active: backgroundColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.background} ${color}`" :aria-pressed="backgroundColor === color" @click="setBackgroundColor(color)"></button>
+                  <button data-ui-part="canvas" v-for="color in backgroundPresets" :key="color" class="ps-swatch" :class="{ active: backgroundColor === color }" type="button" :style="{ '--swatch': color }" :aria-label="`${copy.background} ${color}`" :aria-pressed="backgroundColor === color" @click="setBackgroundColor(color)"></button>
                 </div>
                 <label class="ps-switch-row ps-show-mobile"><span>{{ copy.grid }}</span><input v-model="showGrid" class="ps-switch" type="checkbox"></label>
                 <div class="ps-action-list">
-                  <button type="button" @click="openNewDialog"><TsIcon name="plus" :size="16" /><span>{{ copy.newCanvasAction }}</span><small>{{ canvasWidth }} × {{ canvasHeight }}</small></button>
-                  <button type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="16" /><span>{{ copy.example }}</span></button>
-                  <button type="button" class="is-danger" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="16" /><span>{{ copy.clear }}</span></button>
+                  <button data-ui-part="canvas" type="button" @click="openNewDialog"><TsIcon name="plus" :size="16" /><span>{{ copy.newCanvasAction }}</span><small>{{ canvasWidth }} × {{ canvasHeight }}</small></button>
+                  <button data-ui-part="canvas" type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="16" /><span>{{ copy.example }}</span></button>
+                  <button data-ui-part="canvas" type="button" class="is-danger" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="16" /><span>{{ copy.clear }}</span></button>
                 </div>
               </div>
             </section>
             <section id="ps-panel-file" class="ps-panel" data-panel="file">
               <div class="ps-panel-body">
                 <div class="ps-action-list is-large">
-                  <button type="button" aria-controls="arena-gallery-panel" :aria-expanded="galleryOpen" @click="toggleGalleryPanel"><TsIcon name="image" :size="18" /><span>{{ copy.gallery }}</span><TsIcon name="chevronRight" :size="14" /></button>
+                  <button data-ui-part="canvas" type="button" aria-controls="arena-gallery-panel" :aria-expanded="galleryOpen" @click="toggleGalleryPanel"><TsIcon name="image" :size="18" /><span>{{ copy.gallery }}</span><TsIcon name="chevronRight" :size="14" /></button>
                   <label><TsIcon name="upload" :size="18" /><span>{{ copy.imageImport }}</span><input class="ps-visually-hidden" type="file" accept="image/*" :aria-label="copy.uploadImage" @change="handleImageUpload"><TsIcon name="chevronRight" :size="14" /></label>
-                  <button type="button" @click="downloadDraft"><TsIcon name="download" :size="18" /><span>{{ copy.download }}</span><TsIcon name="chevronRight" :size="14" /></button>
-                  <button type="button" @click="preparePublish"><TsIcon name="penLine" :size="18" /><span>{{ copy.publishDetails }}</span><TsIcon name="chevronRight" :size="14" /></button>
+                  <button data-ui-part="canvas" type="button" @click="downloadDraft"><TsIcon name="download" :size="18" /><span>{{ copy.download }}</span><TsIcon name="chevronRight" :size="14" /></button>
+                  <button data-ui-part="canvas" type="button" @click="preparePublish"><TsIcon name="penLine" :size="18" /><span>{{ copy.publishDetails }}</span><TsIcon name="chevronRight" :size="14" /></button>
                 </div>
                 <p class="ps-panel-note"><span class="ps-save-dot" :class="saveState"></span>{{ saveStateText }}</p>
               </div>
             </section>
             <section id="ps-panel-notes" class="ps-panel" data-panel="notes" :class="{ 'is-collapsed': collapsedPanels.notes }">
-              <h2 class="ps-panel-head"><button type="button" :aria-expanded="!collapsedPanels.notes" @click="toggleCollapsed('notes')"><TsIcon name="chevronDown" :size="13" />{{ copy.notesPanel }}</button><span class="ps-panel-meta">{{ chatMessages.length }}</span></h2>
+              <h2 class="ps-panel-head"><button data-ui-part="canvas" type="button" :aria-expanded="!collapsedPanels.notes" @click="toggleCollapsed('notes')"><TsIcon name="chevronDown" :size="13" />{{ copy.notesPanel }}</button><span class="ps-panel-meta">{{ chatMessages.length }}</span></h2>
               <div class="ps-panel-body">
                 <p v-if="!chatMessages.length" class="ps-panel-note">{{ copy.notesEmpty }}</p>
                 <div v-for="message in chatMessages" :key="message.id" class="ps-note"><time>{{ message.time }}</time><p>{{ message.text }}</p></div>
-                <form class="ps-note-form" @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button class="ps-btn" type="submit">{{ copy.sendMessage }}</button></form>
+                <form class="ps-note-form" @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button data-ui="secondary" data-size="compact" class="ps-btn" type="submit">{{ copy.sendMessage }}</button></form>
               </div>
             </section>
           </div>
@@ -2144,11 +2144,11 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
           <header class="ps-dialog-head">
             <h2>{{ copy.gallery }}</h2>
             <div class="ps-segmented" role="group" :aria-label="copy.gallery">
-              <button :class="{ active: gallery.sort === 'latest' }" :aria-pressed="gallery.sort === 'latest'" type="button" @click="gallery.sort = 'latest'">{{ copy.latest }}</button>
-              <button :class="{ active: gallery.sort === 'hot' }" :aria-pressed="gallery.sort === 'hot'" type="button" @click="gallery.sort = 'hot'">{{ copy.hot }}</button>
+              <button data-ui-part="canvas" :class="{ active: gallery.sort === 'latest' }" :aria-pressed="gallery.sort === 'latest'" type="button" @click="gallery.sort = 'latest'">{{ copy.latest }}</button>
+              <button data-ui-part="canvas" :class="{ active: gallery.sort === 'hot' }" :aria-pressed="gallery.sort === 'hot'" type="button" @click="gallery.sort = 'hot'">{{ copy.hot }}</button>
             </div>
-            <button class="ps-icon-btn" type="button" :disabled="gallery.loading" :aria-busy="gallery.loading" :aria-label="copy.refresh" :data-tip="copy.refresh" @click="loadArtworks()"><TsIcon name="refresh" :size="17" /></button>
-            <button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="galleryDialogRef.close()"><TsIcon name="x" :size="19" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :disabled="gallery.loading" :aria-busy="gallery.loading" :aria-label="copy.refresh" :data-tip="copy.refresh" @click="loadArtworks()"><TsIcon name="refresh" :size="17" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="galleryDialogRef.close()"><TsIcon name="x" :size="19" /></button>
           </header>
           <div class="ps-gallery-scroll" data-lenis-prevent>
             <LoadingSkeleton v-if="gallery.loading" variant="pixel" :count="4" :label="copy.loading" />
@@ -2156,7 +2156,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
             <div v-else-if="!gallery.items.length" class="ps-gallery-empty">{{ copy.emptyGallery }}</div>
             <div v-else class="pixel-gallery-grid">
               <article v-for="artwork in gallery.items" :id="'pixel-art-' + artwork.id" :key="artwork.id" class="pixel-art-card">
-                <button
+                <button data-ui-part="canvas"
                   class="pixel-art-preview"
                   type="button"
                   :aria-label="artwork.title || copy.gallery"
@@ -2190,40 +2190,40 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
                   </div>
                 </div>
                 <div class="pixel-art-actions">
-                  <button class="ps-chip-btn like-btn" :class="{ liked: isArtworkLiked(artwork) }" :aria-pressed="isArtworkLiked(artwork)" :aria-label="`${isArtworkLiked(artwork) ? copy.liked : copy.like} ${formatNumber(artwork.like_count)}`" type="button" @click="likeArtwork(artwork)"><TsIcon name="heart" :size="15" /><span>{{ formatNumber(artwork.like_count) }}</span></button>
-                  <button class="ps-chip-btn" type="button" :aria-label="copy.download" @click="downloadArtwork(artwork)"><TsIcon name="download" :size="15" /><span>PNG</span></button>
-                  <button class="ps-chip-btn" type="button" :aria-label="copy.shareLink" @click="openArtworkShare(artwork)"><TsIcon name="external" :size="15" /><span>{{ copy.shareLink }}</span></button>
+                  <button data-ui="quiet" data-size="compact" class="ps-chip-btn like-btn" :class="{ liked: isArtworkLiked(artwork) }" :aria-pressed="isArtworkLiked(artwork)" :aria-label="`${isArtworkLiked(artwork) ? copy.liked : copy.like} ${formatNumber(artwork.like_count)}`" type="button" @click="likeArtwork(artwork)"><TsIcon name="heart" :size="15" /><span>{{ formatNumber(artwork.like_count) }}</span></button>
+                  <button data-ui="quiet" data-size="compact" class="ps-chip-btn" type="button" :aria-label="copy.download" @click="downloadArtwork(artwork)"><TsIcon name="download" :size="15" /><span>PNG</span></button>
+                  <button data-ui="quiet" data-size="compact" class="ps-chip-btn" type="button" :aria-label="copy.shareLink" @click="openArtworkShare(artwork)"><TsIcon name="external" :size="15" /><span>{{ copy.shareLink }}</span></button>
                 </div>
               </article>
             </div>
             <nav v-if="!gallery.loading && gallery.totalPages > 1" class="ps-pager" :aria-label="copy.pager">
-              <button class="ps-icon-btn" type="button" :disabled="gallery.page <= 1" :aria-label="copy.prevPage" @click="loadArtworks(gallery.page - 1)"><TsIcon name="arrowLeft" :size="16" /></button>
+              <button data-ui-part="canvas" class="ps-icon-btn" type="button" :disabled="gallery.page <= 1" :aria-label="copy.prevPage" @click="loadArtworks(gallery.page - 1)"><TsIcon name="arrowLeft" :size="16" /></button>
               <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
-              <button class="ps-icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" :aria-label="copy.nextPage" @click="loadArtworks(gallery.page + 1)"><TsIcon name="arrowRight" :size="16" /></button>
+              <button data-ui-part="canvas" class="ps-icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" :aria-label="copy.nextPage" @click="loadArtworks(gallery.page + 1)"><TsIcon name="arrowRight" :size="16" /></button>
             </nav>
           </div>
         </section>
       </dialog>
 
       <dialog ref="publishDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.publishDetails" @click.self="publishDialogRef.close()">
-        <header class="ps-dialog-head"><h2>{{ copy.publishDetails }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="publishDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <header class="ps-dialog-head"><h2>{{ copy.publishDetails }}</h2><button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="publishDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
         <div class="ps-dialog-preview" :style="{ backgroundColor }"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="copy.navigatorPanel" /></div>
         <form @submit.prevent="shareArtwork">
           <label class="ps-input-field"><span>{{ copy.draftPlaceholder }}</span><input ref="titleInputRef" v-model="form.title" maxlength="40" type="text" autocomplete="off" required :placeholder="copy.draftPlaceholder"><small>{{ form.title.length }}/40</small></label>
           <label class="ps-input-field"><span>{{ copy.descPlaceholder }}</span><textarea v-model="form.description" maxlength="120" rows="3" :placeholder="copy.descPlaceholder"></textarea><small>{{ form.description.length }}/120</small></label>
-          <footer class="ps-dialog-foot"><button class="ps-btn" type="button" @click="publishDialogRef.close()">{{ copy.cancel }}</button><button class="ps-btn ps-btn-primary" type="submit" :disabled="isPublishing"><TsIcon name="send" :size="15" />{{ publishButtonText }}</button></footer>
+          <footer class="ps-dialog-foot"><button data-ui="secondary" data-size="compact" class="ps-btn" type="button" @click="publishDialogRef.close()">{{ copy.cancel }}</button><button data-ui="primary" data-size="compact" class="ps-btn ps-btn-primary" type="submit" :disabled="isPublishing"><TsIcon name="send" :size="15" />{{ publishButtonText }}</button></footer>
         </form>
       </dialog>
 
       <dialog ref="exportDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.download" @click.self="exportDialogRef.close()" @close="exportPreview = ''">
-        <header class="ps-dialog-head"><h2>{{ copy.download }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="exportDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <header class="ps-dialog-head"><h2>{{ copy.download }}</h2><button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="exportDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
         <img v-if="exportPreview" class="ps-export-preview" :src="exportPreview" :alt="exportFilename">
         <p class="ps-dialog-text">{{ copy.exportHint }}</p>
-        <footer class="ps-dialog-foot"><button class="ps-btn" type="button" @click="exportDialogRef.close()">{{ copy.close }}</button><a class="ps-btn ps-btn-primary" :href="exportPreview" :download="exportFilename"><TsIcon name="download" :size="15" />{{ copy.saveImage }}</a></footer>
+        <footer class="ps-dialog-foot"><button data-ui="secondary" data-size="compact" class="ps-btn" type="button" @click="exportDialogRef.close()">{{ copy.close }}</button><a class="ps-btn ps-btn-primary" :href="exportPreview" :download="exportFilename"><TsIcon name="download" :size="15" />{{ copy.saveImage }}</a></footer>
       </dialog>
 
       <dialog ref="newDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.newTitle" @click.self="newDialogRef.close()">
-        <header class="ps-dialog-head"><h2>{{ copy.newTitle }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="newDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <header class="ps-dialog-head"><h2>{{ copy.newTitle }}</h2><button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="newDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
         <form @submit.prevent="createCanvas">
           <fieldset class="ps-preset-grid">
             <legend>{{ copy.canvasSize }}</legend>
@@ -2234,12 +2234,12 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
             </label>
           </fieldset>
           <p class="ps-dialog-text">{{ copy.newHint }}</p>
-          <footer class="ps-dialog-foot"><button class="ps-btn" type="button" @click="newDialogRef.close()">{{ copy.cancel }}</button><button class="ps-btn ps-btn-primary" type="submit">{{ copy.create }}</button></footer>
+          <footer class="ps-dialog-foot"><button data-ui="secondary" data-size="compact" class="ps-btn" type="button" @click="newDialogRef.close()">{{ copy.cancel }}</button><button data-ui="primary" data-size="compact" class="ps-btn ps-btn-primary" type="submit">{{ copy.create }}</button></footer>
         </form>
       </dialog>
 
       <dialog ref="shortcutsDialogRef" class="ps-dialog ps-theme ps-form-dialog" :aria-label="copy.shortcuts" @click.self="shortcutsDialogRef.close()">
-        <header class="ps-dialog-head"><h2>{{ copy.shortcuts }}</h2><button class="ps-icon-btn" type="button" :aria-label="copy.close" @click="shortcutsDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
+        <header class="ps-dialog-head"><h2>{{ copy.shortcuts }}</h2><button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="shortcutsDialogRef.close()"><TsIcon name="x" :size="19" /></button></header>
         <dl class="ps-shortcuts">
           <div v-for="row in shortcutRows" :key="row[0]"><dt>{{ row[0] }}</dt><dd><kbd>{{ row[1] }}</kbd></dd></div>
         </dl>
@@ -2256,7 +2256,7 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
         @click.self="closeArtworkPreview"
       >
         <section class="arena-art-lightbox-card" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
-          <button class="arena-art-lightbox-close ps-icon-btn" type="button" :aria-label="copy.close" @click.stop.prevent="closeArtworkPreview">
+          <button data-ui-part="canvas" class="arena-art-lightbox-close ps-icon-btn" type="button" :aria-label="copy.close" @click.stop.prevent="closeArtworkPreview">
             <TsIcon name="x" :size="18" />
           </button>
           <div class="arena-art-lightbox-canvas" :style="{ backgroundColor: artworkBackground(previewArtwork), aspectRatio: `${artworkWidth(previewArtwork)} / ${artworkHeight(previewArtwork)}` }">
@@ -2278,8 +2278,8 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
               <span>{{ copy.by }} {{ previewArtwork.author_nickname || previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }} × {{ artworkHeight(previewArtwork) }}</span>
             </div>
             <div class="arena-art-lightbox-actions">
-              <button class="ps-btn" type="button" @click="openArtworkShare(previewArtwork)"><TsIcon name="external" :size="16" /><span>{{ copy.shareLink }}</span></button>
-              <button class="ps-btn ps-btn-primary" type="button" @click="downloadArtwork(previewArtwork)"><TsIcon name="download" :size="16" /><span>{{ copy.download }}</span></button>
+              <button data-ui="secondary" data-size="compact" class="ps-btn" type="button" @click="openArtworkShare(previewArtwork)"><TsIcon name="external" :size="16" /><span>{{ copy.shareLink }}</span></button>
+              <button data-ui="primary" data-size="compact" class="ps-btn ps-btn-primary" type="button" @click="downloadArtwork(previewArtwork)"><TsIcon name="download" :size="16" /><span>{{ copy.download }}</span></button>
             </div>
           </footer>
         </section>

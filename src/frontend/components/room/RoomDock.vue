@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
     data-material="header"
     aria-label="Room tools"
   >
-    <button
+    <button data-ui-part="tool"
       class="room-dock-trigger"
       type="button"
       aria-label="房间工具"
@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
     </button>
 
     <div id="roomDockMenu" class="room-dock-menu">
-      <button
+      <button data-ui-part="tool"
         v-for="button in buttons"
         :key="button.id"
         class="panel-toggle-btn"
@@ -83,7 +83,7 @@ onBeforeUnmount(() => {
         <span class="dock-label">{{ button.label }}</span>
       </button>
 
-      <button class="panel-toggle-btn" type="button" aria-label="设置" @click="openSettings">
+      <button data-ui-part="tool" class="panel-toggle-btn" type="button" aria-label="设置" @click="openSettings">
         <span class="dock-icon" aria-hidden="true">
           <TsIcon name="ellipsis" :size="22" />
         </span>

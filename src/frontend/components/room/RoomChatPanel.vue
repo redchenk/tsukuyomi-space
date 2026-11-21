@@ -482,7 +482,7 @@ function endChatStatusLabel() {
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="handleDrop">
       <div class="chat-session-header" aria-label="会话操作">
-        <button v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
+        <button data-ui-part="row" v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
           <span class="room-growth-mobile-label">Lv.{{ chat.growth.value.level.level }}</span>
           <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
           <span class="room-growth-copy">
@@ -494,8 +494,8 @@ function endChatStatusLabel() {
         </button>
         <div class="chat-session-toolbar">
           <span class="chat-session-label">当前会话</span>
-          <button class="room-desktop-history" type="button" :disabled="!hasConversation" aria-label="查看本次对话开头" title="查看本次对话开头" @click="readEarlierMessages"><TsIcon name="history" :size="18" /></button>
-          <button
+          <button data-ui="secondary" class="room-desktop-history" type="button" :disabled="!hasConversation" aria-label="查看本次对话开头" title="查看本次对话开头" @click="readEarlierMessages"><TsIcon name="history" :size="18" /></button>
+          <button data-ui-part="tool"
             class="chat-session-new-btn"
             type="button"
             :disabled="generationBusy || chat.resetting.value || endChatBusy"
@@ -517,7 +517,7 @@ function endChatStatusLabel() {
             <p>今天的小事、想说的话，都可以留在这里。</p>
             <p class="field-hint">先完成聊天设置，再在下方发一句话。收到回复后，就可以继续聊了；语音可以稍后开启。</p>
             <div class="room-chat-welcome-actions">
-              <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
+              <button data-ui-part="tool" v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
                 :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
                 @click="chat.startConversation()"><TsIcon name="sparkles" :size="16" /><span>我先说</span></button>
               <button v-if="!chat.sharedConversation.value" class="ghost-btn room-chat-guide-btn" type="button" @click="emit('help')">第一次使用 / 发现功能</button>
@@ -548,8 +548,8 @@ function endChatStatusLabel() {
               ></textarea>
               <p v-if="editError" class="chat-edit-error" role="alert">{{ editError }}</p>
               <div class="chat-edit-actions">
-                <button class="chat-tts-btn" type="button" :disabled="editSubmitting" @click="cancelEdit">取消</button>
-                <button class="chat-tts-btn chat-edit-submit" type="button" :disabled="editSubmitting || (!editDraft.trim() && !userContent(message).attachment)" @click="submitEdit(message)">保存并重发</button>
+                <button data-ui-part="tool" class="chat-tts-btn" type="button" :disabled="editSubmitting" @click="cancelEdit">取消</button>
+                <button data-ui-part="tool" class="chat-tts-btn chat-edit-submit" type="button" :disabled="editSubmitting || (!editDraft.trim() && !userContent(message).attachment)" @click="submitEdit(message)">保存并重发</button>
               </div>
             </template>
             <template v-else>
@@ -578,7 +578,7 @@ function endChatStatusLabel() {
               </div>
             </template>
             <div v-if="message.role !== 'system'" class="chat-message-footer">
-              <button
+              <button data-ui-part="tool"
                 v-if="message.role === 'assistant' && !message.pending"
                 class="chat-voice-play"
                 :class="`is-${ttsStatus(chat, message.id)}`"
@@ -599,14 +599,14 @@ function endChatStatusLabel() {
               <details v-if="!message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile" @toggle="placeMessageMenu">
                 <summary :aria-label="message.role === 'user' ? '这条消息的操作' : '这条回复的操作'"><TsIcon name="ellipsis" :size="18" /></summary>
                 <div v-if="message.role === 'user'" class="chat-message-actions">
-                  <button v-if="message.failed && !generationBusy" class="chat-tts-btn chat-action-text" type="button" @click="chat.retryLastTurn()"><TsIcon name="refresh" :size="15" /><span>重试</span></button>
-                  <button class="chat-tts-btn room-copy-message" type="button" :aria-label="copyLabel(message, '复制这条消息')" @click="copyMessage(message)"><TsIcon :name="copiedMessageId === message.id ? 'check' : 'copy'" :size="16" /><span class="chat-action-label" aria-hidden="true">{{ copyLabel(message, '复制') }}</span></button>
-                  <button v-if="canEditMessage(message)" class="chat-tts-btn" type="button" aria-label="编辑并重发这条消息" @click="beginEdit(message)"><TsIcon name="penLine" :size="16" /><span class="chat-action-label" aria-hidden="true">编辑重发</span></button>
+                  <button data-ui-part="tool" v-if="message.failed && !generationBusy" class="chat-tts-btn chat-action-text" type="button" @click="chat.retryLastTurn()"><TsIcon name="refresh" :size="15" /><span>重试</span></button>
+                  <button data-ui-part="tool" class="chat-tts-btn room-copy-message" type="button" :aria-label="copyLabel(message, '复制这条消息')" @click="copyMessage(message)"><TsIcon :name="copiedMessageId === message.id ? 'check' : 'copy'" :size="16" /><span class="chat-action-label" aria-hidden="true">{{ copyLabel(message, '复制') }}</span></button>
+                  <button data-ui-part="tool" v-if="canEditMessage(message)" class="chat-tts-btn" type="button" aria-label="编辑并重发这条消息" @click="beginEdit(message)"><TsIcon name="penLine" :size="16" /><span class="chat-action-label" aria-hidden="true">编辑重发</span></button>
                 </div>
                 <div v-else class="chat-message-actions">
-                  <button class="chat-tts-btn room-copy-message" type="button" :aria-label="copyLabel(message, '复制这条回复')" @click="copyMessage(message)"><TsIcon :name="copiedMessageId === message.id ? 'check' : 'copy'" :size="16" /><span class="chat-action-label" aria-hidden="true">{{ copyLabel(message, '复制') }}</span></button>
-                  <button v-if="canRegenerateMessage(message)" class="chat-tts-btn" type="button" aria-label="重新生成" @click="chat.regenerateReply(message.id)"><TsIcon name="refresh" :size="16" /><span class="chat-action-label" aria-hidden="true">重新生成</span></button>
-                  <button v-if="chat.getShareTurn(message)" class="chat-tts-btn chat-share-btn" type="button" aria-label="分享这轮对话" @click="emit('share', message)">
+                  <button data-ui-part="tool" class="chat-tts-btn room-copy-message" type="button" :aria-label="copyLabel(message, '复制这条回复')" @click="copyMessage(message)"><TsIcon :name="copiedMessageId === message.id ? 'check' : 'copy'" :size="16" /><span class="chat-action-label" aria-hidden="true">{{ copyLabel(message, '复制') }}</span></button>
+                  <button data-ui-part="tool" v-if="canRegenerateMessage(message)" class="chat-tts-btn" type="button" aria-label="重新生成" @click="chat.regenerateReply(message.id)"><TsIcon name="refresh" :size="16" /><span class="chat-action-label" aria-hidden="true">重新生成</span></button>
+                  <button data-ui-part="tool" v-if="chat.getShareTurn(message)" class="chat-tts-btn chat-share-btn" type="button" aria-label="分享这轮对话" @click="emit('share', message)">
                     <TsIcon name="external" :size="16" />
                     <span class="chat-action-label" aria-hidden="true">分享</span>
                   </button>
@@ -617,17 +617,17 @@ function endChatStatusLabel() {
           <div v-if="generationInterrupted" class="chat-generation-notice" :class="generationState.status" :role="generationState.status === 'error' ? 'alert' : 'status'">
             <span>{{ generationMessage }} 请重试或放弃后再发送新消息。</span>
             <span class="chat-generation-actions">
-              <button class="chat-tts-btn" type="button" :disabled="generationBusy" @click="chat.discardFailedTurn()">放弃这轮</button>
-              <button class="chat-tts-btn chat-generation-retry" type="button" :disabled="generationBusy" @click="chat.retryLastTurn()">重试这轮</button>
+              <button data-ui-part="tool" class="chat-tts-btn" type="button" :disabled="generationBusy" @click="chat.discardFailedTurn()">放弃这轮</button>
+              <button data-ui-part="tool" class="chat-tts-btn chat-generation-retry" type="button" :disabled="generationBusy" @click="chat.retryLastTurn()">重试这轮</button>
             </span>
           </div>
           <div v-else-if="generationState.status === 'preparing' && !chat.messages.value.some((message) => message.pending)" class="chat-generation-notice preparing" role="status">{{ generationMessage }}</div>
         </div>
         <div class="room-transcript-fade" aria-hidden="true"></div>
-        <button v-if="readingHistory && hasConversation" class="room-return-latest" type="button" @click="returnToLatest"><TsIcon name="arrowDown" :size="16" /><span>回到最新消息</span></button>
+        <button data-ui-part="tool" v-if="readingHistory && hasConversation" class="room-return-latest" type="button" @click="returnToLatest"><TsIcon name="arrowDown" :size="16" /><span>回到最新消息</span></button>
       </div>
       <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
-        <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
+        <button data-ui-part="tool" v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
       </div>
       <div v-if="memoryRetrievalNotice(chat.memoryTrace?.value, englishRoom)" class="chat-generation-notice room-memory-trace" role="status"
         :title="[chat.memoryTrace?.value.reason, chat.memoryTrace?.value.fallbackReason].filter(Boolean).join(' / ')">
@@ -637,25 +637,25 @@ function endChatStatusLabel() {
       <div v-if="chat.memorySaveError?.value" class="chat-generation-notice" role="status">{{ chat.memorySaveError.value }}</div>
       <UploadProgress v-if="chat.imageUploadState" class="room-image-upload" :state="chat.imageUploadState" @dismiss="chat.dismissImageUpload()" />
       <div v-if="deepseekInput?.supported()" class="room-deepseek-toolbar" aria-label="对话能力">
-        <button type="button" :aria-pressed="deepseekInput.features.value.thinking" :disabled="generationBusy" @click="deepseekInput.toggle('thinking')">深度思考</button>
-        <button type="button" :aria-pressed="deepseekInput.features.value.search" :disabled="generationBusy" @click="deepseekInput.toggle('search')">联网搜索</button>
-        <button type="button" :aria-pressed="deepseekInput.features.value.readUrl" :disabled="generationBusy" @click="deepseekInput.toggle('readUrl')">阅读链接</button>
-        <button type="button" :disabled="generationBusy || deepseekBusy" @click="ocrInputRef?.click()">提取文字</button>
+        <button data-ui="secondary" type="button" :aria-pressed="deepseekInput.features.value.thinking" :disabled="generationBusy" @click="deepseekInput.toggle('thinking')">深度思考</button>
+        <button data-ui="secondary" type="button" :aria-pressed="deepseekInput.features.value.search" :disabled="generationBusy" @click="deepseekInput.toggle('search')">联网搜索</button>
+        <button data-ui="secondary" type="button" :aria-pressed="deepseekInput.features.value.readUrl" :disabled="generationBusy" @click="deepseekInput.toggle('readUrl')">阅读链接</button>
+        <button data-ui="secondary" type="button" :disabled="generationBusy || deepseekBusy" @click="ocrInputRef?.click()">提取文字</button>
         <input ref="ocrInputRef" type="file" hidden accept="image/*,.pdf,.doc,.docx,.ppt,.pptx" aria-label="OCR 提取文字" @change="deepseekInput.attach($event.target.files?.[0], true); $event.target.value = ''">
       </div>
       <p v-if="deepseekInput?.recording.value || deepseekInput?.status.value" class="room-deepseek-notice" role="status">{{ deepseekInput.recording.value ? '正在录音，点击「结束录音」转成文字（最长 2 分钟）' : deepseekInput.status.value }}</p>
       <p v-if="deepseekInput?.error.value" class="room-deepseek-notice" role="alert">{{ deepseekInput.error.value }}</p>
-      <ul v-if="deepseekInput?.files.value.length" class="room-file-list"><li v-for="file in deepseekInput.files.value" :key="file.id">{{ file.name }} <button type="button" :aria-label="`移除 ${file.name}`" @click="deepseekInput.remove(file.id)">移除</button></li></ul>
+      <ul v-if="deepseekInput?.files.value.length" class="room-file-list"><li v-for="file in deepseekInput.files.value" :key="file.id">{{ file.name }} <button data-ui="secondary" type="button" :aria-label="`移除 ${file.name}`" @click="deepseekInput.remove(file.id)">移除</button></li></ul>
       <p v-if="composerNotice" class="chat-composer-notice" role="status">{{ composerNotice }}</p>
       <div v-if="chat.imageAttachment.value || documentAttachment" class="chat-attachment-tray">
         <div v-if="chat.imageAttachment.value" id="chatImagePreview" class="chat-image-preview">
           <img :src="chat.imageAttachment.value.dataUrl" :alt="chat.imageAttachment.value.name">
-          <button class="panel-btn" type="button" aria-label="&#31227;&#38500;" @click="chat.clearImage"><TsIcon name="x" :size="14" /></button>
+          <button data-ui-part="tool" class="panel-btn" type="button" aria-label="&#31227;&#38500;" @click="chat.clearImage"><TsIcon name="x" :size="14" /></button>
         </div>
         <div v-if="documentAttachment" class="chat-file-preview">
           <span class="chat-file-icon" aria-hidden="true"><TsIcon name="fileText" :size="20" /></span>
           <span class="chat-file-copy"><strong>{{ documentAttachment.name }}</strong><small>{{ formatFileSize(documentAttachment.size) }} · {{ fileSummary(documentAttachment) }}</small></span>
-          <button class="panel-btn" type="button" aria-label="移除文件" @click="attachmentRevision++; documentAttachment = null"><TsIcon name="x" :size="14" /></button>
+          <button data-ui-part="tool" class="panel-btn" type="button" aria-label="移除文件" @click="attachmentRevision++; documentAttachment = null"><TsIcon name="x" :size="14" /></button>
         </div>
       </div>
       <div class="chat-input-row" :class="{ 'is-busy': generationBusy, 'is-listening': recordingVoice, 'has-attachments-open': mobile && attachmentsOpen }">
@@ -665,34 +665,34 @@ function endChatStatusLabel() {
         <details ref="attachMenuRef" class="chat-attach-menu" :open="!mobile" @toggle="attachmentsOpen = $event.target.open">
           <summary aria-label="添加图片或文件"><TsIcon name="plus" :size="22" :stroke-width="2" /></summary>
           <div class="chat-attach-options">
-            <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy || chat.imageUploadState?.active" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="pickImage">
+            <button data-ui-part="tool" id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy || chat.imageUploadState?.active" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="pickImage">
               <TsIcon name="image" :size="20" :stroke-width="1.9" />
               <span>&#22270;&#29255;</span>
             </button>
-            <button id="attachFileBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy" title="上传文件" aria-label="上传文件" @click="pickDocument">
+            <button data-ui-part="tool" id="attachFileBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy" title="上传文件" aria-label="上传文件" @click="pickDocument">
               <TsIcon name="paperclip" :size="20" :stroke-width="1.9" />
               <span>文件</span>
             </button>
           </div>
         </details>
-        <button id="voiceInputBtn" class="panel-btn chat-voice-input" type="button" :class="{ 'is-listening': recordingVoice, 'has-attachments-open': mobile && attachmentsOpen }" :aria-pressed="recordingVoice" :disabled="(generationBusy || deepseekInput?.working.value) && !recordingVoice" :title="recordingVoice ? '结束录音' : '语音输入'" :aria-label="recordingVoice ? '结束录音' : '语音输入'" @click="toggleVoice">
+        <button data-ui-part="tool" id="voiceInputBtn" class="panel-btn chat-voice-input" type="button" :class="{ 'is-listening': recordingVoice, 'has-attachments-open': mobile && attachmentsOpen }" :aria-pressed="recordingVoice" :disabled="(generationBusy || deepseekInput?.working.value) && !recordingVoice" :title="recordingVoice ? '结束录音' : '语音输入'" :aria-label="recordingVoice ? '结束录音' : '语音输入'" @click="toggleVoice">
           <span v-if="recordingVoice" class="chat-voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <TsIcon v-else name="mic" :size="20" :stroke-width="1.9" />
           <span>{{ recordingVoice ? '停止' : '语音' }}</span>
         </button>
         <span class="room-composer-keyhint">Enter 发送 · Shift + Enter 换行</span>
-        <button v-if="generationStoppable" id="stopChatBtn" class="panel-btn chat-stop-btn" type="button" aria-label="停止生成" title="停止生成" @click="chat.stopGeneration()">
+        <button data-ui-part="tool" v-if="generationStoppable" id="stopChatBtn" class="panel-btn chat-stop-btn" type="button" aria-label="停止生成" title="停止生成" @click="chat.stopGeneration()">
           <span class="chat-stop-icon" aria-hidden="true"></span>
           <span>停止</span>
         </button>
-        <button v-else-if="generationBusy" class="panel-btn chat-stop-btn" type="button" disabled aria-label="正在保存回复"><TsIcon name="loader" :size="18" class="ts-status-loader-icon" /><span>保存中</span></button>
-        <button v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || chat.imageUploadState?.active || endChatBusy || deepseekBusy || !canSend" aria-label="发送" @click="sendMessage">
+        <button data-ui-part="tool" v-else-if="generationBusy" class="panel-btn chat-stop-btn" type="button" disabled aria-label="正在保存回复"><TsIcon name="loader" :size="18" class="ts-status-loader-icon" /><span>保存中</span></button>
+        <button data-ui-part="tool" v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || chat.imageUploadState?.active || endChatBusy || deepseekBusy || !canSend" aria-label="发送" @click="sendMessage">
           <TsIcon name="arrowUp" :size="19" :stroke-width="2.3" />
           <span>发送</span>
         </button>
       </div>
       <div class="chat-end-row">
-        <button
+        <button data-ui-part="tool"
           id="endChatBtn"
           class="panel-btn chat-end-btn"
           type="button"
@@ -768,7 +768,7 @@ function endChatStatusLabel() {
             <span class="diary-preview-kicker">{{ diaryAuthorName }} · 日记</span>
             <strong>{{ endChat.entry.date }} {{ endChat.entry.time }}</strong>
           </div>
-          <button
+          <button data-ui="quiet"
             class="diary-preview-close"
             type="button"
             aria-label="关闭日记"

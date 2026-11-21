@@ -935,7 +935,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page terminal-page" :aria-busy="terminal.sessionChecking || terminal.loading">
+  <main data-ui-layout="workspace" class="page terminal-page" :aria-busy="terminal.sessionChecking || terminal.loading">
     <section v-if="terminal.sessionChecking" class="terminal-auth" aria-busy="true">
       <div class="ts-loader-region">
         <StatusLoader label="正在验证管理会话" />
@@ -946,7 +946,7 @@ onUnmounted(() => {
       <form class="terminal-card terminal-login-card" :aria-busy="terminal.loading" @submit.prevent="login">
         <div class="terminal-login-mark" aria-hidden="true"><TsIcon name="shield" :size="24" /></div>
         <div class="terminal-login-heading">
-          <h1>数据终端</h1>
+          <h1 class="ui-page-title">数据终端</h1>
           <p>管理员安全工作区</p>
         </div>
         <div v-if="terminal.loginMessage" class="form-message error">{{ terminal.loginMessage }}</div>
@@ -986,7 +986,7 @@ onUnmounted(() => {
           </div>
           <div v-for="group in groupedPanels" :key="group.group" class="terminal-nav-group">
             <span class="terminal-nav-group-label">{{ uiText(group.group) }}</span>
-            <button
+            <button data-ui-part="navigation"
               v-for="panel in group.items"
               :key="panel.id"
               class="terminal-nav-btn"
@@ -1014,7 +1014,7 @@ onUnmounted(() => {
           <div class="terminal-context-bar">
             <div>
               <span class="terminal-kicker">数据终端 / {{ uiText(activePanelMeta.group) }}</span>
-              <h1>{{ activePanelMeta.label }}</h1>
+              <h1 class="ui-page-title">{{ activePanelMeta.label }}</h1>
               <p>{{ activePanelMeta.desc }}</p>
             </div>
             <div class="terminal-context-actions">
@@ -1054,22 +1054,22 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="terminal-cards">
-              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('articles')">
+              <button data-ui-part="row" class="terminal-card terminal-stat-card" type="button" @click="loadPanel('articles')">
                 <span class="terminal-stat-icon"><TsIcon name="fileText" :size="18" /></span>
                 <span class="terminal-stat-copy"><small>文章总数</small><strong>{{ terminal.stats.articles || 0 }}</strong></span>
                 <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
-              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('messages')">
+              <button data-ui-part="row" class="terminal-card terminal-stat-card" type="button" @click="loadPanel('messages')">
                 <span class="terminal-stat-icon warning"><TsIcon name="message" :size="18" /></span>
                 <span class="terminal-stat-copy"><small>待审留言</small><strong>{{ terminal.stats.pendingMessages || 0 }}</strong></span>
                 <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
-              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('analytics')">
+              <button data-ui-part="row" class="terminal-card terminal-stat-card" type="button" @click="loadPanel('analytics')">
                 <span class="terminal-stat-icon success"><TsIcon name="eye" :size="18" /></span>
                 <span class="terminal-stat-copy"><small>今日访问</small><strong>{{ terminal.stats.todayViews || 0 }}</strong></span>
                 <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
-              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('users')">
+              <button data-ui-part="row" class="terminal-card terminal-stat-card" type="button" @click="loadPanel('users')">
                 <span class="terminal-stat-icon purple"><TsIcon name="users" :size="18" /></span>
                 <span class="terminal-stat-copy"><small>用户总数</small><strong>{{ terminal.stats.users || 0 }}</strong></span>
                 <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
@@ -1091,9 +1091,9 @@ onUnmounted(() => {
                 <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="terminal-page-terminal-articlesearch-query" v-model="terminal.articleSearch" type="search" autocomplete="off" placeholder="搜索标题、分类或 ID">
               </form>
               <div class="terminal-segmented" aria-label="文章状态">
-                <button type="button" :class="{ active: terminal.articleStatusFilter === 'all' }" @click="terminal.articleStatusFilter = 'all'">全部</button>
-                <button type="button" :class="{ active: terminal.articleStatusFilter === 'published' }" @click="terminal.articleStatusFilter = 'published'">已发布</button>
-                <button type="button" :class="{ active: terminal.articleStatusFilter === 'draft' }" @click="terminal.articleStatusFilter = 'draft'">草稿</button>
+                <button data-ui="choice" type="button" :class="{ active: terminal.articleStatusFilter === 'all' }" @click="terminal.articleStatusFilter = 'all'">全部</button>
+                <button data-ui="choice" type="button" :class="{ active: terminal.articleStatusFilter === 'published' }" @click="terminal.articleStatusFilter = 'published'">已发布</button>
+                <button data-ui="choice" type="button" :class="{ active: terminal.articleStatusFilter === 'draft' }" @click="terminal.articleStatusFilter = 'draft'">草稿</button>
               </div>
               <span class="terminal-toolbar-count">{{ filteredArticles.length }} 篇</span>
             </div>
@@ -1103,7 +1103,7 @@ onUnmounted(() => {
                 <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td>
                 <td><span class="terminal-badge" :class="item.pinned_at ? 'hot' : ''">{{ item.pinned_at ? '已置顶' : '普通' }}</span></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
-                <td><div class="terminal-actions"><button class="ghost-btn" type="button" @click="$emit('go', `/editor?id=${item.id}`)">编辑</button><button class="ghost-btn" type="button" @click="toggleArticle(item.id)">切换</button><button class="ghost-btn" type="button" @click="toggleArticlePin(item)">{{ item.pinned_at ? '取消置顶' : '置顶' }}</button><button class="danger-btn" type="button" @click="deleteArticle(item.id)">删除</button></div></td>
+                <td><div class="terminal-actions ui-actions"><button class="ghost-btn" type="button" @click="$emit('go', `/editor?id=${item.id}`)">编辑</button><button class="ghost-btn" type="button" @click="toggleArticle(item.id)">切换</button><button class="ghost-btn" type="button" @click="toggleArticlePin(item)">{{ item.pinned_at ? '取消置顶' : '置顶' }}</button><button class="danger-btn" type="button" @click="deleteArticle(item.id)">删除</button></div></td>
               </tr>
               <tr v-if="!pagedArticles.length"><td colspan="8"><div class="terminal-empty">没有符合条件的文章</div></td></tr>
             </tbody></table></div>
@@ -1132,9 +1132,9 @@ onUnmounted(() => {
                 <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="terminal-page-terminal-messagesearch-query" v-model="terminal.messageSearch" type="search" autocomplete="off" placeholder="搜索作者、内容或文章">
               </form>
               <div class="terminal-segmented" aria-label="留言状态">
-                <button type="button" :class="{ active: terminal.messageStatusFilter === 'all' }" @click="terminal.messageStatusFilter = 'all'">全部状态</button>
-                <button type="button" :class="{ active: terminal.messageStatusFilter === 'pending' }" @click="terminal.messageStatusFilter = 'pending'">待审核</button>
-                <button type="button" :class="{ active: terminal.messageStatusFilter === 'approved' }" @click="terminal.messageStatusFilter = 'approved'">已通过</button>
+                <button data-ui="choice" type="button" :class="{ active: terminal.messageStatusFilter === 'all' }" @click="terminal.messageStatusFilter = 'all'">全部状态</button>
+                <button data-ui="choice" type="button" :class="{ active: terminal.messageStatusFilter === 'pending' }" @click="terminal.messageStatusFilter = 'pending'">待审核</button>
+                <button data-ui="choice" type="button" :class="{ active: terminal.messageStatusFilter === 'approved' }" @click="terminal.messageStatusFilter = 'approved'">已通过</button>
               </div>
               <select v-model="terminal.messageSourceFilter" aria-label="留言来源">
                 <option value="all">全部来源</option>
@@ -1170,7 +1170,7 @@ onUnmounted(() => {
                 <td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td>
                 <td>{{ formatDate(item.created_at) }}</td>
                 <td>
-                  <div class="terminal-actions terminal-message-actions">
+                  <div class="terminal-actions terminal-message-actions ui-actions">
                     <button v-if="item.status !== 'approved' && !item.moderation?.blocked" class="primary-btn compact" type="button" title="通过留言" :aria-label="`通过留言 ${item.id}`" @click="approveMessage(item)">
                       <TsIcon name="userCheck" :size="16" />
                       <span>通过</span>
@@ -1329,10 +1329,10 @@ onUnmounted(() => {
               </div>
             </form>
             <div class="terminal-review-filters" aria-label="友链审核状态">
-              <button type="button" :class="{ active: terminal.linkReviewFilter === 'pending' }" @click="terminal.linkReviewFilter = 'pending'">待审核 <span>{{ linkReviewCounts.pending }}</span></button>
-              <button type="button" :class="{ active: terminal.linkReviewFilter === 'active' }" @click="terminal.linkReviewFilter = 'active'">已通过 <span>{{ linkReviewCounts.active }}</span></button>
-              <button type="button" :class="{ active: terminal.linkReviewFilter === 'rejected' }" @click="terminal.linkReviewFilter = 'rejected'">未通过 <span>{{ linkReviewCounts.rejected }}</span></button>
-              <button type="button" :class="{ active: terminal.linkReviewFilter === 'all' }" @click="terminal.linkReviewFilter = 'all'">全部 <span>{{ linkReviewCounts.all }}</span></button>
+              <button data-ui="choice" type="button" :class="{ active: terminal.linkReviewFilter === 'pending' }" @click="terminal.linkReviewFilter = 'pending'">待审核 <span>{{ linkReviewCounts.pending }}</span></button>
+              <button data-ui="choice" type="button" :class="{ active: terminal.linkReviewFilter === 'active' }" @click="terminal.linkReviewFilter = 'active'">已通过 <span>{{ linkReviewCounts.active }}</span></button>
+              <button data-ui="choice" type="button" :class="{ active: terminal.linkReviewFilter === 'rejected' }" @click="terminal.linkReviewFilter = 'rejected'">未通过 <span>{{ linkReviewCounts.rejected }}</span></button>
+              <button data-ui="choice" type="button" :class="{ active: terminal.linkReviewFilter === 'all' }" @click="terminal.linkReviewFilter = 'all'">全部 <span>{{ linkReviewCounts.all }}</span></button>
             </div>
             <div class="terminal-table-wrap terminal-review-table" tabindex="0" role="region" aria-label="友链列表，可横向滚动"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedReviewLinks" :key="item.id">

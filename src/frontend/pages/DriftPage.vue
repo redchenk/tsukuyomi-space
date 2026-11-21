@@ -438,7 +438,7 @@ watch(() => route.query.daily, value => {
 </script>
 
 <template>
-  <main class="page drift-page" :data-tab="activeTab" :data-playing="leavingWriter ? 'true' : undefined">
+  <main data-ui-layout="scene" class="page drift-page" :data-tab="activeTab" :data-playing="leavingWriter ? 'true' : undefined">
     <DriftLanternScene ref="lakeScene" :playing="!!lanternShot && leavingWriter" />
     <DriftLanternFilm v-if="lanternShot" :shot="lanternShot" @cover="revealBottles" @finish="finishLantern" />
 
@@ -451,7 +451,7 @@ watch(() => route.query.daily, value => {
 
       <div class="drift-workspace">
         <nav ref="tabBar" class="drift-tabs" role="tablist" :aria-label="copy.navigation">
-          <button v-for="(tab, index) in tabs" :id="`drift-tab-${tab.key}`" :key="tab.key" type="button"
+          <button data-ui="choice" v-for="(tab, index) in tabs" :id="`drift-tab-${tab.key}`" :key="tab.key" type="button"
             role="tab" :aria-selected="activeTab === tab.key" :aria-controls="activeTab === tab.key ? `drift-panel-${tab.key}` : undefined"
             :tabindex="activeTab === tab.key ? 0 : -1" :disabled="busy" @click="selectTab(tab.key)" @keydown="tabKeydown($event, index)">
             <TsIcon :name="tab.icon" :size="17" />{{ tab.label }}
@@ -466,13 +466,13 @@ watch(() => route.query.daily, value => {
               <p v-else-if="activeTab === 'bottles'">{{ copy.lettersHint }}</p>
               <p v-else-if="!composingPrompt">{{ lake.writeHint }}</p>
             </div>
-            <button v-if="session && activeTab === 'bottles'" type="button" class="drift-icon-button" :aria-label="copy.refresh" :disabled="busy" @click="run(() => load())">
+            <button data-ui="icon" v-if="session && activeTab === 'bottles'" type="button" class="drift-icon-button" :aria-label="copy.refresh" :disabled="busy" @click="run(() => load())">
               <TsIcon name="refresh" :size="18" />
             </button>
           </header>
           <p v-if="notice && !sentLetter && phase === 'idle'" class="drift-notice" role="status">{{ notice }}</p>
           <p v-if="loading" class="drift-loading" role="status">{{ copy.loading }}</p>
-          <RouterLink v-else-if="!session" :to="{ path: '/login', query: { redirect: route.fullPath } }" class="drift-primary drift-login">
+          <RouterLink data-ui="primary" v-else-if="!session" :to="{ path: '/login', query: { redirect: route.fullPath } }" class="drift-primary drift-login">
             {{ copy.login }}<TsIcon name="arrowRight" :size="17" />
           </RouterLink>
 
@@ -480,7 +480,7 @@ watch(() => route.query.daily, value => {
             <aside v-if="composingPrompt" id="drift-composing-context" class="drift-prompt-context" aria-live="polite">
               <strong>{{ copy.dailyTitle }}</strong><time>{{ composingPrompt.date }}</time><p>{{ promptText(composingPrompt) }}</p>
               <p v-if="promptStale && !pendingDaily">{{ copy.promptChanged }}</p>
-              <button v-if="promptStale && !pendingDaily" type="button" :disabled="busy" @click="composingPrompt = dailyPrompt; notice = ''">{{ copy.useTodayPrompt }}</button>
+              <button data-ui="secondary" v-if="promptStale && !pendingDaily" type="button" :disabled="busy" @click="composingPrompt = dailyPrompt; notice = ''">{{ copy.useTodayPrompt }}</button>
             </aside>
             <aside v-else-if="inspiration" id="drift-composing-context" class="drift-prompt-context"><p>{{ promptText(inspiration) }}</p></aside>
             <div class="drift-writing-paper">
@@ -491,53 +491,53 @@ watch(() => route.query.daily, value => {
               <small>{{ [...activeDraft].length }} / 2000</small>
             </div>
             <footer class="drift-compose-actions">
-              <button v-if="!composingPrompt" class="drift-quiet" type="button" :disabled="busy" @click="inspire">
+              <button data-ui="secondary" v-if="!composingPrompt" class="drift-quiet" type="button" :disabled="busy" @click="inspire">
                 <TsIcon name="sparkles" :size="16" />{{ copy.inspire }}
               </button>
-              <button v-else class="drift-quiet" type="button" :disabled="busy" @click="writeBottle">{{ copy.cancel }}</button>
-              <button class="drift-primary" type="submit" :disabled="busy || !!sentLetter || (promptStale && !pendingDaily) || !activeDraft.trim()">
+              <button data-ui="secondary" v-else class="drift-quiet" type="button" :disabled="busy" @click="writeBottle">{{ copy.cancel }}</button>
+              <button data-ui="primary" class="drift-primary" type="submit" :disabled="busy || !!sentLetter || (promptStale && !pendingDaily) || !activeDraft.trim()">
                 <TsIcon name="send" :size="16" />{{ busy || sentLetter ? lake.sending : composingPrompt && pendingDaily ? copy.confirmSubmission : lake.send }}
               </button>
             </footer>
           </form>
 
           <div v-else-if="activeTab === 'sea'" class="drift-sea-actions">
-            <button class="drift-primary" type="button" :disabled="busy" @click="run(pick)">
+            <button data-ui="primary" class="drift-primary" type="button" :disabled="busy" @click="run(pick)">
               <TsIcon name="sparkles" :size="18" />{{ copy.pick }}
             </button>
-            <button type="button" :disabled="busy" @click="writeBottle">
+            <button data-ui="secondary" type="button" :disabled="busy" @click="writeBottle">
               <TsIcon name="penLine" :size="18" />{{ lake.again }}
             </button>
           </div>
 
           <template v-else>
             <div class="drift-filters">
-              <button v-for="item in [{ key: 'all', label: copy.all }, { key: 'sent', label: copy.sentFilter }, { key: 'received', label: copy.receivedFilter }]"
+              <button data-ui="choice" v-for="item in [{ key: 'all', label: copy.all }, { key: 'sent', label: copy.sentFilter }, { key: 'received', label: copy.receivedFilter }]"
                 :key="item.key" type="button" :aria-pressed="filter === item.key" :disabled="busy" @click="selectBottleFilter(item.key)">{{ item.label }}</button>
             </div>
             <nav v-if="bottleTotalPages > 1" class="drift-pagination" :aria-label="copy.pagination">
               <p aria-live="polite">{{ bottlePageSummary }}</p>
-              <div class="drift-pagination-actions">
-                <button type="button" :aria-label="copy.previousPage" :title="copy.previousPage" :disabled="busy || bottlePage <= 1" @click="goToBottlePage(bottlePage - 1)">
+              <div class="drift-pagination-actions ui-actions">
+                <button data-ui="secondary" type="button" :aria-label="copy.previousPage" :title="copy.previousPage" :disabled="busy || bottlePage <= 1" @click="goToBottlePage(bottlePage - 1)">
                   <TsIcon name="arrowLeft" :size="18" />
                 </button>
-                <button type="button" :aria-label="copy.nextPage" :title="copy.nextPage" :disabled="busy || bottlePage >= bottleTotalPages" @click="goToBottlePage(bottlePage + 1)">
+                <button data-ui="secondary" type="button" :aria-label="copy.nextPage" :title="copy.nextPage" :disabled="busy || bottlePage >= bottleTotalPages" @click="goToBottlePage(bottlePage + 1)">
                   <TsIcon name="arrowRight" :size="18" />
                 </button>
               </div>
               <form class="drift-page-jump" @submit.prevent="jumpToBottlePage">
                 <input type="number" name="page" min="1" :max="bottleTotalPages" required inputmode="numeric" enterkeyhint="go"
                   autocomplete="off" :aria-label="copy.pageNumber" :placeholder="`1–${bottleTotalPages}`" :disabled="busy">
-                <button type="submit" :disabled="busy">{{ copy.jumpPage }}</button>
+                <button data-ui="secondary" type="submit" :disabled="busy">{{ copy.jumpPage }}</button>
               </form>
             </nav>
             <div v-if="!bottles.length && filter === 'all'" class="drift-empty">
               <DriftBottle /><div><h3>{{ copy.noBottles }}</h3><p>{{ copy.noBottlesHint }}</p></div>
-              <button type="button" @click="selectTab('sea')">{{ copy.sea }}<TsIcon name="arrowRight" :size="16" /></button>
+              <button data-ui="secondary" type="button" @click="selectTab('sea')">{{ copy.sea }}<TsIcon name="arrowRight" :size="16" /></button>
             </div>
             <p v-else-if="!bottles.length" class="drift-empty">{{ copy.emptyFilter }}</p>
             <div v-else class="drift-bottle-shelf">
-              <button v-for="b in bottles" :key="b.id" class="drift-list-item" :class="{ 'is-new': b.id === lastSentId }" type="button" :disabled="busy" @click="run(() => open(b.id))">
+              <button data-ui-part="row" v-for="b in bottles" :key="b.id" class="drift-list-item" :class="{ 'is-new': b.id === lastSentId }" type="button" :disabled="busy" @click="run(() => open(b.id))">
                 <DriftBottle class="drift-shelf-bottle" />
                 <span class="drift-list-copy">
                   <span class="drift-list-meta"><small>{{ b.user_id === session.user.id ? copy.sent : `${copy.from} ${b.nickname}` }}</small><small>{{ bottleStatus(b) }}</small></span>
@@ -552,7 +552,7 @@ watch(() => route.query.daily, value => {
         </section>
 
         <div v-if="session" class="drift-workspace-foot">
-          <button v-if="dailyPrompt && !composingPrompt && activeTab !== 'bottles'" class="drift-quiet drift-daily-link" type="button" :disabled="busy" @click="run(writeDaily)">
+          <button data-ui="secondary" v-if="dailyPrompt && !composingPrompt && activeTab !== 'bottles'" class="drift-quiet drift-daily-link" type="button" :disabled="busy" @click="run(writeDaily)">
             <TsIcon name="moonStar" :size="15" />{{ copy.dailyWrite }}
           </button>
           <details class="drift-rules"><summary>{{ copy.rules }}</summary><p>{{ copy.rule }}</p></details>
@@ -561,7 +561,7 @@ watch(() => route.query.daily, value => {
     </div>
 
     <dialog ref="bottleDialog" class="drift-bottle-dialog" :class="{ 'is-writing': writing, 'is-sealed': phase === 'sealed' }" aria-labelledby="drift-letter-title" @close="dialogClosed">
-      <header class="drift-dialog-header"><div><p class="drift-eyebrow">A MESSAGE IN A BOTTLE</p><h2 id="drift-letter-title">{{ dialogTitle }}</h2></div><button class="drift-icon-button" :aria-label="copy.closeWindow" @click="closeDialog"><TsIcon name="x" :size="21" /></button></header>
+      <header class="drift-dialog-header"><div><p class="drift-eyebrow">A MESSAGE IN A BOTTLE</p><h2 id="drift-letter-title">{{ dialogTitle }}</h2></div><button data-ui="icon" class="drift-icon-button" :aria-label="copy.closeWindow" @click="closeDialog"><TsIcon name="x" :size="21" /></button></header>
       <p v-if="notice" class="drift-dialog-notice" role="status">{{ notice }}</p>
       <template v-if="current">
         <div v-if="phase === 'sealed'" class="drift-found">
@@ -574,26 +574,26 @@ watch(() => route.query.daily, value => {
             <strong>{{ copy.replyReceipt[replyStatus] }}</strong>
           </div>
           <div ref="letterScroll" class="drift-letter-scroll">
-            <div class="drift-letter-byline"><DriftBottle /><div><span>{{ copy.from }} {{ current.bottle.nickname }}</span><time>{{ dateLabel(current.bottle.created_at) }}</time></div><button class="drift-icon-button" :aria-label="copy.refreshChat" :disabled="busy || refreshing" @click="run(() => loadThread(current.bottle.id))"><TsIcon name="refresh" :size="17" /></button></div>
+            <div class="drift-letter-byline"><DriftBottle /><div><span>{{ copy.from }} {{ current.bottle.nickname }}</span><time>{{ dateLabel(current.bottle.created_at) }}</time></div><button data-ui="icon" class="drift-icon-button" :aria-label="copy.refreshChat" :disabled="busy || refreshing" @click="run(() => loadThread(current.bottle.id))"><TsIcon name="refresh" :size="17" /></button></div>
             <article class="drift-paper drift-original-paper"><p class="drift-content" translate="no">{{ current.bottle.content }}</p><small v-if="current.bottle.status !== 'approved'" class="drift-letter-status">{{ copy[current.bottle.status] }}</small></article>
             <p v-if="!current.bottle.recipient_id" class="drift-thread-note">{{ copy.waitingHint }}</p>
             <section v-if="current.replies.length" class="drift-correspondence" :aria-label="copy.correspondence"><header><h3>{{ copy.correspondence }}<small>{{ current.replies.length }}</small></h3></header><article v-for="r in current.replies" :key="r.id" class="drift-reply"><header><span>{{ r.user_id === session.user.id ? copy.you : current.peer?.nickname }}</span><time>{{ dateLabel(r.created_at) }}</time></header><p class="drift-content" translate="no">{{ r.content }}</p><small v-if="r.status !== 'approved'" class="drift-letter-status">{{ copy[r.status] }}</small></article></section>
-            <button v-if="hasNewLetters" class="drift-new-letter" @click="latestLetters">{{ copy.newLetter }}<TsIcon name="chevronDown" :size="16" /></button>
-            <details v-if="lang === 'en'" class="drift-translation"><summary>{{ copy.translate }}</summary><p>{{ copy.translationHint }}</p><button :disabled="busy" @click="run(translate)">{{ copy.translate }}</button><p v-if="translated" class="drift-content" translate="no">{{ translated }}</p><small>{{ copy.original }}</small></details>
-            <details class="drift-letter-options"><summary>{{ copy.more }}</summary><div class="drift-actions"><template v-if="current.peer"><RouterLink :to="`/users/${encodeURIComponent(current.peer.username)}`" @click="closeDialog">{{ copy.profile }}</RouterLink><button :disabled="busy || current.blocked" @click="run(follow)">{{ copy.follow }}</button></template><button :disabled="busy" @click="run(() => act('close'))">{{ copy.close }}</button><template v-if="current.peer"><button :disabled="busy" @click="run(() => act('block'))">{{ copy.block }}</button><button :disabled="busy" @click="run(() => act('report'))">{{ copy.report }}</button></template></div></details>
+            <button data-ui="secondary" v-if="hasNewLetters" class="drift-new-letter" @click="latestLetters">{{ copy.newLetter }}<TsIcon name="chevronDown" :size="16" /></button>
+            <details v-if="lang === 'en'" class="drift-translation"><summary>{{ copy.translate }}</summary><p>{{ copy.translationHint }}</p><button data-ui="quiet" :disabled="busy" @click="run(translate)">{{ copy.translate }}</button><p v-if="translated" class="drift-content" translate="no">{{ translated }}</p><small>{{ copy.original }}</small></details>
+            <details class="drift-letter-options"><summary>{{ copy.more }}</summary><div class="drift-actions"><template v-if="current.peer"><RouterLink :to="`/users/${encodeURIComponent(current.peer.username)}`" @click="closeDialog">{{ copy.profile }}</RouterLink><button data-ui="secondary" :disabled="busy || current.blocked" @click="run(follow)">{{ copy.follow }}</button></template><button data-ui="secondary" :disabled="busy" @click="run(() => act('close'))">{{ copy.close }}</button><template v-if="current.peer"><button data-ui="danger" :disabled="busy" @click="run(() => act('block'))">{{ copy.block }}</button><button data-ui="secondary" :disabled="busy" @click="run(() => act('report'))">{{ copy.report }}</button></template></div></details>
           </div>
         </template>
         <footer v-if="phase === 'sealed' || reading" class="drift-reader-footer">
           <p v-if="current.bottle.closed || current.blocked" class="drift-thread-note">{{ copy.closed }}</p>
           <div class="drift-letter-actions">
-            <button v-if="canReturn" type="button" :disabled="busy" @click="run(throwBack)">
+            <button data-ui="secondary" v-if="canReturn" type="button" :disabled="busy" @click="run(throwBack)">
               <TsIcon name="undo" :size="17" />{{ copy.throwBack }}
             </button>
-            <button v-else-if="reading" type="button" @click="closeDialog">{{ copy.putAway }}</button>
-            <button v-if="phase === 'sealed'" type="button" class="drift-primary" :disabled="busy" @click="showDialog('read')">
+            <button data-ui="secondary" v-else-if="reading" type="button" @click="closeDialog">{{ copy.putAway }}</button>
+            <button data-ui="primary" v-if="phase === 'sealed'" type="button" class="drift-primary" :disabled="busy" @click="showDialog('read')">
               {{ copy.openBottle }}<TsIcon name="arrowRight" :size="17" />
             </button>
-            <button v-else-if="canReply" type="button" class="drift-primary" :disabled="busy" @click="showDialog('reply')">
+            <button data-ui="primary" v-else-if="canReply" type="button" class="drift-primary" :disabled="busy" @click="showDialog('reply')">
               <TsIcon name="send" :size="16" />{{ copy.respond }}
             </button>
           </div>
@@ -606,8 +606,8 @@ watch(() => route.query.daily, value => {
             <small>{{ [...reply].length }} / 2000</small>
           </div>
           <footer class="drift-letter-actions">
-            <button type="button" :disabled="busy" @click="showDialog('read')">{{ copy.cancel }}</button>
-            <button class="drift-primary" :disabled="busy || !reply.trim()">{{ busy ? lake.sending : copy.sendLetter }}<TsIcon name="send" :size="16" /></button>
+            <button data-ui="secondary" type="button" :disabled="busy" @click="showDialog('read')">{{ copy.cancel }}</button>
+            <button data-ui="primary" class="drift-primary" :disabled="busy || !reply.trim()">{{ busy ? lake.sending : copy.sendLetter }}<TsIcon name="send" :size="16" /></button>
           </footer>
         </form>
         <small v-if="phase !== 'sealed'" class="drift-privacy">{{ copy.privacy }}</small>

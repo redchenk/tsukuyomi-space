@@ -196,15 +196,15 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
 </script>
 
 <template>
-  <main class="page growth-page">
+  <main data-ui-layout="content" class="page growth-page">
     <section class="growth-shell" :aria-busy="page.loading">
       <header class="growth-header">
         <div>
           <span class="growth-kicker"><TsIcon name="sparkles" :size="15" /> {{ copy.kicker }}</span>
-          <h1>{{ copy.title }}</h1>
+          <h1 class="ui-page-title">{{ copy.title }}</h1>
           <p>{{ copy.subtitle }}</p>
         </div>
-        <button class="growth-room-button" type="button" @click="emit('go', '/room')">
+        <button data-ui="primary" class="growth-room-button" type="button" @click="emit('go', '/room')">
           <TsIcon name="moon" :size="18" />
           <span>Room</span>
         </button>
@@ -233,7 +233,7 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
             <div><strong>{{ state.streak.longest }}</strong><span>{{ copy.best }} / {{ copy.days }}</span></div>
             <p class="growth-streak-reward"><TsIcon name="sparkles" :size="14" /> {{ copy.streakReward }}</p>
           </div>
-          <button class="growth-checkin" type="button" :disabled="state.today.tasks[0]?.completed || page.working" :aria-busy="page.working" @click="checkIn">
+          <button data-ui="primary" class="growth-checkin" type="button" :disabled="state.today.tasks[0]?.completed || page.working" :aria-busy="page.working" @click="checkIn">
             <TsIcon :name="state.today.tasks[0]?.completed ? 'check' : 'calendar'" :size="18" />
             <span>{{ state.today.tasks[0]?.completed ? copy.checked : copy.checkin }}</span>
           </button>
@@ -247,7 +247,7 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
             <strong>{{ state.today.completed }}/{{ state.today.total }}</strong>
           </div>
           <div class="growth-task-grid">
-            <button
+            <button data-ui-part="row"
               v-for="task in state.today.tasks"
               :key="task.key"
               class="growth-task"

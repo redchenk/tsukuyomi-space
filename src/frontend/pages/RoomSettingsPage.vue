@@ -2507,14 +2507,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="page room-settings-page" :class="{ 'settings-overview': activeSection === 'overview', 'has-savebar': activeSection !== 'overview' || hasUnsavedSettings }">
+  <main data-ui-layout="workspace" class="page room-settings-page" :class="{ 'settings-overview': activeSection === 'overview', 'has-savebar': activeSection !== 'overview' || hasUnsavedSettings }">
     <header class="settings-page-heading">
       <div>
         <nav class="settings-breadcrumb" aria-label="当前位置">
           <a href="/room" @click.prevent="emit('go', '/room')">私人居所</a
           ><TsIcon name="chevronRight" :size="14" /><span>房间设置</span>
         </nav>
-        <h1>房间设置</h1>
+        <h1 class="ui-page-title">房间设置</h1>
         <p>让房间更合你的心意。</p>
       </div>
       <div class="settings-heading-actions"><button class="ghost-btn" type="button" aria-label="打开音乐" @click="openSettingsMusic"><TsIcon name="audioLines" :size="18" /></button>
@@ -2591,11 +2591,11 @@ onBeforeUnmount(() => {
         class="settings-navigation"
         :class="{ 'is-open': mobileSectionsOpen }"
       >
-        <button class="settings-nav-button" :class="{ active: activeSection === 'overview' }" type="button" @click="selectSettingsSection('overview')"><TsIcon name="grid" :size="18" />全部设置</button>
+        <button data-ui-part="navigation" class="settings-nav-button" :class="{ active: activeSection === 'overview' }" type="button" @click="selectSettingsSection('overview')"><TsIcon name="grid" :size="18" />全部设置</button>
         <nav aria-label="设置分类">
           <section v-for="group in filteredSettingsGroups" :key="group.label">
             <h2>{{ group.label }}</h2>
-            <button
+            <button data-ui-part="navigation"
               v-for="item in group.items"
               :key="item.id"
               type="button"
@@ -2643,12 +2643,12 @@ onBeforeUnmount(() => {
       >
         <section v-if="settingsSearch.trim()" class="settings-results room-settings-card" aria-label="搜索结果">
           <p v-if="!searchResults.length">没有匹配的设置，试试“语音”或“密钥”。</p>
-          <button v-for="item in searchResults" :key="item.label" type="button" @click="openSearchResult(item)"><span><strong>{{ $ui(item.label) }}</strong><small>{{ $ui(settingsNavigation.find(section => section.id === item.section).label) }}</small></span><TsIcon name="arrowRight" :size="18" /></button>
+          <button data-ui-part="row" v-for="item in searchResults" :key="item.label" type="button" @click="openSearchResult(item)"><span><strong>{{ $ui(item.label) }}</strong><small>{{ $ui(settingsNavigation.find(section => section.id === item.section).label) }}</small></span><TsIcon name="arrowRight" :size="18" /></button>
         </section>
         <section v-show="activeSection === 'overview' && !settingsSearch.trim()" class="settings-home" aria-label="设置总览">
           <div class="settings-home-intro"><span class="settings-eyebrow">YOUR ROOM</span><h2>从这里开始</h2><p>八类设置，随时找到你想调整的地方。</p></div>
           <div class="settings-category-grid">
-            <button v-for="item in settingsNavigation" :key="item.id" class="settings-category-card" type="button" :aria-label="$ui(item.label)" @click="selectSettingsSection(item.id)">
+            <button data-ui-part="row" v-for="item in settingsNavigation" :key="item.id" class="settings-category-card" type="button" :aria-label="$ui(item.label)" @click="selectSettingsSection(item.id)">
               <span class="settings-category-icon"><TsIcon :name="item.icon" :size="22" /></span>
               <span><strong>{{ $ui(item.label) }}</strong><small>{{ $ui(item.summary) }}</small></span>
               <span v-if="sectionDirty(item.id)" class="settings-unsaved-mark" aria-label="有未保存修改"></span><TsIcon v-else name="chevronRight" :size="16" />
@@ -2721,7 +2721,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <div v-if="setupLlmMode === 'cloud'" class="settings-field">
+          <div v-if="setupLlmMode === 'cloud'" class="settings-field ui-field-group">
             <div class="settings-field-title">
               <span>服务商</span><small>选择后自动填写接口地址</small>
             </div>
@@ -2765,7 +2765,7 @@ onBeforeUnmount(() => {
                   :size="16"
                 />
               </button>
-              <select
+              <select class="ui-field"
                 aria-label="更多服务商"
                 :value="''"
                 @change="applyAdvancedLlmPreset($event.target.value)"
@@ -2801,7 +2801,7 @@ onBeforeUnmount(() => {
               </select>
             </div>
           </div>
-          <div v-if="setupLlmMode === 'cloud'" class="settings-field">
+          <div v-if="setupLlmMode === 'cloud'" class="settings-field ui-field-group">
             <label for="settings-llm-key"
               >API 密钥 <small>API Key</small></label
             >
@@ -2831,7 +2831,7 @@ onBeforeUnmount(() => {
               />密钥保存在当前浏览器，调用时发送给所选服务。
             </p>
           </div>
-          <div class="settings-field">
+          <div class="settings-field ui-field-group">
             <div class="settings-field-title">
               <label for="settings-llm-model">模型 <small>Model</small></label
               ><button
@@ -2845,11 +2845,11 @@ onBeforeUnmount(() => {
                 }}
               </button>
             </div>
-            <select v-if="setupLlmMode === 'site'" id="settings-llm-model" v-model="llm.model" :disabled="modelCatalog.loading || !modelCatalog.models.length">
+            <select class="ui-field" v-if="setupLlmMode === 'site'" id="settings-llm-model" v-model="llm.model" :disabled="modelCatalog.loading || !modelCatalog.models.length">
               <option value="">{{ modelCatalog.loading ? '正在加载站内模型…' : '请选择站内模型' }}</option>
               <option v-for="option in modelCatalog.models" :key="option.id" :value="option.id">{{ option.label }}</option>
             </select>
-            <input v-else autocomplete="off" name="room-setting-llm-model"
+            <input class="ui-field" v-else autocomplete="off" name="room-setting-llm-model"
               id="settings-llm-model"
               v-model="llm.model"
               type="text"
@@ -3036,7 +3036,7 @@ onBeforeUnmount(() => {
           /></label>
           <p v-if="tts.enabled && isOneclickApiUrl(tts.apiUrl)" class="field-hint">八千代一键包已自动连接，可以直接朗读。请保持启动器运行。</p>
           <div class="tts-source-tabs" role="group" aria-label="语音来源">
-            <button v-for="source in [{ id: 'official', label: '站内直供' }, { id: 'personal', label: '个人 API' }, { id: 'local', label: '本机语音' }]" :key="source.id" type="button" :aria-pressed="ttsSourceGroup === source.id" @click="ttsSourceGroup = source.id">{{ $ui(source.label) }}</button>
+            <button data-ui="choice" v-for="source in [{ id: 'official', label: '站内直供' }, { id: 'personal', label: '个人 API' }, { id: 'local', label: '本机语音' }]" :key="source.id" type="button" :aria-pressed="ttsSourceGroup === source.id" @click="ttsSourceGroup = source.id">{{ $ui(source.label) }}</button>
           </div>
           <OfficialTtsStatus v-if="activeSection === 'tts'" :compact="true" :engine="tts.officialEngine" @status="officialTtsStatus = $event" />
           <div class="settings-section-fields">
@@ -3204,9 +3204,9 @@ onBeforeUnmount(() => {
               role="switch"
               aria-label="开启长期记忆"
           /></label>
-          <div class="settings-field">
+          <div class="settings-field ui-field-group">
             <label for="room-memory-retrieval-limit">每轮记忆参考上限
-              <input id="room-memory-retrieval-limit" v-model.number="memory.retrievalLimit"
+              <input class="ui-field" id="room-memory-retrieval-limit" v-model.number="memory.retrievalLimit"
                 type="number" min="1" :max="MAX_MEMORY_RETRIEVAL_LIMIT" step="1"
                 :disabled="!memory.enabled" />
               <small>{{ uiText('可设置 1 至 {0} 条。实际参考数量取决于相关性和上下文长度；上限越大，每条片段可能越短。', [MAX_MEMORY_RETRIEVAL_LIMIT]) }}</small>
@@ -3412,7 +3412,7 @@ onBeforeUnmount(() => {
                   <summary>评分依据</summary>
                   <p v-for="(fact,index) in item.metadata.analysis.evidence" :key="index">{{ ({identity:'身份信息', safety:'健康与安全', preference:'长期偏好', commitment:'计划与约定', temporary:'临时情况', casual:'日常交流'}[fact.reason] || '对话证据') }}：{{ fact.quote }}（{{ ({explicit:'直接陈述', correction:'明确更正', tentative:'尚不确定', hypothetical:'假设或引述', quoted:'第三方引述'}[fact.modality] || '证据') }}）</p>
                 </details>
-                <button
+                <button data-ui="quiet"
                   class="memory-expand-btn"
                   type="button"
                   @click="toggleMemoryContent(item)"
@@ -3634,7 +3634,7 @@ onBeforeUnmount(() => {
                     : ''
                 }}
               </p>
-              <button
+              <button data-ui="quiet"
                 v-if="item.content.length > 160"
                 class="memory-expand-btn"
                 type="button"

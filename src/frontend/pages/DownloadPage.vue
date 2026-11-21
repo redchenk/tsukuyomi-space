@@ -1,4 +1,5 @@
 <script setup>
+import TsButton from '../components/TsButton.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
 import appIcon from '../../../assets/icons/icon-512.png';
@@ -60,12 +61,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page download-page">
+  <main data-ui-layout="content" class="page download-page">
     <div class="download-container">
       <section class="download-hero" aria-labelledby="download-title">
-        <div class="download-hero-copy">
+        <div class="download-hero-copy ui-heading">
           <p class="download-eyebrow">{{ copy.eyebrow }}</p>
-          <h1 id="download-title">{{ copy.title }}</h1>
+          <h1 class="ui-page-title" id="download-title">{{ copy.title }}</h1>
           <p class="download-lead">{{ copy.intro }}</p>
           <ul class="download-feature-list"><li v-for="feature in copy.features" :key="feature"><TsIcon name="check" :size="16" />{{ feature }}</li></ul>
           <a href="/room" class="download-web-link" @click="enterRoom">{{ copy.web }}<TsIcon name="chevronRight" :size="16" /></a>
@@ -74,8 +75,8 @@ onUnmounted(() => {
           <div class="download-app-identity"><img :src="appIcon" alt="" width="76" height="76" /><div><h2>{{ copy.app }}</h2><p>{{ copy.native }}</p></div></div>
           <div class="download-version"><strong>{{ release.tag }}</strong><span class="download-badge">{{ release.preview ? copy.preview : copy.stable }}</span></div>
           <p class="download-recommendation">{{ heroTarget ? `${copy.recommended} · ${heroTarget} · ${size(heroAsset.size)}` : copy.choose }}</p>
-          <a v-if="heroAsset" class="download-button" :href="heroAsset.href" rel="noopener noreferrer" referrerpolicy="no-referrer"><TsIcon name="download" :size="18" />{{ heroAction }}</a>
-          <a v-else class="download-button" href="#downloads"><TsIcon name="download" :size="18" />{{ copy.choose }}</a>
+          <a data-ui="primary" v-if="heroAsset" class="download-button" :href="heroAsset.href" rel="noopener noreferrer" referrerpolicy="no-referrer"><TsIcon name="download" :size="18" />{{ heroAction }}</a>
+          <a data-ui="primary" v-else class="download-button" href="#downloads"><TsIcon name="download" :size="18" />{{ copy.choose }}</a>
           <a class="download-other" href="#downloads">{{ copy.other }}</a>
         </div>
       </section>
@@ -84,10 +85,10 @@ onUnmounted(() => {
       <section class="download-release-bar" :aria-label="copy.release">
         <div><span class="download-source">{{ sourceLabel }}</span><span>{{ copy.published }} {{ publishedDate }}</span></div>
         <div v-if="catalog.stable && catalog.preview" class="download-channels" role="group" :aria-label="copy.release">
-          <button type="button" :aria-pressed="!release.preview" @click="channel = 'stable'">{{ copy.stable }}</button>
-          <button type="button" :aria-pressed="release.preview" @click="channel = 'preview'">{{ copy.preview }}</button>
+          <TsButton variant="choice" type="button" :aria-pressed="!release.preview" @click="channel = 'stable'">{{ copy.stable }}</TsButton>
+          <TsButton variant="choice" type="button" :aria-pressed="release.preview" @click="channel = 'preview'">{{ copy.preview }}</TsButton>
         </div>
-        <div class="download-release-actions"><a :href="release.url" target="_blank" rel="noopener noreferrer">{{ copy.versionNotes }}<TsIcon name="external" :size="14" /></a><button type="button" :disabled="loading" @click="refresh(true)">{{ loading ? copy.checking : copy.check }}</button></div>
+        <div class="download-release-actions ui-actions"><a :href="release.url" target="_blank" rel="noopener noreferrer">{{ copy.versionNotes }}<TsIcon name="external" :size="14" /></a><TsButton type="button" :disabled="loading" @click="refresh(true)">{{ loading ? copy.checking : copy.check }}</TsButton></div>
       </section>
       <p v-if="failed" class="download-status" role="status">{{ source === 'verified' ? copy.checkFailed : copy.checkFailedCached }}</p>
       <p v-if="release.preview" class="download-beta-note">{{ copy.previewNote }}</p>
@@ -99,7 +100,7 @@ onUnmounted(() => {
             <div class="download-platform-heading"><div class="download-device-icon"><TsIcon :name="platform.icon" :size="25" /></div><div><h3>{{ platform.name }}</h3><p>{{ platform.target }}</p></div><span v-if="platform.recommended" class="download-badge">{{ copy.recommended }}</span></div>
             <p class="download-platform-note">{{ platform.note }}</p>
             <div class="download-package-label"><span>{{ platform.format }}</span><span v-if="platform.asset">{{ size(platform.asset.size) }}</span></div>
-            <a v-if="platform.asset" class="download-button" :href="platform.asset.href" rel="noopener noreferrer" referrerpolicy="no-referrer"><TsIcon name="download" :size="17" />{{ platform.action }}</a>
+            <a data-ui="primary" v-if="platform.asset" class="download-button" :href="platform.asset.href" rel="noopener noreferrer" referrerpolicy="no-referrer"><TsIcon name="download" :size="17" />{{ platform.action }}</a>
             <p v-else class="download-status">{{ copy.unavailable }}</p>
             <div class="download-platform-resources">
               <a v-if="platform.key === 'ohos' && platform.asset" class="download-signing-guide" :href="platform.guideHref" target="_blank" rel="noopener noreferrer">{{ platform.guideAction }}<TsIcon name="external" :size="14" /></a>

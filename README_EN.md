@@ -145,15 +145,7 @@ tsukuyomi-space/
 
 ## Design system
 
-The frontend design system lives in `src/frontend/styles/` and maintains a clean, modern interface with an anime-inspired visual identity:
-
-- `tokens.css`: foundational color, typography, spacing, radius, shadow, and motion tokens
-- `themes.css`: dark and light theme variables plus compatibility mappings for legacy names
-- `components.css`: shared buttons, cards, panels, navigation, and form controls
-- `animations.css`: global background motion, page entrances, and animation timing
-- `responsive.css`: global mobile breakpoints and responsive navigation rules
-
-New pages should prefer `--ts-*` variables. Legacy variables such as `--moon-*`, `--panel`, and `--radius` remain mapped to the design system to support gradual migration.
+See the [design system guide](design.md) for shared actions, page layouts and theme tokens. Start `npm run preview:design -- --overseas` and open the local `/design-system` to exercise the components. Run `npm run check:ui` to check Vue control declarations.
 
 <details>
 <summary>View the complete module list and Room / Agent notes</summary>

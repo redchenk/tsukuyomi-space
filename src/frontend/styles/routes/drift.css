@@ -443,3 +443,7 @@
     overflow: hidden;
     clip-path: inset(50%);
 }
+
+@media (max-width: 420px) {
+  .drift-tabs [role="tab"] { flex-direction: column; --ui-action-inset: .25rem; }
+}

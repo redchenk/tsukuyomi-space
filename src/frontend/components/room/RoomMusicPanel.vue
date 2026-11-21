@@ -23,7 +23,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
       <div class="music-card-main">
         <div id="musicCover" class="music-cover" :class="{ 'has-cover': music.coverUrl.value }" :style="music.coverUrl.value ? { '--music-cover-image': `url('${music.coverUrl.value}')` } : null" role="img" aria-label="cover">
           <span id="musicCoverGlyph">{{ music.currentTrack.value?.title?.slice(0, 1) || '♪' }}</span>
-          <button id="musicPlayBtn" class="music-cover-play" type="button" aria-label="Play music" @click.stop="music.togglePlay">
+          <button data-ui-part="media" id="musicPlayBtn" class="music-cover-play" type="button" aria-label="Play music" @click.stop="music.togglePlay">
             <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
         </div>
@@ -39,15 +39,15 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
             <span id="musicCurrentTime">{{ music.currentLabel.value }}</span>
             <span>/</span>
             <span id="musicDuration">{{ music.durationLabel.value }}</span>
-            <button id="musicVolumeBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">
+            <button data-ui-part="media" id="musicVolumeBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">
               <TsIcon name="volume" :size="15" />
             </button>
-            <button id="musicMenuBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">
+            <button data-ui-part="media" id="musicMenuBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">
               <TsIcon name="list" :size="15" />
             </button>
           </div>
         </div>
-        <button class="panel-close music-close" type="button" aria-label="Close music" @pointerdown.stop @click.stop="emit('close')">
+        <button data-ui="icon" class="panel-close music-close" type="button" aria-label="Close music" @pointerdown.stop @click.stop="emit('close')">
           <TsIcon name="x" :size="16" />
         </button>
       </div>
@@ -64,10 +64,10 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
         <option v-for="(track, index) in music.tracks" :key="track.file" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
       </select>
       <div class="music-drawer-actions">
-        <button id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
+        <button data-ui="secondary" id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
           <TsIcon name="skipBack" :size="17" />
         </button>
-        <button id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
+        <button data-ui="secondary" id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
           <TsIcon name="skipForward" :size="17" />
         </button>
       </div>

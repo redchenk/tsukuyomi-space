@@ -174,12 +174,12 @@ onBeforeRouteLeave(() => { cancelTurn(); });
 </script>
 
 <template>
-  <main class="page gomoku-page" data-scroll-reveal="off">
+  <main data-ui-layout="scene" class="page gomoku-page" data-scroll-reveal="off">
     <div class="gomoku-wrap">
       <a class="game-back" href="/game" @click.prevent="emit('go', '/game')"><TsIcon name="arrowLeft" :size="17" />{{ copy.back }}</a>
       <header class="gomoku-header"><div><p class="game-eyebrow">{{ copy.together }}</p><h1>{{ copy.gomoku }}</h1></div><span class="gomoku-mode">{{ game.difficulty === 'challenge' ? copy.challenge : copy.casual }}</span></header>
       <div class="gomoku-layout">
-        <section class="gomoku-table panel" :aria-label="copy.gomoku">
+        <section class="gomoku-table panel ui-panel" :aria-label="copy.gomoku">
           <div class="gomoku-players">
             <span :class="{ active: canPlay }"><i class="gomoku-player-stone" :class="game.human === BLACK ? 'black' : 'white'"></i>{{ copy.you }}<small>{{ game.human === BLACK ? copy.first : copy.second }}</small></span>
             <small>{{ game.moves.length }} {{ copy.move }}</small>
@@ -192,7 +192,7 @@ onBeforeRouteLeave(() => { cancelTurn(); });
               <div v-for="row in BOARD_SIZE" :key="row" class="gomoku-row" role="row" :aria-rowindex="row">
                 <span class="gomoku-row-label" aria-hidden="true">{{ 16 - row }}</span>
                 <div v-for="col in BOARD_SIZE" :key="col" role="gridcell" :aria-colindex="col" class="gomoku-cell-wrap">
-                  <button type="button" class="gomoku-cell" :data-index="(row - 1) * BOARD_SIZE + col - 1"
+                  <button data-ui-part="canvas" type="button" class="gomoku-cell" :data-index="(row - 1) * BOARD_SIZE + col - 1"
                     :aria-label="cellLabel((row - 1) * BOARD_SIZE + col - 1)" :aria-disabled="!canPlay || Boolean(game.board[(row - 1) * BOARD_SIZE + col - 1])"
                     :tabindex="focusIndex === (row - 1) * BOARD_SIZE + col - 1 ? 0 : -1"
                     :class="{ 'is-last': lastMove === (row - 1) * BOARD_SIZE + col - 1, 'is-winning': game.line.includes((row - 1) * BOARD_SIZE + col - 1), 'is-hint': hint === (row - 1) * BOARD_SIZE + col - 1 }"

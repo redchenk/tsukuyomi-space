@@ -24,7 +24,7 @@ watch(() => props.image, load, { immediate: true });
 <template>
   <div class="room-chat-image">
     <img v-if="source && !failed" class="chat-image-thumb" :src="source" :alt="image.name || '图片'" decoding="async" @error="failed = true">
-    <button v-else-if="failed" class="panel-btn" type="button" @click="load">图片暂时无法预览 · 点击重试</button>
+    <button data-ui="secondary" v-else-if="failed" class="panel-btn" type="button" @click="load">图片暂时无法预览 · 点击重试</button>
     <span v-else role="status">正在加载图片…</span>
   </div>
 </template>

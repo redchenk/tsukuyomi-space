@@ -152,15 +152,7 @@ tsukuyomi-space/
 
 ## 设计系统
 
-前端设计系统位于 `src/frontend/styles/`，用于稳定“简约清爽 + 现代感 + 二次元动漫风格”的整体视觉：
-
-- `tokens.css`：色彩、字体、间距、圆角、阴影、动效时长等基础 token
-- `themes.css`：深色 / 浅色主题变量，以及旧变量名兼容映射
-- `components.css`：按钮、卡片、面板、导航、输入框等通用组件样式
-- `animations.css`：全局背景动效、页面入场和动效节奏
-- `responsive.css`：全局移动端断点和导航响应式规则
-
-新增页面优先使用 `--ts-*` 变量；旧的 `--moon-*`、`--panel`、`--radius` 等变量会继续映射到设计系统，便于逐步迁移。
+具体用法见[月读设计系统](design.md)。新增操作复用 `TsButton`，页面、表单和专题控件共用主题与排版规则。运行 `npm run preview:design` 后访问本地 `/design-system` 查看交互示例；`npm run check:ui` 可检查组件使用。
 
 <details>
 <summary>查看完整模块与 Room / Agent 使用说明</summary>

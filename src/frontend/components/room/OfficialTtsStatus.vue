@@ -36,7 +36,7 @@ onBeforeUnmount(() => { disposed = true; lifetime.abort(); clearInterval(timer);
 <template>
   <div class="official-tts-status" :class="{ compact }" aria-live="polite">
     <div class="official-tts-heading">
-      <strong>{{ engine === 'fish-audio' ? '官方 Fish Audio' : '官方直供 · 八千代语音' }}</strong><button v-if="compact" class="text-btn" type="button" :aria-expanded="detailsOpen" @click="detailsOpen = !detailsOpen">服务详情</button>
+      <strong>{{ engine === 'fish-audio' ? '官方 Fish Audio' : '官方直供 · 八千代语音' }}</strong><button data-ui="quiet" v-if="compact" class="text-btn" type="button" :aria-expanded="detailsOpen" @click="detailsOpen = !detailsOpen">服务详情</button>
       <span :class="['official-tts-badge', { online: selected?.online }]">{{ selected?.online ? '算力在线' : !selected ? '检测中' : '算力离线' }}</span>
     </div>
     <div v-show="!compact || detailsOpen">
@@ -46,7 +46,7 @@ onBeforeUnmount(() => { disposed = true; lifetime.abort(); clearInterval(timer);
     <p class="field-hint">{{ selected?.online ? '可选用官方直供。离线时自动暂停，恢复在线后即可继续使用。' : '当前暂不可用，算力恢复后会自动开放。你也可以使用自己配置的语音服务。' }} 每条最多 1,000 字，同一页面会话内缓存有效时重播不重复扣费；缓存最长保留 24 小时。</p>
     <div class="button-row">
       <button class="ghost-btn" type="button" :disabled="checking" @click="refresh">{{ checking ? '正在检测…' : '检测算力' }}</button>
-      <a class="text-btn" href="/payments">余额与充值</a>
+      <a data-ui="quiet" class="text-btn" href="/payments">余额与充值</a>
     </div>
     </div>
   </div>

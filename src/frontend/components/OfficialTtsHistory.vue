@@ -19,8 +19,8 @@ watch(() => props.account, () => { rows.value = []; void refresh(); }, { immedia
 const labels = { processing: '合成中，金额预留', ready: '已合成', failed: '失败，未扣费', expired: '已合成，缓存过期' };
 </script>
 <template>
-  <section class="panel payment-history" aria-label="官方语音账单">
-    <div class="payment-actions"><h2>官方语音账单</h2><button class="ghost-btn" type="button" :disabled="loading" @click="refresh">刷新语音记录</button></div>
+  <section class="panel payment-history ui-panel" aria-label="官方语音账单">
+    <div class="payment-actions ui-actions"><h2>官方语音账单</h2><button class="ghost-btn" type="button" :disabled="loading" @click="refresh">刷新语音记录</button></div>
     <p>¥0.05 / 条 · 与聊天共用网站余额。显示最近 30 条合成记录。</p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-else-if="!rows.length">{{ loading ? '正在读取…' : '暂无语音记录。' }}</p>

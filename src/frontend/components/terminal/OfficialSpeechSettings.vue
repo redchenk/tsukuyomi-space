@@ -57,7 +57,7 @@ onUnmounted(() => { controller.abort(); newKey.value = ''; });
     <p v-if="!config && busy" role="status">正在读取语音配置…</p>
     <template v-if="config">
       <div class="speech-sources" aria-label="官方音源">
-        <button v-for="id in ['default','fish-audio']" :key="id" type="button" :aria-pressed="selected === id" :disabled="busy" @click="selected = id; notice = ''; error = ''">
+        <button data-ui="choice" v-for="id in ['default','fish-audio']" :key="id" type="button" :aria-pressed="selected === id" :disabled="busy" @click="selected = id; notice = ''; error = ''">
           <strong>{{ id === 'default' ? config.primary.protocol : 'Fish Audio' }}</strong>
           <span>{{ (id === 'default' ? config.primary.enabled : config.fish.enabled) ? '已启用' : '已关闭' }}</span>
           <small v-if="health">{{ (id === 'default' ? health.primary.online : health.fish.online) ? '算力在线' : '算力离线' }}</small>

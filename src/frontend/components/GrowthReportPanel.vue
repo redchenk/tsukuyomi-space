@@ -142,14 +142,14 @@ const peak = computed(() => Math.max(1, ...plotDays.value.map((d) => Math.max(d.
         </p>
       </div>
       <div class="gr-ranges" role="group" aria-label="观察窗口">
-        <button v-for="n in [7, 14, 30, 'all']" :key="n" type="button" :aria-pressed="n === days" @click="days = n">
+        <button data-ui="choice" v-for="n in [7, 14, 30, 'all']" :key="n" type="button" :aria-pressed="n === days" @click="days = n">
           {{ n === 'all' ? uiText('建站以来') : uiText('{0} 天', [n]) }}
         </button>
       </div>
     </header>
     <p v-if="loading && report?.days !== days" class="gr-state" role="status">正在读取增长数据…</p>
     <p v-else-if="error" class="gr-state" role="alert">
-      {{ error }} <button type="button" @click="retry++">重新读取</button>
+      {{ error }} <button data-ui="secondary" type="button" @click="retry++">重新读取</button>
     </p>
     <template v-else-if="report">
       <div v-if="report.history" class="gr-metrics">
@@ -174,7 +174,7 @@ const peak = computed(() => Math.max(1, ...plotDays.value.map((d) => Math.max(d.
         </article>
       </div>
       <nav class="gr-nav" aria-label="增长报表">
-        <button
+        <button data-ui="secondary"
           v-for="entry in sections"
           :key="entry.id"
           type="button"
@@ -416,9 +416,9 @@ const peak = computed(() => Math.max(1, ...plotDays.value.map((d) => Math.max(d.
               </table>
             </div>
             <div v-if="articlePageCount > 1" class="gr-pager">
-              <button type="button" :disabled="currentArticlePage === 1" @click="articlePage = currentArticlePage - 1">上一页</button>
+              <button data-ui="secondary" type="button" :disabled="currentArticlePage === 1" @click="articlePage = currentArticlePage - 1">上一页</button>
               <span>{{ currentArticlePage }} / {{ articlePageCount }}</span>
-              <button type="button" :disabled="currentArticlePage === articlePageCount" @click="articlePage = currentArticlePage + 1">下一页</button>
+              <button data-ui="secondary" type="button" :disabled="currentArticlePage === articlePageCount" @click="articlePage = currentArticlePage + 1">下一页</button>
             </div>
           </details>
         </section>

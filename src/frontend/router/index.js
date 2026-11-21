@@ -63,6 +63,11 @@ const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
 export const routes = [
+  ...(import.meta.env.DEV || import.meta.env.VITE_DESIGN_PREVIEW === '1' ? [{
+    path: '/design-system', name: 'designSystem',
+    component: () => import('../pages/DesignSystemPage.vue'),
+    meta: { title: '月读设计系统', noindex: true }
+  }] : []),
   { path: '/chatroom', name: 'chatroom', component: loadRoute(() => import('../pages/CommunityChatPage.vue'), () => import('../styles/routes/chatroom.css')), meta: { title: '月读聊天室', noindex: true } },
   { path: '/drift', name: 'drift', component: loadRoute(() => import('../pages/DriftPage.vue'), () => import('../styles/routes/drift.css')), meta: { title: '星海来信', noindex: true } },
   { path: '/admin/drift', redirect: { path: '/admin', query: { tab: 'drift' } } },

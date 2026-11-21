@@ -599,7 +599,7 @@ watch(() => route.hash, revealCommentHash);
 </script>
 
 <template>
-  <main id="article-top" tabindex="-1" class="page article-page" :aria-busy="loading">
+  <main data-ui-layout="content" id="article-top" tabindex="-1" class="page article-page" :aria-busy="loading">
     <div class="article-progress" :style="{ transform: `scaleX(${progress})` }" aria-hidden="true"></div>
     <div class="article-shell">
       <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">
@@ -614,7 +614,7 @@ watch(() => route.hash, revealCommentHash);
       <article v-else-if="article" class="article-reader">
         <header class="article-hero">
           <div class="article-kicker">{{ article.category || readerCopy.category }}</div>
-          <h1>{{ article.title }}</h1>
+          <h1 class="ui-page-title">{{ article.title }}</h1>
           <div class="article-meta">
             <span>{{ formatPublishedDate(article.published_at || article.created_at || article.publish_date) }}</span>
             <a
@@ -631,15 +631,15 @@ watch(() => route.hash, revealCommentHash);
             <p>{{ article.excerpt }}</p>
           </section>
           <div class="article-social-actions">
-            <button class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
+            <button data-ui="secondary" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
               <TsIcon :class="{ 'ts-status-loader-icon': articleLike.loading }" :name="articleLike.loading ? 'loader' : 'heart'" :size="17" />
               <span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }} {{ articleLike.count.toLocaleString(lang) }}</span>
             </button>
-            <button class="article-bookmark-btn" type="button" @click="openArticleShare">
+            <button data-ui="secondary" class="article-bookmark-btn" type="button" @click="openArticleShare">
               <TsIcon name="external" :size="17" />
               <span>{{ readerCopy.share }}</span>
             </button>
-            <button
+            <button data-ui="secondary"
               class="article-bookmark-btn"
               :class="{ liked: bookmark.bookmarked }"
               type="button"
@@ -702,7 +702,7 @@ watch(() => route.hash, revealCommentHash);
           <div v-else class="comment-list">
             <article v-for="comment in topComments" :id="'comment-' + comment.id" :key="comment.id" class="comment-item">
               <div class="comment-header">
-                <button class="comment-author-link" type="button" @click="goProfile(comment.author || comment.username)">
+                <button data-ui="quiet" class="comment-author-link" type="button" @click="goProfile(comment.author || comment.username)">
                   <span class="comment-avatar">
                     <img v-if="comment.avatar" :src="comment.avatar" :alt="commentAvatarAlt(comment)" loading="lazy" decoding="async">
                     <span v-else>{{ commentInitial(comment) }}</span>
@@ -714,7 +714,7 @@ watch(() => route.hash, revealCommentHash);
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
-                <button
+                <button data-ui="quiet"
                   class="icon-btn comment-tool-btn like-btn"
                   :class="{ liked: isCommentLiked(comment.id) }"
                   :aria-pressed="isCommentLiked(comment.id)"
@@ -724,7 +724,7 @@ watch(() => route.hash, revealCommentHash);
                   <TsIcon name="heart" :size="16" />
                   <span>喜欢 {{ comment.like_count || 0 }}</span>
                 </button>
-                <button class="icon-btn comment-tool-btn" type="button" @click="toggleReply(comment.id)">
+                <button data-ui="quiet" class="icon-btn comment-tool-btn" type="button" @click="toggleReply(comment.id)">
                   <TsIcon name="message" :size="16" />
                   <span>回复</span>
                 </button>
@@ -738,7 +738,7 @@ watch(() => route.hash, revealCommentHash);
               <div v-if="repliesFor(comment.id).length" :id="'article-replies-' + comment.id" class="reply-list">
                 <div v-for="reply in visibleReplies(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">
-                    <button class="comment-author-link" type="button" @click="goProfile(reply.author || reply.username)">
+                    <button data-ui="quiet" class="comment-author-link" type="button" @click="goProfile(reply.author || reply.username)">
                       <span class="comment-avatar small">
                         <img v-if="reply.avatar" :src="reply.avatar" :alt="commentAvatarAlt(reply)" loading="lazy" decoding="async">
                         <span v-else>{{ commentInitial(reply) }}</span>
@@ -751,7 +751,7 @@ watch(() => route.hash, revealCommentHash);
                   <ReplyRecipient :target="threads.target(reply)" prefix="comment" :lang="lang" @navigate="revealComment" />
                   <SocialText class="comment-content" :content="reply.content" @mention="goProfile" @topic="goTopic" />
                   <div class="comment-tools">
-                    <button class="icon-btn comment-tool-btn" type="button" :aria-label="`${replyLabels.to} ${commentAuthorName(reply)}`" @click="toggleReply(reply.id)"><TsIcon name="message" :size="16" /><span>{{ t.reply }}</span></button>
+                    <button data-ui="quiet" class="icon-btn comment-tool-btn" type="button" :aria-label="`${replyLabels.to} ${commentAuthorName(reply)}`" @click="toggleReply(reply.id)"><TsIcon name="message" :size="16" /><span>{{ t.reply }}</span></button>
                   </div>
                   <div v-if="openReplies[reply.id]" class="reply-form">
                     <PlazaReplyForm v-model="replyDrafts[reply.id]" :t="t" :lang="lang" :target="reply" :msg-id="reply.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(reply.id)" />
@@ -773,16 +773,16 @@ watch(() => route.hash, revealCommentHash);
   </main>
   <MobileSheet :open="contentsOpen" :return-focus="contentsTrigger" :title="readerCopy.toc" @close="contentsOpen = false"><nav class="mobile-article-toc" :aria-label="readerCopy.toc"><button class="ghost-btn" type="button" @click="contentsOpen = false; nextTick(() => jumpToArticleTarget('article-top'))"><TsIcon name="chevronUp" :size="18" />{{ replyLabels.top }}</button><a v-for="heading in headings" :key="heading.id" :href="`#${heading.id}`" :class="{ 'is-subheading': heading.level === 3 }" :aria-current="activeHeading === heading.id ? 'location' : undefined" @click.prevent="selectHeading(heading.id)">{{ heading.text }}</a><p v-if="!headings.length">{{ lang === 'en' ? 'This story has no headings.' : '这篇故事没有分节标题，可以直接阅读。' }}</p></nav></MobileSheet>
   <nav v-if="article && !loading && !keyboardOpen" class="article-reading-tools" :aria-label="replyLabels.navigation">
-    <button ref="contentsTrigger" type="button" :aria-expanded="contentsOpen" @click="contentsOpen = true"><TsIcon name="list" :size="20" /><span>{{ readerCopy.toc }}</span></button>
-    <button type="button" :aria-pressed="articleLike.liked" :disabled="articleLike.loading" @click="toggleArticleLike"><TsIcon name="heart" :size="20" /><span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }}</span></button>
-    <button type="button" :aria-pressed="bookmark.bookmarked" :disabled="bookmark.loading" @click="toggleBookmark"><TsIcon name="bookmark" :size="20" /><span>{{ bookmark.bookmarked ? readerCopy.saved : readerCopy.bookmark }}</span></button>
-    <button type="button" :aria-label="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="20" /><span>{{ readerCopy.comments }}</span></button>
-    <button type="button" @click="openArticleShare"><TsIcon name="external" :size="20" /><span>{{ readerCopy.share }}</span></button>
+    <button data-ui="secondary" ref="contentsTrigger" type="button" :aria-expanded="contentsOpen" @click="contentsOpen = true"><TsIcon name="list" :size="20" /><span>{{ readerCopy.toc }}</span></button>
+    <button data-ui="secondary" type="button" :aria-pressed="articleLike.liked" :disabled="articleLike.loading" @click="toggleArticleLike"><TsIcon name="heart" :size="20" /><span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }}</span></button>
+    <button data-ui="secondary" type="button" :aria-pressed="bookmark.bookmarked" :disabled="bookmark.loading" @click="toggleBookmark"><TsIcon name="bookmark" :size="20" /><span>{{ bookmark.bookmarked ? readerCopy.saved : readerCopy.bookmark }}</span></button>
+    <button data-ui="secondary" type="button" :aria-label="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="20" /><span>{{ readerCopy.comments }}</span></button>
+    <button data-ui="secondary" type="button" @click="openArticleShare"><TsIcon name="external" :size="20" /><span>{{ readerCopy.share }}</span></button>
   </nav>
   <Teleport to="body">
     <nav v-if="article && !loading" class="article-quick-nav" :aria-label="replyLabels.navigation">
-      <button class="article-quick-button" type="button" :aria-label="replyLabels.comments" :title="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="19" /><span>{{ replyLabels.comments }}</span></button>
-      <button class="article-quick-button" type="button" :aria-label="replyLabels.top" :title="replyLabels.top" @click="jumpToArticleTarget('article-top')"><TsIcon name="chevronUp" :size="20" /><span>{{ replyLabels.top }}</span></button>
+      <button data-ui="secondary" class="article-quick-button" type="button" :aria-label="replyLabels.comments" :title="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="19" /><span>{{ replyLabels.comments }}</span></button>
+      <button data-ui="secondary" class="article-quick-button" type="button" :aria-label="replyLabels.top" :title="replyLabels.top" @click="jumpToArticleTarget('article-top')"><TsIcon name="chevronUp" :size="20" /><span>{{ replyLabels.top }}</span></button>
     </nav>
   </Teleport>
   <SocialShareDialog

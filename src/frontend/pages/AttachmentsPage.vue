@@ -208,9 +208,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="page attachments-page" :aria-busy="state.loading || state.uploading">
-    <section v-if="!isAuthed" class="panel attachments-empty">
-      <h1>附件库</h1>
+  <main data-ui-layout="content" class="page attachments-page" :aria-busy="state.loading || state.uploading">
+    <section v-if="!isAuthed" class="panel attachments-empty ui-panel">
+      <h1 class="ui-page-title">附件库</h1>
       <p>登录后可以管理自己上传的图片附件。</p>
       <button class="primary-btn" type="button" @click="go('/login')">去登录</button>
     </section>
@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
       <header class="attachments-hero">
         <div>
           <span class="attachments-kicker">Asset Library</span>
-          <h1>附件库</h1>
+          <h1 class="ui-page-title">附件库</h1>
           <p>{{ unlimitedAttachmentSize ? '管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。管理员上传不限制文件大小，支持自动重试和断点续传。' : '管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。单文件最大 100 MB，支持自动重试和断点续传。' }}</p>
         </div>
         <div class="attachments-actions">
@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
 
       <UploadProgress :state="assetUpload.state" cancelable @cancel="uploadController?.abort()" @dismiss="assetUpload.clear" />
 
-      <section v-if="state.pendingUploads.length && !state.uploading" class="panel attachments-pending" aria-label="未完成的上传">
+      <section v-if="state.pendingUploads.length && !state.uploading" class="panel attachments-pending ui-panel" aria-label="未完成的上传">
         <p>未完成的上传会保留 24 小时。点击“上传文件”重新选择同一文件，即可校验后继续。</p>
         <div v-for="upload in state.pendingUploads" :key="upload.id" class="attachments-pending-row">
           <div class="attachments-pending-info"><strong>{{ upload.fileName }}</strong><span>已确认 {{ Math.floor(upload.received / upload.size * 100) }}%{{ upload.processing ? ' · 正在保存' : '' }}</span></div>
@@ -241,7 +241,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="panel attachments-toolbar">
+      <section class="panel attachments-toolbar ui-panel">
         <div class="attachments-search-tools">
         <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="attachments-page-state-search-query" v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
         <select v-model="state.type" aria-label="附件类型" @change="loadAssets(1)">
@@ -261,7 +261,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="panel attachments-upload-options">
+      <section class="panel attachments-upload-options ui-panel">
         <div>
           <strong>存储位置由站点统一管理</strong>
           <p>启用并配置 OSS 后，所有附件统一保存到对象存储；未启用时使用本地存储。</p>
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
 
       <LoadingSkeleton v-if="state.loading" variant="gallery" :count="8" label="正在加载附件" />
       <section v-else-if="state.loadError" class="attachments-status error" role="alert">{{ state.loadError }}</section>
-      <section v-else-if="!state.assets.length" class="panel attachments-empty">
+      <section v-else-if="!state.assets.length" class="panel attachments-empty ui-panel">
         <h2>还没有附件</h2>
         <p>上传图片后，它会出现在这里，并只对你自己的账号可见。</p>
       </section>

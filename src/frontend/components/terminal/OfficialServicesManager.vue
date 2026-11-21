@@ -10,7 +10,7 @@ const sections = [{ id:'llm', label:'语言模型' }, { id:'tts', label:'语音�
 <template>
   <div class="services-manager">
     <nav class="manager-tabs" aria-label="官方服务视图">
-      <button v-for="item in sections" :key="item.id" type="button" :aria-pressed="tab === item.id" @click="tab = item.id">{{ $ui(item.label) }}</button>
+      <button data-ui="choice" v-for="item in sections" :key="item.id" type="button" :aria-pressed="tab === item.id" @click="tab = item.id">{{ $ui(item.label) }}</button>
     </nav>
     <KeepAlive>
       <OfficialServiceSettings v-if="tab === 'llm'" :key="'llm' + revision" :request="request" />

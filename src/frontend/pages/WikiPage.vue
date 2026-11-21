@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main id="wiki-main" class="page wiki-page">
+  <main data-ui-layout="content" id="wiki-main" class="page wiki-page">
     <a class="wiki-skip-link" href="#wiki-article">跳至 Wiki 正文</a>
     <span ref="topSentinel" class="wiki-top-sentinel" aria-hidden="true"></span>
 
@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
           <p class="wiki-kicker">TSUKUYOMI ARCHIVE / FAN WIKI</p>
           <div class="wiki-title-row">
             <div>
-              <h1>超辉夜姬！Wiki</h1>
+              <h1 class="ui-page-title">超辉夜姬！Wiki</h1>
               <p class="wiki-original-title">超かぐや姫！ · Cosmic Princess Kaguya!</p>
             </div>
             <span class="wiki-unofficial-badge">非官方粉丝整理</span>
@@ -320,7 +320,7 @@ onBeforeUnmount(() => {
 
           <section id="overview" class="wiki-section" data-wiki-section tabindex="-1">
             <div class="wiki-section-heading"><span>01</span><div><small>OVERVIEW</small><h2>本作介绍</h2></div></div>
-            <p v-if="interfaceLanguage === 'en'">Cosmic Princess Kaguya! (超かぐや姫！) is an original animated feature inspired by <a class="wiki-text-link" href="#term-taketori">The Tale of the Bamboo Cutter</a>. It brings the bamboo-born child, rapid growth and return to the moon into the near future. Seventeen-year-old Iroha Sakayori meets Kaguya, who emerges from a rainbow-lit utility pole. In <button class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">virtual Tsukuyomi</button>, they become creative partners: Kaguya sings on camera while Iroha writes music as her producer.</p><p v-else>《超かぐや姫！》是一部长篇原创动画电影，以古典<a class="wiki-text-link" href="#term-taketori">《竹取物语》</a>为母题，把“竹中诞生、迅速成长、月之迎接”移入稍近未来。17 岁的酒寄彩叶遇见从虹光电线杆中出现的辉夜，两人在<button class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">虚拟空间“月读”</button>组成创作搭档：辉夜站上镜头前唱歌，彩叶则以制作人的身份写下旋律。</p>
+            <p v-if="interfaceLanguage === 'en'">Cosmic Princess Kaguya! (超かぐや姫！) is an original animated feature inspired by <a class="wiki-text-link" href="#term-taketori">The Tale of the Bamboo Cutter</a>. It brings the bamboo-born child, rapid growth and return to the moon into the near future. Seventeen-year-old Iroha Sakayori meets Kaguya, who emerges from a rainbow-lit utility pole. In <button data-ui-part="disclosure" class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">virtual Tsukuyomi</button>, they become creative partners: Kaguya sings on camera while Iroha writes music as her producer.</p><p v-else>《超かぐや姫！》是一部长篇原创动画电影，以古典<a class="wiki-text-link" href="#term-taketori">《竹取物语》</a>为母题，把“竹中诞生、迅速成长、月之迎接”移入稍近未来。17 岁的酒寄彩叶遇见从虹光电线杆中出现的辉夜，两人在<button data-ui-part="disclosure" class="wiki-term-link" type="button" @click="openTerm('tsukuyomi', $event)">虚拟空间“月读”</button>组成创作搭档：辉夜站上镜头前唱歌，彩叶则以制作人的身份写下旋律。</p>
             <p>作品将网络直播、虚拟偶像与 VOCALOID 创作文化写进人物关系，让“相遇与离别”不只发生在月球和地球之间，也发生在创作者与观众、现实身份与虚拟人格之间。动画由 STUDIO COLORIDO 与 STUDIO CHROMATO 制作，山下清悟执导。<sup><a href="#ref-official">[1]</a></sup></p>
             <p>本作于 2025 年 11 月首次公开预告与视觉图，2026 年 1 月由 Netflix 全球上线，并在同年 2 月进入日本院线、3 月扩大至全国上映。音乐创作阵容汇集 ryo（supercell）、kz（livetune）、40mP、HoneyWorks、Aqu3ra 与 yuigot，让网络音乐本身成为剧情推进的一部分。</p>
             <div class="wiki-work-highlights" aria-label="作品亮点">
@@ -337,7 +337,7 @@ onBeforeUnmount(() => {
             <div class="wiki-section-heading"><span>02</span><div><small>STORY</small><h2>故事简介</h2></div></div>
             <blockquote class="wiki-story-lede">梦与希望汇聚的虚拟空间“月读”。少女们的相遇，以及为离别而设的舞台，就此拉开序幕。</blockquote>
             <p>酒寄彩叶一边读书，一边打工负担自己的生活。她最放松的时刻，是进入月读观看月见八千代的直播，或在游戏中赚取一点收入。一次夜归，她遇见散发虹光的奇异电线杆，其中出现的婴儿转眼成长为与她年纪相仿的少女。</p>
-            <p>彩叶称她为“辉夜”。向往好玩事物的辉夜决定成为主播，彩叶也重拾搁置的音乐才能。她们参加<button class="wiki-term-link" type="button" @click="openTerm('yachiyo-cup', $event)">八千代杯</button>、挑战<button class="wiki-term-link" type="button" @click="openTerm('black-onyx', $event)">Black onyX</button>，逐渐成为彼此不可替代的人。然而辉夜姬的故事始终绕不开回月之日：一首歌，能否抵达无法相见的时间？</p>
+            <p>彩叶称她为“辉夜”。向往好玩事物的辉夜决定成为主播，彩叶也重拾搁置的音乐才能。她们参加<button data-ui-part="disclosure" class="wiki-term-link" type="button" @click="openTerm('yachiyo-cup', $event)">八千代杯</button>、挑战<button data-ui-part="disclosure" class="wiki-term-link" type="button" @click="openTerm('black-onyx', $event)">Black onyX</button>，逐渐成为彼此不可替代的人。然而辉夜姬的故事始终绕不开回月之日：一首歌，能否抵达无法相见的时间？</p>
 
             <details class="wiki-spoiler">
               <summary><span><TsIcon name="shield" :size="19" /> 展开完整剧情与结局剧透</span><TsIcon class="wiki-spoiler-chevron" name="chevronDown" :size="18" /></summary>
@@ -352,7 +352,7 @@ onBeforeUnmount(() => {
           <section id="characters" class="wiki-section" data-wiki-section tabindex="-1">
             <div class="wiki-section-heading"><span>03</span><div><small>CHARACTERS</small><h2>登场人物</h2></div></div>
             <div class="wiki-filter-bar" aria-label="角色筛选">
-              <button
+              <button data-ui="choice"
                 v-for="group in localizedWiki.characterGroups"
                 :key="group.id"
                 type="button"
@@ -381,7 +381,7 @@ onBeforeUnmount(() => {
                   <p>{{ character.description }}</p>
                   <div v-if="character.relatedTerms.length" class="wiki-related-links">
                     <span>相关：</span>
-                    <button v-for="termId in character.relatedTerms" :key="termId" type="button" @click="openTerm(termId, $event)">{{ findTerm(termId)?.label }}</button>
+                    <button data-ui-part="row" v-for="termId in character.relatedTerms" :key="termId" type="button" @click="openTerm(termId, $event)">{{ findTerm(termId)?.label }}</button>
                   </div>
                 </div>
               </article>
@@ -405,7 +405,7 @@ onBeforeUnmount(() => {
             <div class="wiki-section-heading"><span>05</span><div><small>MUSIC</small><h2>相关音乐</h2></div></div>
             <p>电影把网络音乐文化直接写入叙事。这里仅整理歌名、创作者、演唱角色与剧情位置，不提供音频或歌词全文；官方试听请前往作品 Music 页面。<sup><a href="#ref-music">[2]</a></sup></p>
             <div class="wiki-filter-bar" aria-label="音乐筛选">
-              <button
+              <button data-ui="choice"
                 v-for="group in localizedWiki.musicGroups"
                 :key="group.id"
                 type="button"
@@ -501,11 +501,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <button v-if="showBackToTop" class="wiki-back-to-top" type="button" aria-label="返回页面顶部" @click="scrollToTop"><TsIcon name="chevronUp" :size="20" /></button>
+    <button data-ui="icon" v-if="showBackToTop" class="wiki-back-to-top" type="button" aria-label="返回页面顶部" @click="scrollToTop"><TsIcon name="chevronUp" :size="20" /></button>
 
-    <button v-if="activeTerm" class="wiki-term-scrim" type="button" aria-label="关闭词条速览" @click="closeTerm"></button>
+    <button data-ui-part="overlay" v-if="activeTerm" class="wiki-term-scrim" type="button" aria-label="关闭词条速览" @click="closeTerm"></button>
     <aside v-if="activeTerm" ref="termDrawer" class="wiki-term-drawer" data-material="popover" role="dialog" aria-modal="true" :aria-labelledby="`term-title-${activeTerm.id}`">
-      <div class="wiki-term-drawer-head"><span>词条速览</span><button ref="termCloseButton" type="button" aria-label="关闭词条速览" @click="closeTerm"><TsIcon name="x" :size="18" /></button></div>
+      <div class="wiki-term-drawer-head"><span>词条速览</span><button data-ui="secondary" ref="termCloseButton" type="button" aria-label="关闭词条速览" @click="closeTerm"><TsIcon name="x" :size="18" /></button></div>
       <h2 :id="`term-title-${activeTerm.id}`">{{ activeTerm.label }}</h2>
       <p>{{ activeTerm.summary }}</p>
       <div class="wiki-tag-row"><span v-for="alias in activeTerm.aliases" :key="alias">{{ alias }}</span></div>
