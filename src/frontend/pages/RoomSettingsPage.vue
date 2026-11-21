@@ -1,4 +1,6 @@
 <script setup>
+import TsIconButton from '../components/TsIconButton.vue';
+import TsButton from '../components/TsButton.vue';
 import { withRequestTimeout } from '../utils/requestTimeout.mjs';
 import { deepseek, deepseekRequest } from '../services/room/roomDeepseek.mjs';
 import DeepseekTariff from '../components/DeepseekTariff.vue';
@@ -2508,7 +2510,7 @@ onBeforeUnmount(() => {
 
 <template>
   <main data-ui-layout="workspace" class="page room-settings-page" :class="{ 'settings-overview': activeSection === 'overview', 'has-savebar': activeSection !== 'overview' || hasUnsavedSettings }">
-    <header class="settings-page-heading">
+    <header class="settings-page-heading ui-page-header">
       <div>
         <nav class="settings-breadcrumb" aria-label="当前位置">
           <a href="/room" @click.prevent="emit('go', '/room')">私人居所</a
@@ -2517,7 +2519,7 @@ onBeforeUnmount(() => {
         <h1 class="ui-page-title">房间设置</h1>
         <p>让房间更合你的心意。</p>
       </div>
-      <div class="settings-heading-actions"><button class="ghost-btn" type="button" aria-label="打开音乐" @click="openSettingsMusic"><TsIcon name="audioLines" :size="18" /></button>
+      <div class="settings-heading-actions ui-actions"><TsIconButton :label="$ui('打开音乐')" icon="audioLines" @click="openSettingsMusic" />
       <a class="ghost-btn" href="/room" @click.prevent="emit('go', '/room')"
         ><TsIcon name="arrowLeft" :size="17" />返回房间</a
       >
@@ -4211,11 +4213,11 @@ onBeforeUnmount(() => {
     <footer v-else-if="activeSection !== 'overview' || hasUnsavedSettings" class="settings-savebar settings-compact-savebar">
       <div class="settings-savebar-inner">
         <span class="settings-save-state" role="status"><TsIcon :name="hasUnsavedSettings ? 'penLine' : 'check'" :size="16" />{{ hasUnsavedSettings ? '未保存' : '已保存' }}</span>
-        <div class="button-row"><button class="ghost-btn settings-discard" type="button" :disabled="!hasUnsavedSettings || savingSettings || memorySavePending" @click="discardSettings">撤销</button><button class="primary-btn" type="button" :disabled="!hasUnsavedSettings || savingSettings || memorySavePending || memoryChoice.pending" @click="saveAllSettings">{{ savingSettings ? '保存中…' : '保存修改' }}</button></div>
+        <div class="button-row"><button class="ghost-btn settings-discard" type="button" :disabled="!hasUnsavedSettings || savingSettings || memorySavePending" @click="discardSettings">撤销</button><TsButton variant="primary" type="button" :loading="savingSettings" :disabled="!hasUnsavedSettings || memorySavePending || memoryChoice.pending" @click="saveAllSettings">保存修改</TsButton></div>
       </div>
     </footer>
     <Teleport to="body">
-      <div v-if="leaveDialog" class="room-test-modal" role="dialog" aria-modal="true" aria-label="保存修改后离开？" @keydown="handleLeaveKey" @click.self="finishLeave('stay')"><section ref="leaveCard" class="room-test-modal-card"><h2>保存修改后离开？</h2><p>所有分类的未保存修改会一起处理。</p><div class="button-row"><button class="ghost-btn" type="button" :disabled="savingSettings" @click="finishLeave('stay')">继续编辑</button><button class="ghost-btn" type="button" :disabled="savingSettings" @click="finishLeave('discard')">放弃并离开</button><button class="primary-btn" type="button" :disabled="savingSettings" @click="finishLeave('save')">保存并离开</button></div></section></div>
+      <div v-if="leaveDialog" class="room-test-modal" role="dialog" aria-modal="true" aria-label="保存修改后离开？" @keydown="handleLeaveKey" @click.self="finishLeave('stay')"><section ref="leaveCard" class="room-test-modal-card"><h2>保存修改后离开？</h2><p>所有分类的未保存修改会一起处理。</p><div class="button-row ui-modal-footer"><button class="ghost-btn" type="button" :disabled="savingSettings" @click="finishLeave('stay')">继续编辑</button><button class="ghost-btn" type="button" :disabled="savingSettings" @click="finishLeave('discard')">放弃并离开</button><button class="primary-btn" type="button" :disabled="savingSettings" @click="finishLeave('save')">保存并离开</button></div></section></div>
       <div
         v-if="testDialog.visible"
         class="room-test-modal"

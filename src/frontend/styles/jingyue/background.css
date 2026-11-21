@@ -19,3 +19,10 @@
   .site-background-shell { --background-edge: .84; --background-reading: .92; }
   .site-background-shell:not(.drift-scene-shell)::before { background-position: center, 85% top, center; }
 }
+
+/* Keep the illustration on the reading page perimeter and give text a quiet centre. */
+.content-shell.site-background-shell:not(.hub-shell, .drift-scene-shell, .pixel-shell, .chatroom-shell)::before {
+  background: var(--site-background-image) center / cover no-repeat;
+  opacity: .14;
+  mask-image: linear-gradient(to bottom, #000, transparent 92%);
+}

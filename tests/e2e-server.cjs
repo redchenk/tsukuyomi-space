@@ -201,6 +201,8 @@ const partnerServer = require('node:https').createServer({ key: fs.readFileSync(
     res.end('<p>合作方回调测试页</p>');
 }).listen(partnerPort, process.env.HOST);
 const uploadConfirmations = new Map();
+const serveRequest = process.env.JINGYUE_DESIGN_PREVIEW === '1' && process.env.JINGYUE_PREVIEW_ENGLISH === '1'
+    ? require('./fixtures/design-preview-english.cjs')(app) : app;
 const server = require('node:http').createServer((req, res) => {
     // Native XHR progress requires an actual request, not Playwright routing.
     // Let upload tests hold the server acknowledgement until assertions finish.
@@ -229,7 +231,7 @@ const server = require('node:http').createServer((req, res) => {
             return res;
         };
     }
-    fixtureRequest.run(req.headers['x-upload-fixture-delay'] === '1800' && req.url.split('?')[0] === '/api/room/chat/images', () => app(req, res));
+    fixtureRequest.run(req.headers['x-upload-fixture-delay'] === '1800' && req.url.split('?')[0] === '/api/room/chat/images', () => serveRequest(req, res));
 }).listen(Number(process.env.PORT), process.env.HOST, () => {
     const address = server.address();
     console.log(`E2E server listening on http://${address.address}:${address.port}`);

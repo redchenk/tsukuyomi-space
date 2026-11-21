@@ -612,7 +612,7 @@ watch(() => route.hash, revealCommentHash);
       <div v-else-if="message && !article" class="article-status error" role="alert">{{ message }}</div>
 
       <article v-else-if="article" class="article-reader">
-        <header class="article-hero">
+        <header class="article-hero ui-heading">
           <div class="article-kicker">{{ article.category || readerCopy.category }}</div>
           <h1 class="ui-page-title">{{ article.title }}</h1>
           <div class="article-meta">
@@ -630,12 +630,12 @@ watch(() => route.hash, revealCommentHash);
             <h2>{{ t.editorFieldExcerpt }}</h2>
             <p>{{ article.excerpt }}</p>
           </section>
-          <div class="article-social-actions">
-            <button data-ui="secondary" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
+          <div class="article-social-actions ui-actions">
+            <button data-ui="ghost" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
               <TsIcon :class="{ 'ts-status-loader-icon': articleLike.loading }" :name="articleLike.loading ? 'loader' : 'heart'" :size="17" />
               <span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }} {{ articleLike.count.toLocaleString(lang) }}</span>
             </button>
-            <button data-ui="secondary" class="article-bookmark-btn" type="button" @click="openArticleShare">
+            <button data-ui="ghost" class="article-bookmark-btn" type="button" @click="openArticleShare">
               <TsIcon name="external" :size="17" />
               <span>{{ readerCopy.share }}</span>
             </button>

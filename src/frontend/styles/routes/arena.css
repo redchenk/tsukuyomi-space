@@ -214,7 +214,7 @@ body .page.arena-page.pixel-studio {
 .ps-bar-actions { display: flex; align-items: center; gap: 3px; flex-shrink: 0; margin-left: auto; }
 .ps-history { display: flex; gap: 1px; }
 .ps-bar-sep { width: 1px; height: 22px; margin: 0 5px; background: var(--ps-line); }
-.ps-bar-actions > .ps-btn-primary { margin-left: 6px; }
+.ps-bar-actions > .ps-btn-primary { flex: none; inline-size: max-content; margin-left: 6px; }
 
 /* ---------- Body grid ---------- */
 .ps-body { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 52px minmax(0, 1fr) 288px; grid-template-rows: minmax(0, 1fr); }

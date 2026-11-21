@@ -1,4 +1,11 @@
 <script setup>
+import { siteArt } from '../data/siteArt';
+import TsIconButton from '../components/TsIconButton.vue';
+import TsToggle from '../components/TsToggle.vue';
+import TsFilterChip from '../components/TsFilterChip.vue';
+import TsButton from '../components/TsButton.vue';
+import TsButtonLink from '../components/TsButtonLink.vue';
+import TsPageHeader from '../components/TsPageHeader.vue';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import UploadProgress from '../components/UploadProgress.vue';
 import { useUploadProgress } from '../composables/useUploadProgress';
@@ -498,7 +505,7 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
       </div>
     </section>
     <div v-else class="gallery-main">
-      <header class="gallery-heading">
+      <div class="gallery-heading">
         <nav class="gallery-breadcrumb" :aria-label="t('当前位置', 'Breadcrumb')">
           <a href="/hub" @click.prevent="go('/hub')">{{ t('首页', 'Home') }}</a>
           <TsIcon name="chevronRight" :size="13" />
@@ -508,29 +515,23 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
             <span>{{ manageScopeLabel }}</span>
           </template>
         </nav>
-        <div class="gallery-heading-row">
-          <div>
-            <div class="gallery-title-line">
-              <h1 class="ui-page-title">{{ isManageMode ? manageScopeLabel : t('图库', 'Gallery') }}</h1>
-              <span class="gallery-kicker">{{ isManageMode ? 'GALLERY MANAGER' : 'GALLERY' }}</span>
-            </div>
-            <p>{{ isManageMode ? t('上传喜欢的画面，管理图库里的每一张图片。', 'Upload favourite moments and manage your images.') : t('收藏插画、截图与壁纸，把喜欢的画面留在这里。', 'A home for illustrations, screenshots and wallpapers you love.') }}</p>
-          </div>
-          <div class="gallery-heading-actions">
-            <button class="ghost-btn" type="button" @click="go(isManageMode ? '/gallery' : '/gallery/manage')">
+        <TsPageHeader :title="isManageMode ? manageScopeLabel : t('图库', 'Gallery')"
+          :description="isManageMode ? t('上传喜欢的画面，管理图库里的每一张图片。', 'Upload favourite moments and manage your images.') : t('收藏插画、截图与壁纸，把喜欢的画面留在这里。', 'A home for illustrations, screenshots and wallpapers you love.')" :art="siteArt.hero">
+          <template #actions>
+            <TsButtonLink :to="isManageMode ? '/gallery' : '/gallery/manage'">
               <TsIcon :name="isManageMode ? 'image' : 'grid'" :size="17" />
               {{ isManageMode ? t('公开图库', 'Public gallery') : t('我的图库', 'My gallery') }}
-            </button>
-            <button class="primary-btn" type="button" :disabled="state.uploading" @click="isAuthed ? fileInput?.click() : go('/login')">
+            </TsButtonLink>
+            <TsButton variant="primary" :loading="state.uploading" @click="isAuthed ? fileInput?.click() : go('/login')">
               <TsIcon name="upload" :size="17" />
-              {{ state.uploading ? t('正在上传', 'Uploading') : t('上传图片', 'Upload image') }}
-            </button>
-          </div>
-        </div>
+              {{ t('上传图片', 'Upload image') }}
+            </TsButton>
+          </template>
+        </TsPageHeader>
         <input ref="fileInput" class="gallery-file-input" type="file" accept="image/*" :disabled="state.uploading" :aria-label="t('选择图库图片', 'Choose gallery image')" @change="uploadImage">
-      </header>
+      </div>
       <UploadProgress :state="imageUpload.state" @dismiss="imageUpload.clear" />
-      <div v-if="state.message" class="gallery-notice" :class="{ error: state.messageType === 'error' }" role="status">
+      <div v-if="state.message" class="gallery-notice ui-inline-message" :class="{ error: state.messageType === 'error' }" role="status">
         <span>{{ state.message }}</span>
         <button data-ui="icon" class="gallery-icon-button" type="button" :aria-label="t('关闭提示', 'Dismiss message')" @click="state.message = ''">
           <TsIcon name="x" :size="16" />
@@ -540,7 +541,7 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
         <TsIcon name="upload" :size="20" />
         <p>{{ t('把图片拖到这里，或点击「上传图片」。图库图片将公开展示。', 'Drop an image here, or choose Upload image. Gallery uploads are public.') }}</p>
       </div>
-      <section class="gallery-discovery panel ui-panel" :aria-label="t('图库筛选', 'Gallery filters')">
+      <section class="gallery-discovery ui-toolbar" :aria-label="t('图库筛选', 'Gallery filters')">
         <div class="gallery-discovery-top">
           <div class="gallery-result-title">
             <h2>{{ isManageMode ? t('管理图片', 'Manage images') : t('发现图片', 'Discover images') }}</h2>
@@ -549,13 +550,11 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
           <div class="gallery-discovery-actions">
             <form autocomplete="off" class="gallery-search-field" role="search" @submit.prevent="loadImages(1)">
               <TsIcon name="search" :size="17" />
-              <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="gallery-page-state-search-query" v-model="state.search" type="search" maxlength="80" :aria-label="t('搜索图库', 'Search gallery')" :placeholder="t('搜索名称、标签或描述…', 'Search names, tags or descriptions…')">
+              <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="gallery-page-state-search-query" v-model="state.search" type="search" maxlength="80" :aria-label="t('搜索图库', 'Search gallery')" :placeholder="t('搜索图库', 'Search gallery')">
               <button data-ui="icon" v-if="state.search" class="gallery-icon-button" type="button" :aria-label="t('清空搜索', 'Clear search')" @click="state.search = ''; loadImages(1)">
                 <TsIcon name="x" :size="15" />
               </button>
-              <button data-ui="icon" class="gallery-icon-button" type="submit" :aria-label="t('搜索', 'Search')">
-                <TsIcon name="arrowRight" :size="17" />
-              </button>
+              <TsIconButton class="gallery-icon-button" type="submit" :label="t('搜索', 'Search')" icon="arrowRight" />
             </form>
             <button v-if="!isManageMode" class="ghost-btn gallery-random-button" type="button" :disabled="state.randomLoading" @click="browseRandom">
               <TsIcon name="compass" :size="17" />
@@ -565,10 +564,10 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
         </div>
         <div class="gallery-discovery-bottom">
           <div class="gallery-filter-group" :aria-label="t('按名称与描述筛选', 'Filter by name and description')">
-            <button data-ui="secondary" v-for="filter in filters" :key="filter.value" class="gallery-filter-button" type="button" :aria-pressed="state.category === filter.value" @click="selectFilter(filter.value)">
+            <TsFilterChip v-for="filter in filters" :key="filter.value" class="gallery-filter-button" type="button" :selected="state.category === filter.value" @click="selectFilter(filter.value)">
               <TsIcon v-if="!filter.value" name="image" :size="15" />
               {{ filter.label }}
-            </button>
+            </TsFilterChip>
             <details class="gallery-more-tags">
               <summary>
                 {{ t('更多标签', 'More tags') }}
@@ -589,10 +588,10 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
               <TsIcon class="gallery-sort-chevron" name="chevronDown" :size="14" />
             </div>
             <div v-segmented class="gallery-column-toggle" role="group" :aria-label="t('图库视图', 'Gallery view')">
-              <button data-ui="choice" type="button" :aria-label="t('紧凑四列视图', 'Compact four column view')" :aria-pressed="state.columns === 4" @click="state.columns = 4">
+              <button data-ui="icon" data-size="sm" type="button" :aria-label="t('紧凑四列视图', 'Compact four column view')" :aria-pressed="state.columns === 4" @click="state.columns = 4">
                 <TsIcon name="grid" :size="16" />
               </button>
-              <button data-ui="choice" type="button" :aria-label="t('宽松三列视图', 'Spacious three column view')" :aria-pressed="state.columns === 3" @click="state.columns = 3">
+              <button data-ui="icon" data-size="sm" type="button" :aria-label="t('宽松三列视图', 'Spacious three column view')" :aria-pressed="state.columns === 3" @click="state.columns = 3">
                 <TsIcon name="image" :size="16" />
               </button>
             </div>
@@ -600,13 +599,13 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
         </div>
       </section>
       <LoadingSkeleton v-if="state.loading" variant="gallery" :count="12" :label="t('正在读取图库…', 'Loading gallery…')" />
-      <div v-else-if="state.loadError" class="panel gallery-empty" role="alert">
+      <div v-else-if="state.loadError" class="panel gallery-empty ui-empty" role="alert">
         <TsIcon name="image" :size="30" />
         <h2>{{ t('图片暂时没能加载', 'Unable to load images') }}</h2>
         <p>{{ state.loadError }}</p>
         <button class="ghost-btn" type="button" @click="loadImages(state.page)">{{ t('重新加载', 'Try again') }}</button>
       </div>
-      <div v-else-if="!shownImages.length" class="panel gallery-empty">
+      <div v-else-if="!shownImages.length" class="panel gallery-empty ui-empty">
         <TsIcon name="image" :size="30" />
         <h2>{{ state.search || state.category ? t('没有找到匹配的图片', 'No matching images') : t('还没有图片', 'No images yet') }}</h2>
         <p>{{ state.search || state.category ? t('筛选会匹配图片的名称、标签和描述。试试其他关键词，或查看全部图片。', 'Filters match image names, tags and descriptions. Try another keyword, or browse all images.') : t('从「上传图片」开始，分享喜欢的画面。', 'Upload an image to share a favourite moment.') }}</p>
@@ -636,18 +635,18 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
               <time :datetime="imageDate(asset)">{{ imageDate(asset).slice(5).replace('-', ' / ') }}</time>
             </div>
             <div class="gallery-card-actions">
-              <button class="ghost-btn gallery-like-button" :class="{ 'is-liked': asset.viewer_liked }" type="button" :aria-label="t(`${asset.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(asset)}，${asset.like_count || 0} 个赞`, `${asset.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(asset)}, ${asset.like_count || 0} likes`)" :aria-pressed="Boolean(asset.viewer_liked)" :aria-busy="Boolean(state.liking[asset.id])" :disabled="asset.viewer_liked || state.liking[asset.id]" @click="likeImage(asset)">
+              <TsToggle size="sm" class="gallery-like-button" :class="{ 'is-liked': asset.viewer_liked }" type="button" :aria-label="t(`${asset.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(asset)}，${asset.like_count || 0} 个赞`, `${asset.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(asset)}, ${asset.like_count || 0} likes`)" :pressed="Boolean(asset.viewer_liked)" :aria-busy="Boolean(state.liking[asset.id])" :disabled="asset.viewer_liked || state.liking[asset.id]" @click="likeImage(asset)">
                 <TsIcon name="heart" :size="15" />
                 <span>{{ asset.viewer_liked ? t('已赞', 'Liked') : t('点赞', 'Like') }}</span>
                 <span class="gallery-like-count">{{ asset.like_count || 0 }}</span>
-              </button>
-              <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(asset)">
+              </TsToggle>
+              <button v-if="isManageMode" data-ui="ghost" data-size="sm" type="button" @click="copyMarkdown(asset)">
                 <TsIcon name="copy" :size="15" />
                 Markdown
               </button>
-              <button v-if="isManageMode && canDeleteImage(asset)" class="danger-btn" type="button" @click="deleteImage(asset)">
+              <button v-if="isManageMode && canDeleteImage(asset)" data-size="sm" class="danger-btn" type="button" @click="deleteImage(asset)">
                 <TsIcon name="trash" :size="15" />
-                {{ t('删除', 'Delete') }}
+                {{ t('删除图片', 'Delete image') }}
               </button>
             </div>
           </div>
@@ -713,11 +712,11 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
             </div>
           </div>
           <div class="gallery-viewer-actions">
-            <button class="ghost-btn gallery-like-button" :class="{ 'is-liked': state.selected.viewer_liked }" type="button" :aria-label="t(`${state.selected.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(state.selected)}，${state.selected.like_count || 0} 个赞`, `${state.selected.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(state.selected)}, ${state.selected.like_count || 0} likes`)" :aria-pressed="Boolean(state.selected.viewer_liked)" :aria-busy="Boolean(state.liking[state.selected.id])" :disabled="state.selected.viewer_liked || state.liking[state.selected.id]" @click="likeImage(state.selected)">
+            <TsToggle size="sm" class="gallery-like-button" :class="{ 'is-liked': state.selected.viewer_liked }" type="button" :aria-label="t(`${state.selected.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(state.selected)}，${state.selected.like_count || 0} 个赞`, `${state.selected.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(state.selected)}, ${state.selected.like_count || 0} likes`)" :pressed="Boolean(state.selected.viewer_liked)" :aria-busy="Boolean(state.liking[state.selected.id])" :disabled="state.selected.viewer_liked || state.liking[state.selected.id]" @click="likeImage(state.selected)">
               <TsIcon name="heart" :size="16" />
               <span>{{ state.selected.viewer_liked ? t('已赞', 'Liked') : t('点赞', 'Like') }}</span>
               <span class="gallery-like-count">{{ state.selected.like_count || 0 }}</span>
-            </button>
+            </TsToggle>
             <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">
               <TsIcon name="copy" :size="16" />
               Markdown
@@ -732,7 +731,7 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
             </a>
             <button v-if="isManageMode && canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">
               <TsIcon name="trash" :size="16" />
-              {{ t('删除', 'Delete') }}
+              {{ t('删除图片', 'Delete image') }}
             </button>
           </div>
         </footer>

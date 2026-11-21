@@ -145,7 +145,7 @@ tsukuyomi-space/
 
 ## Design system
 
-See the [design system guide](design.md) for shared actions, page layouts and theme tokens. Start `npm run preview:design -- --overseas` and open the local `/design-system` to exercise the components. Run `npm run check:ui` to check Vue control declarations.
+See the [design system guide](design.md) for shared actions, page layouts and theme tokens. Start `npm run preview:design -- --overseas` and open the local `/design-system` to compare seasonal palettes in light and dark mode and try long labels and loading states. Run `npm run check:ui` to check Vue controls and page-level style overrides.
 
 <details>
 <summary>View the complete module list and Room / Agent notes</summary>

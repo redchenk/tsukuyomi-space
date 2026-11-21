@@ -13,9 +13,6 @@
 .article-excerpt { color: var(--muted); font-size: 17px; line-height: 1.9; margin-top: 28px; padding-left: 20px; border-left: 2px solid var(--accent); }
 .article-excerpt h2 { display: none; }
 .article-social-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
-.article-bookmark-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; min-height: 40px; font-size: 13px; border: 1px solid var(--line); border-radius: var(--r-pill); }
-.article-bookmark-btn:hover { background: var(--soft); }
-.article-bookmark-btn.liked { color: var(--accent); }
 .article-task-feedback { color: var(--accent); font-size: 13px; padding-top: 12px; }
 .article-cover { display: block; width: 100%; aspect-ratio: 2/1; object-fit: cover; border-radius: var(--r-media); margin-bottom: 48px; }
 .article-reading-layout { display: grid; grid-template-columns: minmax(0, 760px); justify-content: center; }

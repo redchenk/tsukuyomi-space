@@ -152,7 +152,7 @@ tsukuyomi-space/
 
 ## 设计系统
 
-具体用法见[月读设计系统](design.md)。新增操作复用 `TsButton`，页面、表单和专题控件共用主题与排版规则。运行 `npm run preview:design` 后访问本地 `/design-system` 查看交互示例；`npm run check:ui` 可检查组件使用。
+具体用法见[月读设计系统](design.md)。新增操作复用 `TsButton`，页面、表单和专题控件共用主题与排版规则。运行 `npm run preview:design` 后访问本地 `/design-system` 切换四季日夜、测试长文案与加载状态。`npm run check:ui` 检查组件用法与新增样式覆盖。
 
 <details>
 <summary>查看完整模块与 Room / Agent 使用说明</summary>

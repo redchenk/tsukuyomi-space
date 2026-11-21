@@ -16,7 +16,7 @@ const copy = computed(() => navigationCopy(props.lang));
 </template>
 
 <style scoped>
-.payment-center-link { flex: none; --ui-action-height: 2.5rem; --ui-action-inset: .75rem; }
+.payment-center-link { flex: none; --ui-action-height: var(--ui-touch); --ui-action-inset: .75rem; }
 .payment-center-link[aria-current="page"] { text-decoration: underline; text-underline-offset: 3px; }
 .payment-short-label { display: none; }
 @media (max-width: 680px) {

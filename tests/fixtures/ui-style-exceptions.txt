@@ -1,0 +1,824 @@
+components/ContentTranslationControl.vue | .is-compact button | background:transparent
+components/ContentTranslationControl.vue | .is-compact button | border:0
+components/ContentTranslationControl.vue | .is-compact button | color:var(--ts-editorial-ink)
+components/ContentTranslationControl.vue | .is-compact button | font:inherit
+components/ContentTranslationControl.vue | .is-compact button | min-height:44px
+components/ContentTranslationControl.vue | .is-compact button | padding:8px 4px
+components/ContentTranslationControl.vue | .is-compact button:focus-visible | border-radius:4px
+components/ContentTranslationControl.vue | .is-compact button:hover | color:var(--ts-accent)
+components/GrowthReportPanel.vue | .gr-nav button | background:transparent
+components/GrowthReportPanel.vue | .gr-nav button | border-radius:0
+components/GrowthReportPanel.vue | .gr-nav button | border:0
+components/GrowthReportPanel.vue | .gr-nav button | color:var(--gr-muted)
+components/GrowthReportPanel.vue | .gr-nav button | font-size:13px
+components/GrowthReportPanel.vue | .gr-nav button | font-size:14px
+components/GrowthReportPanel.vue | .gr-nav button | font-weight:600
+components/GrowthReportPanel.vue | .gr-nav button | min-height:36px
+components/GrowthReportPanel.vue | .gr-nav button | min-height:44px
+components/GrowthReportPanel.vue | .gr-nav button | padding-inline:14px
+components/GrowthReportPanel.vue | .gr-nav button | padding-inline:6px
+components/GrowthReportPanel.vue | .gr-nav button | padding:4px 15px
+components/GrowthReportPanel.vue | .gr-nav button[aria-pressed='true'] | border-color:var(--gr-brand)
+components/GrowthReportPanel.vue | .gr-nav button[aria-pressed='true'] | color:var(--gr-brand)
+components/GrowthReportPanel.vue | .gr-pager button | background:var(--gr-surface)
+components/GrowthReportPanel.vue | .gr-pager button | border-radius:6px
+components/GrowthReportPanel.vue | .gr-pager button | border:1px solid var(--gr-line)
+components/GrowthReportPanel.vue | .gr-pager button | color:var(--gr-ink)
+components/GrowthReportPanel.vue | .gr-pager button | padding:4px 8px
+components/GrowthReportPanel.vue | .gr-ranges button | background:transparent
+components/GrowthReportPanel.vue | .gr-ranges button | border-radius:9px
+components/GrowthReportPanel.vue | .gr-ranges button | border:0
+components/GrowthReportPanel.vue | .gr-ranges button | color:var(--gr-muted)
+components/GrowthReportPanel.vue | .gr-ranges button | font-size:14px
+components/GrowthReportPanel.vue | .gr-ranges button | font-weight:600
+components/GrowthReportPanel.vue | .gr-ranges button | min-height:36px
+components/GrowthReportPanel.vue | .gr-ranges button | padding-inline:9px
+components/GrowthReportPanel.vue | .gr-ranges button | padding:4px 15px
+components/GrowthReportPanel.vue | .gr-ranges button[aria-pressed='true'] | background:var(--gr-surface)
+components/GrowthReportPanel.vue | .gr-ranges button[aria-pressed='true'] | color:var(--gr-ink)
+components/GrowthReportPanel.vue | .growth-report button | font:inherit
+components/PaymentCenterLink.vue | .payment-center-link | --ui-action-height:var(--ui-touch)
+components/SitePet.vue | .site-guide-card button | background:var(--ts-readable-control-bg, rgba(255, 255, 255, 0.08))
+components/SitePet.vue | .site-guide-card button | border-radius:var(--ts-radius-button, 999px)
+components/SitePet.vue | .site-guide-card button | border:1px solid var(--guide-line)
+components/SitePet.vue | .site-guide-card button | color:var(--guide-ink)
+components/SitePet.vue | .site-guide-card button | padding:0
+components/SitePet.vue | .site-guide-card button:hover | background:var(--ts-readable-control-hover, rgba(255, 255, 255, 0.14))
+components/SitePet.vue | .site-guide-card button:hover | border-color:var(--ts-border-strong, rgba(174, 242, 255, 0.38))
+components/SitePet.vue | .site-guide-dialog :is(.site-guide-status, .site-guide-card, .site-guide-message p, textarea, button) | background:Canvas
+components/SitePet.vue | .site-guide-dialog :is(.site-guide-status, .site-guide-card, .site-guide-message p, textarea, button) | border-color:CanvasText
+components/SitePet.vue | .site-guide-dialog :is(.site-guide-status, .site-guide-card, .site-guide-message p, textarea, button) | color:CanvasText
+components/SitePet.vue | .site-guide-form button | background:var(--ts-gradient-brand, #6552b3)
+components/SitePet.vue | .site-guide-form button | border-radius:var(--ts-radius-button, 999px)
+components/SitePet.vue | .site-guide-form button | border:0
+components/SitePet.vue | .site-guide-form button | color:#fff
+components/SitePet.vue | .site-guide-form button | font-size:0.82rem
+components/SitePet.vue | .site-guide-form button | font-weight:800
+components/SitePet.vue | .site-guide-form button | min-height:3.2rem
+components/SitePet.vue | .site-guide-form button | padding:0.7rem 1.15rem
+components/SitePet.vue | .site-guide-icon-btn | background:var(--ts-readable-control-bg, rgba(255, 255, 255, 0.08))
+components/SitePet.vue | .site-guide-icon-btn | border-radius:var(--ts-radius-button, 999px)
+components/SitePet.vue | .site-guide-icon-btn | border:1px solid var(--guide-line)
+components/SitePet.vue | .site-guide-icon-btn | color:var(--guide-ink)
+components/SitePet.vue | .site-guide-icon-btn | padding:0
+components/SitePet.vue | .site-guide-icon-btn:hover | background:var(--ts-readable-control-hover, rgba(255, 255, 255, 0.14))
+components/SitePet.vue | .site-guide-icon-btn:hover | border-color:var(--ts-border-strong, rgba(174, 242, 255, 0.38))
+components/SitePet.vue | .site-guide-setup | background:var(--ts-gradient-brand, #6552b3)
+components/SitePet.vue | .site-guide-setup | border-radius:var(--ts-radius-button, 999px)
+components/SitePet.vue | .site-guide-setup | border:0
+components/SitePet.vue | .site-guide-setup | color:#fff
+components/SitePet.vue | .site-guide-setup | font-size:0.77rem
+components/SitePet.vue | .site-guide-setup | font-weight:750
+components/SitePet.vue | .site-guide-setup | min-height:2.65rem
+components/SitePet.vue | .site-guide-setup | padding:0.55rem 0.95rem
+components/SitePet.vue | .site-guide-suggestions button | background:var(--ts-readable-control-bg, rgba(255, 255, 255, 0.08))
+components/SitePet.vue | .site-guide-suggestions button | border-radius:var(--ts-radius-button, 999px)
+components/SitePet.vue | .site-guide-suggestions button | border:1px solid var(--guide-line)
+components/SitePet.vue | .site-guide-suggestions button | color:var(--guide-ink)
+components/SitePet.vue | .site-guide-suggestions button | font-size:0.76rem
+components/SitePet.vue | .site-guide-suggestions button | min-height:2.4rem
+components/SitePet.vue | .site-guide-suggestions button | padding:0.5rem 0.78rem
+components/SitePet.vue | .site-guide-suggestions button | text-overflow:ellipsis
+components/SitePet.vue | .site-guide-suggestions button | white-space:nowrap
+components/SitePet.vue | .site-guide-suggestions button:hover | background:var(--ts-readable-control-hover, rgba(255, 255, 255, 0.14))
+components/SitePet.vue | .site-guide-suggestions button:hover | border-color:var(--ts-border-strong, rgba(174, 242, 255, 0.38))
+components/SitePetGameBubble.vue | .gomoku-banter button | background:transparent
+components/SitePetGameBubble.vue | .gomoku-banter button | border-radius:18px
+components/SitePetGameBubble.vue | .gomoku-banter button | border:1px solid var(--ts-editorial-line)
+components/SitePetGameBubble.vue | .gomoku-banter button | color:var(--ts-text-secondary)
+components/SitePetGameBubble.vue | .gomoku-banter button | font-size:11px
+components/SitePetGameBubble.vue | .gomoku-banter button | min-height:32px
+components/SitePetGameBubble.vue | .gomoku-banter button | padding:5px 10px
+components/SitePetGameBubble.vue | .gomoku-chat-actions button | background:transparent
+components/SitePetGameBubble.vue | .gomoku-chat-actions button | border:0
+components/SitePetGameBubble.vue | .gomoku-chat-actions button | color:var(--ts-accent)
+components/SitePetGameBubble.vue | .gomoku-chat-actions button | font-size:12px
+components/SitePetGameBubble.vue | .gomoku-chat-actions button | padding:6px
+components/SitePetGameBubble.vue | .gomoku-chat-form button | background:var(--ts-accent)
+components/SitePetGameBubble.vue | .gomoku-chat-form button | border-radius:24px
+components/SitePetGameBubble.vue | .gomoku-chat-form button | border:0
+components/SitePetGameBubble.vue | .gomoku-chat-form button | color:var(--ts-accent-contrast, #fff)
+components/SitePetGameBubble.vue | .gomoku-chat-form button | font-size:12px
+components/SitePetGameBubble.vue | .gomoku-chat-form button | min-height:36px
+components/SitePetGameBubble.vue | .gomoku-chat-form button | padding:6px 20px
+components/SitePetGameBubble.vue | button | color:inherit
+components/SitePetGameBubble.vue | button | font:inherit
+components/UploadProgress.vue | .upload-progress-action | min-height:40px
+components/UploadProgress.vue | .upload-progress-action | white-space:nowrap
+components/room/OfficialTtsStatus.vue | .compact .official-tts-heading button | font-size:12px
+components/room/OfficialTtsStatus.vue | .compact .official-tts-heading button | min-height:32px
+components/room/OfficialTtsStatus.vue | .compact .official-tts-heading button | padding:4px
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | background:transparent
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | border:0
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | color:var(--ts-muted)
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | font-size:.76rem
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | font:inherit
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | min-height:44px
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button | padding:.5rem 0
+components/room/RoomChatPanel.vue | .room-deepseek-toolbar button[aria-pressed="true"] | color:var(--ts-accent)
+components/room/RoomChatPanel.vue | .room-file-list button | background:transparent
+components/room/RoomChatPanel.vue | .room-file-list button | border:0
+components/room/RoomChatPanel.vue | .room-file-list button | color:var(--ts-muted)
+components/room/RoomChatPanel.vue | .room-file-list button | font-size:.76rem
+components/room/RoomChatPanel.vue | .room-file-list button | font:inherit
+components/room/RoomChatPanel.vue | .room-file-list button | padding:.5rem 0
+components/room/RoomDialogueSettings.vue | button | background:transparent
+components/room/RoomDialogueSettings.vue | button | border-radius:9px
+components/room/RoomDialogueSettings.vue | button | border:1px solid #8885
+components/room/RoomDialogueSettings.vue | button | color:inherit
+components/room/RoomDialogueSettings.vue | button | font:inherit
+components/room/RoomDialogueSettings.vue | button | min-height:44px
+components/room/RoomDialogueSettings.vue | button | padding:10px 14px
+components/room/RoomHelpDialog.vue | button | min-height:44px
+components/room/RoomRelationshipCard.vue | .relationship-retry | background:transparent
+components/room/RoomRelationshipCard.vue | .relationship-retry | border:0
+components/room/RoomRelationshipCard.vue | .relationship-retry | color:inherit
+components/room/RoomRelationshipCard.vue | .relationship-retry | font:inherit
+components/room/RoomRelationshipCard.vue | .relationship-retry | padding:6px 0
+components/room/RoomRelationshipDrawer.vue | .relationship-drawer-close | background:transparent
+components/room/RoomRelationshipDrawer.vue | .relationship-drawer-close | border-radius:var(--ts-radius-button)
+components/room/RoomRelationshipDrawer.vue | .relationship-drawer-close | border:1px solid var(--ts-border)
+components/room/RoomRelationshipDrawer.vue | .relationship-drawer-close | color:inherit
+components/room/RoomRelationshipDrawer.vue | .relationship-drawer-close | height:40px
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | background:var(--ts-card)
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | border-radius:var(--ts-radius-button)
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | border:1px solid var(--ts-border)
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | color:var(--ts-text)
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | font-size:12px
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | font:inherit
+components/room/RoomRelationshipDrawer.vue | .room-relationship-notice | padding:8px 12px
+components/room/RoomSetupDialog.vue | .room-setup-actions button | min-height:44px
+components/room/RoomShareDialog.vue | .room-share-close | background:var(--ts-editorial-soft)
+components/room/RoomShareDialog.vue | .room-share-close | border-radius:var(--ts-radius-button, 999px)
+components/room/RoomShareDialog.vue | .room-share-close | border:1px solid var(--ts-editorial-line)
+components/room/RoomShareDialog.vue | .room-share-close | color:inherit
+components/room/RoomShareDialog.vue | .room-share-close | height:40px
+components/room/RoomShareDialog.vue | .room-share-revoke | background:transparent
+components/room/RoomShareDialog.vue | .room-share-revoke | border-radius:var(--ts-radius-button, 999px)
+components/room/RoomShareDialog.vue | .room-share-revoke | border:0
+components/room/RoomShareDialog.vue | .room-share-revoke | color:var(--ts-accent)
+components/room/RoomShareDialog.vue | .room-share-revoke | font-size:0.78rem
+components/room/RoomShareDialog.vue | .room-share-revoke | font:inherit
+components/room/RoomShareDialog.vue | .room-share-revoke | min-height:40px
+components/room/RoomShareDialog.vue | .room-share-revoke | padding-inline:1rem
+components/terminal/ArticleCategoryManager.vue | .terminal-category-form button | white-space:nowrap
+components/terminal/ArticleCategoryManager.vue | .terminal-category-manager .terminal-category-body .terminal-category-form button | min-height:44px
+components/terminal/ArticleCategoryManager.vue | .terminal-category-manager .terminal-category-body .terminal-category-list button | min-height:44px
+components/terminal/ArticleCategoryManager.vue | .terminal-category-manager .terminal-category-body .terminal-category-list button | padding:0
+components/terminal/ArticleCategoryManager.vue | .terminal-category-manager .terminal-category-body button | min-height:44px
+components/terminal/OfficialSpeechSettings.vue | .speech-sources button | background:var(--ts-surface)
+components/terminal/OfficialSpeechSettings.vue | .speech-sources button | border-radius:12px
+components/terminal/OfficialSpeechSettings.vue | .speech-sources button | border:1px solid var(--ts-border)
+components/terminal/OfficialSpeechSettings.vue | .speech-sources button | color:inherit
+components/terminal/OfficialSpeechSettings.vue | .speech-sources button | padding:.8rem 1rem
+components/terminal/OfficialSpeechSettings.vue | .speech-sources button[aria-pressed="true"] | border-color:var(--ts-accent)
+components/terminal/OfficialUsagePanel.vue | .usage-filters button | min-height:40px
+components/terminal/PaymentManager.vue | .product-list button | background:transparent
+components/terminal/PaymentManager.vue | .product-list button | border:0
+components/terminal/PaymentManager.vue | .product-list button | color:inherit
+components/terminal/PaymentManager.vue | .product-list button | padding:.65rem .85rem
+components/terminal/PaymentManager.vue | .product-list button[aria-pressed="true"] | background:var(--ts-surface-soft)
+pages/AttachmentsPage.vue | .attachments-pending-row button | white-space:nowrap
+pages/FushiAstrBotCallbackPage.vue | button | border-radius:var(--ts-radius-button)
+pages/FushiAstrBotCallbackPage.vue | button | padding:12px 24px
+pages/FushiConnectPage.vue | .actions button | border-radius:var(--ts-radius-button)
+pages/FushiConnectPage.vue | .actions button | padding:12px 22px
+pages/RoomSettingsPage.vue | .settings-first-use>button | min-height:44px
+styles/account-actions.css | .page.uc-page .uc-article-actions > .uc-icon-action | min-height:38px
+styles/account-actions.css | .page.uc-page .uc-article-actions > .uc-icon-action | padding:0.5rem 0.75rem
+styles/account-actions.css | .page.uc-page .uc-article-actions > .uc-icon-action | white-space:nowrap
+styles/account-actions.css | .page.user-profile-page .profile-article > .profile-icon-action | min-height:38px
+styles/account-actions.css | .page.user-profile-page .profile-article > .profile-icon-action | padding:0.5rem 0.75rem
+styles/account-actions.css | .page.user-profile-page .profile-article > .profile-icon-action | white-space:nowrap
+styles/boot-splash.css | .room-entry-actions button | background:#ffffff08
+styles/boot-splash.css | .room-entry-actions button | border-radius:999px
+styles/boot-splash.css | .room-entry-actions button | border:1px solid #dfb2c44d
+styles/boot-splash.css | .room-entry-actions button | color:#fff5ed
+styles/boot-splash.css | .room-entry-actions button | font:13px/1.5 sans-serif
+styles/boot-splash.css | .room-entry-actions button | padding:10px 18px
+styles/boot-splash.css | .room-entry-actions button:hover | background:#dfb2c41a
+styles/room-chat.css | .room-shell .room-chat-suggestions button | background:var(--chat-surface)
+styles/room-chat.css | .room-shell .room-chat-suggestions button | border-radius:999px
+styles/room-chat.css | .room-shell .room-chat-suggestions button | border:1px solid var(--chat-line)
+styles/room-chat.css | .room-shell .room-chat-suggestions button | color:var(--chat-text)
+styles/room-chat.css | .room-shell .room-chat-suggestions button | font-size:13.5px
+styles/room-chat.css | .room-shell .room-chat-suggestions button | font:inherit
+styles/room-chat.css | .room-shell .room-chat-suggestions button | height:34px
+styles/room-chat.css | .room-shell .room-chat-suggestions button | min-height:34px
+styles/room-chat.css | .room-shell .room-chat-suggestions button | padding:0 14px
+styles/room-chat.css | .room-shell .room-chat-suggestions button:hover | background:var(--chat-accent-soft)
+styles/room-chat.css | .room-shell .room-chat-suggestions button:hover | border-color:color-mix(in srgb, var(--chat-accent) 40%, var(--chat-line))
+styles/room-chat.css | .room-shell .room-chat-suggestions button:hover | color:var(--chat-accent)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions .room-chat-guide-btn | background:transparent
+styles/room-chat.css | .room-shell .room-chat-welcome-actions .room-chat-guide-btn | border:1px solid var(--chat-line)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions .room-chat-guide-btn | color:var(--chat-text)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions .room-chat-guide-btn:hover | background:var(--chat-soft)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | background:var(--chat-glass)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | border-radius:999px
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | border:1px solid var(--chat-line)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | color:var(--chat-ink)
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | font-size:14px
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | font-weight:500
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | font:inherit
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | height:38px
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | min-height:38px
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | min-height:40px
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | padding:0 16px
+styles/room-chat.css | .room-shell .room-chat-welcome-actions > button | padding:0 18px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | background:transparent
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | border-radius:50%
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | border:0
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | color:var(--chat-muted)
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | font-size:13px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | height:36px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | height:44px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | min-height:36px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | min-height:44px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn | padding:0
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | background:var(--chat-glass)
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | border-radius:999px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | border:1px solid var(--chat-line)
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | color:var(--chat-ink)
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | font-size:13px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | font-size:14px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | font:inherit
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | min-height:34px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | min-height:38px
+styles/room-chat.css | .room-shell .room-conversation-layout .room-chat-suggestions button | padding:0 14px
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | background:var(--chat-ink)
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | border-radius:50%
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | border:2px solid var(--chat-surface)
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | color:var(--chat-surface)
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | height:22px
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | height:28px
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | min-height:22px
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | min-height:28px
+styles/room-chat.css | .room-shell .room-conversation-layout :is(.chat-image-preview, .chat-file-preview) .panel-btn | padding:0
+styles/room-chat.css | .room-shell .room-desktop-history | background:transparent
+styles/room-chat.css | .room-shell .room-desktop-history | border-radius:50%
+styles/room-chat.css | .room-shell .room-desktop-history | border:0
+styles/room-chat.css | .room-shell .room-desktop-history | color:var(--chat-muted)
+styles/room-chat.css | .room-shell .room-desktop-history | height:34px
+styles/room-chat.css | .room-shell .room-desktop-history | padding:0
+styles/room-chat.css | .room-shell .room-desktop-history:not(:disabled):hover | background:var(--chat-hover)
+styles/room-chat.css | .room-shell .room-desktop-history:not(:disabled):hover | color:var(--chat-ink)
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | background:transparent
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | border-radius:999px
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | border:0
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | color:var(--chat-muted)
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | font-size:13.5px
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | font-weight:500
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | font:inherit
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | min-height:32px
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | padding:0 11px
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"] | padding:0 14px
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"]:hover | color:var(--chat-ink)
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"][aria-selected="true"] | color:var(--chat-ink)
+styles/room-chat.css | .room-shell .room-tabs-track > button[role="tab"][aria-selected="true"] | font-weight:600
+styles/room-chat.css | .room-shell .room-tabs-track:not(.ts-segmented-ready) > button[aria-selected="true"] | background:var(--chat-surface)
+styles/room-settings.css | .memory-expand-btn | background:var(--settings-soft)
+styles/room-settings.css | .memory-expand-btn | border:0
+styles/room-settings.css | .memory-expand-btn | color:var(--ts-accent)
+styles/room-settings.css | .memory-expand-btn | font-size:12px
+styles/room-settings.css | .memory-expand-btn | font:inherit
+styles/room-settings.css | .memory-expand-btn | padding:6px 12px
+styles/room-settings.css | .memory-source-options .ghost-btn | height:auto
+styles/room-settings.css | .memory-source-options .ghost-btn | padding:16px
+styles/room-settings.css | .memory-source-options .ghost-btn | white-space:normal
+styles/room-settings.css | .room-settings-page .danger-btn | background:transparent
+styles/room-settings.css | .room-settings-page .danger-btn | border-color:color-mix( in srgb, var(--ts-color-pink-600) 30%, var(--settings-line) )
+styles/room-settings.css | .room-settings-page .danger-btn | color:var(--ts-color-pink-600)
+styles/room-settings.css | .room-settings-page .memory-item .button-row button | font-size:12px
+styles/room-settings.css | .room-settings-page .memory-item .button-row button | min-height:34px
+styles/room-settings.css | .room-settings-page .memory-item .button-row button | padding:6px 13px
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | background:var(--settings-soft)
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | border-radius:6px
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | border:0
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | color:var(--muted)
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | font-size:10px
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | min-height:0
+styles/room-settings.css | .room-settings-page .memory-item-head .chip | padding:3px 8px
+styles/room-settings.css | .room-settings-page .settings-compact-savebar .button-row button | min-height:40px
+styles/room-settings.css | .room-settings-page .settings-compact-savebar .button-row button | padding:8px 14px
+styles/room-settings.css | .room-settings-page .settings-compact-savebar .button-row button | white-space:nowrap
+styles/room-settings.css | .room-settings-page .settings-danger button | font-size:12px
+styles/room-settings.css | .room-settings-page .settings-danger button | padding:8px 12px
+styles/room-settings.css | .room-settings-page .settings-providers .ghost-btn | padding:9px 10px
+styles/room-settings.css | .room-settings-page .settings-savebar .button-row button | white-space:normal
+styles/room-settings.css | .room-settings-page .settings-savebar .primary-btn | font-size:12px
+styles/room-settings.css | .room-settings-page .settings-savebar .primary-btn | min-height:44px
+styles/room-settings.css | .room-settings-page .settings-savebar .primary-btn | padding-inline:13px
+styles/room-settings.css | .room-settings-page .settings-savebar .settings-discard | background:transparent
+styles/room-settings.css | .room-settings-page .settings-savebar .settings-discard | border:0
+styles/room-settings.css | .room-settings-page .settings-savebar .settings-discard | font-size:11px
+styles/room-settings.css | .room-settings-page .settings-savebar .settings-discard | padding:8px 3px
+styles/room-settings.css | .room-settings-page .settings-secret button | background:transparent
+styles/room-settings.css | .room-settings-page .settings-secret button | border:0
+styles/room-settings.css | .room-settings-page .settings-secret button | padding:0
+styles/room-settings.css | .room-settings-page .settings-text-btn | background:transparent
+styles/room-settings.css | .room-settings-page .settings-text-btn | border:0
+styles/room-settings.css | .room-settings-page .settings-text-btn | color:var(--ts-accent)
+styles/room-settings.css | .room-settings-page .settings-text-btn | font-size:12px
+styles/room-settings.css | .room-settings-page .settings-text-btn | min-height:30px
+styles/room-settings.css | .room-settings-page .settings-text-btn | padding:5px 0
+styles/room-settings.css | .room-settings-page :where(.ghost-btn, .primary-btn, .danger-btn) | font-size:13px
+styles/room-settings.css | .room-settings-page :where(.ghost-btn, .primary-btn, .danger-btn) | min-height:42px
+styles/room-settings.css | .room-settings-page :where(.ghost-btn, .primary-btn, .danger-btn) | padding:9px 16px
+styles/room-settings.css | .room-settings-page :where(.ghost-btn, .primary-btn, .danger-btn) | white-space:nowrap
+styles/room-settings.css | .room-settings-page :where(button, .ghost-btn, .primary-btn, .danger-btn) | border-radius:var(--ts-radius-button)
+styles/room-settings.css | .room-test-modal-card button | border-radius:var(--ts-radius-button)
+styles/room-settings.css | .settings-compact-savebar button | min-height:40px
+styles/room-settings.css | .settings-compact-savebar button | padding:8px 14px
+styles/room-settings.css | .settings-detail-toolbar > button | padding:8px 10px
+styles/room-settings.css | .settings-heading-actions > button | padding-inline:8px!important
+styles/room-settings.css | .settings-results button | background:transparent
+styles/room-settings.css | .settings-results button | border:0
+styles/room-settings.css | .settings-results button | color:var(--text)
+styles/room-settings.css | .settings-results button | min-height:64px
+styles/room-settings.css | .settings-results button | padding:12px
+styles/room-settings.css | .settings-test-footer button | padding-inline:13px
+styles/room-settings.css | .settings-welcome > button | background:transparent
+styles/room-settings.css | .settings-welcome > button | border:0
+styles/room-settings.css | .settings-welcome > button | min-height:26px
+styles/room-settings.css | .settings-welcome > button | min-height:32px
+styles/room-settings.css | .settings-welcome > button | padding:0
+styles/room-settings.css | .tts-source-tabs button | background:transparent
+styles/room-settings.css | .tts-source-tabs button | border:1px solid transparent
+styles/room-settings.css | .tts-source-tabs button | color:var(--muted)
+styles/room-settings.css | .tts-source-tabs button | font-size:13px
+styles/room-settings.css | .tts-source-tabs button | min-height:42px
+styles/room-settings.css | .tts-source-tabs button | padding:8px 5px
+styles/room-settings.css | .tts-source-tabs button[aria-pressed=true] | background:var(--settings-surface)
+styles/room-settings.css | .tts-source-tabs button[aria-pressed=true] | border-color:var(--settings-line)
+styles/room-settings.css | .tts-source-tabs button[aria-pressed=true] | color:var(--text)
+styles/routes/apply.css | .apply-page .apply-button | background:var(--ts-accent)
+styles/routes/apply.css | .apply-page .apply-button | border-radius:10px
+styles/routes/apply.css | .apply-page .apply-button | border:0
+styles/routes/apply.css | .apply-page .apply-button | color:var(--on-accent)
+styles/routes/apply.css | .apply-page .apply-button | font-size:13px
+styles/routes/apply.css | .apply-page .apply-button | font-weight:650
+styles/routes/apply.css | .apply-page .apply-button | font:inherit
+styles/routes/apply.css | .apply-page .apply-button | min-height:46px
+styles/routes/apply.css | .apply-page .apply-button | padding:11px 20px
+styles/routes/arena.css | .ps-bar .ps-btn.ps-hide-compact | padding:0
+styles/routes/arena.css | .ps-bar .ps-btn:not(.ps-btn-primary) | padding:0
+styles/routes/arena.css | .ps-bar-actions > .ps-btn-primary | border-radius:999px
+styles/routes/arena.css | .ps-bar-actions > .ps-btn-primary | font-size:13px
+styles/routes/arena.css | .ps-bar-actions > .ps-btn-primary | height:34px
+styles/routes/arena.css | .ps-bar-actions > .ps-btn-primary | min-height:44px
+styles/routes/arena.css | .ps-bar-actions > .ps-btn-primary | padding-inline:10px
+styles/routes/arena.css | .ps-bar-actions > .ps-btn-primary | padding:0 13px
+styles/routes/arena.css | .ps-brush-sizes button | background:var(--ps-raised)
+styles/routes/arena.css | .ps-brush-sizes button | border-radius:10px
+styles/routes/arena.css | .ps-brush-sizes button | border-radius:7px
+styles/routes/arena.css | .ps-brush-sizes button | color:var(--ps-muted)
+styles/routes/arena.css | .ps-brush-sizes button | font-family:var(--ps-mono)
+styles/routes/arena.css | .ps-brush-sizes button | font-size:12px
+styles/routes/arena.css | .ps-brush-sizes button | font-size:14px
+styles/routes/arena.css | .ps-brush-sizes button | height:30px
+styles/routes/arena.css | .ps-brush-sizes button | height:42px
+styles/routes/arena.css | .ps-brush-sizes button | min-height:44px
+styles/routes/arena.css | .ps-brush-sizes button.active | background:var(--ps-accent-soft)
+styles/routes/arena.css | .ps-brush-sizes button.active | color:var(--ps-accent)
+styles/routes/arena.css | .ps-brush-sizes button:hover | color:var(--ps-text)
+styles/routes/arena.css | .ps-btn | border-radius:8px
+styles/routes/arena.css | .ps-btn | color:var(--ps-text)
+styles/routes/arena.css | .ps-btn | font-size:12.5px
+styles/routes/arena.css | .ps-btn | font-weight:500
+styles/routes/arena.css | .ps-btn | height:30px
+styles/routes/arena.css | .ps-btn | padding:0 11px
+styles/routes/arena.css | .ps-btn | white-space:nowrap
+styles/routes/arena.css | .ps-btn-primary | background:var(--ps-accent)
+styles/routes/arena.css | .ps-btn-primary | color:var(--ps-accent-ink)
+styles/routes/arena.css | .ps-btn-primary | font-weight:600
+styles/routes/arena.css | .ps-btn-primary | padding:0 14px
+styles/routes/arena.css | .ps-btn-primary:active | background:color-mix(in srgb, var(--ps-accent) 86%, black)
+styles/routes/arena.css | .ps-btn-primary:hover | background:color-mix(in srgb, var(--ps-accent) 86%, white)
+styles/routes/arena.css | .ps-btn:active | background:var(--ps-press)
+styles/routes/arena.css | .ps-btn:hover | background:var(--ps-hover)
+styles/routes/arena.css | .ps-chip-btn | border-radius:8px
+styles/routes/arena.css | .ps-chip-btn | color:var(--ps-muted)
+styles/routes/arena.css | .ps-chip-btn | font-size:12px
+styles/routes/arena.css | .ps-chip-btn | height:34px
+styles/routes/arena.css | .ps-chip-btn | height:44px
+styles/routes/arena.css | .ps-chip-btn | padding:0 10px
+styles/routes/arena.css | .ps-chip-btn | padding:0 9px
+styles/routes/arena.css | .ps-chip-btn | white-space:nowrap
+styles/routes/arena.css | .ps-chip-btn:hover | background:var(--ps-hover)
+styles/routes/arena.css | .ps-chip-btn:hover | color:var(--ps-text)
+styles/routes/arena.css | .ps-dialog-foot .ps-btn | font-size:14px
+styles/routes/arena.css | .ps-dialog-foot .ps-btn | height:34px
+styles/routes/arena.css | .ps-dialog-foot .ps-btn | height:44px
+styles/routes/arena.css | .ps-dialog-foot .ps-btn | padding:0 16px
+styles/routes/arena.css | .ps-dialog-foot .ps-btn:not(.ps-btn-primary) | background:var(--ps-raised)
+styles/routes/arena.css | .ps-note-form .ps-btn | background:var(--ps-raised)
+styles/routes/arena.css | .ps-note-form .ps-btn | height:40px
+styles/routes/arena.css | .ps-note-form .ps-btn | min-height:44px
+styles/routes/arena.css | .ps-panel-head > button:first-child | border-radius:6px
+styles/routes/arena.css | .ps-panel-head > button:first-child | color:var(--ps-muted)
+styles/routes/arena.css | .ps-panel-head > button:first-child | font-weight:600
+styles/routes/arena.css | .ps-panel-head > button:first-child | font-weight:650
+styles/routes/arena.css | .ps-panel-head > button:first-child | height:28px
+styles/routes/arena.css | .ps-panel-head > button:first-child | padding:0
+styles/routes/arena.css | .ps-panel-head > button:first-child | padding:0 8px 0 6px
+styles/routes/arena.css | .ps-panel-head > button:first-child:hover | background:var(--ps-hover)
+styles/routes/arena.css | .ps-segmented button | border-radius:7px
+styles/routes/arena.css | .ps-segmented button | color:var(--ps-muted)
+styles/routes/arena.css | .ps-segmented button | font-size:12.5px
+styles/routes/arena.css | .ps-segmented button | height:28px
+styles/routes/arena.css | .ps-segmented button | padding:0 11px
+styles/routes/arena.css | .ps-segmented button | padding:0 14px
+styles/routes/arena.css | .ps-segmented button.active | background:var(--ps-panel)
+styles/routes/arena.css | .ps-segmented button.active | color:var(--ps-text)
+styles/routes/arena.css | .ps-sheet-tabs button | border-radius:999px
+styles/routes/arena.css | .ps-sheet-tabs button | color:var(--ps-muted)
+styles/routes/arena.css | .ps-sheet-tabs button | font-size:13.5px
+styles/routes/arena.css | .ps-sheet-tabs button | height:36px
+styles/routes/arena.css | .ps-sheet-tabs button | min-height:44px
+styles/routes/arena.css | .ps-sheet-tabs button | padding:0 13px
+styles/routes/arena.css | .ps-sheet-tabs button[aria-selected="true"] | background:var(--ps-raised)
+styles/routes/arena.css | .ps-sheet-tabs button[aria-selected="true"] | color:var(--ps-text)
+styles/routes/arena.css | .ps-theme .arena-art-lightbox-actions .ps-btn | height:34px
+styles/routes/arena.css | .ps-theme .arena-art-lightbox-actions .ps-btn | height:42px
+styles/routes/arena.css | .ps-theme .arena-art-lightbox-actions .ps-btn:not(.ps-btn-primary) | background:var(--ps-raised)
+styles/routes/arena.css | .ps-theme .like-btn.liked | color:#ff5f73
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | background:none
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | border-radius:0
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | border:0
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | color:inherit
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | font:inherit
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | height:auto
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | min-height:0
+styles/routes/arena.css | :where(.ps-theme) :where(button, .ps-btn) | padding:0
+styles/routes/article.css | .article-back | border:0
+styles/routes/article.css | .article-back | color:var(--muted)
+styles/routes/article.css | .article-quick-button | font-size:13px
+styles/routes/article.css | .article-quick-button | min-height:40px
+styles/routes/article.css | .article-quick-button | padding:8px 12px
+styles/routes/article.css | .comment-tools button | min-height:36px
+styles/routes/chatroom.css | .mc-channels button | border-radius:7px
+styles/routes/chatroom.css | .mc-channels button | color:#d1d1df
+styles/routes/chatroom.css | .mc-channels button | font-weight:500
+styles/routes/chatroom.css | .mc-channels button | min-height:38px
+styles/routes/chatroom.css | .mc-channels button | min-height:44px
+styles/routes/chatroom.css | .mc-channels button | padding:6px 12px
+styles/routes/chatroom.css | .mc-channels button:hover | background:rgb(255 255 255 / 6%)
+styles/routes/chatroom.css | .mc-channels button[aria-current] | background:#474b61
+styles/routes/chatroom.css | .mc-channels button[aria-current] | color:white
+styles/routes/chatroom.css | .mc-channels button[aria-current] | font-weight:650
+styles/routes/chatroom.css | .mc-guest button | background:var(--accent)
+styles/routes/chatroom.css | .mc-guest button | border-radius:8px
+styles/routes/chatroom.css | .mc-guest button | color:var(--on-accent)
+styles/routes/chatroom.css | .mc-guest button | font-weight:650
+styles/routes/chatroom.css | .mc-guest button | min-height:44px
+styles/routes/chatroom.css | .mc-guest button | padding:8px 12px
+styles/routes/chatroom.css | .mc-guest button:hover | background:var(--accent-hover)
+styles/routes/chatroom.css | .mc-icon | border-radius:8px
+styles/routes/chatroom.css | .mc-icon | min-height:36px
+styles/routes/chatroom.css | .mc-icon | min-height:44px
+styles/routes/chatroom.css | .mc-icon | padding:6px
+styles/routes/chatroom.css | .mc-icon:hover | background:var(--soft)
+styles/routes/chatroom.css | .mc-more | color:var(--muted)
+styles/routes/chatroom.css | .mc-new | background:var(--soft)
+styles/routes/chatroom.css | .mc-new | border-radius:20px
+styles/routes/chatroom.css | .mc-new | color:var(--accent-hover)
+styles/routes/chatroom.css | .mc-new | font-size:13px
+styles/routes/chatroom.css | .mc-new | padding:7px 16px
+styles/routes/chatroom.css | .mc-older | background:var(--soft)
+styles/routes/chatroom.css | .mc-older | border-radius:20px
+styles/routes/chatroom.css | .mc-older | color:var(--accent-hover)
+styles/routes/chatroom.css | .mc-older | font-size:13px
+styles/routes/chatroom.css | .mc-older | padding:7px 16px
+styles/routes/chatroom.css | .mc-presence-trigger | color:var(--muted)
+styles/routes/chatroom.css | .mc-presence-trigger | font-size:13px
+styles/routes/chatroom.css | .mc-presence-trigger[aria-expanded="true"] | background:var(--soft)
+styles/routes/chatroom.css | .mc-presence-trigger[aria-expanded="true"] | color:var(--ink)
+styles/routes/chatroom.css | .mc-quote button | min-height:30px
+styles/routes/chatroom.css | .mc-send | background:var(--accent)
+styles/routes/chatroom.css | .mc-send | color:var(--on-accent)
+styles/routes/chatroom.css | .mc-send:disabled | background:var(--soft)
+styles/routes/chatroom.css | .mc-send:disabled | color:var(--muted)
+styles/routes/chatroom.css | .mc-send:hover:not(:disabled) | background:var(--accent-hover)
+styles/routes/chatroom.css | .mc-server .mc-icon | color:white
+styles/routes/chatroom.css | .mc-server .mc-icon:hover | background:rgb(255 255 255 / 12%)
+styles/routes/chatroom.css | .mc-sheet button | background:var(--surface)
+styles/routes/chatroom.css | .mc-sheet button | border-radius:8px
+styles/routes/chatroom.css | .mc-sheet button | border:1px solid var(--line)
+styles/routes/chatroom.css | .mc-sheet button | padding:10px 14px
+styles/routes/chatroom.css | .mc-sidebar-bottom .mc-icon:hover | background:rgb(255 255 255 / 12%)
+styles/routes/chatroom.css | .moon-chat :where(button) | background:transparent
+styles/routes/chatroom.css | .moon-chat :where(button) | border:0
+styles/routes/chatroom.css | .moon-chat :where(button) | color:inherit
+styles/routes/chatroom.css | .moon-chat :where(button) | font:inherit
+styles/routes/download.css | .download-button | border-color:CanvasText
+styles/routes/download.css | .download-channels button | background:var(--ts-surface)
+styles/routes/download.css | .download-channels button | border-radius:var(--ts-radius-button)
+styles/routes/download.css | .download-channels button | border:1px solid var(--ts-border)
+styles/routes/download.css | .download-channels button | color:var(--ts-text)
+styles/routes/download.css | .download-channels button | font-size:12px
+styles/routes/download.css | .download-channels button | min-height:36px
+styles/routes/download.css | .download-channels button | padding:6px 12px
+styles/routes/download.css | .download-channels button[aria-pressed="true"] | background:var(--ts-accent-soft)
+styles/routes/download.css | .download-channels button[aria-pressed="true"] | border-color:var(--ts-accent)
+styles/routes/download.css | .download-channels button[aria-pressed="true"] | color:var(--ts-accent)
+styles/routes/download.css | .download-page .download-button | background:var(--ts-accent)
+styles/routes/download.css | .download-page .download-button | border-radius:var(--ts-radius-button)
+styles/routes/download.css | .download-page .download-button | border:1px solid transparent
+styles/routes/download.css | .download-page .download-button | color:var(--on-accent)
+styles/routes/download.css | .download-page .download-button | font-family:var(--ts-font-sans)
+styles/routes/download.css | .download-page .download-button | font-size:13px
+styles/routes/download.css | .download-page .download-button | font-weight:600
+styles/routes/download.css | .download-page .download-button | min-height:44px
+styles/routes/download.css | .download-page .download-button | padding:10px 16px
+styles/routes/download.css | .download-release-actions button | background:var(--ts-surface)
+styles/routes/download.css | .download-release-actions button | border-radius:var(--ts-radius-button)
+styles/routes/download.css | .download-release-actions button | border:1px solid var(--ts-border)
+styles/routes/download.css | .download-release-actions button | color:var(--ts-text)
+styles/routes/download.css | .download-release-actions button | font-size:12px
+styles/routes/download.css | .download-release-actions button | min-height:36px
+styles/routes/download.css | .download-release-actions button | padding:6px 12px
+styles/routes/drift.css | .drift-page .drift-filters button | font-size:.78rem
+styles/routes/drift.css | .drift-page .drift-filters button | min-height:36px
+styles/routes/drift.css | .drift-page .drift-filters button | padding:5px 9px
+styles/routes/drift.css | .drift-page .drift-filters button[aria-pressed="true"] | background:var(--ts-accent-soft)
+styles/routes/drift.css | .drift-page .drift-filters button[aria-pressed="true"] | color:var(--ts-accent)
+styles/routes/drift.css | .drift-page .drift-icon-button | padding:0
+styles/routes/drift.css | .drift-page .drift-primary | background:var(--ts-unified-primary-bg)
+styles/routes/drift.css | .drift-page .drift-primary | border-color:transparent
+styles/routes/drift.css | .drift-page .drift-primary | color:var(--ts-unified-primary-text)
+styles/routes/drift.css | .drift-page .drift-primary | font-weight:680
+styles/routes/drift.css | .drift-page .drift-primary:hover:not(:disabled) | background:var(--ts-unified-primary-bg-hover)
+styles/routes/drift.css | .drift-page .drift-primary:hover:not(:disabled) | color:var(--ts-unified-primary-text)
+styles/routes/drift.css | .drift-page .drift-quiet | background:transparent
+styles/routes/drift.css | .drift-page .drift-quiet | border-color:transparent
+styles/routes/drift.css | .drift-page .drift-quiet | color:var(--ts-accent)
+styles/routes/drift.css | .drift-page .drift-tabs button | background:transparent
+styles/routes/drift.css | .drift-page .drift-tabs button | border-color:transparent
+styles/routes/drift.css | .drift-page .drift-tabs button | font-size:clamp(.75rem, 3.6vw, .86rem)
+styles/routes/drift.css | .drift-page .drift-tabs button | padding:5px 4px
+styles/routes/drift.css | .drift-page .drift-tabs button[aria-selected="true"] | background:var(--ts-accent-soft)
+styles/routes/drift.css | .drift-page .drift-tabs button[aria-selected="true"] | border-color:color-mix(in srgb, var(--ts-accent) 50%, var(--pages-line))
+styles/routes/drift.css | .drift-page .drift-tabs button[aria-selected="true"] | color:var(--ts-accent)
+styles/routes/drift.css | .drift-page :is(.drift-pagination-actions, .drift-page-jump) button | padding-inline:10px
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | background:var(--pages-soft)
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | border-radius:var(--ts-radius-control)
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | border:1px solid var(--pages-line)
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | color:var(--pages-ink)
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | font-size:.86rem
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | font:inherit
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | min-height:44px
+styles/routes/drift.css | .drift-page :is(button, .drift-primary) | padding:7px 14px
+styles/routes/drift.css | .drift-page button:hover:not(:disabled) | background:var(--ts-state-hover)
+styles/routes/drift.css | .drift-workspace-foot .drift-daily-link | min-height:36px
+styles/routes/drift.css | .drift-workspace-foot .drift-daily-link | padding:5px 7px
+styles/routes/game-center.css | .game-entry | min-height:46px
+styles/routes/game-center.css | .game-entry | padding-inline:24px
+styles/routes/game-center.css | .gomoku-controls > button | font-size:13px
+styles/routes/game-center.css | .gomoku-controls > button | min-height:44px
+styles/routes/game-center.css | .gomoku-controls > button | padding:8px
+styles/routes/game-center.css | .gomoku-settings button | min-height:44px
+styles/routes/game.css | .game-error button | background:var(--ts-accent)
+styles/routes/game.css | .game-error button | border-radius:999px
+styles/routes/game.css | .game-error button | border:0
+styles/routes/game.css | .game-error button | color:#fff
+styles/routes/game.css | .game-error button | min-height:34px
+styles/routes/game.css | .game-error button | padding:0 0.9rem
+styles/routes/game.css | .game-icon-button | background:var(--ts-glass)
+styles/routes/game.css | .game-icon-button | border-radius:13px
+styles/routes/game.css | .game-icon-button | border-radius:14px
+styles/routes/game.css | .game-icon-button | border:1px solid var(--ts-border)
+styles/routes/game.css | .game-icon-button | color:var(--ts-text)
+styles/routes/game.css | .game-icon-button | height:38px
+styles/routes/game.css | .game-icon-button | height:40px
+styles/routes/game.css | .game-icon-button | padding:0
+styles/routes/game.css | .game-icon-button:hover | border-color:color-mix(in srgb, var(--ts-accent), transparent 52%)
+styles/routes/game.css | .game-icon-button:hover | color:var(--ts-accent)
+styles/routes/game.css | .game-rank-pagination button | background:var(--ts-glass)
+styles/routes/game.css | .game-rank-pagination button | border-radius:var(--radius-pill, 999px)
+styles/routes/game.css | .game-rank-pagination button | border:1px solid var(--ts-border)
+styles/routes/game.css | .game-rank-pagination button | color:var(--ts-text)
+styles/routes/game.css | .game-rank-pagination button | min-height:40px
+styles/routes/game.css | .game-rank-pagination button | padding:.5rem 1rem
+styles/routes/game.css | .game-rank-pagination button | white-space:nowrap
+styles/routes/game.css | .game-rank-refresh | background:transparent
+styles/routes/game.css | .game-rank-refresh | border-radius:10px
+styles/routes/game.css | .game-rank-refresh | border:0
+styles/routes/game.css | .game-rank-refresh | color:var(--ts-text-secondary)
+styles/routes/game.css | .game-rank-refresh | height:30px
+styles/routes/game.css | .game-rank-refresh | padding:0
+styles/routes/game.css | .game-rank-refresh:focus-visible | background:color-mix(in srgb, var(--ts-accent), transparent 90%)
+styles/routes/game.css | .game-rank-refresh:focus-visible | color:var(--ts-accent)
+styles/routes/game.css | .game-rank-refresh:hover | background:color-mix(in srgb, var(--ts-accent), transparent 90%)
+styles/routes/game.css | .game-rank-refresh:hover | color:var(--ts-accent)
+styles/routes/growth.css | .growth-checkin | background:rgba(255, 255, 255, 0.08)
+styles/routes/growth.css | .growth-checkin | background:var(--ts-unified-primary-bg)
+styles/routes/growth.css | .growth-checkin | border-radius:14px
+styles/routes/growth.css | .growth-checkin | border:1px solid rgba(191, 224, 255, 0.24)
+styles/routes/growth.css | .growth-checkin | color:inherit
+styles/routes/growth.css | .growth-checkin | color:var(--on-accent)
+styles/routes/growth.css | .growth-checkin | font-weight:800
+styles/routes/growth.css | .growth-checkin | font:inherit
+styles/routes/growth.css | .growth-checkin | min-height:44px
+styles/routes/growth.css | .growth-checkin | padding:0 1rem
+styles/routes/growth.css | .growth-checkin:hover:not(:disabled) | background:rgba(147, 204, 247, 0.14)
+styles/routes/growth.css | .growth-checkin:hover:not(:disabled) | background:var(--ts-unified-primary-bg-hover)
+styles/routes/growth.css | .growth-checkin:hover:not(:disabled) | border-color:rgba(164, 218, 255, 0.42)
+styles/routes/growth.css | .growth-room-button | background:rgba(255, 255, 255, 0.08)
+styles/routes/growth.css | .growth-room-button | border-radius:999px
+styles/routes/growth.css | .growth-room-button | border:1px solid rgba(191, 224, 255, 0.24)
+styles/routes/growth.css | .growth-room-button | color:inherit
+styles/routes/growth.css | .growth-room-button | font-weight:800
+styles/routes/growth.css | .growth-room-button | font:inherit
+styles/routes/growth.css | .growth-room-button | min-height:42px
+styles/routes/growth.css | .growth-room-button | padding:0
+styles/routes/growth.css | .growth-room-button | padding:0 1rem
+styles/routes/growth.css | .growth-room-button:hover | background:rgba(147, 204, 247, 0.14)
+styles/routes/growth.css | .growth-room-button:hover | border-color:rgba(164, 218, 255, 0.42)
+styles/routes/hub.css | .hero-composer button | background:#f7f9fc
+styles/routes/hub.css | .hero-composer button | border-radius:50%
+styles/routes/hub.css | .hero-composer button | color:#202b46
+styles/routes/hub.css | .hero-composer button | height:44px
+styles/routes/hub.css | .hero-suggestions button | background:rgb(11 15 25 / 30%)
+styles/routes/hub.css | .hero-suggestions button | border-radius:var(--r-pill)
+styles/routes/hub.css | .hero-suggestions button | border:1px solid rgb(255 255 255 / 42%)
+styles/routes/hub.css | .hero-suggestions button | color:#fff
+styles/routes/hub.css | .hero-suggestions button | font-size:13px
+styles/routes/hub.css | .hero-suggestions button | font-weight:500
+styles/routes/hub.css | .hero-suggestions button | min-height:36px
+styles/routes/hub.css | .hero-suggestions button | padding:7px 12px
+styles/routes/hub.css | .hero-suggestions button:hover | background:rgb(255 255 255 / 20%)
+styles/routes/hub.css | .hero-suggestions button:hover | border-color:white
+styles/routes/hub.css | .home-section-heading .ghost-btn | font-size:13px
+styles/routes/hub.css | .home-section-heading .ghost-btn | padding:9px 14px
+styles/routes/payments.css | .payments-page .ghost-btn | min-height:44px
+styles/routes/payments.css | .payments-page .ghost-btn | white-space:normal
+styles/routes/payments.css | .payments-page .primary-btn | min-height:44px
+styles/routes/payments.css | .payments-page .primary-btn | white-space:normal
+styles/routes/plaza.css | .plaza-author-link | padding:0
+styles/routes/plaza.css | .plaza-chatroom-link | white-space:nowrap
+styles/routes/plaza.css | .plaza-composer-locked .primary-btn | font-size:13px
+styles/routes/plaza.css | .plaza-filters .chip | border:0
+styles/routes/plaza.css | .plaza-filters .chip | font-size:13px
+styles/routes/plaza.css | .plaza-filters .chip | min-height:36px
+styles/routes/plaza.css | .plaza-filters .chip | padding:8px 12px
+styles/routes/plaza.css | .plaza-friend-actions .ghost-btn | font-size:12px
+styles/routes/plaza.css | .plaza-friend-actions .ghost-btn | padding:8px 14px
+styles/routes/plaza.css | .plaza-moods .chip | font-size:13px
+styles/routes/plaza.css | .plaza-moods .chip | min-height:34px
+styles/routes/plaza.css | .plaza-moods .chip | padding:6px 11px
+styles/routes/plaza.css | .plaza-msg-footer .icon-btn | color:var(--muted)
+styles/routes/plaza.css | .plaza-msg-footer .icon-btn | font-size:13px
+styles/routes/plaza.css | .plaza-msg-footer .icon-btn | min-height:36px
+styles/routes/plaza.css | .plaza-msg-footer .icon-btn | padding:6px 0
+styles/routes/plaza.css | .plaza-page-btn | border-radius:var(--r-pill)
+styles/routes/plaza.css | .plaza-page-btn | min-height:40px
+styles/routes/plaza.css | .plaza-page-btn | padding:8px 12px
+styles/routes/plaza.css | .plaza-page-btn.active | background:var(--accent)
+styles/routes/plaza.css | .plaza-page-btn.active | color:var(--on-accent)
+styles/routes/plaza.css | .plaza-refresh-btn | border:0
+styles/routes/plaza.css | .plaza-refresh-btn | font-size:13px
+styles/routes/plaza.css | .plaza-refresh-btn | min-height:36px
+styles/routes/plaza.css | .plaza-refresh-btn | padding:8px
+styles/routes/plaza.css | .plaza-replies-toggle | color:var(--accent)
+styles/routes/plaza.css | .plaza-replies-toggle | font-size:13px
+styles/routes/plaza.css | .plaza-replies-toggle | min-height:36px
+styles/routes/privacy.css | .privacy-page .ghost-btn | min-height:44px
+styles/routes/privacy.css | .privacy-page .ghost-btn | white-space:normal
+styles/routes/privacy.css | .privacy-page .primary-btn | min-height:44px
+styles/routes/privacy.css | .privacy-page .primary-btn | white-space:normal
+styles/routes/room-settings.css | .room-settings-page .runtime-level-row > button | height:auto
+styles/routes/room-settings.css | .room-settings-page .runtime-level-row > button | white-space:normal
+styles/routes/room-settings.css | .room-settings-page .settings-providers .ghost-btn | height:auto
+styles/routes/room-settings.css | .room-settings-page .settings-providers .ghost-btn | white-space:normal
+styles/routes/room.css | .chat-input-row .panel-btn | padding:0
+styles/routes/room.css | .chat-message-actions button | font-size:11px
+styles/routes/room.css | .chat-message-actions button | min-height:30px
+styles/routes/room.css | .chat-session-toolbar button | color:var(--muted)
+styles/routes/room.css | .chat-session-toolbar button | font-size:12px
+styles/routes/room.css | .chat-session-toolbar button | min-height:36px
+styles/routes/room.css | .diary-preview-close | font-size:28px
+styles/routes/room.css | .diary-preview-close | height:44px
+styles/routes/room.css | .panel-btn | border-radius:var(--r-pill)
+styles/routes/room.css | .panel-btn | font-size:13px
+styles/routes/room.css | .panel-btn | min-height:40px
+styles/routes/room.css | .panel-btn | padding:8px 12px
+styles/routes/room.css | .panel-close | border-radius:50%
+styles/routes/room.css | .panel-close | height:40px
+styles/routes/room.css | .panel-close:hover | background:var(--soft)
+styles/routes/room.css | .room-chat-suggestions button | border-radius:var(--r-pill)
+styles/routes/room.css | .room-chat-suggestions button | border:1px solid var(--line)
+styles/routes/room.css | .room-chat-suggestions button | font-size:12px
+styles/routes/room.css | .room-chat-suggestions button | min-height:36px
+styles/routes/room.css | .room-chat-suggestions button | padding:8px 12px
+styles/routes/room.css | .room-chat-suggestions button | white-space:nowrap
+styles/routes/room.css | .room-chat-welcome :is(button,a) | color:var(--accent)
+styles/routes/room.css | .room-chat-welcome :is(button,a) | font-size:13px
+styles/routes/room.css | .room-chat-welcome :is(button,a) | min-height:40px
+styles/routes/room.css | .room-desktop-tabs :is(button,a) | border-radius:8px
+styles/routes/room.css | .room-desktop-tabs :is(button,a) | font-size:12px
+styles/routes/room.css | .room-desktop-tabs :is(button,a) | min-height:40px
+styles/routes/room.css | .room-desktop-tabs :is(button,a) | padding:8px
+styles/routes/room.css | .room-desktop-tabs :is(button,a) | white-space:nowrap
+styles/routes/room.css | .room-mobile-tools button | border-radius:8px
+styles/routes/room.css | .room-mobile-tools button | font-size:14px
+styles/routes/room.css | .room-mobile-tools button | min-height:44px
+styles/routes/room.css | .room-mobile-tools button | padding:8px 10px
+styles/routes/room.css | .room-mobile-tools button:hover | background:var(--soft)
+styles/routes/room.css | .room-stage-popover button | border-radius:8px
+styles/routes/room.css | .room-stage-popover button | min-height:44px
+styles/routes/room.css | .room-stage-popover button | padding:10px
+styles/routes/room.css | .room-stage-popover button:hover | background:var(--soft)
+styles/routes/room.css | .room-stage-toolbar button | border-radius:var(--r-pill)
+styles/routes/room.css | .room-stage-toolbar button | font-size:12px
+styles/routes/room.css | .room-stage-toolbar button | min-height:40px
+styles/routes/room.css | .room-stage-toolbar button:hover | background:var(--soft)
+styles/routes/stage.css | .journal-page-jump .ghost-btn | min-height:44px
+styles/routes/stage.css | .journal-page-jump .ghost-btn | padding:8px 12px
+styles/routes/stage.css | .journal-tabs button | color:var(--muted)
+styles/routes/stage.css | .journal-tabs button | font-size:14px
+styles/routes/stage.css | .journal-tabs button | min-height:56px
+styles/routes/stage.css | .journal-tabs button | padding:12px 0
+styles/routes/stage.css | .journal-tabs button | white-space:nowrap
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | background:transparent
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | border-radius:10px
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | border:1px solid var(--ts-border)
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | color:var(--ts-text)
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | font:inherit
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | min-height:40px
+styles/routes/terminal.css | .terminal-panel .manager-tabs button | padding:.5rem .9rem
+styles/routes/terminal.css | .terminal-panel .manager-tabs button[aria-pressed="true"] | background:var(--ts-surface-soft)
+styles/routes/terminal.css | .terminal-panel .manager-tabs button[aria-pressed="true"] | border-color:var(--ts-accent)
+styles/routes/terminal.css | .terminal-panel .manager-tabs button[aria-pressed="true"] | color:var(--ts-accent)
+styles/routes/terminal.css | .terminal-panel .manager-tabs button[aria-pressed="true"] | font-weight:600
+styles/routes/user-center.css | .uc-article-tools > .primary-btn | font-size:12px
+styles/routes/user-center.css | .uc-article-tools > .primary-btn | padding-inline:12px
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | background:transparent
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | border-radius:var(--ts-radius-button, 999px)
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | border:0
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | color:var(--uc-text)
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | font-size:13px
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | font:inherit
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | min-height:44px
+styles/routes/user-center.css | .uc-mobile-more :is(a, button) | padding:10px
+styles/routes/user-center.css | .uc-page .danger-btn | background:var(--pages-soft)
+styles/routes/user-center.css | .uc-page .danger-btn | color:var(--ts-danger, #d36086)
+styles/routes/user-center.css | .uc-page .primary-btn | background:var(--ts-unified-primary-bg)
+styles/routes/user-center.css | .uc-page .primary-btn | color:var(--ts-button-text, white)
+styles/routes/user-center.css | .uc-page .uc-article-actions .uc-icon-action | font-size:12px
+styles/routes/user-center.css | .uc-page .uc-article-actions .uc-icon-action | min-height:38px
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | background:var(--pages-soft)
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | border-radius:50%
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | border:1px solid var(--uc-line)
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | height:56px
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | height:68px
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | height:76px
+styles/routes/user-center.css | .uc-page .uc-avatar-upload | padding:0
+styles/routes/user-center.css | .uc-page .uc-nav-logout | color:var(--uc-muted)
+styles/routes/user-center.css | .uc-page .uc-refresh-action | padding:0
+styles/routes/user-center.css | .uc-page .uc-support-card .uc-icon-action | font-size:12px
+styles/routes/user-center.css | .uc-page .uc-support-card .uc-icon-action | padding-inline:12px
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | background:transparent
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | border-radius:var(--ts-radius-button, 999px)
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | border:1px solid transparent
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | color:var(--uc-muted)
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | font-size:13px
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | font:inherit
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | min-height:42px
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn | padding:10px 12px
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn.active | background:var(--pages-soft)
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn.active | color:var(--ts-accent)
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn:hover | background:var(--pages-soft)
+styles/routes/user-center.css | .uc-page .uc-tabs .tab-btn:hover | color:var(--uc-text)
+styles/routes/user-center.css | .uc-page :is(.ghost-btn, .icon-btn) | background:var(--pages-soft)
+styles/routes/user-center.css | .uc-page :is(.ghost-btn, .icon-btn) | color:var(--uc-text)
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | border-radius:var(--ts-radius-button, 999px)
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | border:1px solid var(--uc-line)
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | font-size:13px
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | font:inherit
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | min-height:42px
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | padding:10px 16px
+styles/routes/user-center.css | .uc-page :is(.primary-btn, .ghost-btn, .icon-btn, .danger-btn) | white-space:nowrap
+styles/routes/user-center.css | .uc-password-reset-link | background:none
+styles/routes/user-center.css | .uc-password-reset-link | border:0
+styles/routes/user-center.css | .uc-password-reset-link | color:var(--uc-accent)
+styles/routes/user-center.css | .uc-password-reset-link | font-size:12px
+styles/routes/user-center.css | .uc-profile-buttons > button | padding-inline:10px
+styles/routes/wiki.css | .wiki-back-to-top | background:var(--surface)
+styles/routes/wiki.css | .wiki-back-to-top | border-radius:50%
+styles/routes/wiki.css | .wiki-back-to-top | border:1px solid var(--line)
+styles/routes/wiki.css | .wiki-back-to-top | height:44px
+styles/routes/wiki.css | .wiki-entry-image-variants button | background:var(--surface)
+styles/routes/wiki.css | .wiki-entry-image-variants button | border-radius:var(--r-pill)
+styles/routes/wiki.css | .wiki-entry-image-variants button | font-size:13px
+styles/routes/wiki.css | .wiki-entry-image-variants button | padding:8px 14px
+styles/routes/wiki.css | .wiki-filter-bar button | border-radius:var(--r-pill)
+styles/routes/wiki.css | .wiki-filter-bar button | border:1px solid var(--line)
+styles/routes/wiki.css | .wiki-filter-bar button | font-size:13px
+styles/routes/wiki.css | .wiki-filter-bar button | min-height:38px
+styles/routes/wiki.css | .wiki-filter-bar button | padding:8px 12px
+styles/routes/wiki.css | .wiki-filter-bar button.active | background:var(--accent)
+styles/routes/wiki.css | .wiki-filter-bar button.active | border-color:transparent
+styles/routes/wiki.css | .wiki-filter-bar button.active | color:var(--on-accent)
+styles/routes/wiki.css | .wiki-filter-bar button[aria-pressed='true'] | background:var(--accent)
+styles/routes/wiki.css | .wiki-filter-bar button[aria-pressed='true'] | border-color:transparent
+styles/routes/wiki.css | .wiki-filter-bar button[aria-pressed='true'] | color:var(--on-accent)

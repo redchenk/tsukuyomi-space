@@ -1,4 +1,5 @@
 <script setup>
+import TsPageHeader from '../components/TsPageHeader.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { loadCurrentSession } from '../api/client';
@@ -84,7 +85,7 @@ onUnmounted(() => { disposed = true; window.clearTimeout(timer); });
 
 <template>
   <main data-ui-layout="content" class="page payments-page">
-    <header class="payments-heading"><div class="ui-heading"><span class="eyebrow">TSUKUYOMI · YOUR BALANCE & USAGE</span><h1 class="ui-page-title">支付中心</h1><p>充值、订单与聊天用量，在这里一起查看。</p></div><span class="payment-heading-mark" aria-hidden="true"><TsIcon name="moonStar" :size="42" :stroke-width="1.25" /></span></header>
+    <TsPageHeader class="payments-heading" :title="$ui('支付中心')" :description="$ui('充值、订单与聊天用量，在这里一起查看。')" />
     <p v-if="error" class="form-message error" role="alert">{{ error }}</p>
     <p v-if="loading" role="status">正在读取支付中心…</p>
     <template v-else>

@@ -1,18 +1,17 @@
 <script setup>
-const props = defineProps({
-  variant: {
-    type: String,
-    default: 'secondary',
-    validator: value => ['primary', 'secondary', 'accent', 'quiet', 'danger', 'choice', 'icon'].includes(value)
-  },
+import { actionSize, actionVariant } from './uiControl';
+
+defineProps({
+  variant: actionVariant,
+  size: actionSize,
   type: { type: String, default: 'button' },
+  loading: Boolean,
   busy: Boolean,
   disabled: Boolean
 });
 </script>
 
 <template>
-  <button :type="props.type" :data-ui="props.variant" :disabled="disabled || busy" :aria-busy="busy || undefined">
-    <slot />
-  </button>
+  <button class="ts-button" :type="type" :data-ui="variant" :data-size="size"
+    :disabled="disabled || loading || busy" :aria-busy="loading || busy || undefined"><slot /></button>
 </template>

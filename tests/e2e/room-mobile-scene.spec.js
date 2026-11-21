@@ -1,3 +1,5 @@
+const interfaceCopy = require('../../src/frontend/i18n/interface-catalog.json');
+const label = source => process.env.UI_ENGLISH_EDITION === '1' ? interfaceCopy[source].en : source;
 const { test, expect } = require('../e2e-fixtures.cjs');
 const { configureRoomFixture, waitForRoom } = require('../e2e-room-helpers.cjs');
 test.beforeEach(async ({ page }) => configureRoomFixture(page));
@@ -69,7 +71,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 390, height: 667 }
         await expect(trigger).toHaveAttribute('aria-expanded', 'false');
         await page.locator('#chatInput').blur();
         await trigger.click();
-        const settings = menu.getByRole('button', { name: '房间与角色设置' });
+        const settings = menu.getByRole('button', { name: label('房间与角色设置') });
         await settings.scrollIntoViewIfNeeded();
         expect(await settings.evaluate(element => {
             const box = element.getBoundingClientRect();
@@ -89,15 +91,15 @@ test('a full diary keeps its sync and close buttons above the mobile scene contr
     });
     await page.goto('/room'); await waitForRoom(page);
     await page.locator('.room-tools-disclosure > summary').click();
-    await page.getByRole('button', { name: '日记', exact: true }).click();
+    await page.getByRole('button', { name: label('日记'), exact: true }).click();
     const diary = page.locator('#diaryPanel');
-    const sync = diary.getByRole('button', { name: '同步', exact: true });
+    const sync = diary.getByRole('button', { name: label('同步'), exact: true });
     const update = page.evaluate(() => new Promise(resolve => {
         window.addEventListener('tsukuyomi:room-diary-sync-updated', e => resolve(e.detail.status), { once: true });
     }));
     await sync.click();
     expect(await update).toBe('local');
-    await expect(diary).toContainText('登录后可跨设备同步');
+    await expect(diary).toContainText(label('访客日记只保存在当前浏览器，登录后可跨设备同步'));
     await diary.getByRole('button', { name: 'Close panel' }).click();
     await expect(diary).toHaveCount(0);
     await page.locator('.room-scene-trigger').click();
@@ -164,14 +166,14 @@ test('mobile history stays in place during a reply and returns to the latest bub
     await page.locator('#sendChatBtn').click();
     await expect(page.locator('#stopChatBtn')).toBeVisible();
     await page.locator('.room-tools-disclosure > summary').click();
-    await page.getByRole('button', { name: '查看对话开头', exact: true }).click();
+    await page.getByRole('button', { name: label('查看对话开头'), exact: true }).click();
     await expect.poll(() => transcript.evaluate(node => node.scrollTop)).toBeLessThan(2);
     completeReply();
     await expect(transcript.locator('.assistant').last()).toContainText('我在这里，慢慢看。');
     expect(await transcript.evaluate(node => node.scrollTop)).toBeLessThan(2);
-    await page.getByRole('button', { name: '回到最新消息', exact: true }).click();
+    await page.getByRole('button', { name: label('回到最新消息'), exact: true }).click();
     await expect.poll(remaining).toBeLessThan(24);
-    await expect(page.getByRole('button', { name: '回到最新消息', exact: true })).toBeHidden();
+    await expect(page.getByRole('button', { name: label('回到最新消息'), exact: true })).toBeHidden();
     const composer = await page.locator('.chat-input-row').boundingBox();
     await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
     expect(composer.y + composer.height).toBeLessThanOrEqual(844 - 12);

@@ -1,4 +1,6 @@
 <script setup>
+import TsButtonLink from '../components/TsButtonLink.vue';
+import TsPageHeader from '../components/TsPageHeader.vue';
 import MobileSheet from '../components/MobileSheet.vue';
 import { useMediaQuery } from '../composables/useMediaQuery';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
@@ -732,14 +734,9 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
 
 <template>
   <main data-ui-layout="content" class="page plaza-page">
-    <header class="plaza-intro">
-      <div>
-        <div class="plaza-eyebrow">{{ t.plazaEyebrow }}</div>
-        <h1 class="plaza-title">{{ t.plazaTitle }}</h1>
-        <p class="plaza-sub">{{ designCopy.intro }}</p>
-      </div>
-      <RouterLink class="ghost-btn plaza-chatroom-link" to="/chatroom"><TsIcon name="message" :size="17" />{{ lang === 'en' ? 'Moon Chat' : lang === 'ja' ? '月読チャット' : '月读聊天室' }}<TsIcon name="arrowRight" :size="15" /></RouterLink>
-    </header>
+    <TsPageHeader class="plaza-intro" :title="t.plazaTitle" :description="designCopy.intro">
+      <template #actions><TsButtonLink class="plaza-chatroom-link" to="/chatroom"><TsIcon name="message" :size="17" />{{ lang === 'en' ? 'Moon Chat' : lang === 'ja' ? '月読チャット' : '月读聊天室' }}<TsIcon name="arrowRight" :size="15" /></TsButtonLink></template>
+    </TsPageHeader>
 
     <MobileSheet v-if="mobileCompose && isAuthed" :open="composeOpen" :return-focus="composeTrigger" :title="designCopy.composer" @close="composeOpen = false"><PlazaComposer v-model="composerDraft" :t="t" :lang="lang" :on-submit="plazaSubmitMessage" /><ModerationNotice :feedback="messageModeration" /></MobileSheet>
     <MobileSheet :open="Boolean(messageActions)" :return-focus="messageActions?.trigger" :title="isEn ? 'Message actions' : '留言操作'" @close="messageActions = null"><div class="sheet-options"><button data-ui-part="disclosure" type="button" @click="plazaCopyLink(messageActions.id); messageActions = null"><TsIcon name="copy" :size="20" />{{ t.copyLink }}</button></div></MobileSheet>
