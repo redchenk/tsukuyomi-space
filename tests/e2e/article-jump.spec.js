@@ -94,3 +94,36 @@ test('manual scrolling cancels comment alignment even when images finish loading
         await expect.poll(async () => Math.abs((await page.evaluate(() => scrollY)) - manualPosition)).toBeLessThan(5);
     } finally { f.release(); }
 });
+
+test('phone readers see complete comment levels beside long names and can open the article contents', async ({ page }) => {
+    const stamp = '2026-11-21 13:42:08';
+    const messages = [
+        { id: 801, article_id: 3, user_id: 'reader-a', author: 'reader-a', author_nickname: '月下同行的读者', content: '评论', created_at: stamp },
+        { id: 802, parent_id: 801, article_id: 3, user_id: 'reader-b', author: 'reader-b', author_nickname: 'MoonlightReaderWithAVeryLongName月下同行', content: '回复', created_at: stamp }
+    ];
+    await page.route(/\/articles\/3\/messages(?:\?|$)/, route => route.fulfill({ json: { success: true, data: messages } }));
+    await page.route(/\/growth\/public\?/, route => route.fulfill({ json: { success: true, data: messages.map(m => ({ userId: m.user_id, level: 9 })) } }));
+    await page.route(/\/articles\/3\/live\//, route => route.fulfill({ json: { success: true, data: { ...article, content: '## 第一节\n\n正文\n\n## 第二节\n\n正文' } } }));
+    await page.setViewportSize({ width: 320, height: 780 });
+    await page.goto('/article?id=3');
+    const toc = page.locator('.article-toc details');
+    const levels = page.locator('.comment-header .user-level-badge strong');
+    await expect(levels).toHaveCount(2);
+    for (const width of [320, 375, 390, 430]) {
+        await page.setViewportSize({ width, height: 780 });
+        for (const target of await levels.all()) {
+            const fits = await target.evaluate(el => {
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                const rects = [...range.getClientRects()].filter(r => r.width && r.height);
+                const box = (el.closest('.user-level-badge') || el).getBoundingClientRect();
+                return rects.length === 1 && rects[0].left >= box.left - 1 && rects[0].right <= box.right + 1;
+            });
+            expect(fits, (await target.innerText()) + ' at ' + width).toBe(true);
+        }
+        expect(await page.locator('.comment-header').evaluateAll(nodes => nodes.every(el => el.scrollWidth <= el.clientWidth + 1))).toBe(true);
+    }
+    if (!await toc.evaluate(el => el.open)) await toc.locator('summary').click();
+    await toc.locator('a').first().click();
+    await expect(page.locator('#article-section-1')).toBeFocused();
+});
