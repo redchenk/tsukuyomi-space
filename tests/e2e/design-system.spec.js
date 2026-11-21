@@ -253,12 +253,10 @@ test('liquid controls follow a pointer and emit one set of rings per native acti
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   const panel = page.locator('.samples-page');
   const sample = variant => panel.locator(`.ui-panel [data-ui="${variant}"]`).first();
-  await expect(sample('primary')).toHaveCSS('clip-path', /^polygon/);
-  await expect(sample('accent')).toHaveCSS('clip-path', /^polygon/);
-  await expect(sample('secondary')).toHaveCSS('clip-path', 'none');
-  await expect(sample('secondary')).toHaveCSS('border-radius', '3px');
-  await expect(sample('choice')).toHaveCSS('border-radius', '0px');
-  await expect(sample('choice')).toHaveCSS('border-bottom-width', '2px');
+  for (const variant of ['primary','accent','secondary','choice','danger','ghost']) {
+    await expect(sample(variant)).toHaveCSS('border-radius','12px');
+    await expect(sample(variant)).toHaveCSS('clip-path','none');
+  }
   const target = panel.locator('.ui-panel button[data-ui="secondary"]:enabled').first();
   await target.scrollIntoViewIfNeeded();
   // Record the transient paint in the same frame, independent of runner speed.
@@ -446,7 +444,7 @@ test('account shelf follows its trigger on desktop and keeps mobile preferences 
       expect(bounds.x + bounds.width).toBeGreaterThan((await trigger.boundingBox()).x);
       expect(bounds.y).toBeLessThan(140);
     } else {
-      expect(Math.abs(bounds.y + bounds.height - 820)).toBeLessThan(4);
+      expect(Math.abs(bounds.y - (await trigger.boundingBox()).y)).toBeLessThan(5);
       await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
     }
     const picker = dialog.locator('.site-season-picker');
@@ -457,4 +455,50 @@ test('account shelf follows its trigger on desktop and keeps mobile preferences 
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
   }
+});
+
+test('header menus unfold from their trigger, stagger content, reverse and honor reduced motion', async ({ page }) => {
+  await page.setViewportSize({width: 1280, height: 820});
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.goto('/gallery');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  await page.evaluate(() => {
+    window.menuFrames = [];
+    new MutationObserver(records => {
+      for (const {target} of records) {
+        if (target.id !== 'site-search' || !target.dataset.menuPhase) continue;
+        const effects = target.getAnimations({subtree:true});
+        const shell = effects.find(a=>a.id === 'menu-surface');
+        if (!shell) continue;
+        const from = shell.effect.getKeyframes()[0];
+        const last = shell.effect.getKeyframes().at(-1);
+        window.menuFrames.push({
+          phase:target.dataset.menuPhase, origin:target.dataset.menuOrigin,
+          differs:from.clipPath !== last.clipPath, rate:shell.playbackRate,
+          duration:shell.effect.getTiming().duration,
+          delays:effects.filter(a=>a.id==='menu-content').map(a=>a.effect.getKeyframes()[1].offset),
+          carriesTrigger:effects.some(a=>a.id==='menu-trigger-mark')
+        });
+      }
+    }).observe(document.body, {subtree:true,attributes:true,attributeFilter:['data-menu-phase']});
+  });
+  const trigger = page.locator('.header-search');
+  await trigger.focus();
+  await trigger.press('Enter');
+  const search = page.locator('#site-search');
+  await expect(search.getByRole('combobox')).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.menuFrames.length)).toBeGreaterThan(0);
+  const [opening] = await page.evaluate(() => window.menuFrames);
+  expect(opening).toMatchObject({phase:'opening', origin:'header', differs:true, rate:1, duration:700, carriesTrigger:true});
+  expect(new Set(opening.delays).size).toBeGreaterThan(1);
+  await page.keyboard.press('Escape');
+  await expect(search).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  expect(await page.evaluate(() => window.menuFrames.some(f=>f.phase==='closing' && f.rate<0))).toBe(true);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await trigger.press('Enter');
+  await expect(search.getByRole('combobox')).toBeFocused();
+  expect(await search.evaluate(el=>el.getAnimations({subtree:true}).filter(a=>a.id.startsWith('menu-')).length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
 });

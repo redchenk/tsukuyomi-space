@@ -334,7 +334,7 @@ body .pixel-studio .pixel-canvas .pixel-canvas-renderer {
 .ps-panel { border-bottom: 1px solid var(--ps-line); }
 .ps-panel[data-panel="file"] { display: none; }
 .ps-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 36px; margin: 0; padding: 0 10px 0 6px; font-size: 12px; font-weight: 600; color: var(--ps-text); }
-.ps-panel-head > button:first-child { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 6px; border-radius: 6px; font-weight: 650; }
+.ps-panel-head > button:first-child { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 6px; font-weight: 650; }
 .ps-panel-head > button:first-child:hover { background: var(--ps-hover); }
 .ps-panel-head > button:first-child .ts-icon { color: var(--ps-faint); transition: transform .18s; }
 .ps-panel.is-collapsed .ps-panel-head > button:first-child .ts-icon { transform: rotate(-90deg); }

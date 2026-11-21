@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
 
       <div class="wiki-layout">
         <aside class="wiki-left-column">
-          <details ref="mobileToc" class="wiki-mobile-toc" data-material="content">
+          <details v-menu-details ref="mobileToc" class="wiki-mobile-toc" data-material="content">
             <summary><TsIcon name="list" :size="18" /> 页面目录</summary>
             <nav aria-label="超辉夜姬 Wiki 移动目录">
               <a
@@ -504,12 +504,12 @@ onBeforeUnmount(() => {
     <button data-ui="icon" v-if="showBackToTop" class="wiki-back-to-top" type="button" aria-label="返回页面顶部" @click="scrollToTop"><TsIcon name="chevronUp" :size="20" /></button>
 
     <button data-ui-part="overlay" v-if="activeTerm" class="wiki-term-scrim" type="button" aria-label="关闭词条速览" @click="closeTerm"></button>
-    <aside v-if="activeTerm" ref="termDrawer" class="wiki-term-drawer" data-material="popover" role="dialog" aria-modal="true" :aria-labelledby="`term-title-${activeTerm.id}`">
+    <MenuTransition><aside v-if="activeTerm" ref="termDrawer" class="wiki-term-drawer" data-material="popover" role="dialog" aria-modal="true" :aria-labelledby="`term-title-${activeTerm.id}`">
       <div class="wiki-term-drawer-head"><span>词条速览</span><button data-ui="secondary" ref="termCloseButton" type="button" aria-label="关闭词条速览" @click="closeTerm"><TsIcon name="x" :size="18" /></button></div>
       <h2 :id="`term-title-${activeTerm.id}`">{{ activeTerm.label }}</h2>
       <p>{{ activeTerm.summary }}</p>
       <div class="wiki-tag-row"><span v-for="alias in activeTerm.aliases" :key="alias">{{ alias }}</span></div>
       <RouterLink :to="wikiEntryPath('term', activeTerm.id)" @click="closeTerm">打开独立词条 <TsIcon name="arrowRight" :size="15" /></RouterLink>
-    </aside>
+    </aside></MenuTransition>
   </main>
 </template>

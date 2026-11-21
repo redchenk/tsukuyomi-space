@@ -1,4 +1,5 @@
 <script setup>
+import { dismissMenu } from '../runtime/menuMotion';
 import { computed } from 'vue';
 import MobileSheet from './MobileSheet.vue';
 import TsIcon from './TsIcon.vue';
@@ -6,6 +7,9 @@ import SiteMusicLibrary from './SiteMusicLibrary.vue';
 import '../styles/jingyue/music.css';
 const props = defineProps({ music: { type: Object, required: true }, lang: { type: String, default: 'zh' } });
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
+function closeMusic(event) {
+  dismissMenu(event.currentTarget.closest('dialog'), () => props.music.toggleShell());
+}
 const active = computed(() => props.music.playing.value || props.music.playPending.value);
 </script>
 
@@ -101,22 +105,22 @@ const active = computed(() => props.music.playing.value || props.music.playPendi
           </span>
         </label>
 
-        <div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer" data-material="popover">
+        <MenuTransition><div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer" data-material="popover">
           <div class="music-volume-inline site-music-volume-inline">
             <TsIcon name="volume" :size="15" />
             <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
             <strong>{{ Math.round(music.volume.value * 100) }}%</strong>
           </div>
-        </div>
+        </div></MenuTransition>
 
-        <div v-if="music.drawer.playlist" class="music-drawer site-music-subdrawer site-music-playlist-drawer" data-material="popover">
+        <MenuTransition><div v-if="music.drawer.playlist" class="music-drawer site-music-subdrawer site-music-playlist-drawer" data-material="popover">
           <div class="music-select-wrap">
             <select :value="music.trackIndex.value" aria-label="Track" @change="music.loadTrack(Number($event.target.value), { play: music.playing.value })">
               <option v-for="(track, index) in music.tracks" :key="track.file || track.id" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
             </select>
             <TsIcon name="chevronDown" :size="14" />
           </div>
-        </div>
+        </div></MenuTransition>
         <p v-if="music.loading.value || music.playbackError.value || music.preview.value" class="music-playback-status" role="status">{{ music.loading.value ? '正在准备音频…' : music.playbackError.value || '当前为网易云试听片段' }}</p>
         <SiteMusicLibrary :music="music" :lang="lang" />
       </div>

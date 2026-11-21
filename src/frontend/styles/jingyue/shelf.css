@@ -14,9 +14,8 @@
 }
 :root .site-header .header-account { anchor-name: --account-trigger; }
 :root .site-header .header-search {
-  border-radius: 0;
-  border: 0;
-  border-bottom: 1px solid currentColor;
+  border-radius: var(--r-button);
+  border: 1px solid var(--shelf-rule);
   min-height: 44px;
 }
 :root .site-header .header-search kbd {
@@ -78,7 +77,7 @@
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: 2px;
+  border-radius: var(--r-control);
   color: var(--muted);
 }
 :root .site-search-dialog .site-search-field {
@@ -89,7 +88,7 @@
   margin: 0 var(--shelf-inset);
   padding: 3px 4px 3px 16px;
   border: 1px solid var(--shelf-rule);
-  border-radius: 2px;
+  border-radius: var(--r-control);
   color: var(--shelf-input-text);
   background: var(--shelf-input);
 }
@@ -117,7 +116,7 @@
   min-height: 44px;
   background: var(--surface);
   color: var(--ink);
-  border-radius: 1px;
+  border-radius: var(--r-button);
 }
 :root .site-search-results {
   min-height: 0;
@@ -148,7 +147,7 @@
   min-width: 0;
   min-height: 44px;
   overflow-wrap: anywhere;
-  border-radius: 2px;
+  border-radius: var(--r-control);
   gap: 9px;
   font: 500 .9rem/1.45 var(--sans);
   padding: 8px;
@@ -247,7 +246,7 @@
   padding: 8px 10px;
   border: 1px solid var(--shelf-rule);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--r-control);
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -305,7 +304,7 @@
   min-inline-size: 0;
   border: 1px solid var(--shelf-rule);
   border-bottom: 2px solid var(--muted);
-  border-radius: 2px;
+  border-radius: var(--r-control);
   background-color: var(--surface);
 }
 :root .shelf-field:focus-within, :root :is(.wiki-mobile-search,.wiki-quick-search) > input[type="search"]:focus-visible {
@@ -315,10 +314,8 @@
 }
 :root .shelf-field input[type="search"] { min-inline-size: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: 0; }
 @media (prefers-reduced-motion: no-preference) {
-  .site-search-dialog[open], .account-shelf[open]:not(.ts-sheet) { animation: shelf-unfold 180ms ease-out; }
   .shelf-cover img { transition: filter 160ms ease-out; }
   .shelf-cover:is(:hover,:focus-visible) img { filter: saturate(1.12); }
-  @keyframes shelf-unfold { from { opacity: .35; translate: 0 5px; } to { opacity: 1; translate: 0; } }
 }
 @media (forced-colors: active) {
   :root .site-search-dialog .site-search-result[aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }

@@ -17,7 +17,7 @@ const currentLabel = computed(() => preference.value.mode === 'auto'
 </script>
 
 <template>
-  <details class="site-season-picker">
+  <details v-menu-details class="site-season-picker">
     <summary class="site-preference-button"><TsIcon name="sparkles" :size="18" /><span>{{ copy.title }}</span><small>{{ currentLabel }}</small><TsIcon name="chevronDown" :size="12" /></summary>
     <div class="site-season-fields">
       <label for="site-season-mode">{{ copy.mode }}</label>

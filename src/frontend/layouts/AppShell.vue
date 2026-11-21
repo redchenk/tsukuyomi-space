@@ -205,14 +205,14 @@ onUnmounted(() => {
     <MobileSheet :open="navOpen" :return-focus="navigationTrigger" id="site-navigation" class="site-navigation-dialog" :class="{ 'account-shelf': menuMode === 'account' }" :title="menuMode === 'account' ? (user?.nickname || copy.account) : copy.exploreTitle" :close-label="t.closeNavigation" @close="navOpen = false">
       <template v-if="menuMode === 'account'" #title><span class="shelf-identity"><img :src="(isAuthed && user?.avatar) || brandLogo" alt="" width="44" height="44"><span>{{ user?.nickname || copy.account }}</span></span></template>
       <template v-if="menuMode === 'explore'">
-        <div class="explore-mobile">
+        <div data-menu-item class="explore-mobile">
           <button data-ui-part="navigation" class="sheet-search" type="button" @click="openSearch"><TsIcon name="search" :size="19" />{{ tr('搜索文章、人物和空间', 'Search stories and spaces', '記事と空間を検索') }}</button>
           <nav class="explore-tiles" :aria-label="copy.explore"><a v-for="item in tileItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="25" /><span>{{ item.label }}</span></a></nav>
           <div class="explore-more"><a v-for="item in exploreGroups[2].items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><TsIcon name="arrowUpRight" :size="16" /></a></div>
         </div>
-        <div class="explore-groups"><section v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
+        <div class="explore-groups"><section data-menu-item v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
       </template>
-      <div v-else class="account-menu">
+      <div data-menu-item v-else class="account-menu">
         <a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link"
           :data-ui="item.key === 'login' ? 'primary' : 'secondary'" @click="navigate($event, item)">
           <TsIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span>
@@ -222,11 +222,11 @@ onUnmounted(() => {
           <TsIcon name="logOut" :size="18" />{{ t.logout }}
         </button>
       </div>
-      <div class="menu-utilities">
+      <div data-menu-item class="menu-utilities">
         <button data-ui-part="navigation" v-if="music" class="menu-link menu-music" type="button" @click="openMusic"><TsIcon name="audioLines" :size="20" /><span>{{ tr('站内音乐', 'Music', '音楽') }}</span><TsIcon name="arrowRight" :size="15" /></button>
         <button data-ui-part="navigation" class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
       </div>
-      <footer class="menu-preferences">
+      <footer data-menu-item class="menu-preferences">
         <h3 v-if="menuMode === 'account'">{{ tr('外观与偏好', 'Appearance & preferences', '表示と設定') }}</h3>
         <button data-ui-part="disclosure" class="site-preference-button" @click="emit('toggle-theme', $event)">
           <ThemeLens :dark="theme === 'dark'" />{{ themeLabel }}

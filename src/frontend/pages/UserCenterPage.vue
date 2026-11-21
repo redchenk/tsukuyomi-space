@@ -962,7 +962,7 @@ onUnmounted(() => {
           <select id="ucSection" v-model="uc.tab">
             <optgroup v-for="group in ucNavigationGroups.slice(0, 2)" :key="group.label" :label="group.label"><option v-for="entry in group.entries" :key="entry.key" :value="entry.key">{{ entry.label }}</option></optgroup>
           </select>
-          <details class="uc-mobile-more"><summary>{{ ucCopy.materials }}<TsIcon name="chevronDown" :size="15" /></summary><div><a href="/gallery/manage" @click.prevent="go('/gallery/manage')"><TsIcon name="image" :size="17" />{{ ucCopy.gallery }}</a><a href="/attachments" @click.prevent="go('/attachments')"><TsIcon name="paperclip" :size="17" />{{ ucCopy.attachments }}</a><button data-ui="secondary" type="button" @click="logout"><TsIcon name="logOut" :size="17" />{{ t.ucLogout }}</button></div></details>
+          <details v-menu-details class="uc-mobile-more"><summary>{{ ucCopy.materials }}<TsIcon name="chevronDown" :size="15" /></summary><div><a href="/gallery/manage" @click.prevent="go('/gallery/manage')"><TsIcon name="image" :size="17" />{{ ucCopy.gallery }}</a><a href="/attachments" @click.prevent="go('/attachments')"><TsIcon name="paperclip" :size="17" />{{ ucCopy.attachments }}</a><button data-ui="secondary" type="button" @click="logout"><TsIcon name="logOut" :size="17" />{{ t.ucLogout }}</button></div></details>
         </div>
 
         <section ref="ucContentPanel" class="panel uc-content-panel ui-panel" tabindex="-1">

@@ -1,4 +1,5 @@
 <script setup>
+import { dismissMenu } from '../runtime/menuMotion';
 import { onBeforeUnmount, watch } from 'vue';
 import { useModalDialog } from '../composables/useModalDialog';
 import TsIcon from './TsIcon.vue';
@@ -6,22 +7,17 @@ import TsIcon from './TsIcon.vue';
 const props = defineProps({ open: Boolean, title: { type: String, required: true }, closeLabel: { type: String, default: '关闭 / Close' }, returnFocus: Object });
 const emit = defineEmits(['close']);
 const dialog = useModalDialog(() => props.open, { returnFocus: () => props.returnFocus });
-let closing = false, drag = null, animation;
+let closing = false, drag = null;
 const mobile = () => matchMedia('(max-width: 1080px)').matches;
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function reset() {
-  animation?.cancel(); animation = null; drag = null; closing = false;
+  drag = null; closing = false;
   if (dialog.value) dialog.value.style.transform = '';
 }
-async function close() {
+function close() {
   if (closing || !props.open) return;
   closing = true;
-  const node = dialog.value;
-  if (node?.open && mobile() && !reduce()) {
-    animation = node.animate([{ transform: getComputedStyle(node).transform }, { transform: 'translateY(100%)', opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
-    await animation.finished.catch(() => {});
-  }
-  if (closing) emit('close');
+  dismissMenu(dialog.value, () => { if (closing) emit('close'); });
 }
 function backdrop(event) {
   if (event.target !== dialog.value) return;
@@ -35,8 +31,10 @@ function start(event) {
 }
 function move(event) {
   if (!drag) return;
-  drag.distance = Math.max(0, event.clientY - drag.y);
-  dialog.value.style.transform = `translateY(${drag.distance}px)`;
+  const delta = event.clientY - drag.y;
+  const offset = dialog.value.dataset.menuOrigin === 'header' ? delta : Math.max(0, delta);
+  drag.distance = Math.abs(offset);
+  dialog.value.style.transform = `translateY(${offset}px)`;
 }
 function end(event) {
   if (!drag) return;
@@ -53,7 +51,7 @@ onBeforeUnmount(reset);
 </script>
 
 <template>
-  <dialog ref="dialog" class="ts-sheet" :aria-label="title" @cancel.prevent="close" @click="backdrop">
+  <dialog ref="dialog" class="ts-sheet" data-menu-surface :aria-label="title" @cancel.prevent="close" @click="backdrop">
     <div class="sheet-handle" aria-hidden="true" @pointerdown="start" @pointermove="move" @pointerup="end" @pointercancel="end"><span></span></div>
     <header class="ts-sheet-head"><h2><slot name="title">{{ title }}</slot></h2><button class="icon-button" type="button" data-modal-close :aria-label="closeLabel" @click="close"><TsIcon name="x" :size="22" /></button></header>
     <div class="ts-sheet-body"><slot /></div>

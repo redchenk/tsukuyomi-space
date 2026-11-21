@@ -1,3 +1,4 @@
+import { revealMenu, forgetMenu } from '../runtime/menuMotion';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { lockPageScroll } from '../utils/pageScrollLock';
 
@@ -24,6 +25,7 @@ export function useModalDialog(isOpen, { returnFocus } = {}) {
   function release() {
     removeKeys?.();
     removeKeys = null;
+    forgetMenu(dialog.value);
     dialog.value?.close();
     restoreScroll?.();
     restoreScroll = null;
@@ -40,6 +42,7 @@ export function useModalDialog(isOpen, { returnFocus } = {}) {
     if (run !== revision || !isOpen() || !dialog.value) return;
     dialog.value.showModal();
     const node = dialog.value;
+    if (node.hasAttribute('data-menu-surface')) revealMenu(node, previousFocus);
     const keepFocus = event => keepModalFocus(event, node);
     node.addEventListener('keydown', keepFocus);
     removeKeys = () => node.removeEventListener('keydown', keepFocus);

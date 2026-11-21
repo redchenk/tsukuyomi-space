@@ -1,4 +1,5 @@
 <script setup>
+import { revealMenu, dismissMenu, forgetMenu } from '../runtime/menuMotion';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import galleryArt from '../assets/navigation/search/gallery-yachiyo.webp';
@@ -97,10 +98,11 @@ async function chooseResult(event) {
   await nextTick();
   document.getElementById(activeId.value)?.scrollIntoView({ block: 'nearest' });
 }
+function closeSearch() { dismissMenu(dialog.value, () => emit('close')); }
 function onBackdrop(event) {
   if (event.target !== dialog.value) return;
   const r = dialog.value.getBoundingClientRect();
-  if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) emit('close');
+  if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) closeSearch();
 }
 function moveResult(event) {
   if (!['ArrowDown', 'ArrowUp'].includes(event.key) || event.target === input.value) return;
@@ -116,12 +118,14 @@ onMounted(async () => {
   const path = location.pathname + location.search;
   restoreScroll = lockPageScroll(() => location.pathname + location.search === path);
   dialog.value.showModal();
+  revealMenu(dialog.value, document.querySelector('.header-search'));
   await nextTick();
   input.value.focus({ preventScroll: true });
 });
 onUnmounted(() => {
   ++requestRun;
   clearTimeout(timer);
+  forgetMenu(dialog.value);
   dialog.value?.close();
   restoreScroll?.();
   if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
@@ -129,15 +133,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <dialog id="site-search" ref="dialog" class="site-search-dialog" aria-labelledby="site-search-title" @cancel.prevent="emit('close')" @click="onBackdrop" @keydown="moveResult" @keydown.esc.prevent.stop="emit('close')">
-    <header class="shelf-search-heading">
+  <dialog data-menu-surface id="site-search" ref="dialog" class="site-search-dialog" aria-labelledby="site-search-title" @cancel.prevent="closeSearch" @click="onBackdrop" @keydown="moveResult" @keydown.esc.prevent.stop="closeSearch">
+    <header data-menu-item class="shelf-search-heading">
       <h2 id="site-search-title">{{ copy.searchTitle }}</h2>
       <span class="shelf-moon" aria-hidden="true"></span>
-      <button type="button" class="site-tool-button" :aria-label="copy.close" @click="emit('close')"><TsIcon name="x" :size="19" /></button>
+      <button type="button" class="site-tool-button" :aria-label="copy.close" @click="closeSearch"><TsIcon name="x" :size="19" /></button>
     </header>
-    <form class="site-search-field" role="search" autocomplete="off" @submit.prevent="submitSearch"><TsIcon name="search" :size="21" /><input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="site-search-query-query" ref="input" v-model="query" type="search" maxlength="120" :aria-label="copy.search" :placeholder="copy.searchHint" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="site-search-options" aria-expanded="true" :aria-activedescendant="activeId" @keydown="chooseResult"><button class="site-tool-button" type="submit" :aria-label="copy.search"><TsIcon name="arrowRight" :size="20" /></button></form>
+    <form data-menu-item class="site-search-field" role="search" autocomplete="off" @submit.prevent="submitSearch"><TsIcon name="search" :size="21" /><input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="site-search-query-query" ref="input" v-model="query" type="search" maxlength="120" :aria-label="copy.search" :placeholder="copy.searchHint" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="site-search-options" aria-expanded="true" :aria-activedescendant="activeId" @keydown="chooseResult"><button class="site-tool-button" type="submit" :aria-label="copy.search"><TsIcon name="arrowRight" :size="20" /></button></form>
     <div id="site-search-options" class="site-search-results" role="listbox" :aria-label="copy.searchTitle">
-      <section v-if="featured.length" class="shelf-featured" role="group" :aria-label="copy.discover">
+      <section data-menu-item v-if="featured.length" class="shelf-featured" role="group" :aria-label="copy.discover">
         <h3>{{ copy.discover }}</h3>
         <div class="shelf-covers" role="presentation">
           <a v-for="item in featured" :key="item.key" :id="resultId(`page-${item.key}`)" class="site-search-result shelf-cover" role="option"
@@ -147,7 +151,7 @@ onUnmounted(() => {
           </a>
         </div>
       </section>
-      <section v-if="indexItems.length" role="group" :aria-label="copy.shortcuts">
+      <section data-menu-item v-if="indexItems.length" role="group" :aria-label="copy.shortcuts">
         <h3>{{ copy.shortcuts }}</h3>
         <div class="shelf-index" role="presentation">
           <a v-for="item in indexItems" :key="item.key" :id="resultId(`page-${item.key}`)" class="site-search-result" role="option"
@@ -156,8 +160,8 @@ onUnmounted(() => {
           </a>
         </div>
       </section>
-      <section v-if="normalizedQuery" role="presentation" :aria-busy="loading"><h3>{{ copy.articles }}</h3><p v-if="loading" class="site-search-status" role="status">{{ copy.loading }}</p><div v-else-if="failed" class="site-search-status" role="status">{{ copy.failed }} <button data-ui-part="disclosure" type="button" class="site-preference-button" @click="searchArticles(true)">{{ copy.retry }}</button></div><template v-else><a v-for="article in articles" :key="article.id" class="site-search-result" role="option" :id="resultId(`article-${article.id}`)" :aria-selected="activeKey === `article-${article.id}`" :href="articlePath(article)" @click="navigate($event, { path: articlePath(article) })"><TsIcon name="book" :size="20" /><span>{{ article.title }}</span><TsIcon name="arrowRight" :size="15" /></a><p v-if="!articles.length" class="site-search-status" role="status">{{ copy.empty }}</p><a v-else class="site-search-result site-search-all" role="option" :id="resultId('all-articles')" :aria-selected="activeKey === 'all-articles'" :href="`/stage?q=${encodeURIComponent(normalizedQuery)}`" @click="navigate($event, { path: `/stage?q=${encodeURIComponent(normalizedQuery)}` })">{{ copy.allArticles }}<TsIcon name="arrowRight" :size="16" /></a></template></section>
+      <section data-menu-item v-if="normalizedQuery" role="presentation" :aria-busy="loading"><h3>{{ copy.articles }}</h3><p v-if="loading" class="site-search-status" role="status">{{ copy.loading }}</p><div v-else-if="failed" class="site-search-status" role="status">{{ copy.failed }} <button data-ui-part="disclosure" type="button" class="site-preference-button" @click="searchArticles(true)">{{ copy.retry }}</button></div><template v-else><a v-for="article in articles" :key="article.id" class="site-search-result" role="option" :id="resultId(`article-${article.id}`)" :aria-selected="activeKey === `article-${article.id}`" :href="articlePath(article)" @click="navigate($event, { path: articlePath(article) })"><TsIcon name="book" :size="20" /><span>{{ article.title }}</span><TsIcon name="arrowRight" :size="15" /></a><p v-if="!articles.length" class="site-search-status" role="status">{{ copy.empty }}</p><a v-else class="site-search-result site-search-all" role="option" :id="resultId('all-articles')" :aria-selected="activeKey === 'all-articles'" :href="`/stage?q=${encodeURIComponent(normalizedQuery)}`" @click="navigate($event, { path: `/stage?q=${encodeURIComponent(normalizedQuery)}` })">{{ copy.allArticles }}<TsIcon name="arrowRight" :size="16" /></a></template></section>
     </div>
-    <p class="site-search-help"><span>{{ keyboardHelp }}</span><span><kbd>Esc</kbd> {{ copy.close }}</span></p>
+    <p data-menu-item class="site-search-help"><span>{{ keyboardHelp }}</span><span><kbd>Esc</kbd> {{ copy.close }}</span></p>
   </dialog>
 </template>

@@ -596,7 +596,7 @@ function endChatStatusLabel() {
               </button>
               <time v-if="!message.pending && messageTime(message.createdAt)" class="chat-message-time" title="UTC+8">{{ messageTime(message.createdAt) }}</time>
               <span v-if="message.failed" class="chat-message-failed">未送达</span>
-              <details v-if="!message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile" @toggle="placeMessageMenu">
+              <details v-menu-details v-if="!message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile" @toggle="placeMessageMenu">
                 <summary :aria-label="message.role === 'user' ? '这条消息的操作' : '这条回复的操作'"><TsIcon name="ellipsis" :size="18" /></summary>
                 <div v-if="message.role === 'user'" class="chat-message-actions">
                   <button data-ui-part="tool" v-if="message.failed && !generationBusy" class="chat-tts-btn chat-action-text" type="button" @click="chat.retryLastTurn()"><TsIcon name="refresh" :size="15" /><span>重试</span></button>
@@ -662,7 +662,7 @@ function endChatStatusLabel() {
         <input ref="imageInputRef" id="chatImageInput" type="file" accept="image/*" hidden @change="chat.attachImage($event.target.files?.[0]); $event.target.value = ''">
         <input ref="documentInputRef" id="chatFileInput" aria-label="添加对话文件" type="file" :accept="deepseekInput?.supported() ? '*/*' : DOCUMENT_ACCEPT" hidden @change="attachDocument($event.target.files?.[0]); $event.target.value = ''">
         <textarea id="chatInput" ref="composerRef" v-model="chat.input.value" rows="1" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="recordingVoice ? '正在听，请说话…' : englishRoom ? 'Message, Enter to send' : `和${characterName}说点什么…`" @keydown="handleComposerKeydown"></textarea>
-        <details ref="attachMenuRef" class="chat-attach-menu" :open="!mobile" @toggle="attachmentsOpen = $event.target.open">
+        <details v-menu-details ref="attachMenuRef" class="chat-attach-menu" :open="!mobile" @toggle="attachmentsOpen = $event.target.open">
           <summary aria-label="添加图片或文件"><TsIcon name="plus" :size="22" :stroke-width="2" /></summary>
           <div class="chat-attach-options">
             <button data-ui-part="tool" id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy || chat.imageUploadState?.active" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="pickImage">

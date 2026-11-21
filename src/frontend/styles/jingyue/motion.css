@@ -68,30 +68,6 @@
   --liquid-finish: radial-gradient(ellipse 62% 46% at var(--lens-x, 28%) 0%, var(--control-pearl), transparent);
   --liquid-depth: inset 0 1px 0 var(--control-pearl), inset 0 -2px 0 var(--accent-line);
 }
-/* Filled actions have two cut edges. The visible focus ring sits inside the cut. */
-:root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
-  clip-path: var(--ticket-shape);
-  border-radius: 0;
-}
-:root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]):focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -5px;
-}
-:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):not([data-ui-part]) {
-  border-radius: 0;
-  border-color: transparent;
-  border-bottom: 2px solid transparent;
-  background-image: none;
-  box-shadow: none;
-}
-:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is([aria-pressed="true"], [aria-selected="true"], [aria-current="page"], .active, .is-active, .selected) {
-  border-bottom-color: var(--accent-ink);
-  --liquid-finish: none;
-  --liquid-depth: none;
-}
-@media (forced-colors: active) {
-  :root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]) { clip-path: none; }
-}
 /* Tool, disclosure and overlay buttons have feature-owned layout, colours and sizing. */
 :root :is(.icon-button, .site-tool-button, .header-search, .nav-chatroom-label, .site-preference-button,
   .mobile-dock > a, .mobile-dock > button, .dock-indicator, .segmented-indicator, .ts-segmented-indicator,

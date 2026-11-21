@@ -1,4 +1,5 @@
 <script setup>
+import { dismissMenu } from '../runtime/menuMotion';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -379,9 +380,13 @@ function openSheet(name) {
     focusMode.value = false;
     return;
   }
-  sheet.value = sheet.value === name ? '' : name;
+  if (sheet.value === name) dismissSheet();
+  else sheet.value = name;
 }
 
+function dismissSheet() {
+  dismissMenu(document.getElementById('arena-controls-panel'), closeSheet);
+}
 function closeSheet() {
   sheet.value = '';
   sheetDragOffset.value = 0;
@@ -446,7 +451,7 @@ function endSheetDrag(event) {
   const offset = sheetDragOffset.value;
   sheetDrag = null;
   sheetDragOffset.value = 0;
-  if (offset > 72) closeSheet();
+  if (offset > 72) dismissSheet();
 }
 
 function toggleGalleryPanel() {
@@ -1790,7 +1795,7 @@ function handleArenaKeydown(event) {
   if (anyDialogOpen()) return;
   if (event.key === 'Escape') {
     if (previewArtwork.value) { closeArtworkPreview(); return; }
-    if (sheet.value) { closeSheet(); return; }
+    if (sheet.value) { dismissSheet(); return; }
     if (focusMode.value) { toggleFocus(); return; }
     return;
   }
@@ -2037,13 +2042,13 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
         </div>
 
         <button data-ui-part="canvas" v-if="panelsOpen && !focusMode && !isMobileLayout" class="ps-panels-scrim" type="button" tabindex="-1" :aria-label="copy.hidePanels" @click="panelsOpen = false"></button>
-        <aside id="arena-controls-panel" class="ps-panels arena-controls" :data-sheet="sheetPanel" :style="sheetStyle" :aria-label="copy.panels" :inert="!panelsVisible">
+        <aside v-floating-menu="panelsVisible" id="arena-controls-panel" class="ps-panels arena-controls" :data-sheet="sheetPanel" :style="sheetStyle" :aria-label="copy.panels" :inert="!panelsVisible">
           <div class="ps-sheet-head" @pointerdown="startSheetDrag" @pointermove="moveSheetDrag" @pointerup="endSheetDrag" @pointercancel="endSheetDrag">
             <span class="ps-sheet-grip" aria-hidden="true"></span>
             <div class="ps-sheet-tabs" role="tablist" :aria-label="copy.panels">
               <button data-ui-part="canvas" v-for="tab in sheetTabs" :key="tab.key" type="button" role="tab" :aria-selected="sheet === tab.key" @click="sheet = tab.key"><TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
             </div>
-            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="closeSheet"><TsIcon name="x" :size="18" /></button>
+            <button data-ui-part="canvas" class="ps-icon-btn" type="button" :aria-label="copy.close" @click="dismissSheet"><TsIcon name="x" :size="18" /></button>
           </div>
           <div class="ps-panels-scroll" data-lenis-prevent>
             <section id="ps-panel-color" class="ps-panel" data-panel="color" :class="{ 'is-collapsed': collapsedPanels.color }">
