@@ -236,12 +236,16 @@ test('double text size at a fixed viewport on editorial pages', async ({ page })
   }
 });
 
-test('native activation draws one non-interactive dot wave and preserves the action', async ({ page }, info) => {
+test('liquid controls follow a pointer and emit one set of rings per native activation', async ({ page }, info) => {
   test.skip(process.env.DESIGN_PREVIEW !== '1', 'Requires the local component catalogue.');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/design-system');
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   const panel = page.locator('.samples-page');
+  const shapes = await panel.locator('.ui-panel [data-ui]').evaluateAll(nodes =>
+    nodes.map(el => [getComputedStyle(el).borderTopLeftRadius, getComputedStyle(el).borderTopRightRadius].join('/')));
+  expect(new Set(shapes).size).toBe(1);
+  expect(shapes[0].split('/')[0]).not.toBe(shapes[0].split('/')[1]);
   const target = panel.locator('.ui-panel button[data-ui="secondary"]:enabled').first();
   await target.scrollIntoViewIfNeeded();
   // Record the transient paint in the same frame, independent of runner speed.
@@ -249,13 +253,13 @@ test('native activation draws one non-interactive dot wave and preserves the act
     window.controlPaint = [];
     new MutationObserver(records => {
       for (const rec of records) for (const node of rec.addedNodes) {
-        if (!(node instanceof HTMLElement) || !node.matches('.ui-dot-echo') || !node.childElementCount) continue;
-        const cols = [...node.children];
+        if (!(node instanceof HTMLElement) || !node.matches('.ui-liquid-wave') || !node.childElementCount) continue;
+        const rings = [...node.children];
         window.controlPaint.push({
-          trace: node.matches('.ui-dot-trace'), columns: cols.length, pointer: getComputedStyle(node).pointerEvents,
+          rings: rings.length, pointer: getComputedStyle(node).pointerEvents,
           inert: node.inert, hidden: node.getAttribute('aria-hidden'), width: node.getBoundingClientRect().width,
-          x: parseFloat(cols[4].style.left), animation: getComputedStyle(cols[4]).animationName,
-          delays: cols.map(el => parseFloat(el.style.animationDelay))
+          x: parseFloat(node.style.getPropertyValue('--wave-x')), animation: getComputedStyle(rings[0]).animationName,
+          delays: rings.map(el => parseFloat(getComputedStyle(el).animationDelay))
         });
       }
     }).observe(document.body, {childList:true, subtree:true});
@@ -265,23 +269,27 @@ test('native activation draws one non-interactive dot wave and preserves the act
   if (info.project.use.isMobile) {
     await target.tap({ position: {x:12, y:Math.floor(box.height/2)} });
   } else {
-    await target.hover();
-    await expect.poll(() => page.evaluate(() => window.controlPaint.filter(p => p.trace).length)).toBeGreaterThan(0);
+    const highlight = () => target.evaluate(el => parseFloat(el.style.getPropertyValue('--lens-x')));
+    await target.hover({position:{x:10,y:Math.floor(box.height / 2)}});
+    await expect.poll(highlight).toBeLessThan(35);
+    await target.hover({position:{x:Math.floor(box.width - 10),y:Math.floor(box.height / 2)}});
+    await expect.poll(highlight).toBeGreaterThan(65);
     await target.click({ position: {x:12, y:Math.floor(box.height/2)} });
   }
   await expect(panel.locator('output')).toHaveText(await target.innerText());
-  const waves = () => page.evaluate(() => window.controlPaint.filter(p => !p.trace));
+  const waves = () => page.evaluate(() => window.controlPaint);
   const [wave] = await waves();
-  expect(wave).toMatchObject({columns:9,inert:true,hidden:'true',pointer:'none',animation:'ui-echo-column'});
+  expect(wave).toMatchObject({rings:3,inert:true,hidden:'true',pointer:'none',animation:'ui-liquid-ring'});
   expect(Math.abs(wave.x - 12)).toBeLessThan(3);
-  expect(wave.delays[4]).toBeLessThan(wave.delays[0]);
+  expect(wave.delays[0]).toBeLessThan(wave.delays[1]);
+  expect(wave.delays[1]).toBeLessThan(wave.delays[2]);
   expect(await waves()).toHaveLength(1);
-  await expect(page.locator('.ui-dot-echo')).toHaveCount(0);
+  await expect(page.locator('.ui-liquid-wave')).toHaveCount(0);
   await target.press('Enter');
   const events = await waves();
   expect(events).toHaveLength(2);
   expect(Math.abs(events[1].x - events[1].width / 2)).toBeLessThan(1);
-  await expect(page.locator('.ui-dot-echo')).toHaveCount(0);
+  await expect(page.locator('.ui-liquid-wave')).toHaveCount(0);
   const disabled = panel.locator('.ui-panel button:disabled').first();
   await disabled.scrollIntoViewIfNeeded();
   await disabled.click({force:true});
@@ -311,5 +319,69 @@ test('season display follows the real preference and the payment control opens t
   await link.click();
   await expect(page).toHaveURL(/\/payments(?:[?#]|$)/);
   await expect(page.locator('main h1').first()).toBeVisible();
-  await expect(page.locator('.ui-dot-echo')).toHaveCount(0);
+  await expect(page.locator('.ui-liquid-wave')).toHaveCount(0);
+});
+
+test('text stays legible on the painted liquid surfaces in all eight palettes', async ({ page }) => {
+  test.skip(process.env.DESIGN_PREVIEW !== '1', 'Uses the local component catalogue.');
+  test.setTimeout(90000);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.setViewportSize({width:1180,height:850});
+  await page.goto('/design-system');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  const sample = page.locator('.samples-page');
+  const grid = sample.locator('.ui-grid');
+  const seasons = sample.locator('.samples-palette [data-ui="choice"]');
+  const mode = sample.locator('.samples-palette [aria-pressed]').last();
+  for (const [index,season] of ['spring','summer','autumn','winter'].entries()) {
+    await seasons.nth(index).click();
+    await expect(page.locator('html')).toHaveAttribute('data-season',season);
+    for (const theme of ['light','dark']) {
+      if (await page.locator('html').getAttribute('data-theme') !== theme) await mode.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
+      await grid.scrollIntoViewIfNeeded();
+      // Sample the composited gradient behind each real text rectangle, with its glyphs temporarily transparent.
+      const inkless = await grid.screenshot({ scale:'css', style:
+        '.samples-page .ui-grid :is([data-ui],[data-ui] *) { -webkit-text-fill-color: transparent !important; }' });
+      const ratios = await grid.evaluate(async (root, png) => {
+        const image = new Image();
+        image.src = 'data:image/png;base64,' + png;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(image,0,0);
+        const pixels = ctx.getImageData(0,0,image.width,image.height).data;
+        const origin = root.getBoundingClientRect();
+        function luminance(rgb) {
+          const linear = Array.from(rgb, v => v / 255).map(v => v <= .04045 ? v/12.92 : ((v+.055)/1.055)**2.4);
+          return .2126*linear[0] + .7152*linear[1] + .0722*linear[2];
+        }
+        const results = [];
+        for (const el of root.querySelectorAll('[data-ui]:not(:disabled)')) {
+          ctx.fillStyle = getComputedStyle(el).color;
+          ctx.fillRect(0,0,1,1);
+          const ink = luminance(ctx.getImageData(0,0,1,1).data.slice(0,3));
+          const walker = document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            if (!walker.currentNode.textContent.trim()) continue;
+            const range = document.createRange();
+            range.selectNodeContents(walker.currentNode);
+            for (const r of range.getClientRects()) {
+              for (let y=Math.ceil(r.top-origin.top)+1; y<r.bottom-origin.top-1; y+=2) {
+                for (let x=Math.ceil(r.left-origin.left)+1; x<r.right-origin.left-1; x+=2) {
+                  const offset=(y*image.width+x)*4;
+                  const bg=luminance(pixels.subarray(offset,offset+3));
+                  results.push((Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05));
+                }
+              }
+            }
+          }
+        }
+        return results.length ? Math.min(...results) : 0;
+      }, inkless.toString('base64'));
+      expect(ratios, season+' '+theme+' rendered label contrast').toBeGreaterThanOrEqual(4.5);
+    }
+  }
 });

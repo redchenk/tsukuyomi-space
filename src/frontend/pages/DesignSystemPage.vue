@@ -4,6 +4,9 @@ import { interfaceLanguage } from '../i18n/runtime';
 import TsButton from '../components/TsButton.vue';
 import TsIcon from '../components/TsIcon.vue';
 
+import ThemeLens from '../components/ThemeLens.vue';
+import TsPageHeader from '../components/TsPageHeader.vue';
+import { siteArt } from '../data/siteArt';
 import SeasonDotPlate from '../components/SeasonDotPlate.vue';
 import TsButtonLink from '../components/TsButtonLink.vue';
 import TsFilterChip from '../components/TsFilterChip.vue';
@@ -43,15 +46,12 @@ function selectLanguage(event) {
 <template>
   <main data-ui-layout="content" class="ui-page ui-stack samples-page">
     <section class="samples-palette">
-      <div class="samples-intro">
-        <header class="samples-heading">
-          <h1 class="ui-page-title">月读设计系统</h1>
-          <p>切换四季，试试每一次点按的手感。</p>
-          <div class="ui-actions">
-            <TsButtonLink to="/gallery" variant="primary">预览图库<TsIcon name="arrowRight" :size="16" /></TsButtonLink>
-            <TsButtonLink to="/plaza" variant="ghost">预览广场</TsButtonLink>
-          </div>
-        </header>
+      <TsPageHeader class="samples-hero" title="月读设计系统" description="切换四季，试试每一次点按的手感。" :art="siteArt.galleryCover">
+        <template #actions>
+          <TsButtonLink to="/gallery" variant="primary" size="lg">预览图库<TsIcon name="arrowRight" :size="16" /></TsButtonLink>
+          <TsButtonLink to="/plaza" variant="secondary" size="lg">预览广场</TsButtonLink>
+        </template>
+      </TsPageHeader>
         <div class="samples-instrument">
           <div class="samples-plate">
             <div class="samples-plate-caption">
@@ -65,10 +65,9 @@ function selectLanguage(event) {
           </div>
           <div class="samples-season-actions ui-actions" role="group" aria-label="季节">
             <TsFilterChip v-for="(label, key) in seasons" :key="key" size="sm" :selected="selection.artwork === key" @click="setPreference({ mode: key })">{{ $ui(label) }}</TsFilterChip>
-            <TsToggle :pressed="theme === 'dark'" aria-label="夜间模式" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="17" />夜间模式</TsToggle>
+            <TsToggle :pressed="theme === 'dark'" aria-label="夜间模式" @click="emit('toggle-theme', $event)"><ThemeLens :dark="theme === 'dark'" />夜间模式</TsToggle>
           </div>
         </div>
-      </div>
       <ul class="samples-swatches"><li v-for="(name, token) in swatches" :key="token">
         <span aria-hidden="true" :style="{ backgroundColor: 'var(--' + token + ')' }"></span>{{ $ui(name) }}
       </li></ul>
@@ -105,22 +104,21 @@ function selectLanguage(event) {
 
 <style scoped>
 .samples-page { max-width: 72rem; gap: var(--ui-section); }
-.samples-intro { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); align-items: center; gap: var(--ui-section); padding-bottom: var(--ui-section); }
-.samples-heading { display: grid; align-content: center; gap: var(--ui-stack); }
-.samples-heading .ui-page-title { font: 500 clamp(2.25rem, 5vw, 4.4rem)/1.1 var(--display); letter-spacing: -.04em; }
-.samples-heading p { color: var(--muted); margin: 0; }
-.samples-instrument { min-width: 0; }
+.samples-hero { min-height: clamp(14rem, 21vw, 18rem); }
+.samples-instrument { display: flex; flex-wrap: wrap; gap: var(--ui-stack); align-items: center; justify-content: space-between; padding-block: var(--ui-stack); }
 .samples-plate {
-  --plate-accent: color-mix(in srgb, var(--accent) 46%, white);
-  display: grid; gap: var(--ui-stack); padding: clamp(1rem, 2.6vw, 2rem); border-radius: var(--r-media);
-  background: var(--plate-ink); color: var(--plate-paper);
+  --plate-accent: var(--accent-ink);
+  flex: 1 1 23rem; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-stack);
+  min-width: 0; padding-block: var(--ui-gap); color: var(--ink);
 }
-.samples-plate-caption, .samples-plate-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-gap); }
+.samples-plate .season-dot-plate { width: clamp(7.5rem, 14vw, 11rem); }
+.samples-plate-caption, .samples-plate-controls { display: grid; gap: .25rem; }
+.samples-plate-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ui-gap); }
 .samples-plate-caption h2, .samples-plate-controls > span { font: 500 var(--ui-control-type)/1.5 var(--sans); }
-.samples-plate-caption > span { font: var(--ui-control-type)/1.5 ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--plate-accent); }
-.samples-season-actions { margin-top: var(--ui-gap); }
-@media (max-width: 760px) {
-  .samples-intro { grid-template-columns: minmax(0, 1fr); gap: var(--ui-stack); }
+.samples-plate-caption > span { font: var(--ui-control-type)/1.5 ui-monospace, monospace; color: var(--muted); }
+@media (max-width: 640px) {
+  .samples-hero { min-height: auto; }
+  .samples-plate { gap: var(--ui-gap); justify-content: space-between; }
 }
 .samples-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-stack); margin-bottom: 1.25rem; }
 .samples-section-head h2, .ui-panel h3 { font: 500 clamp(1.25rem, 1rem + .8vw, 1.75rem)/1.4 var(--serif); }
