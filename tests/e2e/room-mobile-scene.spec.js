@@ -4,6 +4,18 @@ test.beforeEach(async ({ page }) => configureRoomFixture(page));
 const fs = require('node:fs');
 const path = require('node:path');
 
+test('the narrow room keeps scene selection and payment navigation reachable', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await page.goto('/room');
+    await waitForRoom(page);
+    const scene = page.locator('.room-scene-trigger');
+    await scene.click();
+    await expect(scene).toHaveAttribute('aria-expanded', 'true');
+    await scene.click();
+    await page.locator('.room-site-links a[href="/payments"]').click();
+    await expect(page).toHaveURL(/\/payments$/);
+});
+
 for (const viewport of [{ width: 390, height: 844 }, { width: 390, height: 667 }, { width: 844, height: 390 }]) {
     test(`scene menu stays above chat and reaches settings at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
         await page.setViewportSize(viewport);
