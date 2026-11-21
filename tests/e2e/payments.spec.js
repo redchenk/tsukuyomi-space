@@ -46,14 +46,14 @@ for (const width of [1280, 390]) {
     await page.route('https://openapi-sandbox.dl.alipaydev.com/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>Cashier test destination</h1>' }));
     await authenticate(page);
     await page.goto(`/payments?order=${id}&trade_status=TRADE_SUCCESS&total_amount=1.23`);
-    await expect(page.locator('.payment-receipt h2')).toHaveText('待支付');
-    await expect(page.getByRole('heading', { name: '我的订单', exact: true })).toBeVisible();
+    await expect(page.locator('.payment-receipt h2')).toHaveText(/^(待支付|Awaiting payment)$/);
+    await expect(page.getByRole('heading', { name: /^(我的订单|My orders)$/ })).toBeVisible();
     await expect(page.locator('#boot-splash')).toHaveCount(0);
     expect(await page.locator('.payments-heading h1').evaluate(node => node.getBoundingClientRect().top)).toBeGreaterThan(85);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
     fs.mkdirSync(output, { recursive: true });
     await page.screenshot({ path: path.join(output, `orders-${width}.png`), fullPage: true });
-    await page.getByRole('button', { name: '使用支付宝支付', exact: true }).click();
+    await page.getByRole('button', { name: /^(使用支付宝支付|Pay with Alipay)$/ }).click();
     await expect(page).toHaveURL(/openapi-sandbox\.dl\.alipaydev\.com\/gateway\.do/);
     expect(created.productId).toBe('service');
     expect(Object.keys(created).sort()).toEqual(['productId', 'requestKey']);
