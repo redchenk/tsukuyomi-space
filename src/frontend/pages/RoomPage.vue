@@ -1,6 +1,7 @@
 <script setup>
 import { takeRoomEntryDraft } from "../services/roomEntryDraft.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import PaymentCenterLink from '../components/PaymentCenterLink.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, parseResponse } from '../api/client';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
@@ -211,7 +212,10 @@ watch(() => props.shareId, loadSharedConversation);
     :style="roomStyle"
     :aria-busy="room.loading.active"
   >
-    <a class="room-home-link" :aria-label="lang === 'en' ? 'Back to home' : '返回月读'" href="/hub" @click.prevent="emit('go', '/hub')"><TsIcon name="arrowLeft" :size="18" /><span>{{ lang === 'en' ? 'Back to the moon' : '返回月读' }}</span></a>
+    <div class="room-site-links">
+      <a class="room-home-link" :aria-label="lang === 'en' ? 'Back to home' : '返回月读'" href="/hub" @click.prevent="emit('go', '/hub')"><TsIcon name="arrowLeft" :size="18" /><span>{{ lang === 'en' ? 'Back to the moon' : '返回月读' }}</span></a>
+      <PaymentCenterLink v-if="!shareId" :lang="lang" />
+    </div>
     <div class="room-backdrop" aria-hidden="true"></div>
 
     <header class="room-mobile-header">

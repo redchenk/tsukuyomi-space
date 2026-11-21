@@ -18,6 +18,18 @@ async function authenticate(page, administrator = false) {
   }, result.data);
 }
 
+test('visitors can find payments in the header and return after sign-in', async ({ page }) => {
+  await page.goto('/hub');
+  const entry = page.locator('.site-header a[href="/payments"]');
+  await expect(entry).toBeVisible();
+  await entry.click();
+  await expect(page).toHaveURL(/\/payments$/);
+  const signIn = page.locator('.payments-notice a[href="/login?redirect=/payments"]');
+  await expect(signIn).toBeVisible();
+  await signIn.click();
+  await expect(page).toHaveURL(/\/login\?redirect=\/payments$/);
+});
+
 for (const width of [1280, 390]) {
   test(`payment return remains pending until verified and checkout uses server order at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

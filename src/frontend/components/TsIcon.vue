@@ -8,6 +8,7 @@ const props = defineProps({
 });
 
 const iconPaths = {
+  creditCard: [['rect', { x: '2', y: '4', width: '20', height: '16', rx: '3' }], ['path', { d: 'M2 10h20M6 15h3' }]],
   arrowUpRight: [['path', { d: 'M7 17 17 7M7 7h10v10' }]],
   arrowDown: [['path', { d: 'M12 4v16M5 13l7 7 7-7' }]],
   logOut: [['path', { d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9' }]],
