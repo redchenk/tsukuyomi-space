@@ -1,0 +1,114 @@
+/* A modal launched from the header unfolds at that edge on phones as well as desktops.
+   Bottom navigation and contextual sheets retain their own resting placement. */
+:root :is(dialog.site-search-dialog, dialog.site-navigation-dialog, dialog.site-music-drawer)[data-menu-origin="header"] {
+  --menu-width: min(45rem, calc(100vw - 20px));
+  position: fixed;
+  inset: max(var(--menu-source-top), var(--ts-visual-offset-top, 0px)) auto auto clamp(10px, calc(var(--menu-source-x) - var(--menu-width) / 2), calc(100vw - var(--menu-width) - 10px));
+  width: var(--menu-width);
+  max-width: none;
+  max-height: min(calc(100dvh - var(--menu-source-top) - 10px), calc(var(--ts-visual-height,100dvh) - var(--menu-source-top) - 10px));
+  margin: 0;
+  border-radius: 16px;
+}
+:root dialog.account-shelf[data-menu-origin="header"] { --menu-width: min(25.5rem, calc(100vw - 20px)); }
+:root dialog.site-music-drawer[data-menu-origin="header"] { --menu-width: min(29rem, calc(100vw - 20px)); }
+@media (min-width: 1081px) {
+  :root dialog[data-menu-origin="header"] > .sheet-handle { display: none; }
+}
+:root dialog[data-menu-surface][open] {
+  animation: none;
+  color: var(--ink);
+  background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid var(--shelf-rule);
+  box-shadow: 0 18px 60px -22px color-mix(in srgb, var(--ink) 46%, transparent), inset 0 1px var(--control-pearl);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+:root dialog[data-menu-surface]::backdrop {
+  background: rgb(13 17 29 / 22%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root dialog[data-menu-phase="opening"]::backdrop { animation: desk-menu-veil 450ms ease-out both; }
+  :root dialog[data-menu-phase="closing"]::backdrop { animation: desk-menu-veil 450ms ease-in reverse both; }
+  @keyframes desk-menu-veil {
+    from { background: transparent; -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); }
+    to { background: rgb(13 17 29 / 22%); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  }
+}
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  :root dialog[data-menu-surface][open] { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root dialog[data-menu-surface]::backdrop { animation: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+:root [data-menu-disclosure] > summary,
+:root :is(button[data-ui-part="row"], a.menu-link, .shelf-cover, .site-preference-button, .header-search, .sheet-search) {
+  border-radius: var(--r-button);
+}
+
+:root .site-navigation-dialog .explore-groups > section {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--shelf-rule);
+  border-radius: var(--r-control);
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
+}
+:root .site-navigation-dialog .explore-groups .menu-link { padding: 9px 4px; gap: 9px; }
+:root .gallery-thumb,
+:root body .pixel-workspace .pw-workbench button[data-ui-part="canvas"]:not(.pw-properties-scrim) {
+  border-radius: var(--r-button);
+}
+:root :is(.ps-panels, .pw-properties)[data-menu-surface]:not([inert]) { transition: none; }
+
+.menu-origin-mark {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  pointer-events: none;
+  white-space: nowrap;
+  color: var(--ink);
+  font: 500 .85rem/1 var(--sans);
+}
+.menu-origin-mark :is(img,svg) { width: 18px; height: 18px; }
+
+/* Use the browser's anchored form picker where its popup is styleable. */
+@supports (appearance: base-select) and selector(select::picker(select)) {
+  :root select:not([multiple], [size]), :root select[size="1"]:not([multiple]),
+  :root select:not([multiple], [size])::picker(select), :root select[size="1"]:not([multiple])::picker(select) {
+    appearance: base-select;
+  }
+  :root :is(.gallery-sort-control,.site-season-select,.music-select-wrap) select::picker-icon { display: none; }
+  :root select::picker(select) {
+    padding: 4px;
+    margin-block: 2px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--shelf-rule);
+    border-radius: var(--r-control);
+    box-shadow: var(--shelf-shadow);
+  }
+  :root select:not([multiple], [size]) option, :root select[size="1"]:not([multiple]) option {
+    min-block-size: 2.5em;
+    padding: .42em .75em;
+    border-radius: var(--r-button);
+    overflow-wrap: anywhere;
+  }
+  :root select option:checked { font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+    :root select::picker(select) {
+      clip-path: inset(0 8% 90% round var(--r-control));
+      opacity: 0;
+      transition: clip-path 300ms cubic-bezier(.24,.78,.2,1), opacity 240ms,
+        display 300ms allow-discrete, overlay 300ms allow-discrete;
+    }
+    :root select:open::picker(select) { clip-path: inset(0 round var(--r-control)); opacity: 1; }
+    :root select:open option { animation: menu-option-in 210ms ease-out 90ms backwards; }
+    @starting-style {
+      :root select:open::picker(select) { clip-path: inset(0 8% 90% round var(--r-control)); opacity: 0; }
+    }
+    @keyframes menu-option-in { from { opacity: 0; } to { opacity: 1; } }
+  }
+}

@@ -1,3 +1,5 @@
+import { trackMenuTriggers, menuDetails, floatingMenu } from './runtime/menuMotion';
+import MenuTransition from './components/MenuTransition.vue';
 import { fieldValidation } from './directives/fieldValidation';
 import { segmented } from './directives/segmented';
 import { createApp } from 'vue';
@@ -28,6 +30,10 @@ document.addEventListener('visibilitychange', syncWindowAppearance, { passive: t
 syncWindowAppearance();
 
 const app = createApp(App);
+app.component('MenuTransition', MenuTransition);
+app.directive('menu-details', menuDetails);
+app.directive('floating-menu', floatingMenu);
+const stopMenuTracking = trackMenuTriggers();
 app.directive('segmented', segmented);
 app.directive('field-validation', fieldValidation);
 app.config.globalProperties.$ui = uiText;
@@ -47,6 +53,7 @@ app.use(router);
 const controlMotion = installControlMotion();
 const removeMotionHook = router.afterEach(controlMotion.clear);
 if (import.meta.hot) import.meta.hot.dispose(() => {
+  stopMenuTracking();
   removeMotionHook();
   controlMotion.dispose();
 });

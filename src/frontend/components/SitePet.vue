@@ -365,10 +365,11 @@ onBeforeUnmount(() => {
   </div>
 
   <Teleport to="body">
-    <Transition name="site-guide">
+    <MenuTransition>
       <div v-if="dialogOpen" class="site-guide-backdrop" @mousedown.self="closeGuide">
         <section
           ref="dialogElement"
+          data-menu-body
           class="site-guide-dialog"
           role="dialog"
           aria-modal="true"
@@ -466,7 +467,7 @@ onBeforeUnmount(() => {
           </div>
         </section>
       </div>
-    </Transition>
+    </MenuTransition>
   </Teleport>
 </template>
 

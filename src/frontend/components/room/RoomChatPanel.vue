@@ -366,7 +366,7 @@ function endChatStatusLabel() {
           </template>
           <div class="chat-message-footer">
             <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time" title="UTC+8">{{ messageTime(message.createdAt) }}</time>
-            <details v-if="message.role !== 'system' && !message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile">
+            <details v-menu-details v-if="message.role !== 'system' && !message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile">
               <summary :aria-label="message.role === 'user' ? '这条消息的操作' : '这条回复的操作'"><TsIcon name="ellipsis" :size="18" /></summary>
             <div v-if="message.role === 'user' && !message.pending && editingMessageId !== message.id" class="chat-message-actions">
               <span v-if="message.failed" class="chat-message-failed">未送达</span>

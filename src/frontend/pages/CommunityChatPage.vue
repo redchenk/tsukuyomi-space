@@ -1,4 +1,5 @@
 <script setup>
+import { dismissMenu } from '../runtime/menuMotion';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
@@ -34,11 +35,12 @@ watch([draft, input], () => {
   input.value.style.height = input.value.scrollHeight + 'px';
 }, { flush: 'post' });
 
+function closeChannelMenu() { dismissMenu(drawer.value, () => { sheet.value = ''; }); }
 function closeOnBackdrop(event) {
   if (event.target !== drawer.value) return;
   const bounds = drawer.value.getBoundingClientRect();
   if (event.clientX < bounds.left || event.clientX > bounds.right ||
-      event.clientY < bounds.top || event.clientY > bounds.bottom) sheet.value = '';
+      event.clientY < bounds.top || event.clientY > bounds.bottom) closeChannelMenu();
 }
 
 const drafts = new Map();
@@ -181,9 +183,9 @@ async function command(m, name) {
 
 <template>
   <main data-ui-layout="workspace" class="moon-chat">
-    <dialog ref="drawer" class="mc-drawer" :class="{ 'mc-drawer-right': membersOpen }"
+    <dialog data-menu-surface ref="drawer" class="mc-drawer" :class="{ 'mc-drawer-right': membersOpen }"
       :aria-label="membersOpen ? copy.online : copy.channels"
-      @cancel.prevent="sheet=''" @click="closeOnBackdrop"></dialog>
+      @cancel.prevent="closeChannelMenu" @click="closeOnBackdrop"></dialog>
 
     <Teleport v-if="!compact || (drawer && sheet === 'channels')" :to="drawer" :disabled="!compact">
       <aside class="mc-sidebar">
@@ -191,7 +193,7 @@ async function command(m, name) {
           <img class="mc-server-art" :src="plazaArt" alt="">
           <a class="mc-hub" href="/hub" :title="copy.hub" :aria-label="copy.hub"><img :src="brandLogo" alt="" width="34" height="34"></a>
           <h1>{{ copy.title }}</h1>
-          <button data-ui="icon" v-if="compact" type="button" class="mc-icon" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x"/></button>
+          <button data-ui="icon" v-if="compact" type="button" class="mc-icon" data-modal-close :aria-label="copy.close" @click="closeChannelMenu"><TsIcon name="x"/></button>
         </header>
         <nav class="mc-channels" :aria-label="copy.channels">
           <h2 class="mc-label">{{ copy.channels }}</h2>
@@ -267,10 +269,10 @@ async function command(m, name) {
       </div>
     </section>
 
-    <Teleport v-if="membersOpen && (!compact || drawer)" :to="drawer" :disabled="!compact">
-      <aside class="mc-roster">
+    <Teleport v-if="!compact || drawer" :to="drawer" :disabled="!compact">
+      <MenuTransition :enabled="!compact"><aside v-if="membersOpen" class="mc-roster">
         <header><h2>{{ copy.online }} <small>{{ members.length }}</small></h2>
-          <button data-ui="icon" class="mc-icon" type="button" data-modal-close :aria-label="copy.close" @click="sheet=''"><TsIcon name="x" :size="18"/></button></header>
+          <button data-ui="icon" class="mc-icon" type="button" data-modal-close :aria-label="copy.close" @click="closeChannelMenu"><TsIcon name="x" :size="18"/></button></header>
         <div class="mc-roster-scroll">
           <button data-ui-part="tool" type="button" class="mc-assistant" :title="copy.ask" @click="callYachiyo">
             <img :src="portrait" alt="" width="36" height="36"><span><strong>{{ copy.yachiyo }}</strong><small>{{ copy.ai }} · {{ copy.free }}</small></span><TsIcon name="sparkles" :size="16"/>
@@ -279,7 +281,7 @@ async function command(m, name) {
           <p v-if="!members.length">{{ copy.noMembers }}</p>
           <div v-for="member in members" :key="member.id" class="mc-member"><i></i>{{ member.name }}</div>
         </div>
-      </aside>
+      </aside></MenuTransition>
     </Teleport>
     <MobileSheet :open="sheet==='manage' || sheet==='actions'" :title="sheet==='manage'?copy.manage:copy.actions" :close-label="copy.close" @close="sheet=''">
       <div class="mc-sheet">

@@ -1,14 +1,16 @@
 <script setup>
+import { dismissMenu } from '../../runtime/menuMotion';
 import { useModalDialog } from '../../composables/useModalDialog';
 import TsIcon from '../TsIcon.vue';
 const props = defineProps({ open: Boolean });
 const emit = defineEmits(['close', 'configure', 'explore']);
 const modal = useModalDialog(() => props.open);
+function dismiss() { dismissMenu(modal.value, () => emit('close')); }
 </script>
 
 <template>
   <Teleport to="body">
-    <dialog v-if="open" ref="modal" class="room-setup-dialog" aria-labelledby="room-setup-title" aria-describedby="room-setup-description" @cancel.prevent="emit('close')" @click.self="emit('close')">
+    <dialog data-menu-surface v-if="open" ref="modal" class="room-setup-dialog" aria-labelledby="room-setup-title" aria-describedby="room-setup-description" @cancel.prevent="dismiss" @click.self="dismiss">
       <div class="room-setup-content">
         <TsIcon name="message" :size="32" />
         <h2 id="room-setup-title">第一次来，先和八千代聊起来</h2>
@@ -17,7 +19,7 @@ const modal = useModalDialog(() => props.open);
         <div class="room-setup-actions">
           <button type="button" class="primary-btn" @click="emit('configure')">开始分步配置 <TsIcon name="arrowRight" :size="16" /></button>
           <button type="button" class="ghost-btn" @click="emit('explore')">先看看能做什么</button>
-          <button type="button" class="ghost-btn" @click="emit('close')">稍后设置</button>
+          <button type="button" class="ghost-btn" @click="dismiss">稍后设置</button>
         </div>
       </div>
     </dialog>

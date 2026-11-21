@@ -568,7 +568,7 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
               <TsIcon v-if="!filter.value" name="image" :size="15" />
               {{ filter.label }}
             </TsFilterChip>
-            <details class="gallery-more-tags">
+            <details v-menu-details class="gallery-more-tags">
               <summary>
                 {{ t('更多标签', 'More tags') }}
                 <TsIcon name="chevronDown" :size="13" />

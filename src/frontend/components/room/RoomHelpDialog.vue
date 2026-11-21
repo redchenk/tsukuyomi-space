@@ -1,4 +1,5 @@
 <script setup>
+import { dismissMenu } from '../../runtime/menuMotion';
 import { useModalDialog } from '../../composables/useModalDialog';
 import TsIcon from '../TsIcon.vue';
 const props = defineProps({ open: Boolean, configured: Boolean, completed: Boolean });
@@ -12,12 +13,13 @@ const features = [
   { path: '/gallery', title: '公开图库', icon: 'image', description: '浏览大家分享的图片，找到喜欢的作品。' },
   { path: '/growth', title: '月契成长', icon: 'heart', description: '查看签到、任务与等级；这里的等级与日记好感度分开记录。' }
 ];
+function dismiss() { dismissMenu(modal.value, () => emit('close')); }
 </script>
 
 <template>
   <Teleport to="body">
-    <dialog v-if="open" ref="modal" class="room-help-dialog" aria-labelledby="room-help-title" @cancel.prevent="emit('close')" @click.self="emit('close')">
-      <header><div><small>月读空间 · 随时可以回来看看</small><h2 id="room-help-title">开始使用与发现功能</h2></div><button type="button" class="ghost-btn" aria-label="关闭使用指南" @click="emit('close')"><TsIcon name="x" :size="20" /></button></header>
+    <dialog data-menu-surface v-if="open" ref="modal" class="room-help-dialog" aria-labelledby="room-help-title" @cancel.prevent="dismiss" @click.self="dismiss">
+      <header><div><small>月读空间 · 随时可以回来看看</small><h2 id="room-help-title">开始使用与发现功能</h2></div><button type="button" class="ghost-btn" aria-label="关闭使用指南" @click="dismiss"><TsIcon name="x" :size="20" /></button></header>
       <section aria-labelledby="room-first-chat-title">
         <h3 id="room-first-chat-title">先和八千代说句话</h3>
         <ol>

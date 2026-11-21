@@ -1,4 +1,5 @@
 <script setup>
+import { dismissMenu } from '../runtime/menuMotion';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -435,8 +436,12 @@ function go(path) {
   emit('go', path);
 }
 
+function dismissControls() {
+  dismissMenu(document.getElementById('arena-controls-panel'), () => { controlsOpen.value = false; });
+}
 function toggleControlsPanel() {
-  controlsOpen.value = !controlsOpen.value;
+  if (controlsOpen.value) { dismissControls(); return; }
+  controlsOpen.value = true;
   if (controlsOpen.value) focusMode.value = false;
 }
 
@@ -1643,21 +1648,21 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
           </footer>
           <div class="pw-mobile-hint" role="status"><TsIcon :name="activeTool === 'move' ? 'move' : 'brush'" :size="15" /><span>{{ drawingHint }}</span></div>
         </div>
-        <aside id="arena-controls-panel" class="arena-controls pw-properties" :aria-label="copy.palette" :inert="!controlsOpen">
+        <aside v-floating-menu="controlsOpen" id="arena-controls-panel" class="arena-controls pw-properties" :aria-label="copy.palette" :inert="!controlsOpen">
           <header class="pw-properties-head"><h2>{{ workspaceCopy.colors }}</h2><button data-ui-part="canvas" class="icon-btn" type="button" :aria-label="copy.closeTools" :aria-expanded="controlsOpen" aria-controls="arena-controls-panel" @click="toggleControlsPanel"><TsIcon name="chevronRight" :size="18" /></button></header>
           <div class="pw-property-section">
             <PixelColorPicker ref="customColorInputRef" :model-value="selectedColor" :label="copy.freeColor" @update:model-value="chooseColor" />
             <div class="pw-property-label"><strong>{{ copy.presets }}</strong><span>{{ copy.kicker }}</span></div>
             <div class="pixel-palette pw-palette" role="group" :aria-label="copy.presets"><button data-ui-part="canvas" v-for="color in [...presetPalette, ...studioColors]" :key="color" class="pixel-swatch" :class="{ active: selectedColor === color }" type="button" :style="{ backgroundColor: color }" :aria-label="`${copy.presets} ${color}`" :aria-pressed="selectedColor === color" @click="chooseColor(color)"><TsIcon v-if="selectedColor === color" name="check" :size="14" /></button></div>
             <div v-if="recentColors.length" class="pw-recent"><span>{{ workspaceCopy.recent }}</span><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in recentColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${workspaceCopy.recent} ${color}`" type="button" @click="chooseColor(color)"></button></div></div>
-            <details v-if="customColors.length" class="pw-custom-colors"><summary>{{ copy.freeColor }} <span>{{ customColors.length }}</span></summary><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in customColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-pressed="selectedColor === color" :aria-label="`${copy.freeColor} ${color}`" type="button" @click="chooseColor(color)"></button></div></details>
+            <details v-menu-details v-if="customColors.length" class="pw-custom-colors"><summary>{{ copy.freeColor }} <span>{{ customColors.length }}</span></summary><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in customColors" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-pressed="selectedColor === color" :aria-label="`${copy.freeColor} ${color}`" type="button" @click="chooseColor(color)"></button></div></details>
           </div>
-          <details class="pw-setting"><summary><TsIcon name="grid" :size="16" />{{ workspaceCopy.canvasSettings }}<small>{{ canvasWidth }} × {{ canvasHeight }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label>{{ copy.background }}<input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in backgroundPresets" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${copy.background} ${color}`" type="button" @click="setBackgroundColor(color)"></button></div><button class="ghost-btn" type="button" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="15" />{{ workspaceCopy.create }}</button><button class="ghost-btn" type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="15" />{{ workspaceCopy.example }}</button><button class="ghost-btn" type="button" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="15" />{{ copy.clear }}</button></div></details>
-          <details ref="penSettingsRef" class="pw-setting"><summary><TsIcon name="sliders" :size="16" />{{ workspaceCopy.penSettings }}<TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label><input v-model="pressureEnabled" type="checkbox">{{ copy.pressure }}</label><label><input v-model="stabilizerEnabled" type="checkbox">{{ copy.stabilizer }}</label><p>{{ drawingHint }}</p><ol><li v-for="step in copy.guideSteps" :key="step">{{ step }}</li></ol></div></details>
-          <details class="pw-setting"><summary><TsIcon name="penLine" :size="16" />{{ workspaceCopy.notes }}<small>{{ chatMessages.length }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><p>{{ copy.notesEmpty }}</p><div v-for="message in chatMessages" :key="message.id" class="pw-note"><time>{{ message.time }}</time><p>{{ message.text }}</p></div><form @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button class="ghost-btn" type="submit">{{ copy.sendMessage }}</button></form></div></details>
+          <details v-menu-details class="pw-setting"><summary><TsIcon name="grid" :size="16" />{{ workspaceCopy.canvasSettings }}<small>{{ canvasWidth }} × {{ canvasHeight }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label>{{ copy.background }}<input :value="backgroundColor" type="color" :aria-label="copy.background" @change="setBackgroundColor($event.target.value)"></label><div class="pixel-palette pw-palette"><button data-ui-part="canvas" v-for="color in backgroundPresets" :key="color" class="pixel-swatch" :style="{ backgroundColor: color }" :aria-label="`${copy.background} ${color}`" type="button" @click="setBackgroundColor(color)"></button></div><button class="ghost-btn" type="button" @click="newDialogRef.showModal()"><TsIcon name="plus" :size="15" />{{ workspaceCopy.create }}</button><button class="ghost-btn" type="button" @click="applyMoonPattern"><TsIcon name="moon" :size="15" />{{ workspaceCopy.example }}</button><button class="ghost-btn" type="button" :disabled="!paintedCount" @click="clearCanvas"><TsIcon name="trash" :size="15" />{{ copy.clear }}</button></div></details>
+          <details v-menu-details ref="penSettingsRef" class="pw-setting"><summary><TsIcon name="sliders" :size="16" />{{ workspaceCopy.penSettings }}<TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><label><input v-model="pressureEnabled" type="checkbox">{{ copy.pressure }}</label><label><input v-model="stabilizerEnabled" type="checkbox">{{ copy.stabilizer }}</label><p>{{ drawingHint }}</p><ol><li v-for="step in copy.guideSteps" :key="step">{{ step }}</li></ol></div></details>
+          <details v-menu-details class="pw-setting"><summary><TsIcon name="penLine" :size="16" />{{ workspaceCopy.notes }}<small>{{ chatMessages.length }}</small><TsIcon name="chevronRight" :size="13" /></summary><div class="pw-setting-content"><p>{{ copy.notesEmpty }}</p><div v-for="message in chatMessages" :key="message.id" class="pw-note"><time>{{ message.time }}</time><p>{{ message.text }}</p></div><form @submit.prevent="sendLocalMessage"><input v-model="chatMessage" type="text" maxlength="200" autocomplete="off" :aria-label="copy.messagePlaceholder" :placeholder="copy.messagePlaceholder"><button class="ghost-btn" type="submit">{{ copy.sendMessage }}</button></form></div></details>
           <div class="pw-navigator"><div class="pw-property-label"><span>{{ workspaceCopy.preview }}</span><TsIcon name="eye" :size="15" /></div><div class="pw-navigator-frame"><PixelCanvasCells :pixels="pixels" :palette="activePalette" :width="canvasWidth" :height="canvasHeight" :cell-size="1" :background-color="backgroundColor" :show-grid="false" :interactive="false" :aria-label="workspaceCopy.preview" /></div><p>{{ canvasWidth }} × {{ canvasHeight }}</p></div>
         </aside>
-        <button data-ui-part="canvas" v-if="controlsOpen" class="pw-properties-scrim" type="button" :aria-label="copy.closeTools" @click="controlsOpen = false"></button>
+        <button data-ui-part="canvas" v-if="controlsOpen" class="pw-properties-scrim" type="button" :aria-label="copy.closeTools" @click="dismissControls"></button>
       </div>
     </section>
     <Teleport to="body">

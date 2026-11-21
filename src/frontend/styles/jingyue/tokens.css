@@ -19,9 +19,7 @@
   --sans: 'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', system-ui, Arial, sans-serif;
   --display: 'Songti SC', 'Noto Serif SC', var(--serif);
   --r-control: 12px;
-  --r-button: 3px;
-  --ticket-cut: .55rem;
-  --ticket-shape: polygon(0 0, calc(100% - var(--ticket-cut)) 0, 100% var(--ticket-cut), 100% 100%, var(--ticket-cut) 100%, 0 calc(100% - var(--ticket-cut)));
+  --r-button: var(--r-control);
   --lens-sky: #efdfce;
   --lens-hill: #a888a2;
   --lens-far: #d2a0b1;

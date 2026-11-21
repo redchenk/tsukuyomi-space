@@ -1,4 +1,5 @@
 <script setup>
+import { revealMenu, dismissMenu, forgetMenu } from '../runtime/menuMotion';
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import { NOTIFICATION_BADGE_EVENT, normalizeNotificationCount, publishNotificationBadge } from '../services/notificationBadge';
@@ -89,17 +90,19 @@ async function openSearch() { navOpen.value = false; await nextTick(); searchOpe
 function shortcut(event) {
   if (props.showChrome && !event.isComposing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
 }
+function syncNavigationClose() { if (!navigationRef.value?.open) navOpen.value = false; }
+function closeNavigation() { dismissMenu(navigationRef.value, () => { navOpen.value = false; }); }
 function backdrop(event) {
   if (event.target !== navigationRef.value) return;
   const box = navigationRef.value.getBoundingClientRect();
-  if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) navOpen.value = false;
+  if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeNavigation();
 }
 function openMusic() { if (props.music && !props.music.drawer.open) props.music.toggleShell(); }
 function trackScroll() { scrolled.value = window.scrollY > 24; }
 watch(navOpen, open => {
   const dialog = navigationRef.value;
-  if (open && dialog && !dialog.open) { releaseScroll = lockPageScroll(); dialog.showModal(); }
-  if (!open) { dialog?.close(); releaseScroll?.(); releaseScroll = null; if (lastTrigger?.isConnected) lastTrigger.focus({ preventScroll: true }); }
+  if (open && dialog && !dialog.open) { releaseScroll = lockPageScroll(); dialog.showModal(); revealMenu(dialog, lastTrigger); }
+  if (!open) { forgetMenu(dialog); dialog?.close(); releaseScroll?.(); releaseScroll = null; if (lastTrigger?.isConnected) lastTrigger.focus({ preventScroll: true }); }
 }, { flush: 'post' });
 watch(() => props.routeName, () => { navOpen.value = false; searchOpen.value = false; loadUnreadNotifications(); nextTick(trackScroll); });
 watch(() => props.isAuthed, () => { loadUnreadNotifications(); restartUnreadPolling(); }, { immediate: true });
@@ -190,12 +193,12 @@ onUnmounted(() => {
         <a data-ui="secondary" class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
     </header>
-    <dialog ref="navigationRef" id="site-navigation" class="site-navigation-dialog" :class="{ 'account-shelf': menuMode === 'account' }" @keydown="keepModalFocus($event, navigationRef)" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="backdrop">
-      <header class="menu-heading"><h2 v-if="menuMode === 'account'"><span class="shelf-identity"><img :src="(isAuthed && user?.avatar) || brandLogo" alt="" width="44" height="44"><span>{{ user?.nickname || copy.account }}</span></span></h2><div v-else><span class="eyebrow">TAKE YOUR TIME</span><h2>{{ copy.exploreTitle }}</h2></div><button class="icon-button" :aria-label="t.closeNavigation" autofocus @click="navOpen = false"><TsIcon name="x" :size="22" /></button></header>
+    <dialog data-menu-surface ref="navigationRef" id="site-navigation" class="site-navigation-dialog" :class="{ 'account-shelf': menuMode === 'account' }" @keydown="keepModalFocus($event, navigationRef)" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="closeNavigation" @close="syncNavigationClose" @click="backdrop">
+      <header class="menu-heading"><h2 v-if="menuMode === 'account'"><span class="shelf-identity"><img :src="(isAuthed && user?.avatar) || brandLogo" alt="" width="44" height="44"><span>{{ user?.nickname || copy.account }}</span></span></h2><div v-else><span class="eyebrow">TAKE YOUR TIME</span><h2>{{ copy.exploreTitle }}</h2></div><button class="icon-button" :aria-label="t.closeNavigation" autofocus @click="closeNavigation"><TsIcon name="x" :size="22" /></button></header>
       <template v-if="menuMode === 'explore'">
-        <div class="explore-groups"><section v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
+        <div class="explore-groups"><section data-menu-item v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
       </template>
-      <div v-else class="account-menu">
+      <div data-menu-item v-else class="account-menu">
         <a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link"
           :data-ui="item.key === 'login' ? 'primary' : 'secondary'" @click="navigate($event, item)">
           <TsIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span>
@@ -205,10 +208,10 @@ onUnmounted(() => {
           <TsIcon name="logOut" :size="18" />{{ t.logout }}
         </button>
       </div>
-      <div class="menu-utilities">
+      <div data-menu-item class="menu-utilities">
         <button data-ui-part="navigation" class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
       </div>
-      <footer class="menu-preferences">
+      <footer data-menu-item class="menu-preferences">
         <h3 v-if="menuMode === 'account'">{{ tr('外观与偏好', 'Appearance & preferences', '表示と設定') }}</h3>
         <button data-ui-part="disclosure" class="site-preference-button" @click="emit('toggle-theme', $event)">
           <ThemeLens :dark="theme === 'dark'" />{{ themeLabel }}

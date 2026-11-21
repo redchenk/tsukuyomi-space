@@ -1,3 +1,4 @@
+import { revealMenu, forgetMenu } from '../runtime/menuMotion';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { lockPageScroll } from '../utils/pageScrollLock';
 
@@ -15,7 +16,7 @@ export function keepModalFocus(event, element) {
 }
 
 // Native dialogs make the rest of the page inert and keep Tab inside the modal.
-export function useModalDialog(isOpen) {
+export function useModalDialog(isOpen, { returnFocus } = {}) {
   const dialog = ref(null);
   let restoreScroll;
   let previousFocus;
@@ -24,6 +25,7 @@ export function useModalDialog(isOpen) {
   function release() {
     removeKeys?.();
     removeKeys = null;
+    forgetMenu(dialog.value);
     dialog.value?.close();
     restoreScroll?.();
     restoreScroll = null;
@@ -33,13 +35,14 @@ export function useModalDialog(isOpen) {
   watch(isOpen, async (open) => {
     const run = ++revision;
     if (!open) { release(); return; }
-    previousFocus = document.activeElement;
+    previousFocus = returnFocus?.() || document.activeElement;
     const path = location.pathname + location.search;
     restoreScroll = lockPageScroll(() => location.pathname + location.search === path);
     await nextTick();
     if (run !== revision || !isOpen() || !dialog.value) return;
     dialog.value.showModal();
     const node = dialog.value;
+    if (node.hasAttribute('data-menu-surface')) revealMenu(node, previousFocus);
     const keepFocus = event => keepModalFocus(event, node);
     node.addEventListener('keydown', keepFocus);
     removeKeys = () => node.removeEventListener('keydown', keepFocus);

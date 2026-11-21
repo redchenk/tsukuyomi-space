@@ -29,18 +29,18 @@
 
 ## 按钮的轮廓与动效
 
-主操作和支付使用两端对角切口的实色票签（`--ticket-shape`），次操作使用 3px 微圆角方键，筛选使用带下划线的标签。图标工具保持紧凑，棋格和拖动手柄使用原有命中区域。状态徽标使用胶囊形。
+所有操作按钮都使用 `--r-button`，即 12px 圆角矩形。主操作、支付、次操作、筛选与图标按钮通过填色、边界与选中状态区分用途。棋盘格、画布和原生开关保留其交互几何。
 
 | 状态 | 控件的表现 |
 | --- | --- |
-| 静止 | 主操作的切角边缘反光，标签位于清楚平稳的中央。次要按钮有较浅的釉面。 |
+| 静止 | 主操作的圆角边缘反光，标签位于清楚平稳的中央。次要按钮有较浅的釉面。 |
 | 悬停 | 高光跟随指针左右移动。轮廓在键盘聚焦时保持稳定，并显示可见的焦点环。 |
 | 激活 | 65ms 内轻压，松开时三圈水纹从真实点击位置扩散。键盘从中心激活。 |
 | 选中 | 筛选与收藏以实际状态着色。日夜开关的小圆珠随当前主题移动。 |
 | 加载、禁用 | 加载保留文本和尺寸，底部点列提示忙碌。禁用按钮静止。 |
 | 减少动态效果 | 去除跟随、位移和水纹，保留静态形状、状态颜色和焦点环。 |
 
-在 `styles/jingyue/tokens.css` 维护轮廓，`styles/jingyue/motion.css` 维护表面与时序。`runtime/controlMotion.js` 监听原生输入，只在指针移动时更新高光，滚动或切换页面时回收水纹。日夜切换的外观使用 `ThemeLens.vue`，沿用现有主题操作。季节展示页保留点阵转场。搜索用插画入口和文字索引分组，账号菜单在宽屏贴近头像、在窄屏贴底展开。两处的排版与搜索字段由 `styles/jingyue/shelf.css` 维护，参考 [Desk Shelf 的分区与点阵](https://uberdesigner.ai/t/desk-shelf/dots)。动效参考 [Ferrofluid Button 的边缘反光与液面波纹](https://uberdesigner.ai/t/ferrofluid-button) 和 [Dots 的逐列切换](https://uberdesigner.ai/t/voice-to-text/dots)。
+在 `styles/jingyue/tokens.css` 维护轮廓，`styles/jingyue/motion.css` 维护表面与时序。`runtime/controlMotion.js` 监听原生输入，只在指针移动时更新高光，滚动或切换页面时回收水纹。日夜切换的外观使用 `ThemeLens.vue`，沿用现有主题操作。季节展示页保留点阵转场。搜索用插画入口和文字索引分组，账号菜单从头像处展开。两处的排版与搜索字段由 `styles/jingyue/shelf.css` 维护，参考 [Desk Shelf 的分区与点阵](https://uberdesigner.ai/t/desk-shelf/dots)。动效参考 [Ferrofluid Button 的边缘反光与液面波纹](https://uberdesigner.ai/t/ferrofluid-button) 和 [Dots 的逐列切换](https://uberdesigner.ai/t/voice-to-text/dots)。
 
 ## 操作与表单
 
@@ -76,3 +76,9 @@
 运行 Playwright 的 `tests/e2e/design-system.spec.js`。分别验证 320px 重排与固定视口 200% 文字放大，再检查长中文、日文、英文、连续字符串、八套主题的对比度、鼠标和键盘、触屏尺寸，以及加载前后文字和尺寸。发布前同时走一次登录、图库操作和支付中心的真实页面路径。
 
 按钮的尺寸与加载处理参考 [Radix Themes](https://www.radix-ui.com/themes/docs/components/button)，操作层级和标签换行参考 [Carbon](https://carbondesignsystem.com/components/button/usage/)，语义色组织参考 [GitHub Primer](https://primer.style/product/getting-started/foundations/color-usage/)。
+
+## 弹出菜单
+
+菜单从触发控件的实际位置展开。按参考录屏，表面先扩展、背景柔化，内容从约 250ms 起分组显现，在约 700ms 内稳定。关闭按相反顺序用约 450ms 折回原入口。控件文字以原大小绘制。
+
+由 `MobileSheet` 承载原生模态菜单；条件挂载的上下文菜单使用 `MenuTransition`；原生折叠菜单使用 `v-menu-details`。菜单若有多层容器，在主要内容组标注 `data-menu-item`。选定目标后立即导航。减少动态效果时直接显示最终状态。
