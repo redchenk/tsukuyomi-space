@@ -55,7 +55,7 @@ onBeforeUnmount(reset);
 <template>
   <dialog ref="dialog" class="ts-sheet" :aria-label="title" @cancel.prevent="close" @click="backdrop">
     <div class="sheet-handle" aria-hidden="true" @pointerdown="start" @pointermove="move" @pointerup="end" @pointercancel="end"><span></span></div>
-    <header class="ts-sheet-head"><h2>{{ title }}</h2><button class="icon-button" type="button" data-modal-close :aria-label="closeLabel" @click="close"><TsIcon name="x" :size="22" /></button></header>
+    <header class="ts-sheet-head"><h2><slot name="title">{{ title }}</slot></h2><button class="icon-button" type="button" data-modal-close :aria-label="closeLabel" @click="close"><TsIcon name="x" :size="22" /></button></header>
     <div class="ts-sheet-body"><slot /></div>
   </dialog>
 </template>

@@ -548,7 +548,7 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
             <span role="status">{{ state.loading ? t('读取中…', 'Loading…') : t(`共 ${state.total} 张图片`, `${state.total} images`) }}</span>
           </div>
           <div class="gallery-discovery-actions">
-            <form autocomplete="off" class="gallery-search-field" role="search" @submit.prevent="loadImages(1)">
+            <form autocomplete="off" class="gallery-search-field shelf-field" role="search" @submit.prevent="loadImages(1)">
               <TsIcon name="search" :size="17" />
               <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="gallery-page-state-search-query" v-model="state.search" type="search" maxlength="80" :aria-label="t('搜索图库', 'Search gallery')" :placeholder="t('搜索图库', 'Search gallery')">
               <button data-ui="icon" v-if="state.search" class="gallery-icon-button" type="button" :aria-label="t('清空搜索', 'Clear search')" @click="state.search = ''; loadImages(1)">

@@ -1,5 +1,4 @@
-/* One surface for site actions. The two long diagonal arcs echo a sakura petal.
-   Only the painted edge moves; width, text metrics and hit targets belong to the layout. */
+/* Shared light, press and release for all action silhouettes. */
 :root {
   --control-motion-enabled: 1;
   --control-ink: color-mix(in srgb, var(--ink) 78%, var(--accent));
@@ -38,8 +37,8 @@
   --ui-over: var(--ui-bg);
   --ui-edge: color-mix(in srgb, var(--ui-bg) 90%, var(--ink));
   --control-echo-color: var(--on-accent);
-  --liquid-finish: radial-gradient(ellipse 54% 72% at var(--lens-x, 24%) -20%, rgb(255 255 255 / .70), transparent 83%),
-    radial-gradient(ellipse 64% 68% at 94% 126%, color-mix(in srgb, var(--accent) 70%, white), transparent 82%),
+  --liquid-finish: radial-gradient(ellipse 46% 60% at var(--lens-x, 24%) -22%, rgb(255 255 255 / .26), transparent 83%),
+    radial-gradient(ellipse 64% 68% at 94% 126%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 82%),
     linear-gradient(165deg, rgb(255 255 255 / .055), transparent 48%, rgb(0 0 0 / .075));
   --liquid-depth: inset 0 1px 0 rgb(255 255 255 / .42), inset 0 -1px 0 rgb(0 0 0 / .12),
     0 3px 7px -4px color-mix(in srgb, var(--ui-bg) 59%, transparent);
@@ -69,6 +68,30 @@
   --liquid-finish: radial-gradient(ellipse 62% 46% at var(--lens-x, 28%) 0%, var(--control-pearl), transparent);
   --liquid-depth: inset 0 1px 0 var(--control-pearl), inset 0 -2px 0 var(--accent-line);
 }
+/* Filled actions have two cut edges. The visible focus ring sits inside the cut. */
+:root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]) {
+  clip-path: var(--ticket-shape);
+  border-radius: 0;
+}
+:root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -5px;
+}
+:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):not([data-ui-part]) {
+  border-radius: 0;
+  border-color: transparent;
+  border-bottom: 2px solid transparent;
+  background-image: none;
+  box-shadow: none;
+}
+:root :is([data-ui="choice"], .filter-btn, .tab-btn, .chip):is([aria-pressed="true"], [aria-selected="true"], [aria-current="page"], .active, .is-active, .selected) {
+  border-bottom-color: var(--accent-ink);
+  --liquid-finish: none;
+  --liquid-depth: none;
+}
+@media (forced-colors: active) {
+  :root :is([data-ui="primary"], [data-ui="accent"], .primary-btn, .stage-new-btn):not([data-ui-part]) { clip-path: none; }
+}
 /* Tool, disclosure and overlay buttons have feature-owned layout, colours and sizing. */
 :root :is(.icon-button, .site-tool-button, .header-search, .nav-chatroom-label, .site-preference-button,
   .mobile-dock > a, .mobile-dock > button, .dock-indicator, .segmented-indicator, .ts-segmented-indicator,
@@ -86,16 +109,12 @@
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):hover {
     translate: 0 -1px;
-    border-radius: var(--r-button-open);
-    border-top-left-radius: calc(1.9rem - var(--lens-pull, 0px)) calc(1.6rem - var(--lens-pull, 0px));
-    border-top-right-radius: calc(1.06rem + var(--lens-pull, 0px)) calc(.95rem + var(--lens-pull, 0px));
   }
 }
 @media (prefers-reduced-motion: no-preference) {
   :root :is([data-ui], .primary-btn, .ghost-btn, .danger-btn, .filter-btn, .tab-btn, .chip, .stage-new-btn, .stage-page-btn):not([data-ui-part], :disabled, [aria-disabled="true"], [aria-busy="true"]):active {
     translate: 0 1px;
     scale: .985 .95;
-    border-radius: var(--r-button-pressed);
     transition-duration: 65ms;
     box-shadow: inset 0 2px 4px var(--control-shade);
   }
