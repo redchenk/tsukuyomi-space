@@ -54,7 +54,7 @@
   background: color-mix(in srgb, var(--surface) 68%, transparent);
 }
 :root .site-navigation-dialog .explore-groups .menu-link { padding: 9px 4px; gap: 9px; }
-:root :is(.gallery-thumb, .ps-options button, .ps-sheet-tabs button, .ps-panels-scroll button, .ps-zoom-value, .ps-chip-fg, .ps-chip-bg) {
+:root :is(.ps-options button, .ps-sheet-tabs button, .ps-panels-scroll button, .ps-zoom-value, .ps-chip-fg, .ps-chip-bg) {
   border-radius: var(--r-button);
 }
 :root :is(.ps-panels, .pw-properties)[data-menu-surface]:not([inert]) { transition: none; }

@@ -32,9 +32,17 @@
 .gallery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 34px 24px; align-items: start; }
 .gallery-grid-spacious { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .gallery-card { position: relative; min-width: 0; }
-.gallery-thumb { display: block; position: relative; width: 100%; aspect-ratio: 4/4.8; padding: 0; border-radius: var(--r-media); overflow: hidden; background: var(--soft); }
+.gallery-thumb { display: grid; position: relative; width: 100%; aspect-ratio: 4/4.8; padding: 0; border-radius: var(--r-media); overflow: hidden; background: var(--soft); }
 .gallery-card:nth-child(3n+2) .gallery-thumb { aspect-ratio: 4/3.5; }
-.gallery-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 500ms var(--ease); }
+.gallery-thumb img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 500ms var(--ease); }
+/* The button's transparent hit area covers the artwork; its painted face is an icon pill. */
+.gallery-thumb > .gallery-open {
+  z-index: 1;
+  place-self: end;
+  aspect-ratio: 1;
+  margin: 8px;
+}
+.gallery-thumb:focus-within { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .gallery-thumb:hover img { transform: scale(1.045); }
 .gallery-image-tag { position: absolute; left: 12px; bottom: 12px; color: white; background: rgb(0 0 0 / 72%); padding: 5px 10px; border-radius: var(--r-pill); font-size: 13px; }
 .gallery-card-body { padding: 15px 0 0; }

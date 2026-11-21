@@ -14,6 +14,12 @@
   --ui-transition-time: var(--fast);
 }
 @layer components {
+  /* One silhouette even for native buttons in lazy-loaded editors and older pages.
+     Scrims and board cells keep their rectangular pointer regions. */
+  :where(button, input:is([type="button"], [type="submit"], [type="reset"]), [role="button"],
+    [data-ui], a.menu-link, .site-search-result, summary):not(:where([class*="scrim"], .gomoku-cell)) {
+    border-radius: var(--r-button) !important;
+  }
   :where([data-ui]) { display: inline-flex; align-items: center; justify-content: center; }
 }
 
