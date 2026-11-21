@@ -4,10 +4,9 @@
 
 **Leave a little moonlight in your day. Talk with Yachiyo, read stories, discover creations, and meet kindred spirits.**
 
-Tsukuyomi Space is a nonprofit fan community inspired by the world of *Cosmic Princess Kaguya!*. Built with Vue 3 and Express, it brings together a Live2D AI companion, creative publishing, community interaction, and a public fan wiki.
+**[Open the Payment Centre →](https://tsukuyomi-space.com/payments)** — Sign in to top up your AI balance, view orders, and check usage.
 
-- **[Top up your AI balance](https://tsukuyomi-space.com/payments)** · Sign in to add credit for official chat and voice services and check your orders and usage.
-- **[Support Tsukuyomi Space on Afdian](https://www.ifdian.net/a/redchenk?utm_source=copylink&utm_medium=link)** · Help cover hosting, storage, and CDN costs. You can also [scan the support QR code](#support-the-project).
+Tsukuyomi Space is a nonprofit fan community inspired by the world of *Cosmic Princess Kaguya!*. Built with Vue 3 and Express, it brings together a Live2D AI companion, creative publishing, community interaction, and a public fan wiki.
 
 [Chinese / Japanese site](https://yachiyo.hk) · [English site](https://tsukuyomi-space.com) · [Deployment guide](docs/DEPLOY.md) · [Report an issue](https://github.com/redchenk/tsukuyomi-space/issues)
 
