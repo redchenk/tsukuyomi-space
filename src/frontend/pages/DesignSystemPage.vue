@@ -1,20 +1,26 @@
 <script setup>
 import { computed, ref } from 'vue';
+import { interfaceLanguage } from '../i18n/runtime';
 import TsButton from '../components/TsButton.vue';
 import TsIcon from '../components/TsIcon.vue';
 
-import TsPageHeader from '../components/TsPageHeader.vue';
+import SeasonDotPlate from '../components/SeasonDotPlate.vue';
 import TsButtonLink from '../components/TsButtonLink.vue';
 import TsFilterChip from '../components/TsFilterChip.vue';
 import TsToggle from '../components/TsToggle.vue';
 import TsField from '../components/TsField.vue';
 import { useSeasonTheme } from '../composables/useSeasonTheme';
-import { siteArt } from '../data/siteArt';
+
 
 defineProps({ theme: String });
 const emit = defineEmits(['toggle-theme']);
 const { selection, setPreference } = useSeasonTheme();
 const seasons = { spring: '春樱', summer: '夏海', autumn: '秋枫', winter: '冬雪' };
+const seasonKeys = Object.keys(seasons);
+const seasonIndex = computed(() => seasonKeys.indexOf(selection.value.artwork));
+function nextSeason() {
+  setPreference({ mode: seasonKeys[(seasonIndex.value + 1) % seasonKeys.length] });
+}
 const swatches = { paper: '月白纸面', surface: '卡片底色', ink: '正文', muted: '辅助文字', accent: '当季强调', danger: '危险操作' };
 const favourite = ref(false);
 const customLabel = ref('');
@@ -24,9 +30,9 @@ const copy = {
   en: { primary: 'Save settings', secondary: 'View details', danger: 'Delete draft', quiet: 'Cancel', filters: ['All', 'Unread', 'Saved'], long: 'Save voice, caption and conversation preferences for this room', field: 'Room name', value: 'Yachiyo’s room' },
   ja: { primary: '設定を保存', secondary: '詳細を見る', danger: '下書きを削除', quiet: 'キャンセル', filters: ['すべて', '未読', '保存済み'], long: 'この部屋の音声・字幕・会話に関する設定をまとめて保存する', field: '部屋の名前', value: '八千代の部屋' }
 };
-const language = ref('zh');
+const language = ref(interfaceLanguage.value);
 const t = computed(() => copy[language.value]);
-const choice = ref(0), roomName = ref(copy.zh.value), feedback = ref(''), narrow = ref(false), busy = ref(false);
+const choice = ref(0), roomName = ref(t.value.value), feedback = ref(''), narrow = ref(false), busy = ref(false);
 function selectLanguage(event) {
   language.value = event.target.value;
   roomName.value = t.value.value;
@@ -36,15 +42,33 @@ function selectLanguage(event) {
 
 <template>
   <main data-ui-layout="content" class="ui-page ui-stack samples-page">
-    <TsPageHeader title="月读设计系统" description="月白樱粉 · 四季配色与界面组件" :art="siteArt.hero">
-      <template #actions><TsButtonLink to="/gallery" variant="primary">预览图库<TsIcon name="arrowRight" :size="16" /></TsButtonLink>
-        <TsButtonLink to="/plaza" variant="ghost">预览广场</TsButtonLink></template>
-    </TsPageHeader>
     <section class="samples-palette">
-      <div class="samples-section-head"><h2>四季配色</h2><div class="ui-actions" role="group" aria-label="季节">
-        <TsFilterChip v-for="(label, key) in seasons" :key="key" size="sm" :selected="selection.artwork === key" @click="setPreference({ mode: key })">{{ $ui(label) }}</TsFilterChip>
-        <TsToggle :pressed="theme === 'dark'" aria-label="夜间模式" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="17" />夜间模式</TsToggle>
-      </div></div>
+      <div class="samples-intro">
+        <header class="samples-heading">
+          <h1 class="ui-page-title">月读设计系统</h1>
+          <p>切换四季，试试每一次点按的手感。</p>
+          <div class="ui-actions">
+            <TsButtonLink to="/gallery" variant="primary">预览图库<TsIcon name="arrowRight" :size="16" /></TsButtonLink>
+            <TsButtonLink to="/plaza" variant="ghost">预览广场</TsButtonLink>
+          </div>
+        </header>
+        <div class="samples-instrument">
+          <div class="samples-plate">
+            <div class="samples-plate-caption">
+              <h2>四季配色</h2><span>{{ String(seasonIndex + 1).padStart(2, '0') }} / 04</span>
+            </div>
+            <SeasonDotPlate :season="selection.artwork" />
+            <div class="samples-plate-controls">
+              <span aria-live="polite">{{ $ui(seasons[selection.artwork]) }}</span>
+              <TsButton size="sm" @click="nextSeason">下一季<TsIcon name="arrowRight" :size="16" /></TsButton>
+            </div>
+          </div>
+          <div class="samples-season-actions ui-actions" role="group" aria-label="季节">
+            <TsFilterChip v-for="(label, key) in seasons" :key="key" size="sm" :selected="selection.artwork === key" @click="setPreference({ mode: key })">{{ $ui(label) }}</TsFilterChip>
+            <TsToggle :pressed="theme === 'dark'" aria-label="夜间模式" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="17" />夜间模式</TsToggle>
+          </div>
+        </div>
+      </div>
       <ul class="samples-swatches"><li v-for="(name, token) in swatches" :key="token">
         <span aria-hidden="true" :style="{ backgroundColor: 'var(--' + token + ')' }"></span>{{ $ui(name) }}
       </li></ul>
@@ -81,6 +105,23 @@ function selectLanguage(event) {
 
 <style scoped>
 .samples-page { max-width: 72rem; gap: var(--ui-section); }
+.samples-intro { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); align-items: center; gap: var(--ui-section); padding-bottom: var(--ui-section); }
+.samples-heading { display: grid; align-content: center; gap: var(--ui-stack); }
+.samples-heading .ui-page-title { font: 500 clamp(2.25rem, 5vw, 4.4rem)/1.1 var(--display); letter-spacing: -.04em; }
+.samples-heading p { color: var(--muted); margin: 0; }
+.samples-instrument { min-width: 0; }
+.samples-plate {
+  --plate-accent: color-mix(in srgb, var(--accent) 46%, white);
+  display: grid; gap: var(--ui-stack); padding: clamp(1rem, 2.6vw, 2rem); border-radius: var(--r-media);
+  background: var(--plate-ink); color: var(--plate-paper);
+}
+.samples-plate-caption, .samples-plate-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-gap); }
+.samples-plate-caption h2, .samples-plate-controls > span { font: 500 var(--ui-control-type)/1.5 var(--sans); }
+.samples-plate-caption > span { font: var(--ui-control-type)/1.5 ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--plate-accent); }
+.samples-season-actions { margin-top: var(--ui-gap); }
+@media (max-width: 760px) {
+  .samples-intro { grid-template-columns: minmax(0, 1fr); gap: var(--ui-stack); }
+}
 .samples-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-stack); margin-bottom: 1.25rem; }
 .samples-section-head h2, .ui-panel h3 { font: 500 clamp(1.25rem, 1rem + .8vw, 1.75rem)/1.4 var(--serif); }
 .samples-palette { padding-bottom: var(--ui-stack); border-bottom: 1px solid var(--line); }
