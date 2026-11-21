@@ -1,4 +1,4 @@
-name: Publish payment centre entry overseas
+name: Publish the site design system overseas
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/payment-visibility-rollout'
+    if: github.ref == 'refs/heads/codex/site-design-system-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 5909af5bab1b2b662f8bc9c2e35d7cb505a8b919
+          ref: 71f412f2c7a6f2935ae86779c30e5cfb2b2f1d67
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,9 +36,9 @@ jobs:
           npm ci
           node --test tests/frontend-navigation.test.js
           npm run build:web:overseas
-          echo '4c783163296dac6ee6259059eb6118e7f39c452cf2dec25ba9a6f4b7ef43cb9c  dist/frontend/index.html' | sha256sum -c -
-          cp ../deploy/payment-entry-manifest.json "$RUNNER_TEMP/manifest.json"
-          tar -czf "$RUNNER_TEMP/payment-entry.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" payment-visibility-release.py -C "$RUNNER_TEMP" manifest.json
+          echo '7130be94d7b139b90e73f70eb7e937069724fa5907b48890e92bd92d32badc17  dist/frontend/index.html' | sha256sum -c -
+          cp ../deploy/design-frontend-manifest.json "$RUNNER_TEMP/manifest.json"
+          tar -czf "$RUNNER_TEMP/design-frontend.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" design-frontend-release.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
         env:
           SERVER: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -57,12 +57,12 @@ jobs:
           set -euo pipefail
           opts=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/overseas-known-hosts" -o HostKeyAlgorithms=ssh-ed25519 -o PreferredAuthentications=password -o NumberOfPasswordPrompts=1 -o ConnectTimeout=15)
           for attempt in 1 2 3; do
-            label="payment-entry-overseas-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            label="design-frontend-overseas-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
             stage="/tmp/tsukuyomi-$label"
             echo "Starting upload and activation (attempt $attempt)"
             if sshpass -e ssh -T "${opts[@]}" -p "$PORT" "$LOGIN@$SERVER" \
-              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/payment-visibility-release.py' '$stage' '$label'; rm -rf -- '$stage'" \
-              < "$RUNNER_TEMP/payment-entry.tgz"; then
+              "set -eu; mkdir -m 700 '$stage'; cat > '$stage/release.tgz'; tar -xzf '$stage/release.tgz' -C '$stage'; flock -w 120 /run/lock/tsukuyomi-room-frontend.lock python3 '$stage/design-frontend-release.py' '$stage' '$label'; rm -rf -- '$stage'" \
+              < "$RUNNER_TEMP/design-frontend.tgz"; then
               exit 0
             else
               result=$?

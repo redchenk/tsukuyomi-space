@@ -9,7 +9,7 @@ import sys
 
 stage = Path(sys.argv[1]).resolve()
 label = sys.argv[2]
-if not re.fullmatch(r'payment-entry-(?:domestic|overseas)-[a-z0-9-]+', label):
+if not re.fullmatch(r'design-frontend-(?:domestic|overseas)-[a-z0-9-]+', label):
     raise ValueError('Invalid release label')
 manifest = json.loads((stage / 'manifest.json').read_text())
 domestic = manifest['site'] == 'domestic'
@@ -28,7 +28,7 @@ def get(route):
 
 def verify():
     assert sha(current / 'index.html') == manifest['after']
-    for route in ['/hub','/room','/payments']:
+    for route in ['/gallery','/hub','/room','/payments']:
         assert manifest['entry'].encode() in get(route), route
     assert hashlib.sha256(get(manifest['entry'])).hexdigest() == manifest['files'][manifest['entry'][1:]]
     assert json.loads(get('/api/health'))['status'] == 'ok'
