@@ -3,26 +3,26 @@
   color-scheme: light;
   --paper: #f7f9fc;
   --surface: #fff;
-  --soft: #eef2f8;
-  --line: #dfe6f0;
-  --line-strong: #c8cddb;
+  --soft: #f2eff3;
+  --line: #e3dfe6;
+  --line-strong: #cdc6d1;
   --ink: #202b46;
-  --muted: #46536b;
-  --accent: #903755;
-  --accent-hover: #923d5b;
+  --muted: #626e84;
+  --accent: #ac4d6d;
+  --accent-hover: #913d5b;
   --on-accent: #fff;
   --site-background-image: var(--site-background-light);
   --background-edge: 83%;
   --background-reading: 90%;
   /* Preserve the original Sakura site's font order and editorial headings. */
-  --serif: 'Source Han Serif SC', 'Noto Serif SC', 'Microsoft YaHei', serif;
+  --serif: 'Source Han Serif SC', 'Songti SC', 'Noto Serif SC', 'Yu Mincho', Georgia, serif;
   --sans: 'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', system-ui, Arial, sans-serif;
   --display: 'Songti SC', 'Noto Serif SC', var(--serif);
   --r-control: 12px;
   --r-media: 20px;
   --r-panel: 28px;
   --r-pill: 999px;
-  --shadow: 0 24px 64px rgb(37 48 70 / 16%);
+  --shadow: 0 16px 48px rgb(41 32 49 / 10%);
   --ease: cubic-bezier(.16, 1, .3, 1);
   --fast: 160ms;
   --motion: 240ms;
@@ -32,7 +32,7 @@
   --danger: #ad344b;
   --success: #326b53;
 }
-:root[data-season='spring'] { --accent: #903755; --accent-hover: #923d5b; }
+:root[data-season='spring'] { --accent: #ac4d6d; --accent-hover: #913d5b; }
 :root[data-season='summer'] {
   --paper: #f3f8fa; --surface: #fcfeff; --soft: #e7f0f5;
   --line: #d4e2e9; --line-strong: #b7cedb; --ink: #203443; --muted: #405966;
@@ -56,7 +56,7 @@
   --line: #394153;
   --line-strong: #566078;
   --ink: #edf0f7;
-  --muted: #c5cddd;
+  --muted: #b5bccb;
   --accent: #e5a4bc;
   --accent-hover: #edbdd0;
   --on-accent: #151923;
@@ -97,7 +97,10 @@
   --ts-border: var(--line); --ts-border-strong: var(--line-strong); --ts-divider: var(--line);
   --ts-text: var(--ink); --ts-text-strong: var(--ink); --ts-muted: var(--muted); --ts-text-secondary: var(--muted); --ts-text-muted: var(--muted);
   --ts-accent: var(--accent); --ts-accent-strong: var(--accent-hover); --ts-accent-2: var(--accent); --ts-cyan: var(--accent);
-  --ts-accent-soft: color-mix(in srgb, var(--accent) 9%, var(--paper));
+  --ts-accent-soft: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  --accent-line: color-mix(in srgb, var(--accent) 32%, var(--surface));
+  --accent-ink: var(--accent-hover);
+  --paper-tint: color-mix(in srgb, var(--accent) 4%, var(--surface));
   --ts-gradient-brand: var(--accent); --ts-gradient-brand-hover: var(--accent-hover);
   --ts-font-sans: var(--sans); --ts-font-serif: var(--serif); --ts-panel-serif: 'Songti SC', 'Noto Serif SC', 'Yu Mincho', var(--serif);
   --ts-font-size-xs: 13px; --ts-font-size-sm: 14px; --ts-font-size-md: 16px; --ts-font-size-lg: 18px; --ts-font-size-xl: 24px; --ts-font-size-2xl: 40px;
@@ -112,7 +115,7 @@
   --ts-readable-panel-bg: var(--surface); --ts-readable-card-bg: var(--surface); --ts-readable-input-bg: var(--surface); --ts-readable-control-bg: var(--soft); --ts-readable-control-hover: var(--soft);
   --ts-unified-primary-bg: var(--accent); --ts-unified-primary-bg-hover: var(--accent-hover); --ts-unified-primary-text: var(--on-accent);
   --ts-unified-button-bg: transparent; --ts-unified-button-hover: var(--soft); --ts-unified-button-border: var(--line); --ts-unified-button-border-hover: var(--line-strong);
-  --ts-unified-button-radius: var(--r-pill); --ts-unified-button-height: 44px; --ts-unified-button-shadow: none;
+  --ts-unified-button-radius: var(--r-control); --ts-unified-button-height: var(--ui-touch); --ts-unified-button-shadow: none;
   --ts-status-danger: var(--danger); --ts-danger: var(--danger); --ts-status-success: var(--success);
   --ts-state-hover: var(--soft); --ts-glass: var(--surface); --ts-glass-strong: var(--surface); --ts-blur-sm: none; --ts-blur-md: none; --ts-blur-lg: none;
   --ts-color-lilac-50: #f5f0ff; --ts-color-rose-600: var(--accent); --ts-color-pink-600: var(--danger); --ts-color-mint-300: #9ee2cf;

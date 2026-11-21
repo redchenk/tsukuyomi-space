@@ -3,7 +3,7 @@
 .site-header.on-hero { color: #fff; background: rgb(11 15 25 / 72%); border-color: rgb(255 255 255 / 18%); }
 .site-brand { display: flex; align-items: center; flex-shrink: 0; gap: 11px; font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: .08em; }
 .site-brand img { border-radius: 50%; }
-.desktop-nav { display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 600; height: 100%; }
+.desktop-nav { display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 500; height: 100%; }
 .desktop-nav > :is(a, button) { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0; position: relative; white-space: nowrap; }
 .nav-chatroom-label { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--r-pill); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .on-hero .nav-chatroom-label { color: inherit; background: rgb(255 255 255 / 16%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 36%); }
@@ -17,9 +17,7 @@
 .header-account { position: relative; }
 .header-account img { border-radius: 50%; object-fit: cover; }
 .unread-dot { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }
-.header-room { display: flex; align-items: center; gap: 8px; background: var(--accent); color: var(--on-accent); padding: 11px 18px; margin-left: 10px; font-size: 14px; font-weight: 600; border-radius: var(--r-control); white-space: nowrap; }
-.header-room:hover { background: var(--accent-hover); }
-.on-hero .header-room { color: #202b46; background: #f7f9fc; }
+.header-room { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
 .on-hero .header-search { border-color: rgb(255 255 255 / 32%); }
 .on-hero .site-tool-button:hover { background: rgb(255 255 255 / 12%); }
 .header-music.active { color: var(--accent); }

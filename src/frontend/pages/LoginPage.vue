@@ -1,4 +1,5 @@
 <script setup>
+import TsButton from '../components/TsButton.vue';
 import "../styles/jingyue/auth.css";
 import { computed, onMounted, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
@@ -740,7 +741,7 @@ onMounted(() => {
               <!-- Keep the password mode's recovery-action row in the layout. -->
               <div class="auth-form-tools" aria-hidden="true"></div>
             </div>
-            <button class="primary-btn" type="submit" :disabled="login.submitting" :aria-busy="login.submitting">{{ t.login }}</button>
+            <TsButton variant="primary" size="lg" type="submit" :loading="login.submitting">{{ t.login }}</TsButton>
             <StatusLoader v-if="login.submitting" :label="isEnglish ? 'Signing in' : '正在登录'" compact />
           </form>
           <div class="oauth-login-section">

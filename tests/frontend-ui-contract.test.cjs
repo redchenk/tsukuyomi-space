@@ -5,7 +5,7 @@ const path = require('node:path');
 const { parse } = require('vue/compiler-sfc');
 
 const frontend = path.resolve(__dirname, '../src/frontend');
-const variants = new Set('primary secondary accent quiet danger choice icon'.split(' '));
+const variants = new Set('primary secondary accent ghost quiet danger choice icon'.split(' '));
 const legacy = new Set('primary-btn ghost-btn danger-btn chip filter-btn tab-btn stage-new-btn stage-page-btn icon-button site-tool-button'.split(' '));
 const widgetParts = new Set('navigation disclosure row canvas media overlay tool'.split(' '));
 function vueFiles(dir) {
@@ -22,7 +22,11 @@ function inspect(node, file, issues) {
     const issue = message => issues.push(path.relative(frontend, file) + ':' + node.loc.start.line + ' ' + message);
     if (role !== undefined && !variants.has(role)) issue('Unknown data-ui variant: ' + role);
     if (part !== undefined && !widgetParts.has(part)) issue('Unknown data-ui-part: ' + part);
-    const variant = node.tag === 'TsButton' ? attr('variant') : role;
+    const sharedControl = ['TsButton', 'TsButtonLink', 'TsToggle', 'TsFilterChip', 'TsIconButton'].includes(node.tag);
+    const variant = sharedControl ? attr('variant') : role;
+    const size = sharedControl ? attr('size') : attr('data-size');
+    if ((sharedControl || role) && size && !['sm', 'md', 'lg', 'compact'].includes(size)) issue('Unknown control size: ' + size);
+    if (node.tag === 'TsIconButton' && !node.props.some(p => p.name === 'label' || p.arg?.content === 'label')) issue('An icon button needs its action name.');
     if (variant && !variants.has(variant)) issue('Unknown button variant: ' + variant);
     if (variant === 'icon') {
       const labelled = node.props.some(p => ['aria-label', 'aria-labelledby', 'title'].includes(p.name) ||

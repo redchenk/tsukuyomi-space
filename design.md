@@ -1,62 +1,65 @@
-# 月读空间设计系统
+# 月读空间界面设计规范
 
-月白底面、深墨色正文、衬线标题和随季节切换的强调色构成全站的视觉基线。操作按用途选择组件，页面按内容决定布局。桌面与手机使用同一份语义色、字体、间距和控件规则。
+月白纸面、深墨正文、樱粉主操作构成默认配色。图库和 Hub 用现有八千代与四季插画承载叙事，文章、广场、支付和设置页用衬线标题、留白和细分隔线组织内容。桌面和手机共用颜色、控件状态和组件。
 
-## 开发与预览
+## 预览与维护
 
-使用 `npm run preview:design` 启动带测试数据的本地网站，打开终端所示地址的 `/design-system`。英文发行版使用 `npm run preview:design -- --overseas`。示例可以切换中、英、日文，检查窄栏、键盘焦点、选中与忙碌状态。开发服务器也提供这个路由。常规生产构建只包含业务组件。
+运行 `npm run preview:design`，英文发行版加 `-- --overseas`。打开终端地址下的 `/design-system` 可切换季节、夜间模式、示例语言、窄栏与加载状态，也可输入自定义长标签。图库和广场的预览入口使用真实路由。开发预览使用本地测试数据。海外预览为演示用文章、图片和留言提供预写的英文版本，切换原文可以对照。线上翻译服务独立运行。
 
-| 维护入口 | 用途 |
+| 维护位置 | 内容 |
 | --- | --- |
-| `src/frontend/styles/jingyue/tokens.css` | 四季和明暗主题、字体、语义色与圆角 |
-| `src/frontend/styles/jingyue/system.css` | 控件外观、状态、排版和页面布局 |
-| `src/frontend/components/TsButton.vue` | 业务操作按钮，保留原生键盘和表单行为 |
-| `src/frontend/pages/DesignSystemPage.vue` | 可交互的用法示例 |
-| `npm run check:ui` | 检查 Vue 模板的按钮契约；两种发行构建、本地设计预览和常规测试均执行 |
+| `src/frontend/styles/jingyue/tokens.css` | 春夏秋冬、明暗主题、语义颜色、字体、圆角与旧变量映射 |
+| `src/frontend/styles/jingyue/system.css` | 操作、表单、标题区和组合布局 |
+| `src/frontend/components/` | TsPageHeader、TsButton、TsButtonLink、TsIconButton、TsToggle、TsFilterChip、TsField |
+| `src/frontend/pages/DesignSystemPage.vue` | 引用相同组件的交互样例 |
+| `npm run check:ui` | Vue 模板和普通操作控件样式检查，两种发行构建及预览构建均运行 |
 
-## 选什么控件
+## 配色与版式
 
-| 场景 | 写法与视觉 |
+| 用途 | 春季日间 | 春季夜间 |
+| --- | --- | --- |
+| 页面 `--paper` | #F7F9FC | #151923 |
+| 卡片与输入 `--surface` | #FFFFFF | #222836 |
+| 正文 `--ink` | #202B46 | #EDF0F7 |
+| 辅助文字 `--muted` | #626E84 | #B5BCCB |
+| 实底主操作 `--accent` | #AC4D6D | #E5A4BC |
+| 实底上的文字 `--on-accent` | #FFFFFF | #151923 |
+
+夏、秋、冬复用同一批语义变量，随现有插画切换。选中项用 `--ts-accent-soft` 和 `--accent-ink`，支付入口用浅染底面、图标和文字。危险操作使用独立的 `--danger`。状态文字和常规字号的对比度目标为 4.5:1。
+
+普通按钮和输入框使用 12px 圆角，内容卡片和图像使用 20px，弹层使用 28px，筛选标签与状态胶囊使用 999px。页面标题使用衬线，控件使用无衬线。按钮默认 14px、500 字重，表单文字默认 16px。颜色反馈 160ms，结构过渡参考 240ms，减少动态效果时使用静态反馈。
+
+## 操作与表单
+
+| 用户意图 | 组件和写法 |
 | --- | --- |
-| 保存、提交、发布 | `variant="primary"`，强调色实底，一组操作优先突出一个 |
-| 查看详情、刷新 | 默认 `secondary`，实色表面和中性描边 |
-| 需要容易找到的入口 | `data-ui="accent"`，强调色描边；支付中心使用此样式 |
-| 取消、行内操作 | `variant="quiet"`，文字和悬停反馈 |
-| 删除、撤销授权 | `variant="danger"`，危险色与动作文字 |
-| 筛选、切换 | `variant="choice"`，用 `aria-pressed` 或相应的选项语义表达状态 |
-| 纯图标操作 | `variant="icon"`，提供描述动作的 `aria-label`；有可见文字时使用文字变体 |
+| 保存、发布、提交 | `TsButton variant="primary"`，同组优先突出一个 |
+| 查看详情、取消编辑 | 默认 `secondary`，中性描边 |
+| 展开、更多、上下文操作 | `variant="ghost"`，已有 `quiet` 使用同一渲染规则 |
+| 删除有价值的内容 | `variant="danger"`，文案列明对象 |
+| 打开页面、下载文件 | `TsButtonLink`，站内用 `to`，文件和外站用 `href` |
+| 点赞或收藏、筛选、纯图标 | `TsToggle :pressed`、`TsFilterChip :selected`、`TsIconButton :label :icon` |
+| 单行输入、提示与错误 | `TsField v-model :label :hint :error`，支持原生表单属性 |
+
+桌面密集工具栏用 `size="sm"`（36px），日常操作用 `md`（44px），大入口用 `lg`（48px）。触屏上的标准控件至少 44 × 44 CSS px。尺寸是下限。操作组先换行，标签可换行，按钮随内容增高。加载时保持动作文字，底部进度线和 `aria-busy` 反馈状态，禁用重复提交。
 
 ```vue
-<TsButton type="submit" variant="primary" :busy="saving">保存设置</TsButton>
-<TsButton @click="cancel">取消</TsButton>
-<RouterLink data-ui="accent" to="/payments">支付中心</RouterLink>
-<a data-ui="secondary" :href="downloadUrl" download>下载安装包</a>
+<TsPageHeader title="房间设置" description="管理房间的对话、语音与显示偏好。" />
+<form class="ui-panel ui-stack" @submit.prevent="save">
+  <TsField v-model="name" label="房间名称" required />
+  <div class="ui-actions">
+    <TsButton type="submit" variant="primary" :loading="saving">保存设置</TsButton>
+    <TsButtonLink to="/room" variant="ghost">返回房间</TsButtonLink>
+  </div>
+</form>
 ```
 
-在页面的 `<script setup>` 中导入 `TsButton`。按钮默认类型为 `button`；表单提交显式指定 `submit`。忙碌态会禁用重复点击并设置 `aria-busy`，页面负责反馈结果。导航使用原生链接或 RouterLink，已有的 `primary-btn`、`ghost-btn`、`danger-btn` 等类共用同一套外观。
+在 `<script setup>` 中从 `components` 导入组件。新页面根元素声明 `data-ui-layout="content"`、`workspace` 或 `scene`。页宽和间距用 `ui-page`、`ui-stack`。操作组、工具栏、内容卡片、弹窗底部、空状态和行内反馈分别使用 `ui-actions`、`ui-toolbar`、`ui-panel`、`ui-modal-footer`、`ui-empty` 和 `ui-inline-message`。需要焦点约束、关闭及焦点归还的弹窗复用 `useModalDialog` 或 `MobileSheet`。棋盘、画布、媒体轨道等专用控件通过 `data-ui-part` 保留原有几何和触控行为。
 
-画板工具、棋盘交点、媒体轨道、整行选择、导航和抽屉把手需要专用几何形状。此类控件用 `data-ui-part` 标识真实用途（`canvas`、`media`、`row`、`navigation`、`tool`、`disclosure`、`overlay`），继续使用公共语义色和焦点规则。普通文字按钮选择上表的变体。
+## 迁移与验收
 
-## 新页面
+新业务页面选择组件的用途、尺寸和状态。视觉需求进入公共样式，页面样式负责网格、位置和换行。历史样式登记在 `tests/fixtures/ui-style-exceptions.txt`，记录文件、选择器、属性和值。普通页面中已有的字面颜色、圆角和字号另记在同目录的 `ui-legacy-scales.json`，新值应加入公共语义变量。清理旧覆盖时删除相应登记。新写的普通按钮颜色、字号、圆角、内边距等覆盖会被构建检查指出。已有 CSS 类、数据属性和链接仍可接入同一套样式。
 
-页面根元素声明 `data-ui-layout="content"`、`workspace` 或 `scene`，分别用于常规内容、工具工作区和沉浸场景。使用 `ui-page` 设定页面宽度和边距，`ui-stack` 管理纵向节奏，`ui-grid` 让卡片随可用宽度折行。常规页面以 `ui-heading` 包住标题和简介，现有标题可直接使用 `ui-page-title`。内容卡片用 `ui-panel`，同行动作用 `ui-actions`，表单使用有名称的原生输入框。
+运行 Playwright 的 `tests/e2e/design-system.spec.js`。分别验证 320px 重排与固定视口 200% 文字放大，再检查长中文、日文、英文、连续字符串、八套主题的对比度、鼠标和键盘、触屏尺寸，以及加载前后文字和尺寸。发布前同时走一次登录、图库操作和支付中心的真实页面路径。
 
-```vue
-<main data-ui-layout="content" class="ui-page ui-stack">
-  <header class="ui-heading"><h1>房间设置</h1></header>
-  <form class="ui-panel ui-stack" @submit.prevent="save">
-    <label class="ui-field-group">房间名称<input v-model="name" class="ui-field" required></label>
-    <div class="ui-actions"><TsButton type="submit" variant="primary">保存设置</TsButton></div>
-  </form>
-</main>
-```
-
-常规按钮最小高度为 44px，精细指针的紧凑控件可以用 `data-size="compact"`。文字取自然宽度；空间不足时先让同组控件换行，再让标签换行，按钮随内容增高。图标独立且不压缩，避免给文字设定固定高度或用省略号藏掉动作。页面样式负责位置，公共系统负责按钮色彩、圆角和反馈。
-
-普通操作和输入框使用 `--r-control`，筛选项允许胶囊形，内容表面用 `--r-media`，弹层用 `--r-panel`。表面、文字和强调分别取 `--surface`、`--ink`、`--muted`、`--accent`、`--on-accent`。游戏与房间可使用各自的场景美术。操作优先级、焦点和文字规则与内容页一致。
-
-## 验证
-
-运行 `npm run check:ui`、常规前端构建，以及 Playwright 的 `design-system.spec.js`。排版检查读取文字的实际行框和页面宽度。新增功能至少检查 320px 手机、平板、桌面、长英文与日文标签、明暗主题、键盘、禁用及忙碌状态。测试新按钮时应执行真实业务交互；测试支付请使用隔离的测试订单。
-
-参考 [Paper Widgets](https://uberdesigner.ai/t/paper-widgets) 的共享表面与单一强调色层级。实现复用本项目的 Vue、TsIcon 和季节主题。
+按钮的尺寸与加载处理参考 [Radix Themes](https://www.radix-ui.com/themes/docs/components/button)，操作层级和标签换行参考 [Carbon](https://carbondesignsystem.com/components/button/usage/)，语义色组织参考 [GitHub Primer](https://primer.style/product/getting-started/foundations/color-usage/)。

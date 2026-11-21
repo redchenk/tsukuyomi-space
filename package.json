@@ -11,7 +11,7 @@
     "prebuild:web": "npm run check:ui",
     "prebuild:web:overseas": "npm run check:ui",
     "prepreview:design": "npm run check:ui",
-    "check:ui": "node --test tests/frontend-ui-contract.test.cjs",
+    "check:ui": "node --test tests/frontend-ui-contract.test.cjs && node scripts/check-ui-overrides.cjs",
     "preview:design": "node scripts/preview-design.cjs",
     "dev:web": "vite --config vite.frontend.config.js",
     "dev:live2d-studio": "vite --config live2d-studio/vite.config.js",

@@ -141,3 +141,97 @@ test('signed-in wallet and profile actions fit in the dark theme', async ({ page
     }
   }
 });
+
+test('real seasonal themes preserve colour contrast, button sizes and busy geometry', async ({ page }, info) => {
+  test.skip(process.env.DESIGN_PREVIEW !== '1', 'Requires the local component catalogue.');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/design-system');
+  const sample = page.locator('.samples-page');
+  await expect(sample).toBeVisible();
+  const seasons = sample.locator('.samples-palette [data-ui="choice"]');
+  const mode = sample.locator('.samples-palette [aria-pressed]').last();
+  const save = sample.locator('button[type="submit"]');
+  const cssColours = [];
+  for (const [index, season] of ['spring', 'summer', 'autumn', 'winter'].entries()) {
+    await seasons.nth(index).click();
+    await expect(page.locator('html')).toHaveAttribute('data-season', season);
+    for (const theme of ['light', 'dark']) {
+      if (await page.locator('html').getAttribute('data-theme') !== theme) await mode.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      const pairs = await sample.evaluate(el => {
+        const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+        const rgb = css => {
+          context.fillStyle = css; context.fillRect(0, 0, 1, 1);
+          return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+        };
+        const luminance = colour => rgb(colour).reduce((result, byte, i) => {
+          const v = byte / 255;
+          return result + [0.2126, 0.7152, 0.0722][i] * (v <= 0.04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+        }, 0);
+        const root = getComputedStyle(document.documentElement);
+        const paint = name => root.getPropertyValue('--' + name).trim();
+        const actual = selector => {
+          const style = getComputedStyle(el.querySelector(selector));
+          return [style.color, style.backgroundColor];
+        };
+        const colours = [actual('[data-ui="primary"]'),actual('[data-ui="secondary"]'),actual('[data-ui="danger"]'),
+          actual('[data-ui="choice"][aria-pressed="true"]'),[paint('muted'), paint('paper')],[paint('ink'), paint('surface')]];
+        return { accent: paint('accent'), contrast: colours.map(([fg,bg]) => {
+          const values = [luminance(fg), luminance(bg)].sort((a,b) => b-a);
+          return (values[0] + .05) / (values[1] + .05);
+        }) };
+      });
+      cssColours.push(pairs.accent);
+      for (const value of pairs.contrast) expect(value, season + ' / ' + theme).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+  expect(new Set(cssColours).size).toBe(8);
+  const touch = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+  for (const [size, expected] of [['sm',touch ? 44 : 36],['md',44],['lg',48]]) {
+    const element = sample.locator('.ui-panel button[data-size="' + size + '"]').first();
+    const box = await element.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(expected);
+    if (touch) expect(box.width).toBeGreaterThanOrEqual(44);
+  }
+  await page.setViewportSize({ width: 320, height: 900 });
+  const narrow = sample.locator('input[type="checkbox"]').first();
+  await narrow.check();
+  for (const label of ['保存当前房间的全部语音设置'.repeat(3),'この部屋の字幕と音声設定を保存する'.repeat(3),'Publish artwork and save the current room preferences','ABCDEFGHIJKLMNOPQRSTUVWXYZ'.repeat(4)]) {
+    await sample.locator('#test-action-label').fill(label);
+    await expect(save).toContainText(label);
+    expect(await layout(page)).toEqual([]);
+    const box = await save.boundingBox();
+    await sample.locator('input[type="checkbox"]').nth(1).check();
+    await expect(save).toBeDisabled();
+    await expect(save).toHaveAttribute('aria-busy','true');
+    expect(await save.evaluate(el => [el.offsetWidth,el.offsetHeight])).toEqual([Math.round(box.width), Math.round(box.height)]);
+    await expect(save).toContainText(label);
+    await sample.locator('input[type="checkbox"]').nth(1).uncheck();
+  }
+});
+
+test('double text size at a fixed viewport on editorial pages', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1280, height: 950 });
+  await page.goto('/stage');
+  const articleLink = page.locator('.journal-row a[href^="/articles/"]').first();
+  await expect(articleLink).toBeVisible();
+  const article = await articleLink.getAttribute('href');
+  for (const route of ['/gallery', '/plaza', '/stage', article, '/payments', ...(process.env.DESIGN_PREVIEW === '1' ? ['/design-system'] : [])]) {
+    await page.goto(route);
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
+    await expect(page.locator('main h1').first()).toBeVisible();
+    // Magnify rendered text only, including legacy pixel fonts. Keep viewport and controls at their original widths.
+    const change = await page.locator('main:visible').last().evaluate(main => {
+      const nodes = [main,...main.querySelectorAll('*')].filter(el =>
+        el instanceof HTMLElement && (el.matches('button, input, select, textarea') ||
+        [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim())));
+      const sizes = nodes.map(el => parseFloat(getComputedStyle(el).fontSize));
+      nodes.forEach((el, i) => el.style.setProperty('font-size', (2 * sizes[i]) + 'px', 'important'));
+      return nodes.every((el,i) => Math.abs(parseFloat(getComputedStyle(el).fontSize) - 2 * sizes[i]) < .1);
+    });
+    expect(change).toBe(true);
+    expect(await page.evaluate(() => innerWidth)).toBe(1280);
+    expect(await layout(page), route).toEqual([]);
+  }
+});

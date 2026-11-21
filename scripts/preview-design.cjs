@@ -13,4 +13,5 @@ const build = spawnSync(process.execPath, [vite, 'build', '--config', 'vite.fron
 if (build.status !== 0) process.exit(build.status || 1);
 process.env.E2E_FRONTEND_ARTIFACT = artifact;
 process.env.JINGYUE_DESIGN_PREVIEW = '1';
+process.env.JINGYUE_PREVIEW_ENGLISH = mode === 'overseas' ? '1' : '0';
 require('./preview-ui.cjs');

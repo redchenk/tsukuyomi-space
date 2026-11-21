@@ -186,7 +186,7 @@ onUnmounted(() => {
         <button v-if="music" class="site-tool-button header-music" :class="{ active: music.playing.value }" :aria-label="tr('站内音乐', 'Music')" :aria-expanded="music.drawer.open" @click="music.toggleShell"><TsIcon name="audioLines" :size="19" /></button>
         <button class="site-tool-button header-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
         <button class="site-tool-button header-account" :aria-label="copy.account" aria-controls="site-navigation" :aria-expanded="navOpen && menuMode === 'account'" @click="openNavigation('account', $event)"><img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><TsIcon v-else name="user" :size="19" /><span v-if="unreadNotifications" class="unread-dot"></span></button>
-        <a data-ui="primary" class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
+        <a data-ui="secondary" class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
     </header>
     <dialog ref="navigationRef" id="site-navigation" class="site-navigation-dialog" @keydown="keepModalFocus($event, navigationRef)" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="backdrop">

@@ -1,4 +1,6 @@
 <script setup>
+import TsButtonLink from '../components/TsButtonLink.vue';
+import TsPageHeader from '../components/TsPageHeader.vue';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
@@ -717,14 +719,9 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
 
 <template>
   <main data-ui-layout="content" class="page plaza-page">
-    <header class="plaza-intro">
-      <div>
-        <div class="plaza-eyebrow">{{ t.plazaEyebrow }}</div>
-        <h1 class="plaza-title">{{ t.plazaTitle }}</h1>
-        <p class="plaza-sub">{{ designCopy.intro }}</p>
-      </div>
-      <RouterLink class="ghost-btn plaza-chatroom-link" to="/chatroom"><TsIcon name="message" :size="17" />{{ lang === 'en' ? 'Moon Chat' : lang === 'ja' ? '月読チャット' : '月读聊天室' }}<TsIcon name="arrowRight" :size="15" /></RouterLink>
-    </header>
+    <TsPageHeader class="plaza-intro" :title="t.plazaTitle" :description="designCopy.intro">
+      <template #actions><TsButtonLink class="plaza-chatroom-link" to="/chatroom"><TsIcon name="message" :size="17" />{{ lang === 'en' ? 'Moon Chat' : lang === 'ja' ? '月読チャット' : '月读聊天室' }}<TsIcon name="arrowRight" :size="15" /></TsButtonLink></template>
+    </TsPageHeader>
 
     <section class="plaza-layout">
       <section class="panel plaza-compose-panel ui-panel" :aria-label="t.publish">

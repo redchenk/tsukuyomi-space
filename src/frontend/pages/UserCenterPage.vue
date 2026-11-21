@@ -1,4 +1,6 @@
 <script setup>
+import TsButton from '../components/TsButton.vue';
+import TsField from '../components/TsField.vue';
 import UploadProgress from '../components/UploadProgress.vue';
 import { useUploadProgress } from '../composables/useUploadProgress';
 
@@ -919,7 +921,7 @@ onUnmounted(() => {
           </button>
           <input ref="ucAvatarInput" type="file" accept="image/*" hidden @change="ucUploadAvatar">
         </div>
-        <div class="uc-hero-info">
+        <div class="uc-hero-info ui-heading">
           <div class="uc-eyebrow">YOUR SPACE</div>
           <div class="uc-identity-line">
             <h1 class="uc-username ui-page-title">{{ ucUser?.nickname || ucUser?.username || '-' }}</h1>
@@ -932,7 +934,7 @@ onUnmounted(() => {
             <div><dt>{{ ucCopy.bookmarks }}</dt><dd>{{ uc.bookmarks.length.toLocaleString(locale) }}</dd></div>
           </dl>
         </div>
-        <div class="uc-hero-actions">
+        <div class="uc-hero-actions ui-actions">
           <a class="ghost-btn uc-icon-action" :href="`/users/${encodeURIComponent(ucUser?.username || '')}`" @click.prevent="go(`/users/${encodeURIComponent(ucUser?.username || '')}`)"><TsIcon name="user" :size="17" /><span>{{ ucCopy.publicProfile }}</span></a>
           <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')"><TsIcon name="penLine" :size="17" /><span>{{ t.ucNewPost }}</span></a>
           <button class="ghost-btn uc-refresh-action" type="button" :disabled="ucRefreshing || ucProfileDirty" :aria-busy="ucRefreshing" :aria-label="ucCopy.refresh" :title="ucCopy.refresh" @click="ucRefresh"><TsIcon :name="ucRefreshing ? 'loader' : 'refresh'" :size="17" /></button>
@@ -966,13 +968,9 @@ onUnmounted(() => {
         <section ref="ucContentPanel" class="panel uc-content-panel ui-panel" tabindex="-1">
           <form v-if="uc.tab === 'profile'" :aria-busy="uc.profileSaving" @submit.prevent="ucSaveProfile">
             <div class="uc-section-head"><div><h2 class="uc-section-title">{{ t.ucProfile }}</h2><p class="uc-section-intro">{{ ucCopy.profileHint }}</p></div><TsIcon name="user" :size="24" /></div>
-            <div v-if="uc.profileMsg" class="form-message" :class="uc.profileMsgType" :role="uc.profileMsgType === 'error' ? 'alert' : 'status'">{{ uc.profileMsg }}</div>
+            <div v-if="uc.profileMsg" class="form-message ui-inline-message" :class="uc.profileMsgType" :role="uc.profileMsgType === 'error' ? 'alert' : 'status'">{{ uc.profileMsg }}</div>
             <div class="form-grid">
-              <div class="form-group ui-field-group">
-                <label for="ucNickname">{{ t.ucNickname }}</label>
-                <input class="ui-field" id="ucNickname" name="nickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required aria-describedby="ucNicknameHint">
-                <div id="ucNicknameHint" class="help-text">{{ t.ucNicknameHint }}</div>
-              </div>
+              <TsField id="ucNickname" name="nickname" v-model="uc.profileNickname" :label="t.ucNickname" :hint="t.ucNicknameHint" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required />
               <div class="form-group ui-field-group">
                 <label for="ucBio">{{ t.ucBio }}</label>
                 <textarea id="ucBio" v-model="uc.profileBio" class="uc-profile-bio ui-field" autocomplete="off" maxlength="300" :disabled="uc.profileSaving" :placeholder="t.ucBioPlaceholder" aria-describedby="ucBioCount"></textarea>
@@ -980,7 +978,7 @@ onUnmounted(() => {
               </div>
               <div class="uc-profile-footer">
                 <span class="uc-save-status"><TsIcon :name="ucProfileDirty ? 'penLine' : 'check'" :size="15" />{{ ucProfileDirty ? ucCopy.unsaved : ucCopy.saved }}</span>
-                <div class="uc-profile-buttons"><button class="ghost-btn" type="button" :disabled="!ucProfileDirty || uc.profileSaving" @click="ucResetProfile">{{ ucCopy.discard }}</button><button class="primary-btn uc-icon-action uc-save-btn" type="submit" :disabled="!ucProfileDirty || !ucProfileValid || uc.profileSaving"><TsIcon :name="uc.profileSaving ? 'loader' : 'check'" :size="17" /><span>{{ t.ucSaveProfile }}</span></button></div>
+                <div class="uc-profile-buttons"><button class="ghost-btn" type="button" :disabled="!ucProfileDirty || uc.profileSaving" @click="ucResetProfile">{{ ucCopy.discard }}</button><TsButton variant="primary" class="uc-icon-action uc-save-btn" type="submit" :disabled="!ucProfileDirty || !ucProfileValid || uc.profileSaving"><TsIcon :name="uc.profileSaving ? 'loader' : 'check'" :size="17" /><span>{{ t.ucSaveProfile }}</span></TsButton></div>
               </div>
               <StatusLoader v-if="uc.profileSaving" :label="t.ucSaveProfile" compact />
             </div>

@@ -1,4 +1,84 @@
 {
+  "月白樱粉 · 四季配色与界面组件": {
+    "en": "Moon white and sakura · Seasonal colours and interface components",
+    "ja": "月白と桜色 · 四季の配色とUIコンポーネント"
+  },
+  "预览图库": {
+    "en": "Preview gallery",
+    "ja": "ギャラリーのプレビュー"
+  },
+  "预览广场": {
+    "en": "Preview plaza",
+    "ja": "広場のプレビュー"
+  },
+  "四季配色": {
+    "en": "Seasonal palette",
+    "ja": "四季の配色"
+  },
+  "季节": {
+    "en": "Season",
+    "ja": "季節"
+  },
+  "夜间模式": {
+    "en": "Night mode",
+    "ja": "夜間モード"
+  },
+  "操作与表单": {
+    "en": "Actions and forms",
+    "ja": "操作とフォーム"
+  },
+  "按钮与尺寸": {
+    "en": "Buttons and sizes",
+    "ja": "ボタンとサイズ"
+  },
+  "收藏": {
+    "en": "Favourite",
+    "ja": "お気に入り"
+  },
+  "筛选与提交": {
+    "en": "Filters and submission",
+    "ja": "絞り込みと送信"
+  },
+  "试用长按钮文字": {
+    "en": "Try a long button label",
+    "ja": "長いボタンラベルを試す"
+  },
+  "春樱": {
+    "en": "Spring blossom",
+    "ja": "春桜"
+  },
+  "夏海": {
+    "en": "Summer sea",
+    "ja": "夏の海"
+  },
+  "秋枫": {
+    "en": "Autumn maple",
+    "ja": "秋もみじ"
+  },
+  "月白纸面": {
+    "en": "Paper",
+    "ja": "月白の背景"
+  },
+  "卡片底色": {
+    "en": "Surface",
+    "ja": "カードの背景"
+  },
+  "正文": {
+    "en": "Text",
+    "ja": "本文"
+  },
+  "辅助文字": {
+    "en": "Secondary text",
+    "ja": "補助テキスト"
+  },
+  "当季强调": {
+    "en": "Seasonal accent",
+    "ja": "季節のアクセント"
+  },
+  "危险操作": {
+    "en": "Destructive action",
+    "ja": "破壊的な操作"
+  },
   "月读设计系统": {
     "en": "Tsukuyomi design system",
     "ja": "月読デザインシステム"

@@ -24,7 +24,7 @@
 .code-btn { min-height: 44px; padding: 10px 12px; background: var(--soft); border-radius: var(--r-control); font-size: 12px; white-space: nowrap; }
 .auth-form-tools { display: flex; justify-content: flex-end; min-height: 36px; }
 .auth-inline-link { font-size: 13px; color: var(--accent); min-height: 36px; }
-.auth-card form > .primary-btn { width: 100%; margin-top: 10px; min-height: 48px; }
+.auth-card form > :is(.primary-btn, [data-ui="primary"]) { width: 100%; margin-top: 10px; --ui-action-height: var(--ui-large); }
 .auth-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; margin: 28px 0 16px; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
 .oauth-provider-row { display: flex; justify-content: center; gap: 16px; }
