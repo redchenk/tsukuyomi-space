@@ -4,23 +4,25 @@
 
 **Leave a little moonlight in your day. Talk with Yachiyo, read stories, discover creations, and meet kindred spirits.**
 
+**[Open the Payment Centre →](https://tsukuyomi-space.com/payments)** — Sign in to top up your AI balance, view orders, and check usage.
+
 Tsukuyomi Space is a nonprofit fan community inspired by the world of *Cosmic Princess Kaguya!*. Built with Vue 3 and Express, it brings together a Live2D AI companion, creative publishing, community interaction, and a public fan wiki.
 
 [Chinese / Japanese site](https://yachiyo.hk) · [English site](https://tsukuyomi-space.com) · [Deployment guide](docs/DEPLOY.md) · [Report an issue](https://github.com/redchenk/tsukuyomi-space/issues)
 
 [Preview](#preview) · [Core experiences](#core-experiences) · [Quick start](#quick-start) · [Deployment and configuration](#deployment-and-configuration) · [Developer documentation](#developer-documentation) · [Support the project](#support-the-project)
 
-[![The redesigned Tsukuyomi Space home page, featuring its sakura theme, Room entrance, and latest community creations](docs/images/preview/hub.jpg)](https://tsukuyomi-space.com/hub)
+[![Tsukuyomi Space hub with Yachiyo beneath a parasol and a link to enter her room](docs/images/preview/en/hub.jpg)](https://tsukuyomi-space.com/hub)
 
 ## Preview
 
-These screenshots were captured from the public Chinese site on **October 5, 2026**, at a 1280 × 720 desktop viewport in the light theme while signed out. The Stage shows its featured view, and the Pixel Atelier displays the built-in Moonlit house example. Community content, time, and weather scenes may change.
+Captured on the English site on November 21, 2026. The Room shows Yachiyo in Live2D, and the Pixel Atelier has the built-in Moonlit House example open.
 
 | Live2D AI Room | Stage · Articles and creations |
 | --- | --- |
-| [![Live2D AI Room](docs/images/preview/room.jpg)](https://tsukuyomi-space.com/room) | [![Featured Stage articles](docs/images/preview/stage.jpg)](https://tsukuyomi-space.com/stage?sort=featured) |
+| [![Live2D AI Room](docs/images/preview/en/room.jpg)](https://tsukuyomi-space.com/room) | [![Featured Stage articles](docs/images/preview/en/stage.jpg)](https://tsukuyomi-space.com/stage?sort=featured) |
 | **192 × 108 Pixel Atelier** | **Cosmic Princess Kaguya! Wiki** |
-| [![Pixel Atelier canvas and drawing tools](docs/images/preview/pixel.jpg)](https://tsukuyomi-space.com/pixel) | [![Cosmic Princess Kaguya! Wiki home page](docs/images/preview/wiki.jpg)](https://tsukuyomi-space.com/wiki) |
+| [![Pixel Atelier canvas and drawing tools](docs/images/preview/en/pixel.jpg)](https://tsukuyomi-space.com/pixel) | [![Cosmic Princess Kaguya! Wiki home page](docs/images/preview/en/wiki.jpg)](https://tsukuyomi-space.com/wiki) |
 
 ## Core experiences
 
