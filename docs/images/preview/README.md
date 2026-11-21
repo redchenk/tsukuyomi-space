@@ -1,13 +1,11 @@
 # README 预览截图
 
-采集日期：2026-10-05。来源：国内站公开页面 https://yachiyo.hk。
-浏览器实际视口 1280 × 720，浅色主题、未登录状态。
+本目录的截图采集于 2026 年 11 月 21 日，使用 Chrome 未登录窗口，桌面视口为 1440 × 900。中文 README 使用国内站截图，英文 README 使用 `en/` 下的海外站英文截图。
 
-- `hub.jpg`：大厅。
-- `room.jpg`：私人居所，Live2D 就绪、空白聊天。
-- `stage.jpg`：主舞台精选视图（`/stage?sort=featured`）。
-- `pixel.jpg`：像素工坊，内置月光小屋示例。
-- `wiki.jpg`：百科首页。
-
-截图由实际页面采集，等尺寸压缩为 JPEG，不修改界面或拼造聊天内容。
-中英文 README 共用这组图片。预览资源置于文档目录，便于文档发布与应用资源独立维护。
+| 图片 | 国内站 | 海外站 | 截图内容 |
+| --- | --- | --- | --- |
+| `hub.jpg` | [大厅](https://yachiyo.hk/hub) | [Hub](https://tsukuyomi-space.com/hub) | 首页主视觉与房间入口 |
+| `room.jpg` | [私人居所](https://yachiyo.hk/room) | [Room](https://tsukuyomi-space.com/room) | Live2D 就绪后的房间和聊天面板 |
+| `stage.jpg` | [主舞台](https://yachiyo.hk/stage?sort=featured) | [Stage](https://tsukuyomi-space.com/stage?sort=featured) | 公开文章列表 |
+| `pixel.jpg` | [像素工坊](https://yachiyo.hk/pixel) | [Pixel Atelier](https://tsukuyomi-space.com/pixel) | 在画布设置中载入内置的月光小屋示例 |
+| `wiki.jpg` | [百科](https://yachiyo.hk/wiki) | [Wiki](https://tsukuyomi-space.com/wiki) | 百科首页与导航 |
