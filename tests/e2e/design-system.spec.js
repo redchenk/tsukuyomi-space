@@ -131,6 +131,16 @@ test('signed-in wallet and profile actions fit in the dark theme', async ({ page
     localStorage.setItem('lang','en');
     localStorage.setItem('tsukuyomi_theme','dark');
   }, (await res.json()).data.user);
+  await page.goto('/gallery');
+  await page.locator('.header-account').click();
+  const shelf = page.locator('#site-navigation');
+  for (const path of ['/user-center','/notifications','/attachments','/growth']) {
+    await expect(shelf.locator(`.account-menu a[href="${path}"]`)).toBeVisible();
+  }
+  await expect(shelf.locator('.account-menu a[href="/login"]')).toHaveCount(0);
+  await shelf.locator('.account-menu a[href="/user-center"]').click();
+  await expect(page).toHaveURL(/\/user-center$/);
+  await expect(shelf).not.toBeVisible();
   for (const [route, selector] of [['/payments','.payment-section-nav'],['/user-center','.uc-page'],['/room/settings?section=llm','.settings-providers']]) {
     await page.goto(route);
     await expect(page.locator(selector).first()).toBeVisible();
@@ -242,10 +252,13 @@ test('liquid controls follow a pointer and emit one set of rings per native acti
   await page.goto('/design-system');
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   const panel = page.locator('.samples-page');
-  const shapes = await panel.locator('.ui-panel [data-ui]').evaluateAll(nodes =>
-    nodes.map(el => [getComputedStyle(el).borderTopLeftRadius, getComputedStyle(el).borderTopRightRadius].join('/')));
-  expect(new Set(shapes).size).toBe(1);
-  expect(shapes[0].split('/')[0]).not.toBe(shapes[0].split('/')[1]);
+  const sample = variant => panel.locator(`.ui-panel [data-ui="${variant}"]`).first();
+  await expect(sample('primary')).toHaveCSS('clip-path', /^polygon/);
+  await expect(sample('accent')).toHaveCSS('clip-path', /^polygon/);
+  await expect(sample('secondary')).toHaveCSS('clip-path', 'none');
+  await expect(sample('secondary')).toHaveCSS('border-radius', '3px');
+  await expect(sample('choice')).toHaveCSS('border-radius', '0px');
+  await expect(sample('choice')).toHaveCSS('border-bottom-width', '2px');
   const target = panel.locator('.ui-panel button[data-ui="secondary"]:enabled').first();
   await target.scrollIntoViewIfNeeded();
   // Record the transient paint in the same frame, independent of runner speed.
@@ -383,5 +396,65 @@ test('text stays legible on the painted liquid surfaces in all eight palettes', 
       }, inkless.toString('base64'));
       expect(ratios, season+' '+theme+' rendered label contrast').toBeGreaterThanOrEqual(4.5);
     }
+  }
+});
+
+test('search artwork and page index follow the keyboard order at narrow and wide widths', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/gallery');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  const trigger = page.locator('.header-search');
+  const search = page.locator('#site-search');
+  const input = search.getByRole('combobox');
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await trigger.focus();
+    await trigger.press('Enter');
+    await expect(input).toBeFocused();
+    const covers = search.locator('.shelf-cover');
+    await expect(covers).toHaveCount(4);
+    await expect.poll(() => covers.locator('img').evaluateAll(images => images.every(img => img.complete && img.naturalWidth > 0))).toBe(true);
+    for (const option of (await search.getByRole('option').all()).slice(0, 5)) {
+      await input.press('ArrowDown');
+      await expect(option).toHaveAttribute('aria-selected', 'true');
+      await expect(input).toHaveAttribute('aria-activedescendant', await option.getAttribute('id'));
+    }
+    expect(await search.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await input.fill('wallet');
+    await expect(covers).toHaveCount(0);
+    await expect(search.locator('.shelf-index a[href="/payments"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+  }
+});
+
+test('account shelf follows its trigger on desktop and keeps mobile preferences usable at double text size', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/gallery');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  const trigger = page.locator('.header-account');
+  const dialog = page.locator('#site-navigation');
+  for (const width of [1440, 320]) {
+    await page.setViewportSize({ width, height: 820 });
+    await trigger.focus();
+    await trigger.press('Enter');
+    await expect(dialog.locator('a[href="/login"]')).toBeVisible();
+    await expect(dialog.locator('a[href="/register"]')).toBeVisible();
+    const bounds = await dialog.boundingBox();
+    if (width === 1440) {
+      expect(bounds.width).toBeLessThan(450);
+      expect(bounds.x + bounds.width).toBeGreaterThan((await trigger.boundingBox()).x);
+      expect(bounds.y).toBeLessThan(140);
+    } else {
+      expect(Math.abs(bounds.y + bounds.height - 820)).toBeLessThan(4);
+      await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+    }
+    const picker = dialog.locator('.site-season-picker');
+    await picker.locator('summary').click();
+    await expect(picker.getByRole('combobox').first()).toBeVisible();
+    expect(await dialog.evaluate(el => [el,...el.querySelectorAll('.menu-link,.site-preference-button')].every(n => n.scrollWidth <= n.clientWidth + 2))).toBe(true);
+    await picker.locator('summary').click();
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
   }
 });

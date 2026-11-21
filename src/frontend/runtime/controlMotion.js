@@ -18,7 +18,6 @@ export function installControlMotion() {
     cancelAnimationFrame(frame);
     frame = 0;
     hovered?.style.removeProperty('--lens-x');
-    hovered?.style.removeProperty('--lens-pull');
     hovered = null;
   }
   function clearWaves() {
@@ -47,7 +46,6 @@ export function installControlMotion() {
     if (!bounds.width) return;
     const x = Math.max(0, Math.min(1, (pointerX - bounds.left) / bounds.width));
     hovered.style.setProperty('--lens-x', (8 + x * 84).toFixed(1) + '%');
-    hovered.style.setProperty('--lens-pull', ((x - .5) * 8).toFixed(1) + 'px');
   }
   function move(event) {
     if (event.pointerType !== 'mouse' || event.buttons) return;
@@ -86,7 +84,7 @@ export function installControlMotion() {
     layer.style.setProperty('--wave-y', y + 'px');
     layer.style.setProperty('--wave-span', Math.min(240, Math.max(48, bounds.width * 1.7)) + 'px');
     Object.assign(layer.style, {
-      width: bounds.width + 'px', height: bounds.height + 'px', borderRadius: paint.borderRadius,
+      width: bounds.width + 'px', height: bounds.height + 'px', borderRadius: paint.borderRadius, clipPath: paint.clipPath,
       color: paint.getPropertyValue('--control-echo-color') || paint.color
     });
     const rings = Array.from({ length: 3 }, () => document.createElement('i'));

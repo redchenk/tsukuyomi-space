@@ -59,8 +59,10 @@ for (const width of [1280, 390]) for (const theme of ['light', 'dark']) {
         const input = page.getByRole('searchbox', { name: '搜索网易云音乐' });
         await expect(input).toHaveAttribute('autocomplete', 'off');
         const overflow = await panel.evaluate(el => el.scrollWidth > el.clientWidth + 1); expect(overflow).toBe(false);
-        const buttonRadius = await page.getByRole('button', { name: '网易云', exact: true }).evaluate(el => getComputedStyle(el).borderRadius);
-        expect(parseFloat(buttonRadius)).toBeGreaterThan(15);
+        const sourceTab = page.getByRole('button', { name: '网易云', exact: true });
+        await expect(sourceTab).toHaveAttribute('aria-pressed', 'true');
+        await expect(sourceTab).toHaveCSS('border-bottom-width', '2px');
+        await expect(sourceTab).toHaveCSS('border-radius', '0px');
         const colors = await page.locator('.site-music-main-control').evaluate(el => {
             const reference = document.createElement('span'); reference.style.backgroundColor = 'var(--accent)'; el.append(reference);
             const colors = { player: getComputedStyle(el).backgroundColor, site: getComputedStyle(reference).backgroundColor }; reference.remove(); return colors;

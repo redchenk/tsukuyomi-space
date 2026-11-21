@@ -1,6 +1,10 @@
 <script setup>
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import galleryArt from '../assets/navigation/search/gallery-yachiyo.webp';
+import stageArt from '../assets/navigation/search/star-study.webp';
+import plazaArt from '../assets/navigation/search/plaza-gathering.webp';
+import wikiArt from '../assets/navigation/search/wiki-study.webp';
 import TsIcon from './TsIcon.vue';
 import { loadStageArticles } from '../services/stageArticles';
 import { filterNavigationItems, navigationCopy } from '../services/siteNavigation';
@@ -18,8 +22,12 @@ const activeKey = ref('');
 const copy = computed(() => navigationCopy(props.lang));
 const normalizedQuery = computed(() => query.value.trim().slice(0, 120));
 const matches = computed(() => filterNavigationItems(props.items, normalizedQuery.value));
+const covers = { stage: stageArt, gallery: galleryArt, wiki: wikiArt, plaza: plazaArt };
+const featured = computed(() => normalizedQuery.value ? [] : Object.keys(covers)
+  .map(key => matches.value.find(item => item.key === key)).filter(Boolean));
+const indexItems = computed(() => matches.value.filter(item => !featured.value.includes(item)));
 const results = computed(() => [
-  ...matches.value.map(item => ({ ...item, resultKey: `page-${item.key}` })),
+  ...[...featured.value, ...indexItems.value].map(item => ({ ...item, resultKey: `page-${item.key}` })),
   ...articles.value.map(article => ({ path: articlePath(article), label: article.title, resultKey: `article-${article.id}` })),
   ...(articles.value.length ? [{ path: `/stage?q=${encodeURIComponent(normalizedQuery.value)}`, resultKey: 'all-articles' }] : [])
 ]);
@@ -122,12 +130,34 @@ onUnmounted(() => {
 
 <template>
   <dialog id="site-search" ref="dialog" class="site-search-dialog" aria-labelledby="site-search-title" @cancel.prevent="emit('close')" @click="onBackdrop" @keydown="moveResult" @keydown.esc.prevent.stop="emit('close')">
-    <div class="site-nav-drawer-head"><div><small>TSUKUYOMI SEARCH</small><h2 id="site-search-title">{{ copy.searchTitle }}</h2></div><button type="button" class="site-tool-button" :aria-label="copy.close" @click="emit('close')"><TsIcon name="x" :size="20" /></button></div>
+    <header class="shelf-search-heading">
+      <h2 id="site-search-title">{{ copy.searchTitle }}</h2>
+      <span class="shelf-moon" aria-hidden="true"></span>
+      <button type="button" class="site-tool-button" :aria-label="copy.close" @click="emit('close')"><TsIcon name="x" :size="19" /></button>
+    </header>
     <form class="site-search-field" role="search" autocomplete="off" @submit.prevent="submitSearch"><TsIcon name="search" :size="21" /><input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="site-search-query-query" ref="input" v-model="query" type="search" maxlength="120" :aria-label="copy.search" :placeholder="copy.searchHint" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="site-search-options" aria-expanded="true" :aria-activedescendant="activeId" @keydown="chooseResult"><button class="site-tool-button" type="submit" :aria-label="copy.search"><TsIcon name="arrowRight" :size="20" /></button></form>
     <div id="site-search-options" class="site-search-results" role="listbox" :aria-label="copy.searchTitle">
-      <section v-if="matches.length" role="presentation"><h3>{{ copy.shortcuts }}</h3><a v-for="item in matches" :key="item.key" class="site-search-result" role="option" :id="resultId(`page-${item.key}`)" :aria-selected="activeKey === `page-${item.key}`" :href="item.path" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><small>{{ item.path }}</small><TsIcon name="arrowRight" :size="15" /></a></section>
+      <section v-if="featured.length" class="shelf-featured" role="group" :aria-label="copy.discover">
+        <h3>{{ copy.discover }}</h3>
+        <div class="shelf-covers" role="presentation">
+          <a v-for="item in featured" :key="item.key" :id="resultId(`page-${item.key}`)" class="site-search-result shelf-cover" role="option"
+            :aria-selected="activeKey === `page-${item.key}`" :href="item.path" @click="navigate($event, item)">
+            <img :src="covers[item.key]" alt="" width="156" height="72">
+            <span>{{ item.label }}<TsIcon name="arrowUpRight" :size="14" /></span>
+          </a>
+        </div>
+      </section>
+      <section v-if="indexItems.length" role="group" :aria-label="copy.shortcuts">
+        <h3>{{ copy.shortcuts }}</h3>
+        <div class="shelf-index" role="presentation">
+          <a v-for="item in indexItems" :key="item.key" :id="resultId(`page-${item.key}`)" class="site-search-result" role="option"
+            :aria-selected="activeKey === `page-${item.key}`" :href="item.path" @click="navigate($event, item)">
+            <TsIcon :name="item.icon" :size="17" /><span>{{ item.label }}</span>
+          </a>
+        </div>
+      </section>
       <section v-if="normalizedQuery" role="presentation" :aria-busy="loading"><h3>{{ copy.articles }}</h3><p v-if="loading" class="site-search-status" role="status">{{ copy.loading }}</p><div v-else-if="failed" class="site-search-status" role="status">{{ copy.failed }} <button data-ui-part="disclosure" type="button" class="site-preference-button" @click="searchArticles(true)">{{ copy.retry }}</button></div><template v-else><a v-for="article in articles" :key="article.id" class="site-search-result" role="option" :id="resultId(`article-${article.id}`)" :aria-selected="activeKey === `article-${article.id}`" :href="articlePath(article)" @click="navigate($event, { path: articlePath(article) })"><TsIcon name="book" :size="20" /><span>{{ article.title }}</span><TsIcon name="arrowRight" :size="15" /></a><p v-if="!articles.length" class="site-search-status" role="status">{{ copy.empty }}</p><a v-else class="site-search-result site-search-all" role="option" :id="resultId('all-articles')" :aria-selected="activeKey === 'all-articles'" :href="`/stage?q=${encodeURIComponent(normalizedQuery)}`" @click="navigate($event, { path: `/stage?q=${encodeURIComponent(normalizedQuery)}` })">{{ copy.allArticles }}<TsIcon name="arrowRight" :size="16" /></a></template></section>
     </div>
-    <p class="site-search-help"><span>{{ keyboardHelp }}</span><span>{{ copy.searchHelp }} <kbd>Esc</kbd></span></p>
+    <p class="site-search-help"><span>{{ keyboardHelp }}</span><span><kbd>Esc</kbd> {{ copy.close }}</span></p>
   </dialog>
 </template>

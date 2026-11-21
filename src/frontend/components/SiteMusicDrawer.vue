@@ -76,7 +76,7 @@ function closeBackdrop(event) { if (event.target === dialog.value) props.music.t
           <button data-ui="secondary" class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
             <TsIcon name="skipBack" :size="17" />
           </button>
-          <button data-ui="secondary" class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="active ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
+          <button data-ui-part="media" class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="active ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
             <TsIcon :name="active ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
           <button data-ui="secondary" class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">

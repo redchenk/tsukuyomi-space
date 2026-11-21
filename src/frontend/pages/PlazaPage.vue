@@ -752,7 +752,7 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
             <button class="chip" :class="{ active: plaza.filter === 'replied' }" :aria-pressed="plaza.filter === 'replied'" type="button" @click="plaza.filter = 'replied'">{{ t.filterReplied }}</button>
             <button class="chip" :class="{ active: plaza.filter === 'mine' }" :aria-pressed="plaza.filter === 'mine'" type="button" @click="isAuthed ? plaza.filter = 'mine' : go('/login')">{{ t.filterMine }}</button>
           </div>
-          <label class="plaza-search-wrap">
+          <label class="plaza-search-wrap shelf-field">
             <TsIcon name="search" :size="16" />
             <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="plaza-page-plaza-query-query" v-model="plaza.query" class="plaza-search" type="search" :aria-label="designCopy.search" :placeholder="designCopy.search">
           </label>

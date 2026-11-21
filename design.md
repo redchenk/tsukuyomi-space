@@ -29,18 +29,18 @@
 
 ## 按钮的轮廓与动效
 
-`--r-button` 定义一对舒展的对角弧和一对收紧的短弧，形状取自站内插画的樱瓣。主按钮、次按钮、支付、筛选、图标与旧按钮别名共用该变量。紧凑工具按钮沿用已有尺寸，棋格和拖动手柄按原来的命中区域绘制。表单输入框使用 12px 圆角，内容卡片使用 20px，弹层使用 28px。状态徽标保留胶囊形。
+主操作和支付使用两端对角切口的实色票签（`--ticket-shape`），次操作使用 3px 微圆角方键，筛选使用带下划线的标签。图标工具保持紧凑，棋格和拖动手柄使用原有命中区域。状态徽标使用胶囊形。
 
 | 状态 | 控件的表现 |
 | --- | --- |
-| 静止 | 主操作的弧形边缘反光，标签位于清楚平稳的中央。次要按钮有较浅的釉面。 |
-| 悬停 | 高光跟随指针左右移动，轮廓舒展。轮廓在键盘聚焦时保持稳定，并显示可见的焦点环。 |
+| 静止 | 主操作的切角边缘反光，标签位于清楚平稳的中央。次要按钮有较浅的釉面。 |
+| 悬停 | 高光跟随指针左右移动。轮廓在键盘聚焦时保持稳定，并显示可见的焦点环。 |
 | 激活 | 65ms 内轻压，松开时三圈水纹从真实点击位置扩散。键盘从中心激活。 |
 | 选中 | 筛选与收藏以实际状态着色。日夜开关的小圆珠随当前主题移动。 |
 | 加载、禁用 | 加载保留文本和尺寸，底部点列提示忙碌。禁用按钮静止。 |
 | 减少动态效果 | 去除跟随、位移和水纹，保留静态形状、状态颜色和焦点环。 |
 
-在 `styles/jingyue/tokens.css` 维护轮廓，`styles/jingyue/motion.css` 维护表面与时序。`runtime/controlMotion.js` 监听原生输入，只在指针移动时更新高光，滚动或切换页面时回收水纹。日夜切换的外观使用 `ThemeLens.vue`，沿用现有主题操作。季节展示页保留点阵转场。参考了 [Ferrofluid Button 的边缘反光与液面波纹](https://uberdesigner.ai/t/ferrofluid-button) 和 [Dots 的逐列切换](https://uberdesigner.ai/t/voice-to-text/dots)。
+在 `styles/jingyue/tokens.css` 维护轮廓，`styles/jingyue/motion.css` 维护表面与时序。`runtime/controlMotion.js` 监听原生输入，只在指针移动时更新高光，滚动或切换页面时回收水纹。日夜切换的外观使用 `ThemeLens.vue`，沿用现有主题操作。季节展示页保留点阵转场。搜索用插画入口和文字索引分组，账号菜单在宽屏贴近头像、在窄屏贴底展开。两处的排版与搜索字段由 `styles/jingyue/shelf.css` 维护，参考 [Desk Shelf 的分区与点阵](https://uberdesigner.ai/t/desk-shelf/dots)。动效参考 [Ferrofluid Button 的边缘反光与液面波纹](https://uberdesigner.ai/t/ferrofluid-button) 和 [Dots 的逐列切换](https://uberdesigner.ai/t/voice-to-text/dots)。
 
 ## 操作与表单
 
