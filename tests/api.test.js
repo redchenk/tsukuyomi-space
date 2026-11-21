@@ -2712,6 +2712,35 @@ describe('room memory API', () => {
         await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
     });
 
+    it('distinguishes unusable OSS credentials from transient image failures without exposing provider secrets', async () => {
+        const original = { isConfigured: objectStorage.isConfigured, putObject: objectStorage.putObject };
+        const log = console.error, diagnostics = [];
+        const turnId = 'room-image-storage-failure';
+        const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+        try {
+            objectStorage.isConfigured = () => true;
+            console.error = (...args) => diagnostics.push(args.join(' '));
+            for (const providerStatus of [401, 403, 500]) {
+                objectStorage.putObject = async () => { throw Object.assign(new Error('synthetic-secret-provider-xml'), {
+                    code: 'OSS_UPLOAD_FAILED', providerStatus, ossCode: 'InvalidAccessKeyId', requestId: 'test-request-123'
+                }); };
+                const result = await postJson('/api/room/chat/images', { turnId, name: 'test.png', dataUrl }, userToken);
+                assert.equal(result.response.status, providerStatus === 500 ? 502 : 503);
+                if (providerStatus !== 500) {
+                    assert.equal(result.body.code, 'ROOM_IMAGE_STORAGE_UNAVAILABLE');
+                    assert.equal(result.body.retryable, false);
+                    assert.match(result.body.message, /管理员.*凭据或权限/);
+                }
+                assert.doesNotMatch(JSON.stringify(result.body), /synthetic-secret|test-request|InvalidAccessKeyId/);
+                assert.equal(db.prepare('SELECT COUNT(*) AS n FROM room_chat_images WHERE turn_id = ?').get(turnId).n, 0);
+            }
+            assert.equal(diagnostics.length, 3);
+            assert.match(diagnostics[0], /InvalidAccessKeyId/);
+            assert.match(diagnostics[0], /test-request-123/);
+            assert.doesNotMatch(diagnostics.join('\n'), /synthetic-secret/);
+        } finally { Object.assign(objectStorage, original); console.error = log; }
+    });
+
     it('keeps private OSS image previews after turn save and on another session, without inline database binaries', async () => {
         const original = { isConfigured: objectStorage.isConfigured, putObject: objectStorage.putObject, getObject: objectStorage.getObject, deleteObject: objectStorage.deleteObject };
         const binary = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');

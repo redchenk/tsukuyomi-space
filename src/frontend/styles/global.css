@@ -1,7 +1,8 @@
-@layer reset, tokens, components, pages;
+@layer reset, tokens, components, pages, mobile;
 @import './jingyue/reset.css' layer(reset);
 @import './jingyue/tokens.css' layer(tokens);
 @import './jingyue/components.css' layer(components);
 @import './jingyue/shell.css' layer(components);
 @import './jingyue/background.css' layer(components);
 @import './loading-states.css' layer(components);
+@import './jingyue/mobile.css' layer(mobile);

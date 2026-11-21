@@ -53,8 +53,19 @@ async function upload(userId, turnId, payload) {
         db.prepare(`INSERT INTO room_chat_images (id, user_id, turn_id, object_key, name, mime_type, byte_size)
             VALUES (?, ?, ?, ?, ?, ?, ?)`).run(id, userId, turnId, object.key, name, mimeType, buffer.length);
         return descriptor(find(userId, turnId));
-    } catch (_) {
+    } catch (cause) {
         if (object) await storage.deleteObject(object.key).catch(() => {});
+        // Never log provider XML, credentials, image content or signed URLs.
+        const safe = value => /^[A-Za-z0-9_-]{1,100}$/.test(String(value || '')) ? String(value) : '';
+        console.error('[room-image-sync]', JSON.stringify({
+            phase: object ? 'database' : 'storage', code: safe(cause.code),
+            providerStatus: Number.isInteger(cause.providerStatus) ? cause.providerStatus : null,
+            ossCode: safe(cause.ossCode), requestId: safe(cause.requestId)
+        }));
+        if (!object && [401, 403].includes(cause.providerStatus)) {
+            throw Object.assign(error('图片云同步服务暂不可用，请联系管理员检查存储凭据或权限；原图仍保留在当前消息中', 503),
+                { code: 'ROOM_IMAGE_STORAGE_UNAVAILABLE', retryable: false });
+        }
         throw error('图片云同步失败，原图仍保留在当前消息中，请重试', 502);
     } finally {
         uploads.delete(key);

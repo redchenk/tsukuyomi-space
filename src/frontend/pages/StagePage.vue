@@ -1,4 +1,5 @@
 <script setup>
+import MobileSheet from '../components/MobileSheet.vue';
 import { RouterLink } from 'vue-router';
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -14,6 +15,8 @@ import { nameInitial } from '../utils/userName.mjs';
 import TsIcon from '../components/TsIcon.vue';
 const props = defineProps({ lang: { type: String, default: 'zh' }, t: Object });
 const route = useRoute(), router = useRouter();
+const sortOpen = ref(false), sortTrigger = ref(null);
+const sortOptions = computed(() => [{ value: 'latest', label: tr('最新发布', 'Latest') }, { value: 'featured', label: tr('编辑精选', 'Featured') }, { value: 'daily', label: tr('每日推荐', 'Daily picks') }]);
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
 const { categories } = useArticleCategories({ enabled: computed(() => route.name === 'stage') });
@@ -72,7 +75,7 @@ watch(() => [category.value, order.value, querySearch.value, route.query.page, p
 });
 onMounted(() => { search.value = querySearch.value; load(); });
 onActivated(() => { active = true; if (loadedAt && Date.now() - loadedAt > 30000) load(false, true); else if (loadedAt) trackVisibleArticles(); });
-onDeactivated(() => { active = false; discoveryTracker.stop(); clearTimeout(timer); });
+onDeactivated(() => { active = false; sortOpen.value = false; discoveryTracker.stop(); clearTimeout(timer); });
 onBeforeUnmount(() => { active = false; discoveryTracker.destroy(); revision++; clearTimeout(timer); });
 useContentTranslationRefresh(() => load());
 </script>
@@ -80,7 +83,7 @@ useContentTranslationRefresh(() => load());
 <template>
   <main class="page stage-page" :aria-busy="loading || loadingMore">
     <header class="stage-heading"><div><span class="eyebrow">THE JOURNAL</span><h1 class="section-title">{{ tr('主舞台', 'The journal', 'メインステージ') }}<span class="title-dot">.</span></h1><p class="section-subtitle">{{ tr('故事、创作与生活的切片。每一种表达，都有自己的光。', 'Stories, creations, and everyday discoveries. Every voice has its own light.') }}</p></div><RouterLink to="/editor" class="ghost-btn"><TsIcon name="penLine" :size="17" />{{ tr('写点什么', 'Write a story', '書いてみる') }}</RouterLink></header>
-    <div class="journal-toolbar"><div class="journal-tabs" :aria-label="tr('文章分类', 'Categories')"><button :aria-pressed="!category" @click="setFilter('category', '')">{{ tr('全部', 'All') }}</button><button v-for="item in categories" :key="item.id" :aria-pressed="category === item.name" @click="setFilter('category', item.name)">{{ item.name }}</button></div><div class="journal-tools"><label class="journal-search"><TsIcon name="search" :size="17" /><input v-model="search" type="search" :aria-label="t.searchPlaceholder" :placeholder="tr('搜索文章…', 'Search stories…')"></label><select :value="order" :aria-label="tr('文章排序', 'Sort stories')" @change="setFilter('sort', $event.target.value)"><option value="latest">{{ tr('最新发布', 'Latest') }}</option><option value="featured">{{ tr('编辑精选', 'Featured') }}</option><option value="daily">{{ tr('每日推荐', 'Daily picks') }}</option></select></div></div>
+    <div class="journal-toolbar"><div class="journal-tabs" :aria-label="tr('文章分类', 'Categories')"><button :aria-pressed="!category" @click="setFilter('category', '')">{{ tr('全部', 'All') }}</button><button v-for="item in categories" :key="item.id" :aria-pressed="category === item.name" @click="setFilter('category', item.name)">{{ item.name }}</button></div><div class="journal-tools"><label class="journal-search"><TsIcon name="search" :size="17" /><input v-model="search" type="search" :aria-label="t.searchPlaceholder" :placeholder="tr('搜索文章…', 'Search stories…')"></label><button ref="sortTrigger" class="journal-sort-button" type="button" :aria-label="tr('文章排序', 'Sort stories')" :aria-expanded="sortOpen" @click="sortOpen = true"><TsIcon name="list" :size="18" />{{ sortOptions.find(item => item.value === order)?.label }}<TsIcon name="chevronDown" :size="16" /></button><select :value="order" :aria-label="tr('文章排序', 'Sort stories')" @change="setFilter('sort', $event.target.value)"><option value="latest">{{ tr('最新发布', 'Latest') }}</option><option value="featured">{{ tr('编辑精选', 'Featured') }}</option><option value="daily">{{ tr('每日推荐', 'Daily picks') }}</option></select></div></div>
     <div class="journal-result-line"><span>{{ category || tr('所有故事', 'All stories') }}</span><span>{{ total }} {{ tr('篇文字', 'stories') }}</span></div>
     <LoadingSkeleton v-if="loading" variant="stage" :count="3" :label="t.loading" />
     <div v-else-if="!articles.length && !error" class="empty-state"><p>{{ tr('这里还没有找到故事。换一个关键词试试。', 'No stories found. Try another search.') }}</p><button v-if="category || search" class="ghost-btn" @click="router.replace('/stage')">{{ tr('浏览全部文章', 'See all stories') }}</button></div>
@@ -92,5 +95,6 @@ useContentTranslationRefresh(() => load());
     </div>
     <div v-if="error" class="journal-error" role="alert"><p>{{ error }}</p><button class="ghost-btn" @click="load(Boolean(articles.length))">{{ tr('重新加载', 'Try again') }}</button></div>
     <footer v-if="!loading && articles.length" class="journal-pagination"><span>{{ tr('已读到这里', 'You’re here') }} · {{ articles.length }} / {{ total }}</span><button v-if="page < totalPages" class="ghost-btn" :disabled="loadingMore" @click="load(true)">{{ loadingMore ? tr('正在加载…', 'Loading…') : tr('再读一些', 'More stories') }}<TsIcon :name="loadingMore ? 'loader' : 'arrowDown'" :size="17" /></button><p v-else>{{ tr('暂时读到这里，新的故事还在路上。', 'That’s all for now. More stories are on their way.') }}</p></footer>
+    <MobileSheet :open="sortOpen" :return-focus="sortTrigger" :title="tr('文章排序', 'Sort stories')" @close="sortOpen = false"><div class="sheet-options"><button v-for="item in sortOptions" :key="item.value" type="button" :aria-pressed="order === item.value" @click="setFilter('sort', item.value); sortOpen = false">{{ item.label }}<TsIcon v-if="order === item.value" name="check" :size="20" /></button></div></MobileSheet>
   </main>
 </template>

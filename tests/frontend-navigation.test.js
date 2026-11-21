@@ -643,10 +643,13 @@ describe('notification dock badge', () => {
 describe('platform material surfaces', () => {
     it('uses native modal navigation with focus return and accessible controls', () => {
         const shell = source('src/frontend/layouts/AppShell.vue');
-        assert.match(shell, /<dialog ref="navigationRef"/);
-        assert.match(shell, /dialog\.showModal\(\)/);
-        assert.match(shell, /lastTrigger\.focus\(\{ preventScroll: true \}\)/);
-        assert.match(shell, /@cancel\.prevent="navOpen = false"/);
+        const sheet = source('src/frontend/components/MobileSheet.vue');
+        const modal = source('src/frontend/composables/useModalDialog.js');
+        assert.match(shell, /<MobileSheet :open="navOpen"/);
+        assert.match(sheet, /<dialog ref="dialog"/);
+        assert.match(modal, /dialog.value.showModal\(\)/);
+        assert.match(modal, /previousFocus.focus\(\{ preventScroll: true \}\)/);
+        assert.match(sheet, /@cancel\.prevent="close"/);
         assert.match(shell, /:aria-expanded="navOpen/);
         assert.doesNotMatch(shell, /role="button"/);
     });

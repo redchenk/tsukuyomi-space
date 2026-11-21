@@ -15,7 +15,7 @@ export function keepModalFocus(event, element) {
 }
 
 // Native dialogs make the rest of the page inert and keep Tab inside the modal.
-export function useModalDialog(isOpen) {
+export function useModalDialog(isOpen, { returnFocus } = {}) {
   const dialog = ref(null);
   let restoreScroll;
   let previousFocus;
@@ -33,7 +33,7 @@ export function useModalDialog(isOpen) {
   watch(isOpen, async (open) => {
     const run = ++revision;
     if (!open) { release(); return; }
-    previousFocus = document.activeElement;
+    previousFocus = returnFocus?.() || document.activeElement;
     const path = location.pathname + location.search;
     restoreScroll = lockPageScroll(() => location.pathname + location.search === path);
     await nextTick();

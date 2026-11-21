@@ -31,7 +31,8 @@ for (const scenario of [
     await page.locator('.journal-row[data-article-id="987601"] .journal-title').click();
     await expect(page.locator('.article-reader h1')).toHaveText('成长任务验收文章');
     const recorded = page.waitForResponse(response => response.url().includes(`/user/${scenario.endpoint}/987601`) && response.request().method() === 'POST');
-    await page.locator('.article-social-actions').getByRole('button', { name: scenario.button }).click();
+    const actions = page.locator(scenario.width <= 1080 ? '.article-reading-tools' : '.article-social-actions');
+    await actions.getByRole('button', { name: scenario.button }).click();
     const result = await (await recorded).json();
     expect(result.growth.award.xp).toBe(20);
     await expect(page.getByText('今日任务已完成，+20 经验', { exact: true })).toBeInViewport();

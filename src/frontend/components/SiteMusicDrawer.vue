@@ -1,18 +1,16 @@
 <script setup>
 import { computed } from 'vue';
-import { useModalDialog } from '../composables/useModalDialog';
+import MobileSheet from './MobileSheet.vue';
 import TsIcon from './TsIcon.vue';
 import SiteMusicLibrary from './SiteMusicLibrary.vue';
 import '../styles/jingyue/music.css';
 const props = defineProps({ music: { type: Object, required: true }, lang: { type: String, default: 'zh' } });
 const tr = (zh, en, ja = zh) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
 const active = computed(() => props.music.playing.value || props.music.playPending.value);
-const dialog = useModalDialog(() => props.music.drawer.open);
-function closeBackdrop(event) { if (event.target === dialog.value) props.music.toggleShell(); }
 </script>
 
 <template>
-  <dialog ref="dialog" class="site-music-drawer" aria-label="音乐播放器" @cancel.prevent="music.toggleShell()" @click="closeBackdrop">
+  <MobileSheet :open="music.drawer.open" class="site-music-drawer" :title="tr('音乐播放器', 'Music player', '音楽プレーヤー')" @close="music.toggleShell()">
     <section class="site-music-panel"  aria-label="Music player">
       <div class="site-music-summary">
         <div
@@ -123,5 +121,5 @@ function closeBackdrop(event) { if (event.target === dialog.value) props.music.t
         <SiteMusicLibrary :music="music" :lang="lang" />
       </div>
     </section>
-  </dialog>
+  </MobileSheet>
 </template>

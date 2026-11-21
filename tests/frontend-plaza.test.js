@@ -84,6 +84,7 @@ function page(overrides = {}) {
         setTimeout: fn => { const id = Symbol(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
         onMounted: () => {}, onUnmounted: () => {}, onActivated: () => {}, onDeactivated: () => {}, useContentTranslationRefresh: () => {},
         defineProps: () => ({ lang: 'zh', t: { plazaLoadFailed: '无法读取留言', refresh: '刷新' } }), defineEmits: () => () => {},
+        useMediaQuery: () => vue.ref(false),
         useRoute: () => route, useRouter: () => ({ replace: options => { location.hash = options.hash || ''; route.hash = location.hash; return Promise.resolve(); } }),
         getSession: () => currentSession, loadCurrentSession: () => new Promise(() => {}),
         useUserLevels: () => ({ hydrateUserLevels: () => new Promise(() => {}), userLevel: () => null }),

@@ -38,7 +38,10 @@ for (const width of [390, 1280]) {
             await expect(page.locator('.comments-head')).toBeInViewport();
             expect((await page.locator('.comments-head').boundingBox()).y).toBeGreaterThan(80);
             expect(f.requested.size).toBeLessThan(30);
-            await quick.getByRole('button', { name: '回到顶部', exact: true }).click();
+            if (width <= 1080) {
+                await page.locator('.article-reading-tools').getByRole('button', { name: '文章目录' }).click();
+                await page.getByRole('dialog', { name: '文章目录' }).getByRole('button', { name: '回到顶部', exact: true }).click();
+            } else await quick.getByRole('button', { name: '回到顶部', exact: true }).click();
             await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
             await expect(page.locator('#article-top')).toBeFocused();
         } finally { f.release(); }
@@ -48,10 +51,15 @@ for (const width of [390, 1280]) {
 test('a distant directory link stays at the selected heading after images expand', async ({ page }) => {
     const f = await fixture(page);
     try {
+        if (await page.locator('.article-reading-tools').isVisible()) {
+            await page.locator('.article-reading-tools').getByRole('button', { name: '文章目录' }).click();
+            await page.getByRole('dialog', { name: '文章目录' }).locator('a').last().click();
+        } else {
         if (!await page.locator('.article-toc details').evaluate(element => element.open)) {
             await page.locator('.article-toc summary').click();
         }
         await page.locator('.article-toc a').last().click();
+        }
         const heading = page.locator('#article-section-85');
         await expect(heading).toBeFocused();
         await expect(heading).toBeInViewport();

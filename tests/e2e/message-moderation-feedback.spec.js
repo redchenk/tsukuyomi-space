@@ -13,12 +13,15 @@ test('emoji prose publishes while review reasons remain visible for messages, co
     await expect(page).toHaveURL(/\/hub$/);
     await page.goto('/plaza');
     await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
-    const composer = page.locator('.plaza-composer');
+    await page.locator('.plaza-compose-trigger').click();
+    const composer = page.getByRole('dialog', { name: '今天有什么想分享的？' });
     const marker = `feedback-${Date.now()}`;
     await composer.locator('textarea').fill(`${marker} ${holiday}`);
     await composer.locator('.primary-btn').click();
     const post = page.locator('.plaza-msg-card').filter({ hasText: marker });
     await expect(post).toContainText(holiday);
+    await expect(composer).not.toBeVisible();
+    await page.locator('.plaza-compose-trigger').click();
     await expect(composer.locator('.moderation-notice')).toHaveCount(0);
 
     await composer.locator('textarea').fill('javascript:alert(1)');
@@ -31,6 +34,7 @@ test('emoji prose publishes while review reasons remain visible for messages, co
     await expect(composer.locator('.moderation-notice')).toContainText('review.example');
     await expect(composer.locator('textarea')).toHaveValue('');
     await expect(page.locator('.plaza-msg-card').filter({ hasText: 'review.example/safety' })).toHaveCount(0);
+    await composer.locator('[data-modal-close]').click();
 
     await post.getByRole('button', { name: /回复/ }).first().click();
     const reply = post.locator('.plaza-reply-form');

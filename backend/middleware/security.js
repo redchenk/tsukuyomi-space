@@ -13,7 +13,7 @@ const CONTENT_SECURITY_POLICY = [
     "img-src 'self' data: blob: https: http://localhost:9880 http://127.0.0.1:9880",
     "font-src 'self' data:",
     "media-src 'self' data: blob: https: http://localhost:9880 http://127.0.0.1:9880",
-    "connect-src 'self' https: wss: http://localhost:11434",
+    "connect-src 'self' https: wss: http://localhost:11434 http://127.0.0.1:11434 http://localhost:8790 http://127.0.0.1:8790",
     "frame-src https:",
     "frame-ancestors 'self'",
     "form-action 'self'",

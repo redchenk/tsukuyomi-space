@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 const props = defineProps({ state: { type: Object, required: true }, cancelable: Boolean });
 defineEmits(['cancel', 'dismiss']);
-const progress = computed(() => Number.isFinite(props.state.progress) && !['preparing', 'retrying'].includes(props.state.stage) ? props.state.progress : null);
+const progress = computed(() => Number.isFinite(props.state.progress) && !['preparing', 'retrying', 'error'].includes(props.state.stage) ? props.state.progress : null);
 function bytes(value) {
   if (!Number.isFinite(value) || value <= 0) return '0 B';
   const units = ['B', 'KiB', 'MiB', 'GiB'];
@@ -23,9 +23,9 @@ function bytes(value) {
     </div>
     <div class="upload-progress-summary" role="status" aria-live="polite" aria-atomic="true">
       <span>{{ $ui(state.label) }}</span>
-      <strong v-if="progress !== null">{{ Math.round(progress) }}%</strong>
+      <strong v-if="progress !== null && state.stage !== 'processing'">{{ Math.round(progress) }}%</strong>
     </div>
-    <progress v-if="state.active || progress !== null || state.total > 0" :value="progress === null ? undefined : progress" max="100" :aria-label="$ui('文件传输进度')" />
+    <progress v-if="state.active || progress !== null" :value="progress === null ? undefined : progress" max="100" :aria-label="$ui('文件传输进度')" />
     <div v-if="state.total > 0 || state.loaded > 0 || state.stage === 'processing'" class="upload-progress-bytes">
       <span v-if="state.total > 0 || state.loaded > 0">{{ $ui('已传输') }} {{ bytes(state.loaded) }}<template v-if="state.total > 0"> / {{ bytes(state.total) }}</template></span>
       <span v-if="state.stage === 'processing'">{{ $ui('传输完成，等待服务器确认') }}</span>

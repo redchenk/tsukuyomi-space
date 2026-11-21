@@ -1,4 +1,5 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
+const { renderPixelArtworkPng } = require('../../backend/services/pixel-art-image');
 
 const listing = /\/api\/(?:live\/[^/]+\/)?articles\?/;
 const hubPreview = /\/api\/(?:live\/[^/]+\/)?hub-preview(?:\?|$)/;
@@ -114,6 +115,61 @@ test('stale cached Hub remains readable while refreshing and on refresh failure'
     await expect(page.locator('.discovery-item').first()).toBeVisible();
 });
 
+test('Hub previews the latest pixel artwork and refreshes new and edited works on workshop return', async ({ page }, testInfo) => {
+    const calls = await content(page);
+    let pixel = { id: 501, title: '最新像素画', width: 4, height: 2, background_color: '#112233',
+        palette: ['#ff0000', '#00ff00'], pixels: Array(8).fill(0), updated_at: '2026-11-13 01:00:00' };
+    await page.route(hubPreview, route => {
+        calls.hub++;
+        return route.fulfill({ json: { success: true, data: { article, pixel, messages: [] } } });
+    });
+    await page.route(/\/api\/pixel-art\/\d+\/image\.png\?v=/, route => route.fulfill({
+        contentType: 'image/png', body: renderPixelArtworkPng(pixel)
+    }));
+    // Keep the cache clock fixed so return refreshes cannot rely on the 30s TTL.
+    await page.addInitScript(() => { const now = Date.now(); Date.now = () => now; });
+    await page.goto('/hub');
+    await expect(page.locator('.hub')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
+    const card = page.locator('.discovery-item[href="/pixel"]'), image = card.locator('img');
+    await card.scrollIntoViewIfNeeded();
+    await expect(image).toHaveAttribute('src', '/api/pixel-art/501/image.png?v=2026-11-13%2001%3A00%3A00');
+    await expect(image).toHaveAttribute('alt', '最新像素画');
+    await expect(image).toHaveCSS('object-fit', 'contain');
+    await expect(image).toHaveCSS('image-rendering', 'pixelated');
+    const firstPixel = () => image.evaluate(img => {
+        if (!img.complete || !img.naturalWidth) return null;
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+        return [...ctx.getImageData(0, 0, 1, 1).data];
+    });
+    await expect.poll(firstPixel).toEqual([255, 0, 0, 255]);
+    await navigate(page, '/pixel');
+    pixel = { ...pixel, id: 502, title: '刚发布的像素画', pixels: Array(8).fill(1), updated_at: '2026-11-13 01:00:01' };
+    await page.locator('.site-brand').evaluate(anchor => anchor.click());
+    await expect(image).toHaveAttribute('src', '/api/pixel-art/502/image.png?v=2026-11-13%2001%3A00%3A01');
+    await expect(image).toHaveAttribute('alt', '刚发布的像素画');
+    await card.scrollIntoViewIfNeeded();
+    await expect.poll(firstPixel).toEqual([0, 255, 0, 255]);
+    await navigate(page, '/pixel');
+    pixel = { ...pixel, pixels: Array(8).fill(0), updated_at: '2026-11-13 01:00:02' };
+    await page.locator('.site-brand').evaluate(anchor => anchor.click());
+    await expect(image).toHaveAttribute('src', '/api/pixel-art/502/image.png?v=2026-11-13%2001%3A00%3A02');
+    await card.scrollIntoViewIfNeeded();
+    await expect.poll(firstPixel).toEqual([255, 0, 0, 255]);
+    expect(calls.hub).toBe(3);
+    await card.screenshot({ path: `output/hub-pixel/${testInfo.project.name}.png` });
+});
+
+test('Hub keeps the seasonal pixel cover when no shared artwork exists', async ({ page }) => {
+    await content(page);
+    await page.goto('/hub');
+    await expect(page.locator('.hub')).toHaveAttribute('aria-busy', 'false');
+    const image = page.locator('.discovery-item[href="/pixel"] img');
+    await expect(image).toHaveAttribute('src', /\/assets\/sakura-station-[^/]+\.webp$/);
+    await expect(image).not.toHaveClass(/pixel-preview/);
+});
+
 test('Plaza drafts survive a public page return and are discarded after logout', async ({ page }) => {
     await content(page);
     await page.goto('/login');
@@ -123,7 +179,12 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/hub$/);
     await navigate(page, '/plaza');
-    const draft = page.locator('.plaza-compose-panel textarea');
+    const draft = page.locator('#plaza-message-input');
+    const openComposer = async () => {
+        const trigger = page.locator('.plaza-compose-trigger');
+        if (await trigger.isVisible()) await trigger.click();
+    };
+    await openComposer();
     await draft.fill('未发布的草稿');
     await settle(page);
     await expect(draft).toBeFocused();
@@ -131,7 +192,12 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await navigate(page, '/gallery');
     await expect(page.locator('.gallery-page')).toHaveAttribute('aria-busy', 'false');
     await page.goBack();
+    await expect(page).toHaveURL(/\/plaza$/);
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    await openComposer();
     await expect(draft).toHaveValue('未发布的草稿');
+    const sheet = page.getByRole('dialog', { name: '今天有什么想分享的？' });
+    if (await sheet.isVisible()) await sheet.locator('[data-modal-close]').click();
     await page.getByRole('button', { name: '账号菜单', exact: true }).click();
     await page.locator('#site-navigation').getByRole('button', { name: '退出', exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
@@ -144,6 +210,7 @@ test('Plaza drafts survive a public page return and are discarded after logout',
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/plaza$/);
+    await openComposer();
     await expect(draft).toHaveValue('');
 });
 
@@ -217,7 +284,7 @@ test('a cached Gallery retains filters and cannot open a delayed image modal on 
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     await page.goBack();
     await expect(page).toHaveURL(/\/gallery$/);
-    expect(await page.evaluate(() => document.querySelector('.gallery-page') === window.__galleryNode)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.querySelector('.gallery-page') === window.__galleryNode)).toBe(true);
     await expect(page.locator('.gallery-viewer')).toHaveCount(0);
     expect(lists).toBe(1);
     let requested = false, release;

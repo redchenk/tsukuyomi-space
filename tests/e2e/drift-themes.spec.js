@@ -7,7 +7,7 @@ async function switchTheme(page, mode) {
     else {
         await page.getByRole('button', { name: '账号菜单', exact: true }).click();
         await page.locator('#site-navigation').getByRole('button', { name: label, exact: true }).click();
-        await page.locator('#site-navigation .menu-heading button').click();
+        await page.locator('#site-navigation .ts-sheet-head button').click();
     }
     await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
 }

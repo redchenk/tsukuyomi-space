@@ -596,7 +596,8 @@ router.post('/chat/images', authenticateToken, async (req, res) => {
         const data = await roomImages.upload(req.user.id, normalizeTurnId(req.body?.turnId), req.body);
         res.status(201).json({ success: true, data });
     } catch (error) {
-        res.status(error.statusCode || 502).json({ success: false, message: error.statusCode ? error.message : '图片云同步失败，请重试' });
+        res.status(error.statusCode || 502).json({ success: false, message: error.statusCode ? error.message : '图片云同步失败，请重试',
+            ...(error.code === 'ROOM_IMAGE_STORAGE_UNAVAILABLE' ? { code: error.code, retryable: false } : {}) });
     }
 });
 

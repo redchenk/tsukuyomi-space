@@ -103,7 +103,8 @@ export async function persistRoomImage(image, turnId, signal, onProgress) {
     return { localId, name: image.name, type: image.type };
   }
   const response = await uploadJson(apiUrl, '/api/room/chat/images', { turnId, name: image.name, dataUrl: image.dataUrl }, {
-    signal, onProgress,
+    signal, onProgress: (progress, label, details) => onProgress?.(progress,
+      details?.stage === 'processing' ? '传输完成，正在云端保存…' : label, details),
     headers: authHeaders({ 'Content-Type': 'application/json' }),
   });
   const result = await parseResponse(response);

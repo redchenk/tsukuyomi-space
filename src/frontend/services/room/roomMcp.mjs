@@ -10,6 +10,9 @@ export function validateMcpEndpoint(value) {
     || !(url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) {
     throw protocol.error('MCP_ENDPOINT', 'MCP 端点须使用 HTTPS，本机服务可用 HTTP');
   }
+  if (url.protocol === 'http:' && (!['localhost', '127.0.0.1'].includes(url.hostname) || !['8790', '11434'].includes(url.port))) {
+    throw protocol.error('MCP_CSP', '本站允许 localhost 或 127.0.0.1 的 8790、11434 端口连接本机 MCP；其他端点请使用 HTTPS');
+  }
   return url.toString();
 }
 
@@ -57,6 +60,16 @@ export async function callRoomMcp(settings, method, params = {}, { signal, reque
   const key = String(settings.apiKey || '').trim();
   if (key && !bridge) headers[headerName] = headerName.toLowerCase() === 'authorization' && !/^Bearer\s/i.test(key) ? `Bearer ${key}` : key;
   const controller = new AbortController();
+  const document = globalThis.document;
+  const onPolicyViolation = event => {
+    if (bridge || event.effectiveDirective !== 'connect-src' || event.disposition === 'report') return;
+    try {
+      if (new URL(event.blockedURI).origin === new URL(endpoint).origin) {
+        controller.abort(protocol.error('MCP_CSP', '浏览器安全策略 CSP 阻止了 MCP 连接，请检查端点地址及本站允许的端口'));
+      }
+    } catch { /* An opaque violation cannot be attributed to this request. */ }
+  };
+  document?.addEventListener('securitypolicyviolation', onPolicyViolation);
   const abort = () => controller.abort(signal.reason || protocol.error('MCP_ABORTED', '工具调用已取消'));
   if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
   const timer = setTimeout(() => controller.abort(protocol.error('MCP_TIMEOUT', '工具调用超时')), Math.max(1, Math.min(bridge ? 45000 : 15000, timeoutMs)));
@@ -97,11 +110,13 @@ export async function callRoomMcp(settings, method, params = {}, { signal, reque
     return response.result;
   } catch (e) {
     if (controller.signal.aborted) throw controller.signal.reason || e;
+    if (e instanceof TypeError) throw protocol.error('MCP_NETWORK', '无法连接 MCP，请检查服务是否启动、CORS 配置和浏览器本地网络访问权限');
     // An unclear result is never replayed. 404 reinitialization occurs on the
     // next user operation, not by silently repeating tools/call.
     throw e;
   } finally {
     clearTimeout(timer); signal?.removeEventListener('abort', abort);
+    document?.removeEventListener('securitypolicyviolation', onPolicyViolation);
     if (streamable && session) {
       const cleanup = new AbortController(); const deadline = setTimeout(() => cleanup.abort(), 1000);
       try { const response = await request(endpoint, { method: 'DELETE', redirect: 'error', credentials: 'omit', headers: currentHeaders(), signal: cleanup.signal }); await response.body?.cancel?.().catch(() => {}); } catch {}

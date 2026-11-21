@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { installMobileRouteTransitions } from '../utils/mobileRouteTransition';
 import { initializeOneclickTts } from '../services/room/oneclickTts.mjs';
 import { applyRouteSeo } from '../utils/seo';
 import { cancelPendingRouteScroll, scrollToRoute } from '../utils/routeNavigation';
@@ -385,6 +386,7 @@ export const router = createRouter({
   routes
 });
 
+installMobileRouteTransitions(router);
 router.beforeEach(() => { cancelPendingRouteScroll(); });
 // Consent and grant management are server-rendered pages with no SPA analytics.
 router.beforeEach(to => {

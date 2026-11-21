@@ -234,6 +234,10 @@ describe('browser security headers', () => {
         assert.match(CONTENT_SECURITY_POLICY, /form-action 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /manifest-src 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /connect-src[^;]*http:\/\/localhost:11434/);
+        const connectSources = CONTENT_SECURITY_POLICY.match(/connect-src ([^;]+)/)[1].split(' ');
+        assert.deepEqual(connectSources.filter(source => source.startsWith('http:')).sort(), [
+            'http://127.0.0.1:11434', 'http://127.0.0.1:8790', 'http://localhost:11434', 'http://localhost:8790'
+        ]);
         assert.match(CONTENT_SECURITY_POLICY, /img-src[^;]*http:\/\/localhost:9880[^;]*http:\/\/127\.0\.0\.1:9880/);
         assert.match(CONTENT_SECURITY_POLICY, /media-src[^;]*http:\/\/localhost:9880[^;]*http:\/\/127\.0\.0\.1:9880/);
         assert.doesNotMatch(CONTENT_SECURITY_POLICY, /connect-src[^;]*\shttp:\s/);

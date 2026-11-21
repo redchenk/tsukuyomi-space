@@ -8,7 +8,7 @@ const props = defineProps({
   lang: { type: String, default: 'zh' }
 });
 
-const text = ref('');
+const text = defineModel({ type: String, default: '' });
 const submitting = ref(false);
 const input = ref(null);
 const charCount = computed(() => `${text.value.length} / 300`);

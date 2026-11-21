@@ -60,6 +60,8 @@ a:hover .media-frame img { transform: scale(1.045); }
 .discovery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 .discovery-item:hover h3 { color: var(--accent); }
 .discovery-item .media-frame { position: relative; aspect-ratio: 1; }
+.discovery-item .pixel-preview { object-fit: contain; image-rendering: pixelated; }
+.discovery-item:hover .pixel-preview { transform: none; }
 .discovery-item .media-frame::after { content: ''; position: absolute; inset: 60% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / 40%)); }
 .discovery-item .media-frame > span { position: absolute; bottom: 14px; left: 14px; z-index: 1; padding: 4px 9px; border: 1px solid rgb(255 255 255 / 40%); border-radius: 6px; background: rgb(11 15 25 / 72%); color: white; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
 .discovery-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 0; }

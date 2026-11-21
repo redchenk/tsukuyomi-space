@@ -31,14 +31,17 @@ test('reader indexes real headings, scrolls accessibly and retains the list quer
     expect(errors).toEqual([]);
 });
 
-test('short articles have no empty directory, mobile long articles start collapsed', async ({ page }) => {
+test('short articles have no inline directory, mobile long articles open a contents sheet', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await readerFixture(page);
     await page.goto('/article?id=3');
-    await expect(page.locator('.article-toc')).toBeVisible();
-    await expect(page.locator('.article-toc details')).not.toHaveAttribute('open', '');
-    await page.locator('.article-toc summary').click();
-    await expect(page.locator('.article-toc nav')).toBeVisible();
+    await expect(page.locator('.article-toc')).not.toBeVisible();
+    const contents = page.getByRole('dialog', { name: '文章目录' });
+    await expect(contents).not.toBeVisible();
+    await page.locator('.article-reading-tools').getByRole('button', { name: '文章目录' }).click();
+    await expect(contents).toBeVisible();
+    await expect(contents.getByRole('link')).toHaveCount(4);
+    await contents.locator('[data-modal-close]').click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.unroute(/\/api\/(?:live\/[^/]+\/)?articles\/3\/live\//);
     await readerFixture(page, '一篇很短的日常记录。');

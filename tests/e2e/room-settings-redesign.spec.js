@@ -90,13 +90,18 @@ test(`all Room settings categories fit the mobile ${theme} layout`, async ({ pag
     expect(save.y + save.height).toBeCloseTo(844, 0);
     expect(save.height).toBeLessThanOrEqual(65);
     await page.getByRole('button', { name: '打开音乐', exact: true }).click();
-    // The lazy native modal must finish mounting before measuring its content.
+    // Music is a native sheet above the settings page, including its save bar.
     await expect(page.locator('.site-music-panel')).toBeVisible();
+    const drawer = page.locator('.site-music-drawer');
+    expect(await drawer.evaluate(node => node.matches(':modal'))).toBe(true);
+    await drawer.evaluate(node => Promise.allSettled(node.getAnimations().map(animation => animation.finished)));
     await expect.poll(async () => {
       const player = await page.locator('.site-music-panel').boundingBox();
       return player.y + player.height;
-    }).toBeLessThan(save.y);
-    await page.getByRole('button', { name: 'Collapse music drawer', exact: true }).click();
+    }).toBeLessThanOrEqual(844);
+    await expect(drawer.locator('[data-modal-close]')).toBeInViewport();
+    await drawer.locator('[data-modal-close]').click();
+    await expect(page.getByRole('button', { name: '打开音乐', exact: true })).toBeFocused();
     await expect(page.locator('.settings-savebar .primary-btn')).toHaveCSS('border-radius', '999px');
 });
 }

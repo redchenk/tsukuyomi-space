@@ -93,4 +93,4 @@
 }
 
 .plaza-toast { position: fixed; right: 20px; bottom: 24px; z-index: 80; max-width: min(360px, calc(100vw - 40px)); padding: 14px 20px; border-radius: var(--r-control); color: var(--ink); background: var(--surface); box-shadow: var(--shadow); pointer-events: none; }
-@media (max-width: 1080px) { .plaza-toast { bottom: calc(100px + env(safe-area-inset-bottom)); } }
+@media (max-width: 1080px) { .plaza-toast { bottom: calc(var(--dock-clearance) + 8px); } }

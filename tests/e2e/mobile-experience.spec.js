@@ -34,6 +34,9 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await page.setViewportSize({ width: 390, height: 844 });
     await openPage(page, '/stage');
     await page.evaluate(() => window.scrollTo({ top: 200, behavior: 'instant' }));
+    await expect(page.locator('.mobile-dock')).toHaveClass(/is-hidden/);
+    await page.evaluate(() => window.scrollTo({ top: 100, behavior: 'instant' }));
+    await expect(page.locator('.mobile-dock')).not.toHaveClass(/is-hidden/);
     const scrollY = await page.evaluate(() => window.scrollY);
     const trigger = page.locator('.mobile-dock > button');
     await trigger.click();
@@ -69,6 +72,8 @@ test('navigation remains usable across landscape and desktop resizing', async ({
     await openPage(page, '/plaza');
     await page.locator('.mobile-dock > button').click();
     const dialog = page.locator('#site-navigation');
+    await expect(dialog).toBeVisible();
+    await dialog.evaluate(node => Promise.allSettled(node.getAnimations().map(animation => animation.finished)));
     const box = await dialog.boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(390);

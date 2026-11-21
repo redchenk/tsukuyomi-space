@@ -5,13 +5,13 @@ import { NOTIFICATION_BADGE_EVENT, normalizeNotificationCount, publishNotificati
 import { navigationCopy } from '../services/siteNavigation';
 import { alternateLanguage } from '../i18n';
 import { warmRoutePath } from '../router';
-import { lockPageScroll } from '../utils/pageScrollLock';
-import { keepModalFocus } from '../composables/useModalDialog';
+import MobileSheet from '../components/MobileSheet.vue';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import TsIcon from '../components/TsIcon.vue';
 import BeianLink from '../components/BeianLink.vue';
 import SeasonThemePicker from '../components/SeasonThemePicker.vue';
 import ContentTranslationControl from '../components/ContentTranslationControl.vue';
+import yachiyoAvatar from '../assets/entry/yachiyo-welcome.webp';
 import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
 const SiteSearch = defineAsyncComponent(() => import('../components/SiteSearch.vue'));
 const SiteMusicDrawer = defineAsyncComponent(() => import('../components/SiteMusicDrawer.vue'));
@@ -22,14 +22,18 @@ const copy = computed(() => navigationCopy(props.lang));
 const isRoom = computed(() => ['room', 'roomShared'].includes(props.routeName));
 const growthLabel = computed(() => tr('月契成长', 'Bond growth', '月契成長'));
 const themeLabel = computed(() => props.theme === 'dark' ? props.t.switchLightTheme : props.t.switchDarkTheme);
-const searchOpen = ref(false), navOpen = ref(false), menuMode = ref('explore'), navigationRef = ref(null), scrolled = ref(false);
+const searchOpen = ref(false), navOpen = ref(false), menuMode = ref('explore'), scrolled = ref(false);
 const compactFooter = ref(false);
 let footerMedia;
 function syncFooterLayout() { compactFooter.value = footerMedia.matches; }
 const { keyboardOpen, viewportStyle } = useMobileKeyboard();
 const unreadNotifications = ref(0);
 const UNREAD_POLL_INTERVAL_MS = 60000;
-let unreadPollId = 0, unreadRequest = null, releaseScroll = null, lastTrigger = null;
+let navigationTrigger = null;
+let unreadPollId = 0, unreadRequest = null, scrollFrame = 0, lastScrollY = 0;
+const dockHidden = ref(false);
+const miniPlayer = computed(() => props.showChrome && props.music?.playing.value && !props.music.drawer.open);
+const readingPage = computed(() => ['article', 'articleDetail'].includes(props.routeName));
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: tr('首页', 'Home', 'ホーム'), icon: 'home', active: props.routeName === 'hub', spa: true },
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
@@ -52,6 +56,11 @@ const navItems = computed(() => [
 
 const desktopItems = computed(() => ['stage', 'gallery', 'plaza', 'wiki', 'game', 'download'].map(key => navItems.value.find(item => item.key === key)));
 const dockItems = computed(() => ['hub', 'stage', 'room', 'plaza'].map(key => navItems.value.find(item => item.key === key)));
+const dockIndex = computed(() => {
+  const active = dockItems.value.findIndex(item => item.active);
+  return navOpen.value && menuMode.value === 'explore' || active < 0 ? 4 : active;
+});
+const tileItems = computed(() => ['stage', 'gallery', 'wiki', 'plaza', 'drift', 'pixel', 'game', 'room'].map(key => navItems.value.find(item => item.key === key)));
 const footerGroups = computed(() => [
   { title: tr('发现', 'Discover'), keys: ['stage', 'gallery', 'wiki'] },
   { title: tr('相遇', 'Connect'), keys: ['room', 'plaza', 'drift'] },
@@ -80,24 +89,25 @@ function navigate(event, item) {
   navOpen.value = false;
   if (item.spa !== false) { event?.preventDefault(); emit('go', item.path); }
 }
-function openNavigation(mode, event) { lastTrigger = event?.currentTarget || document.activeElement; menuMode.value = mode; navOpen.value = true; }
+function openNavigation(mode, event) { navigationTrigger = event?.currentTarget || document.activeElement; menuMode.value = mode; navOpen.value = true; dockHidden.value = false; }
 async function openSearch() { navOpen.value = false; await nextTick(); searchOpen.value = true; }
 function shortcut(event) {
   if (props.showChrome && !event.isComposing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
 }
-function backdrop(event) {
-  if (event.target !== navigationRef.value) return;
-  const box = navigationRef.value.getBoundingClientRect();
-  if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) navOpen.value = false;
+async function openMusic() { navOpen.value = false; await nextTick(); if (props.music && !props.music.drawer.open) props.music.toggleShell(); }
+function trackScroll() {
+  if (scrollFrame) return;
+  scrollFrame = requestAnimationFrame(() => {
+    scrollFrame = 0;
+    const y = Math.max(0, window.scrollY), delta = y - lastScrollY;
+    scrolled.value = y > 24;
+    if (Math.abs(delta) > 10 || y < 80) {
+      dockHidden.value = delta > 0 && y > 120 && !navOpen.value && !document.activeElement?.closest('.mobile-dock');
+      lastScrollY = y;
+    }
+  });
 }
-function openMusic() { if (props.music && !props.music.drawer.open) props.music.toggleShell(); }
-function trackScroll() { scrolled.value = window.scrollY > 24; }
-watch(navOpen, open => {
-  const dialog = navigationRef.value;
-  if (open && dialog && !dialog.open) { releaseScroll = lockPageScroll(); dialog.showModal(); }
-  if (!open) { dialog?.close(); releaseScroll?.(); releaseScroll = null; if (lastTrigger?.isConnected) lastTrigger.focus({ preventScroll: true }); }
-}, { flush: 'post' });
-watch(() => props.routeName, () => { navOpen.value = false; searchOpen.value = false; loadUnreadNotifications(); nextTick(trackScroll); });
+watch(() => props.routeName, () => { dockHidden.value = false; lastScrollY = 0; navOpen.value = false; searchOpen.value = false; loadUnreadNotifications(); nextTick(trackScroll); });
 watch(() => props.isAuthed, () => { loadUnreadNotifications(); restartUnreadPolling(); }, { immediate: true });
 async function loadUnreadNotifications() {
   if (!props.isAuthed) {
@@ -159,14 +169,14 @@ onMounted(() => {
 onUnmounted(() => {
   footerMedia?.removeEventListener('change', syncFooterLayout);
   window.removeEventListener('tsukuyomi:music-open', openMusic);
-  releaseScroll?.(); clearInterval(unreadPollId); navigationRef.value?.close();
+  cancelAnimationFrame(scrollFrame); clearInterval(unreadPollId);
   window.removeEventListener('scroll', trackScroll); document.removeEventListener('keydown', shortcut);
   document.removeEventListener('visibilitychange', refreshUnreadWhenVisible); window.removeEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'content-shell': showChrome, 'site-background-shell': showChrome || ['login', 'register'].includes(routeName), 'room-shell': isRoom, 'drift-scene-shell': routeName === 'drift', 'hub-shell': routeName === 'hub', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
+  <div class="app-shell" :class="{ 'content-shell': showChrome, 'site-background-shell': showChrome || ['login', 'register'].includes(routeName), 'room-shell': isRoom, 'drift-scene-shell': routeName === 'drift', 'hub-shell': routeName === 'hub', 'is-keyboard-open': keyboardOpen, 'has-mini-player': miniPlayer, 'reading-shell': readingPage }" :style="viewportStyle">
     <header v-if="showChrome" class="site-header" :class="{ 'on-hero': routeName === 'hub' && !scrolled }">
       <a href="/hub" class="site-brand" @click="navigate($event, { path: '/hub' })"><img :src="brandLogo" alt="" width="32" height="32"><span>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}</span></a>
       <nav class="desktop-nav" :aria-label="t.navigation">
@@ -182,15 +192,20 @@ onUnmounted(() => {
         <a class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
     </header>
-    <dialog ref="navigationRef" id="site-navigation" class="site-navigation-dialog" @keydown="keepModalFocus($event, navigationRef)" :aria-label="menuMode === 'account' ? copy.account : copy.explore" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="backdrop">
-      <header class="menu-heading"><div><span class="eyebrow">{{ menuMode === 'account' ? 'YOUR SPACE' : 'TAKE YOUR TIME' }}</span><h2>{{ menuMode === 'account' ? (user?.nickname || copy.account) : copy.exploreTitle }}</h2></div><button class="icon-button" :aria-label="t.closeNavigation" autofocus @click="navOpen = false"><TsIcon name="x" :size="22" /></button></header>
+    <MobileSheet :open="navOpen" :return-focus="navigationTrigger" id="site-navigation" class="site-navigation-dialog" :title="menuMode === 'account' ? (user?.nickname || copy.account) : copy.exploreTitle" :close-label="t.closeNavigation" @close="navOpen = false">
       <template v-if="menuMode === 'explore'">
+        <div class="explore-mobile">
+          <button class="sheet-search" type="button" @click="openSearch"><TsIcon name="search" :size="19" />{{ tr('搜索文章、人物和空间', 'Search stories and spaces', '記事と空間を検索') }}</button>
+          <nav class="explore-tiles" :aria-label="copy.explore"><a v-for="item in tileItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="25" /><span>{{ item.label }}</span></a></nav>
+          <div class="explore-more"><a v-for="item in exploreGroups[2].items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><TsIcon name="arrowUpRight" :size="16" /></a></div>
+        </div>
         <div class="explore-groups"><section v-for="group in exploreGroups" :key="group.title"><h3>{{ group.title }}</h3><a v-for="item in group.items" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a></section></div>
       </template>
       <div v-else class="account-menu"><a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span><span v-if="item.key === 'notifications' && unreadNotifications">{{ unreadNotifications }}</span></a><button v-if="isAuthed" class="menu-link" @click="navOpen = false; emit('logout')"><TsIcon name="logOut" :size="20" />{{ t.logout }}</button></div>
+      <button v-if="music" class="menu-link menu-music" type="button" @click="openMusic"><TsIcon name="audioLines" :size="20" /><span>{{ tr('站内音乐', 'Music', '音楽') }}</span><TsIcon name="arrowRight" :size="15" /></button>
       <button class="menu-link" type="button" @click="navOpen = false; emit('open-guide')"><TsIcon name="helpCircle" :size="20" /><span>{{ tr('八千代使用向导', 'Yachiyo guide', '八千代ガイド') }}</span><TsIcon name="arrowRight" :size="15" /></button>
       <footer class="menu-preferences"><button class="site-preference-button" @click="emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />{{ themeLabel }}</button><button v-if="lang !== 'en'" class="site-preference-button" @click="emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" />{{ lang === 'zh' ? '日本語' : '中文' }}</button><SeasonThemePicker :lang="lang" /><ContentTranslationControl /></footer>
-    </dialog>
+    </MobileSheet>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="emit('go', $event)" />
     <SiteMusicDrawer v-if="music?.drawer.open" :music="music" :lang="lang" />
     <slot />
@@ -210,8 +225,13 @@ onUnmounted(() => {
         <BeianLink />
       </div>
     </footer>
-    <nav v-if="showChrome && !keyboardOpen" class="mobile-dock" :aria-label="t.mobilePrimaryNavigation">
-      <a v-for="item in dockItems" :key="item.key" :href="item.path" :class="{ 'dock-room': item.key === 'room' }" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><span class="dock-icon"><TsIcon :name="item.icon" :size="22" /></span><span class="dock-label">{{ item.key === 'room' ? tr('八千代', 'Yachiyo') : item.label }}</span></a>
+    <div v-if="miniPlayer && !keyboardOpen" class="mini-player">
+      <button class="mini-player-open" type="button" :aria-label="tr('打开站内音乐', 'Open music')" @click="openMusic"><span class="mini-player-cover" :style="music.coverUrl.value ? { backgroundImage: `url(${JSON.stringify(music.coverUrl.value)})` } : null"><TsIcon v-if="!music.coverUrl.value" name="music" :size="20" /></span><span class="mini-player-copy"><strong>{{ music.currentTrack.value?.title || 'Music' }}</strong><small>{{ music.currentLabel.value }} · {{ tr('正在播放', 'Now playing') }}</small></span></button>
+      <button class="icon-button" type="button" :aria-label="tr('暂停音乐', 'Pause music')" @click="music.togglePlay"><TsIcon name="pause" :size="20" /></button>
+    </div>
+    <nav v-if="showChrome && !keyboardOpen && !readingPage" class="mobile-dock" :class="{ 'is-hidden': dockHidden }" :style="{ '--dock-index': dockIndex }" :aria-label="t.mobilePrimaryNavigation">
+      <span class="dock-indicator" aria-hidden="true"></span>
+      <a v-for="item in dockItems" :key="item.key" :href="item.path" :class="{ 'dock-room': item.key === 'room' }" :aria-current="item.active ? 'page' : undefined" @click="navigate($event, item)"><span class="dock-icon"><img v-if="item.key === 'room'" class="dock-avatar" :src="yachiyoAvatar" alt="" width="28" height="28"><TsIcon v-else :name="item.icon" :size="22" /></span><span class="dock-label">{{ item.key === 'room' ? tr('八千代', 'Yachiyo') : item.label }}</span></a>
       <button :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)"><span class="dock-icon"><TsIcon name="compass" :size="22" /></span><span class="dock-label">{{ copy.explore }}</span></button>
     </nav>
   </div>

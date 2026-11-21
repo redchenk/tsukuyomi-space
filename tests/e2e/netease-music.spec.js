@@ -1,6 +1,12 @@
 const { test, expect } = require('@playwright/test');
 const path = require('node:path');
 
+async function openMusic(page) {
+    if (await page.locator('.header-music').isVisible()) { await page.locator('.header-music').click(); return; }
+    await page.locator('.mobile-dock > button').click();
+    await page.locator('#site-navigation .menu-music').click();
+}
+
 function wav() {
     const samples = 8000 * 20; const bytes = Buffer.alloc(44 + samples * 2);
     bytes.write('RIFF'); bytes.writeUInt32LE(bytes.length - 8, 4); bytes.write('WAVEfmt ', 8);
@@ -32,7 +38,7 @@ for (const width of [1280, 390]) for (const theme of ['light', 'dark']) {
         await page.route('https://m801.music.126.net/test.wav', route => route.fulfill({ contentType: 'audio/wav', body: wav() }));
         await page.goto('/hub');
         const before = await page.evaluate(() => window.scrollY);
-        await page.locator('.header-music').click();
+        await openMusic(page);
         await expect(page.getByRole('combobox', { name: '网站曲目' })).toBeVisible();
         await expect(page.getByRole('combobox', { name: '网站曲目' }).locator('option')).toHaveCount(10);
         await page.getByRole('button', { name: '网易云', exact: true }).click();
@@ -86,7 +92,7 @@ test('QR polling stops when player closes; provider failures preserve local song
         return route.fulfill({ json: { success: true, enabled: true, profile: null } });
     });
     await page.goto('/hub');
-    await page.locator('.header-music').click();
+    await openMusic(page);
     await page.getByRole('button', { name: '网易云', exact: true }).click();
     await page.getByRole('button', { name: '扫码登录网易云' }).click();
     await expect(page.getByRole('img', { name: '网易云音乐登录二维码' })).toBeVisible();
@@ -94,7 +100,7 @@ test('QR polling stops when player closes; provider failures preserve local song
     await page.waitForTimeout(3300);
     expect(checks).toBe(0);
     await page.route('**/api/music/qr', route => route.fulfill({ status: 502, json: { success: false, code: 'MUSIC_NETWORK', message: '网易云连接暂时失败，可以继续听网站曲目' } }));
-    await page.locator('.header-music').click();
+    await openMusic(page);
     await page.getByRole('button', { name: '网易云', exact: true }).click();
     await page.getByRole('button', { name: '刷新二维码' }).click();
     await expect(page.getByText('网易云连接暂时失败，可以继续听网站曲目', { exact: true })).toBeVisible();
@@ -114,7 +120,7 @@ test('a late remote playback response cannot replace the selected fixed tracks',
         throw new Error(`Unexpected music request ${path}`);
     });
     await page.goto('/hub');
-    await page.locator('.header-music').click();
+    await openMusic(page);
     await page.getByRole('button', { name: '网易云', exact: true }).click();
     await expect(page.getByText('月下听歌人', { exact: true })).toBeVisible();
     await page.getByRole('searchbox', { name: '搜索网易云音乐' }).fill('测试');
@@ -168,7 +174,7 @@ async function playbackFixture(page, { local = false, delaySecond = false } = {}
     });
     await page.route('**/assets/music/**', audioResponse);
     await page.goto('/hub');
-    await page.locator('.header-music').click();
+    await openMusic(page);
     if (!local) {
         await page.getByRole('button', { name: '网易云', exact: true }).click();
         await expect(page.getByText('听歌测试', { exact: true })).toBeVisible();
@@ -205,6 +211,18 @@ test('fixed site songs really continue playing after the browser ended event', a
     await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => !audio.paused && !audio.ended && audio.currentTime < 5))).toBe(true);
     await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
 });
+test('mobile mini player keeps playback reachable and pauses the audio', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await playbackFixture(page, { local: true });
+    await page.locator('.site-music-drawer [data-modal-close]').click();
+    const mini = page.locator('.mini-player');
+    await expect(mini).toBeVisible();
+    const playerBox = await mini.boundingBox(), dockBox = await page.locator('.mobile-dock').boundingBox();
+    expect(playerBox.y + playerBox.height).toBeLessThanOrEqual(dockBox.y - 8);
+    await mini.getByRole('button', { name: '暂停音乐', exact: true }).click();
+    await expect(mini).toHaveCount(0);
+    expect(await page.evaluate(() => window.__testAudios.every(audio => audio.paused))).toBe(true);
+});
 test('remote automatic continuation uses direct NetEase audio even with the drawer closed', async ({ page }) => {
     const { calls, media } = await playbackFixture(page);
     await page.getByRole('combobox', { name: '播放顺序' }).selectOption('sequence');
@@ -212,7 +230,7 @@ test('remote automatic continuation uses direct NetEase audio even with the draw
     await finishAudio(page);
     await expect.poll(() => calls.join(',')).toBe('123,124');
     await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => audio.src.endsWith('/124.wav') && !audio.paused && audio.currentTime < 5))).toBe(true);
-    await page.locator('.header-music').click();
+    await openMusic(page);
     await expect(page.locator('.site-music-title-row strong')).toHaveText('第二首');
     expect(media.every(url => new URL(url).hostname === 'm801.music.126.net')).toBe(true);
     expect(media.some(url => url.endsWith('/124.wav'))).toBe(true);
@@ -254,7 +272,7 @@ test('shuffle history works and the selected mode survives reload', async ({ pag
     await expect(page.locator('.site-music-title-row strong')).toHaveText(second);
     await page.evaluate(() => localStorage.setItem('roomMusicPlaybackMode', 'shuffle'));
     await page.goto('/stage');
-    await page.locator('.header-music').click();
+    await openMusic(page);
     await expect(select).toHaveValue('shuffle');
 });
 test('pausing during automatic remote resolution prevents late autoplay', async ({ page }) => {
@@ -290,11 +308,13 @@ test('music modal restores focus and scrolling, fits resizing and respects reduc
     await page.route('**/assets/music/**', route => route.fulfill({ contentType: 'audio/wav', body: wav() }));
     await page.goto('/hub');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
-    const trigger = page.locator('.header-music');
+    const trigger = page.locator('.mobile-dock > button');
     const drawer = page.locator('.site-music-drawer');
     for (const reducedMotion of ['no-preference', 'reduce']) {
       await page.emulateMedia({ reducedMotion });
+      await page.setViewportSize({ width: 390, height: 844 });
       await trigger.focus(); await trigger.press('Enter');
+      await page.locator('#site-navigation .menu-music').click();
       await expect(drawer).toBeVisible();
       expect(await drawer.evaluate(el => el.matches(':modal'))).toBe(true);
       await expect(page.getByRole('combobox', { name: '播放顺序' })).toBeVisible();
@@ -306,6 +326,7 @@ test('music modal restores focus and scrolling, fits resizing and respects reduc
         expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
         expect(await drawer.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
       }
+      await page.setViewportSize({ width: 390, height: 844 });
       await page.keyboard.press('Escape');
       await expect(drawer).toHaveCount(0); await expect(trigger).toBeFocused();
       await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
