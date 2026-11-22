@@ -2,7 +2,7 @@
 import { revealMenu, dismissMenu, forgetMenu } from '../runtime/menuMotion';
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
-import { NOTIFICATION_BADGE_EVENT, normalizeNotificationCount, publishNotificationBadge } from '../services/notificationBadge';
+import { NOTIFICATION_BADGE_EVENT, inboxVisitKey, lastInboxVisit, normalizeNotificationCount, publishNotificationBadge } from '../services/notificationBadge';
 import { navigationCopy } from '../services/siteNavigation';
 import { alternateLanguage } from '../i18n';
 import { warmRoutePath } from '../router';
@@ -11,6 +11,7 @@ import { keepModalFocus } from '../composables/useModalDialog';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import PaymentCenterLink from '../components/PaymentCenterLink.vue';
 import TsIcon from '../components/TsIcon.vue';
+import NotificationIcon from '../components/NotificationIcon.vue';
 import ThemeLens from '../components/ThemeLens.vue';
 import BeianLink from '../components/BeianLink.vue';
 import SeasonThemePicker from '../components/SeasonThemePicker.vue';
@@ -31,6 +32,11 @@ let footerMedia;
 function syncFooterLayout() { compactFooter.value = footerMedia.matches; }
 const { keyboardOpen, viewportStyle } = useMobileKeyboard();
 const unreadNotifications = ref(0);
+const latestUnreadId = ref(0);
+const viewedId = ref(0);
+const accountId = computed(() => props.isAuthed ? props.user?.id : null);
+const showNotificationDot = computed(() => Boolean(accountId.value && unreadNotifications.value && latestUnreadId.value > viewedId.value));
+const newNotificationLabel = computed(() => tr('有新通知', 'New notifications', '新しい通知あり'));
 const UNREAD_POLL_INTERVAL_MS = 60000;
 let unreadPollId = 0, unreadRequest = null, releaseScroll = null, lastTrigger = null;
 const navItems = computed(() => [
@@ -105,41 +111,56 @@ watch(navOpen, open => {
   if (!open) { forgetMenu(dialog); dialog?.close(); releaseScroll?.(); releaseScroll = null; if (lastTrigger?.isConnected) lastTrigger.focus({ preventScroll: true }); }
 }, { flush: 'post' });
 watch(() => props.routeName, () => { navOpen.value = false; searchOpen.value = false; loadUnreadNotifications(); nextTick(trackScroll); });
-watch(() => props.isAuthed, () => { loadUnreadNotifications(); restartUnreadPolling(); }, { immediate: true });
+watch(accountId, id => {
+  unreadRequest?.abort();
+  unreadRequest = null;
+  unreadNotifications.value = 0;
+  latestUnreadId.value = 0;
+  viewedId.value = id ? lastInboxVisit(id) : 0;
+  loadUnreadNotifications();
+  restartUnreadPolling();
+}, { immediate: true });
 async function loadUnreadNotifications() {
-  if (!props.isAuthed) {
+  if (!accountId.value) {
     unreadNotifications.value = publishNotificationBadge(0);
     return;
   }
 
-  if (unreadRequest) return unreadRequest;
-
-  unreadRequest = (async () => {
-    try {
-      const response = await authFetch(noStoreUrl('/api/user/notifications/unread-count'), {
-        headers: authHeaders(),
-        cache: 'no-store'
-      });
-      const result = await parseResponse(response);
-      if (response.status === 401) {
-        unreadNotifications.value = publishNotificationBadge(0);
-        return;
-      }
-      if (result.success && props.isAuthed) {
-        unreadNotifications.value = publishNotificationBadge(result.data?.count);
-      }
-    } catch (_) {
-      // Preserve the last known count during transient network failures.
-    } finally {
-      unreadRequest = null;
+  if (unreadRequest) return;
+  const request = new AbortController();
+  unreadRequest = request;
+  try {
+    const response = await authFetch(noStoreUrl('/api/user/notifications/unread-count'), {
+      headers: authHeaders(),
+      cache: 'no-store',
+      signal: request.signal
+    });
+    const result = await parseResponse(response);
+    if (request.signal.aborted) return;
+    if (response.status === 401) {
+      unreadNotifications.value = publishNotificationBadge(0);
+    } else if (result.success) {
+      latestUnreadId.value = normalizeNotificationCount(result.data?.latestUnreadId);
+      unreadNotifications.value = publishNotificationBadge(result.data?.count);
     }
-  })();
-
-  return unreadRequest;
+  } catch {
+    // Preserve the last known count during transient network failures.
+  } finally {
+    if (unreadRequest === request) unreadRequest = null;
+  }
 }
 
-function handleNotificationBadge(event) {
-  unreadNotifications.value = normalizeNotificationCount(event.detail?.count);
+function handleNotificationBadge({ detail }) {
+  if (detail?.userId && detail.userId !== accountId.value) return;
+  unreadNotifications.value = normalizeNotificationCount(detail?.count);
+  const displayedId = normalizeNotificationCount(detail?.viewedId);
+  if (displayedId) viewedId.value = Math.max(viewedId.value, displayedId);
+}
+
+function syncInboxVisit(event) {
+  if (accountId.value && event.key === inboxVisitKey(accountId.value)) {
+    viewedId.value = Math.max(viewedId.value, normalizeNotificationCount(event.newValue));
+  }
 }
 
 function refreshUnreadWhenVisible() {
@@ -162,8 +183,11 @@ onMounted(() => {
   trackScroll(); window.addEventListener('scroll', trackScroll, { passive: true });
   document.addEventListener('keydown', shortcut); document.addEventListener('visibilitychange', refreshUnreadWhenVisible);
   window.addEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
+  window.addEventListener('storage', syncInboxVisit);
 });
 onUnmounted(() => {
+  unreadRequest?.abort();
+  window.removeEventListener('storage', syncInboxVisit);
   footerMedia?.removeEventListener('change', syncFooterLayout);
   window.removeEventListener('tsukuyomi:music-open', openMusic);
   releaseScroll?.(); clearInterval(unreadPollId); navigationRef.value?.close();
@@ -189,7 +213,12 @@ onUnmounted(() => {
         <button data-ui-part="navigation" class="header-search" aria-haspopup="dialog" aria-controls="site-search" :aria-expanded="searchOpen" :aria-label="copy.search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ tr('搜索', 'Search', '検索') }}</span><kbd>⌘ K</kbd></button>
         <button v-if="music" class="site-tool-button header-music" :class="{ active: music.playing.value }" :aria-label="tr('站内音乐', 'Music')" :aria-expanded="music.drawer.open" @click="music.toggleShell"><TsIcon name="audioLines" :size="19" /></button>
         <button class="site-tool-button header-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><ThemeLens :dark="theme === 'dark'" /></button>
-        <button class="site-tool-button header-account" aria-haspopup="dialog" :aria-label="copy.account" aria-controls="site-navigation" :aria-expanded="navOpen && menuMode === 'account'" @click="openNavigation('account', $event)"><img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><TsIcon v-else name="user" :size="19" /><span v-if="unreadNotifications" class="unread-dot"></span></button>
+        <button class="site-tool-button header-account" aria-haspopup="dialog" :aria-label="showNotificationDot ? copy.account + ', ' + newNotificationLabel : copy.account" aria-controls="site-navigation" :aria-expanded="navOpen && menuMode === 'account'" @click="openNavigation('account', $event)">
+          <NotificationIcon :active="showNotificationDot">
+            <img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28">
+            <TsIcon v-else name="user" :size="19" />
+          </NotificationIcon>
+        </button>
         <a data-ui="secondary" class="header-room" href="/room" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })">{{ copy.enterRoom }}<TsIcon name="arrowUpRight" :size="16" /></a>
       </div>
     </header>
@@ -200,9 +229,12 @@ onUnmounted(() => {
       </template>
       <div data-menu-item v-else class="account-menu">
         <a v-for="item in accountItems" :key="item.key" :href="item.path" class="menu-link"
+          :aria-label="item.key === 'notifications' && showNotificationDot ? item.label + ', ' + newNotificationLabel : undefined"
           :data-ui="item.key === 'login' ? 'primary' : 'secondary'" @click="navigate($event, item)">
-          <TsIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span>
-          <small v-if="item.key === 'notifications' && unreadNotifications">{{ unreadNotifications }}</small>
+          <NotificationIcon v-if="item.key === 'notifications'" :active="showNotificationDot" />
+          <TsIcon v-else :name="item.icon" :size="18" />
+          <span>{{ item.label }}</span>
+          <small v-if="item.key === 'notifications' && showNotificationDot">{{ unreadNotifications }}</small>
         </a>
         <button v-if="isAuthed" data-ui="ghost" type="button" class="menu-link" @click="navOpen = false; emit('logout')">
           <TsIcon name="logOut" :size="18" />{{ t.logout }}

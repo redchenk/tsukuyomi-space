@@ -22,12 +22,40 @@ export async function applyAppBadge(value, badgeTarget = typeof navigator !== 'u
   return count;
 }
 
-export function publishNotificationBadge(value) {
+export function inboxVisitKey(userId) {
+  return `tsukuyomi:inbox-visited:${userId}`;
+}
+
+const visitsThisSession = new Map();
+
+export function lastInboxVisit(userId) {
+  const sessionId = visitsThisSession.get(userId) || 0;
+  try {
+    return Math.max(sessionId, normalizeNotificationCount(localStorage.getItem(inboxVisitKey(userId))));
+  } catch {
+    return sessionId;
+  }
+}
+
+export function rememberInboxVisit(userId, displayedId) {
+  const previous = lastInboxVisit(userId);
+  const newest = normalizeNotificationCount(displayedId);
+  if (!userId || newest <= previous) return previous;
+  visitsThisSession.set(userId, newest);
+  try {
+    localStorage.setItem(inboxVisitKey(userId), String(newest));
+  } catch {
+    // Keep the visit for this browser session when persistent storage is unavailable.
+  }
+  return newest;
+}
+
+export function publishNotificationBadge(value, details = {}) {
   const count = normalizeNotificationCount(value);
   void applyAppBadge(count);
 
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(NOTIFICATION_BADGE_EVENT, { detail: { count } }));
+    window.dispatchEvent(new CustomEvent(NOTIFICATION_BADGE_EVENT, { detail: { ...details, count } }));
   }
 
   return count;

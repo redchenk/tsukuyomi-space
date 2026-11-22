@@ -87,6 +87,9 @@ for (const scenario of ['publish', 'replies', 'edit', 'terminal']) {
 // Browser scenarios need independent identities: the drift quota is per user,
 // and a full Chromium + mobile WebKit run must not consume a shared account.
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
+    const badgeUser = 'badge-' + project;
+    db.prepare('INSERT INTO users(id,username,email,password_hash) VALUES(?,?,?,?)')
+        .run(badgeUser, badgeUser, badgeUser + '@example.test', bcrypt.hashSync('e2e-password', 4));
     for (const role of ['sender','reader','sync']) {
         const username = `chatroom-${role}-${project}`;
         db.prepare('INSERT INTO users(id,username,email,password_hash) VALUES(?,?,?,?)')

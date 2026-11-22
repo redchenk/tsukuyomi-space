@@ -37,6 +37,7 @@
   --page-width: 1240px;
   --gutter: clamp(20px, 4vw, 64px);
   --danger: #ad344b;
+  --notification-red: #d83342;
   --success: #326b53;
 }
 :root[data-season='spring'] { --accent: #ac4d6d; --accent-hover: #913d5b; }
@@ -76,6 +77,7 @@
   --background-edge: 85%;
   --background-reading: 91%;
   --danger: #ed8ca0;
+  --notification-red: #ff6371;
   --success: #8fcaaf;
   --shadow: 0 24px 64px rgb(0 0 0 / 35%);
 }
