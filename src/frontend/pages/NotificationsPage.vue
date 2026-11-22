@@ -2,9 +2,10 @@
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, onMounted, reactive } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
+import { useRoute } from 'vue-router';
 import { formatDateTime } from '../utils/time';
 import TsIcon from '../components/TsIcon.vue';
-import { publishNotificationBadge } from '../services/notificationBadge';
+import { publishNotificationBadge, rememberInboxVisit } from '../services/notificationBadge';
 import { notificationTitle, notificationContent } from '../services/systemText';
 
 const props = defineProps({
@@ -12,6 +13,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
+const route = useRoute();
 const NOTIFICATIONS_PAGE_SIZE = 12;
 
 const inbox = reactive({
@@ -67,8 +69,8 @@ const pageSummary = computed(() => {
   return `\u7b2c ${start}-${end} \u6761\uff0c\u5171 ${inbox.total} \u6761`;
 });
 
-function setUnreadCount(value) {
-  inbox.unread = publishNotificationBadge(value);
+function setUnreadCount(value, details) {
+  inbox.unread = publishNotificationBadge(value, details);
 }
 
 function formatDate(value) {
@@ -121,7 +123,13 @@ async function loadNotifications(page = inbox.page) {
     inbox.pageSize = Math.max(1, Number.parseInt(result.pagination?.limit, 10) || NOTIFICATIONS_PAGE_SIZE);
     inbox.total = Math.max(0, Number.parseInt(result.pagination?.total, 10) || inbox.items.length);
     inbox.totalPages = Math.max(1, Number.parseInt(result.pagination?.totalPages, 10) || Math.ceil(inbox.total / inbox.pageSize));
-    setUnreadCount(result.unread);
+    if (route.name === 'notifications') {
+      const first = inbox.items[0];
+      setUnreadCount(result.unread, {
+        userId: first?.user_id,
+        viewedId: inbox.page === 1 && first ? rememberInboxVisit(first.user_id, first.id) : undefined
+      });
+    }
   } catch (error) {
     inbox.message = error.message || '站内信加载失败';
   } finally {

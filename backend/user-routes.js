@@ -53,7 +53,7 @@ router.get('/notifications', authenticateToken, (req, res) => {
 
 router.get('/notifications/unread-count', authenticateToken, (req, res) => {
     try {
-        res.json({ success: true, data: { count: notificationRepository.unreadCount(req.user.id) } });
+        res.json({ success: true, data: notificationRepository.unreadSummary(req.user.id) });
     } catch (error) {
         console.error('Unread notifications failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });

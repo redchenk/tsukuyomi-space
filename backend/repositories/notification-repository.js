@@ -74,12 +74,16 @@ function notificationCounts(userId) {
     };
 }
 
-function unreadCount(userId) {
+function unreadSummary(userId) {
     return db.prepare(`
-        SELECT COUNT(*) AS count
+        SELECT COUNT(*) AS count, COALESCE(MAX(id), 0) AS latestUnreadId
         FROM notifications
         WHERE user_id = ? AND read_at IS NULL
-    `).get(userId).count;
+    `).get(userId);
+}
+
+function unreadCount(userId) {
+    return unreadSummary(userId).count;
 }
 
 function findNotificationById(id, userId) {
@@ -113,6 +117,7 @@ module.exports = {
     listNotifications,
     notificationCounts,
     unreadCount,
+    unreadSummary,
     findNotificationById,
     markNotificationRead,
     markAllRead

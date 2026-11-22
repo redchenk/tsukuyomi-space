@@ -10,8 +10,6 @@
   "components/ModerationNotice.vue | type": ["13px"],
   "components/NoticeMarkdown.vue | radius": ["3px"],
   "components/NoticeMarkdown.vue | type": ["0.9em","1.1em"],
-  "components/NotificationBell.vue | paint": ["#cf8295"],
-  "components/NotificationBell.vue | radius": ["50%"],
   "components/OfficialServiceSettings.vue | radius": ["12px"],
   "components/room/OfficialTtsStatus.vue | paint": ["#ddd","rgba(255,255,255,.35)"],
   "components/room/OfficialTtsStatus.vue | radius": ["16px","999px"],
