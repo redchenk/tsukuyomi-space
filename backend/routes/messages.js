@@ -279,12 +279,12 @@ router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
     }
 });
 
-router.post('/:id/like', authenticateToken, (req, res) => {
+function updateMessageLike(req, res) {
     try {
         const messageId = req.params.id;
         const userId = req.user.id;
-        const existing = messageRepository.findMessageLike(messageId, userId);
-        if (existing) {
+        const liking = req.method === 'POST';
+        if (liking && messageRepository.findMessageLike(messageId, userId)) {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
@@ -296,10 +296,10 @@ router.post('/:id/like', authenticateToken, (req, res) => {
             return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
-        const message = messageRepository.likeMessage(messageId, userId);
+        const message = liking ? messageRepository.likeMessage(messageId, userId) : messageRepository.unlikeMessage(messageId, userId);
         responseCache.delPrefix(message.article_id ? `public:article-messages:${message.article_id}` : 'public:plaza-messages');
         responseCache.delPrefix('public:message-topics');
-        notifyMessageOwner({
+        if (liking) notifyMessageOwner({
             targetMessage: message,
             actor: req.user,
             type: 'like',
@@ -307,15 +307,18 @@ router.post('/:id/like', authenticateToken, (req, res) => {
             content: message.content,
             relatedMessageId: message.id
         });
-        const growth = !message.article_id
+        const growth = liking && !message.article_id
             ? recordPlazaGrowth(req.user.id, 'plaza_like', message.id)
             : null;
-        res.json({ success: true, data: { ...message, viewer_liked: true }, growth });
+        res.json({ success: true, data: { ...message, viewer_liked: liking }, growth });
     } catch (error) {
         console.error('Like message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
-});
+}
+
+router.post('/:id/like', authenticateToken, updateMessageLike);
+router.delete('/:id/like', authenticateToken, updateMessageLike);
 
 router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => {
     try {

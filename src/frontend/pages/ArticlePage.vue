@@ -1,4 +1,5 @@
 <script setup>
+import LikeButton from '../components/LikeButton.vue';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
@@ -351,6 +352,7 @@ async function toggleArticleLike() {
     const completed = applyArticleGrowth(result.growth, owner);
     if (completed) articleTaskMessage.value = completed;
     showMessage('');
+    return !previous.liked && articleLike.liked && result.changed !== false && getSession()?.user?.id === owner;
   } catch (error) {
     if (isCurrentArticle(context)) {
       Object.assign(articleLike, previous);
@@ -493,26 +495,21 @@ async function submitReply(commentId, text) {
 
 async function likeComment(commentId) {
   if (!requireLogin()) return;
-  if (isCommentLiked(commentId)) {
-    showMessage('已经点过赞了');
-    return;
-  }
-
+  const liking = !isCommentLiked(commentId);
+  const owner = getSession()?.user?.id;
+  const context = { id: articleId.value, revision: articleLoadRevision };
   try {
     const response = await authFetch(`/api/messages/${commentId}/like`, {
-      method: 'POST',
-      headers: authHeaders()
+      method: liking ? 'POST' : 'DELETE', headers: authHeaders()
     });
     const result = await parseResponse(response);
+    if (!isCurrentArticle(context) || owner !== getSession()?.user?.id) return;
     if (!result.success) throw new Error(result.message || '点赞失败');
-    if (result.data?.id) patchComment(result.data);
-    else {
-      const target = comments.value.find((item) => item.id === commentId);
-      if (target) target.like_count = Number(target.like_count || 0) + 1;
-    }
+    patchComment(result.data);
     showMessage('');
+    return liking && result.data.viewer_liked;
   } catch (error) {
-    showMessage(error.message || '点赞失败');
+    if (isCurrentArticle(context)) showMessage(error.message || '点赞失败');
   }
 }
 
@@ -599,10 +596,9 @@ watch(() => route.hash, revealCommentHash);
             <p>{{ article.excerpt }}</p>
           </section>
           <div class="article-social-actions ui-actions">
-            <button data-ui="ghost" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
-              <TsIcon :class="{ 'ts-status-loader-icon': articleLike.loading }" :name="articleLike.loading ? 'loader' : 'heart'" :size="17" />
+            <LikeButton data-ui="ghost" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :pressed="articleLike.liked" :icon-size="17" :toggle="toggleArticleLike">
               <span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }} {{ articleLike.count.toLocaleString(lang) }}</span>
-            </button>
+            </LikeButton>
             <button data-ui="ghost" class="article-bookmark-btn" type="button" @click="openArticleShare">
               <TsIcon name="external" :size="17" />
               <span>{{ readerCopy.share }}</span>
@@ -682,16 +678,15 @@ watch(() => route.hash, revealCommentHash);
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
-                <button data-ui="quiet"
+                <LikeButton data-ui="quiet"
                   class="icon-btn comment-tool-btn like-btn"
                   :class="{ liked: isCommentLiked(comment.id) }"
-                  :aria-pressed="isCommentLiked(comment.id)"
+                  :pressed="isCommentLiked(comment.id)"
                   type="button"
-                  @click="likeComment(comment.id)"
+                  :toggle="() => likeComment(comment.id)"
                 >
-                  <TsIcon name="heart" :size="16" />
                   <span>喜欢 {{ comment.like_count || 0 }}</span>
-                </button>
+                </LikeButton>
                 <button data-ui="quiet" class="icon-btn comment-tool-btn" type="button" @click="toggleReply(comment.id)">
                   <TsIcon name="message" :size="16" />
                   <span>回复</span>

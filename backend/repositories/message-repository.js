@@ -293,6 +293,16 @@ function likeMessage(messageId, userId) {
     return findMessageById(messageId);
 }
 
+function unlikeMessage(messageId, userId) {
+    return db.transaction(() => {
+        const removed = db.prepare('DELETE FROM message_likes WHERE message_id = ? AND user_id = ?').run(messageId, userId);
+        if (removed.changes) {
+            db.prepare('UPDATE messages SET like_count = MAX(0, like_count - 1) WHERE id = ?').run(messageId);
+        }
+        return findMessageById(messageId);
+    })();
+}
+
 module.exports = {
     listMessages,
     listRecentPublicMessages,
@@ -308,5 +318,6 @@ module.exports = {
     deleteUserMessage,
     findMessageLike,
     listMessageLikeIds,
-    likeMessage
+    likeMessage,
+    unlikeMessage
 };

@@ -42,5 +42,4 @@
 @media (max-width: 600px) { input, textarea, select { font-size: 16px; } .section-title { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { scroll-behavior: auto; } ::view-transition-group(*) { animation-duration: .01ms; } }
 
-.like-btn.liked .ts-icon { color: #ff5f73; fill: currentColor; }
 @media (prefers-reduced-transparency: reduce) { dialog::backdrop, .site-header { backdrop-filter: none; } }

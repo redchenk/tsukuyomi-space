@@ -123,13 +123,14 @@ test('chat follows new chunks at bottom but never moves a reader viewing history
 
 test('a modal closed before rendering never opens late and releases the scroll lock', async () => {
   const tick = deferred(); let open = true, opened = 0, released = 0, focused = 0;
-  const c = { ref: value => ({ value }), nextTick: () => tick.promise, document: { activeElement: { isConnected: true, focus: () => focused++ } },
+  const { forgetMenu } = await import('../src/frontend/runtime/menuMotion.js');
+  const c = { forgetMenu, ref: value => ({ value }), nextTick: () => tick.promise, document: { activeElement: { isConnected: true, focus: () => focused++ } },
     location: { pathname: '/stage', search: '' }, lockPageScroll: () => () => released++,
     watch: (_, callback) => { c.change = callback; callback(true); }, onBeforeUnmount: callback => { c.cleanup = callback; } };
   const code = fs.readFileSync(path.join(__dirname, '../src/frontend/composables/useModalDialog.js'), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function');
   vm.runInNewContext(code + '\nthis.useModalDialog = useModalDialog;', c);
   const modal = c.useModalDialog(() => open);
-  modal.value = { showModal: () => opened++, close() {} };
+  modal.value = { showModal: () => opened++, close() {}, removeAttribute() {} };
   open = false; await c.change(false); tick.resolve(); await Promise.resolve();
   assert.equal(opened, 0); assert.equal(released, 1); assert.equal(focused, 1);
   c.cleanup(); assert.equal(released, 1);

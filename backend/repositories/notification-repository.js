@@ -25,6 +25,11 @@ function createNotification({
     if (actorId && actorId === userId) return null;
 
     return db.transaction(() => {
+        // A change of heart should not send the same author a second inbox item or email.
+        if (actorId && (type === 'like' || type === 'pixel_art_like') && db.prepare(`
+            SELECT 1 FROM notifications WHERE user_id = ? AND actor_id = ? AND type = ?
+                AND link = ? AND related_message_id IS ? LIMIT 1
+        `).get(userId, actorId, type, link, relatedMessageId)) return null;
         const result = db.prepare(`
             INSERT INTO notifications (
                 user_id, actor_id, type, title, content, link,

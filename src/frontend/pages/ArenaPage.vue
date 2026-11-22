@@ -1,9 +1,11 @@
 <script setup>
+import { contentTranslationEnabled } from '../services/contentTranslation';
+import LikeButton from '../components/LikeButton.vue';
 import { dismissMenu } from '../runtime/menuMotion';
 import { useContentTranslationRefresh } from '../composables/useContentTranslationRefresh';
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import { apiFetch, apiUrl, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import PixelColorPicker from '../components/PixelColorPicker.vue';
 import moonHouseUrl from '../assets/pixel/moon-house.png';
@@ -1346,7 +1348,19 @@ async function loadArtworks(page = gallery.page) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
     if (revision !== artworkListRevision) return;
-    gallery.items = Array.isArray(result.data) ? result.data : [];
+    let items = Array.isArray(result.data) ? result.data : [];
+    if (isAuthed.value && items.length && contentTranslationEnabled.value) {
+      // The public translation endpoint never receives the viewer's session.
+      const ids = items.map(item => item.id).join(',');
+      const states = await parseResponse(await fetch(apiUrl(`/api/pixel-art/like-states?ids=${encodeURIComponent(ids)}`), {
+        credentials: 'include', cache: 'no-store'
+      }));
+      if (revision !== artworkListRevision) return;
+      if (!states.success) throw new Error(states.message || 'Pixel art unavailable');
+      const byId = new Map(states.data.map(row => [row.id, row]));
+      items = items.map(item => ({ ...item, ...byId.get(item.id) }));
+    }
+    gallery.items = items;
     await hydrateUserLevels(gallery.items.map((artwork) => artwork.author_id)).catch(() => {});
     if (revision !== artworkListRevision) return;
     gallery.page = nextPage;
@@ -1461,21 +1475,21 @@ async function likeArtwork(artwork) {
     go('/login');
     return;
   }
-  if (isArtworkLiked(artwork)) {
-    showToast(copy.value.alreadyLiked, 'error');
-    return;
-  }
+  const liking = !isArtworkLiked(artwork);
+  const owner = session.value?.user?.id;
 
   try {
     const response = await authFetch(`/api/pixel-art/${artwork.id}/like`, {
-      method: 'POST',
+      method: liking ? 'POST' : 'DELETE',
       headers: authHeaders()
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
+    if (owner !== getSession()?.user?.id) return;
     if (result.growth) applyGrowthResult(result.growth);
     upsertArtwork(result.data);
-    showToast(result.message || copy.value.likedToast);
+    if (liking) showToast(copy.value.likedToast);
+    return liking && result.data.viewer_liked;
   } catch (error) {
     showToast(error.message || copy.value.publishFailed, 'error');
   }
@@ -1742,16 +1756,15 @@ useContentTranslationRefresh(() => loadArtworks(gallery.page));
             </div>
           </div>
           <div class="pixel-art-actions">
-            <button data-ui-part="canvas"
+            <LikeButton data-ui-part="canvas" :data-ui="null"
               class="icon-btn like-btn"
               :class="{ liked: isArtworkLiked(artwork) }"
-              :aria-pressed="isArtworkLiked(artwork)"
+              :pressed="isArtworkLiked(artwork)"
               type="button"
-              @click="likeArtwork(artwork)"
+              :icon-size="15" :toggle="() => likeArtwork(artwork)"
             >
-              <TsIcon name="heart" :size="15" />
               <span>{{ isArtworkLiked(artwork) ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
-            </button>
+            </LikeButton>
             <button data-ui-part="canvas" class="icon-btn" type="button" @click="downloadArtwork(artwork)">
               <TsIcon name="download" :size="15" />
               <span>{{ copy.download }}</span>

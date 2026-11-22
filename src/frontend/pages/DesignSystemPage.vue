@@ -10,7 +10,7 @@ import { siteArt } from '../data/siteArt';
 import SeasonDotPlate from '../components/SeasonDotPlate.vue';
 import TsButtonLink from '../components/TsButtonLink.vue';
 import TsFilterChip from '../components/TsFilterChip.vue';
-import TsToggle from '../components/TsToggle.vue';
+import LikeButton from '../components/LikeButton.vue';
 import TsField from '../components/TsField.vue';
 import { useSeasonTheme } from '../composables/useSeasonTheme';
 
@@ -26,6 +26,10 @@ function nextSeason() {
 }
 const swatches = { paper: '月白纸面', surface: '卡片底色', ink: '正文', muted: '辅助文字', accent: '当季强调', danger: '危险操作' };
 const favourite = ref(false);
+function toggleFavourite() {
+  favourite.value = !favourite.value;
+  return favourite.value;
+}
 const customLabel = ref('');
 
 const copy = {
@@ -84,7 +88,7 @@ function selectLanguage(event) {
         <section class="ui-panel ui-stack">
           <h3>按钮与尺寸</h3>
           <div class="ui-actions"><TsButton variant="primary" size="lg" :loading="busy" @click="feedback = t.primary">{{ t.primary }}</TsButton><TsButton @click="feedback = t.secondary">{{ t.secondary }}</TsButton><TsButton size="sm" variant="ghost" @click="feedback = t.quiet">{{ t.quiet }}</TsButton></div>
-          <div class="ui-actions"><TsToggle :pressed="favourite" @click="favourite = !favourite"><TsIcon name="heart" :size="16" />{{ language === 'en' ? 'Favourite' : language === 'ja' ? 'お気に入り' : '收藏' }}</TsToggle><TsButton variant="danger" @click="feedback = t.danger">{{ t.danger }}</TsButton></div>
+          <div class="ui-actions"><LikeButton :pressed="favourite" data-ui="ghost" class="ts-button" :toggle="toggleFavourite">{{ language === 'en' ? 'Favourite' : language === 'ja' ? 'お気に入り' : '收藏' }}</LikeButton><TsButton variant="danger" @click="feedback = t.danger">{{ t.danger }}</TsButton></div>
           <div class="ui-actions"><TsButtonLink variant="accent" to="/payments"><TsIcon name="creditCard" :size="17" />{{ language === 'en' ? 'Payments' : language === 'ja' ? 'お支払い' : '支付中心' }}</TsButtonLink><TsButton disabled>{{ t.primary }}</TsButton></div>
         </section>
         <section class="ui-panel ui-stack">

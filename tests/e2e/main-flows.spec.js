@@ -80,13 +80,11 @@ async function assetPickerLayout(page) {
 async function expectLikedHeart(button) {
     await expect(button).toHaveClass(/liked/);
     await expect(button).toHaveAttribute('aria-pressed', 'true');
-    await expect.poll(() => button.locator('.ts-icon').evaluate((icon) => ({
-        color: getComputedStyle(icon).color,
-        fill: getComputedStyle(icon).fill
-    }))).toEqual({
-        color: 'rgb(255, 95, 115)',
-        fill: 'rgb(255, 95, 115)'
-    });
+    await expect.poll(() => button.locator('.ts-icon').evaluate(icon => {
+        const { color, fill } = getComputedStyle(icon);
+        const [red, green, blue] = color.match(/[\d.]+/g).map(Number);
+        return fill === color && red > green * 1.25 && red > blue * 1.2;
+    })).toBe(true);
 }
 
 function textLuminance(cssColor) {

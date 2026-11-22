@@ -57,7 +57,6 @@
 .gallery-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 
-.gallery-like-button.is-liked svg { fill: currentColor; }
 .gallery-results-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 24px; font-size: 13px; color: var(--muted); gap: 20px; }
 .gallery-pagination { display: flex; align-items: center; gap: 16px; }
 .gallery-viewer { width: min(1100px, calc(100vw - 32px)); padding: 0; overflow: auto; }

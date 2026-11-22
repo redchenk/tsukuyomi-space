@@ -23,7 +23,7 @@ async function createImage(page, title) {
 async function expectRedLike(button) {
     await expect(button).toHaveAttribute('aria-pressed', 'true');
     await expect(button).toContainText('已赞');
-    await expect(button).toBeDisabled();
+    await expect(button).toBeEnabled();
     await expect(button).toHaveCSS('opacity', '1');
     await expect.poll(() => button.evaluate(el => {
         const [red, green, blue] = getComputedStyle(el).color.match(/[\d.]+/g).map(Number);

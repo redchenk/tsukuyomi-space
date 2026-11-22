@@ -185,4 +185,4 @@
 }
 
 
-:root .gallery-like-button.is-liked:disabled { color: var(--danger); opacity: 1; }
+:root .gallery-like-button.is-liked[aria-pressed="true"] { --ui-fg: var(--danger); color: var(--ui-fg); opacity: 1; }

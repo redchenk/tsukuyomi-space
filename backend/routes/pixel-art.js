@@ -161,6 +161,15 @@ router.get('/', optionalAuth, (req, res) => sendArtworkList(req, res));
 router.get('/gallery', optionalAuth, (req, res) => sendArtworkList(req, res, 12));
 router.get('/preview', optionalAuth, (req, res) => sendArtworkList(req, res, 1));
 
+router.get('/like-states', authenticateToken, (req, res) => {
+    const ids = String(req.query.ids || '').split(',').map(Number);
+    if (ids.length > 12 || !ids.every(id => Number.isSafeInteger(id) && id > 0)) {
+        return res.status(400).json({ success: false, message: 'Invalid artwork IDs' });
+    }
+    setPrivateNoStore(res);
+    res.json({ success: true, data: pixelArtRepository.artworkLikeStates(ids, req.user.id) });
+});
+
 router.get('/manage', authenticateToken, (req, res) => {
     try {
         const sort = req.query.sort === 'hot' ? 'hot' : 'latest';
@@ -302,23 +311,27 @@ router.delete('/:id', authenticateToken, (req, res) => {
     }
 });
 
-router.post('/:id/like', authenticateToken, (req, res) => {
+function updateArtworkLike(req, res) {
     try {
         const artwork = pixelArtRepository.findArtworkById(req.params.id, req.user.id);
         if (!artwork) return res.status(404).json({ success: false, message: '像素画不存在' });
-        if (pixelArtRepository.findArtworkLike(artwork.id, req.user.id)) {
+        const liking = req.method === 'POST';
+        if (liking && pixelArtRepository.findArtworkLike(artwork.id, req.user.id)) {
             return res.status(400).json({ success: false, message: '已经点过赞了' });
         }
 
-        const updated = pixelArtRepository.likeArtwork(artwork.id, req.user.id);
-        notifyArtworkOwner({ artwork: updated, actor: req.user });
+        const updated = liking ? pixelArtRepository.likeArtwork(artwork.id, req.user.id) : pixelArtRepository.unlikeArtwork(artwork.id, req.user.id);
+        if (liking) notifyArtworkOwner({ artwork: updated, actor: req.user });
         responseCache.delPrefix('public:pixel-art');
-        const growth = recordPixelGrowth(req.user.id, 'pixel_like', artwork.id);
-        res.json({ success: true, data: updated, growth, message: '已点赞' });
+        const growth = liking ? recordPixelGrowth(req.user.id, 'pixel_like', artwork.id) : null;
+        res.json({ success: true, data: updated, growth, message: liking ? '已点赞' : '已取消点赞' });
     } catch (error) {
         console.error('Like pixel art failed:', error);
         res.status(500).json({ success: false, message: '点赞失败' });
     }
-});
+}
+
+router.post('/:id/like', authenticateToken, updateArtworkLike);
+router.delete('/:id/like', authenticateToken, updateArtworkLike);
 
 module.exports = router;
