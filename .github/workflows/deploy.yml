@@ -1,4 +1,4 @@
-name: Publish the mobile article layout overseas
+name: Publish notifications and likes overseas
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/article-mobile-reader-rollout'
+    if: github.ref == 'refs/heads/codex/notification-like-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 33e91ebcb3842218459408aad21e3dc28ed12996
+          ref: 9e2e59cb887a18e119fdf4e4d1bcc307843bca28
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,7 +36,7 @@ jobs:
           npm ci
           node --test tests/frontend-navigation.test.js
           npm run build:web:overseas
-          echo '2d027273b00cfd46fad659d7766b45db69bfc2225b78dfd9c35ea921f1a78302  dist/frontend/index.html' | sha256sum -c -
+          echo 'c310718daa6a9193bbc597b61f1d164085918f55a849e916e05f32cfcb622411  dist/frontend/index.html' | sha256sum -c -
           cp ../deploy/design-frontend-manifest.json "$RUNNER_TEMP/manifest.json"
           tar -czf "$RUNNER_TEMP/design-frontend.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" design-frontend-release.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
