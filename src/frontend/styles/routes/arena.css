@@ -522,8 +522,6 @@ body .page.arena-page.pixel-studio.is-focus-mode { padding-top: 10px; }
 .ps-gallery .pixel-art-actions { display: flex; justify-content: flex-end; gap: 2px; margin-top: auto; padding: 6px 8px 8px; }
 .ps-chip-btn { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 10px; border-radius: 8px; color: var(--ps-muted); font-size: 12px; white-space: nowrap; }
 .ps-chip-btn:hover { color: var(--ps-text); background: var(--ps-hover); }
-.ps-theme .like-btn.liked, .ps-theme .like-btn.liked .ts-icon { color: #ff5f73; }
-.ps-theme .like-btn.liked .ts-icon { fill: currentColor; }
 .ps-gallery-empty { padding: 72px 20px; color: var(--ps-muted); text-align: center; }
 .ps-gallery-empty.is-error { color: var(--ps-danger); }
 .ps-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; color: var(--ps-muted); font-family: var(--ps-mono); font-size: 12px; }

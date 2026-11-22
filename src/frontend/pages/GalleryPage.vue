@@ -1,7 +1,7 @@
 <script setup>
 import { siteArt } from '../data/siteArt';
 import TsIconButton from '../components/TsIconButton.vue';
-import TsToggle from '../components/TsToggle.vue';
+import LikeButton from '../components/LikeButton.vue';
 import TsFilterChip from '../components/TsFilterChip.vue';
 import TsButton from '../components/TsButton.vue';
 import TsButtonLink from '../components/TsButtonLink.vue';
@@ -167,9 +167,12 @@ function showMessage(message, type = 'success') {
   state.messageType = type;
 }
 
-function applyImageLikes(asset) {
-  const liked = state.likedResults[asset.id] || state.liking[asset.id];
-  return liked ? { ...asset, viewer_liked: true, like_count: Math.max(Number(asset.like_count || 0), liked.like_count) } : asset;
+function applyImageLikes(asset, atStart) {
+  const saved = state.likedResults[asset.id];
+  // Let a fresh response replace our local count. A write that finished during
+  // this read still wins over its older snapshot.
+  const local = state.liking[asset.id] || (saved !== atStart?.[asset.id] ? saved : null);
+  return local ? { ...asset, ...local } : asset;
 }
 
 async function likeImage(asset) {
@@ -177,34 +180,33 @@ async function likeImage(asset) {
     go(`/login?redirect=${encodeURIComponent(`/gallery?image=${asset.id}`)}`);
     return;
   }
-  if (asset.viewer_liked || state.liking[asset.id]) return;
+  if (state.liking[asset.id]) return;
   const owner = currentUserId.value;
   const previous = { viewer_liked: Boolean(asset.viewer_liked), like_count: Number(asset.like_count || 0) };
-  state.liking[asset.id] = { like_count: previous.like_count + 1 };
-  state.images = state.images.map(applyImageLikes);
-  if (state.selected?.id === asset.id) state.selected = applyImageLikes(state.selected);
+  const liking = !previous.viewer_liked;
+  state.liking[asset.id] = { viewer_liked: liking, like_count: Math.max(0, previous.like_count + (liking ? 1 : -1)) };
+  const settle = change => {
+    state.images = state.images.map(item => item.id === asset.id ? { ...item, ...change } : item);
+    if (state.selected?.id === asset.id) state.selected = { ...state.selected, ...change };
+  };
+  settle(state.liking[asset.id]);
   state.likeError = '';
   try {
-    const response = await authFetch(`/api/assets/gallery/${encodeURIComponent(asset.id)}/like`, { method: 'POST' });
+    const response = await authFetch(`/api/assets/gallery/${encodeURIComponent(asset.id)}/like`, { method: liking ? 'POST' : 'DELETE' });
     const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || t('点赞失败，请稍后重试', 'Unable to like this image. Please try again.'));
+    if (!result.success) throw new Error(result.message || t('点赞操作失败，请稍后重试', 'Unable to update your like. Please try again.'));
     if (owner !== currentUserId.value) return;
-    state.likedResults[asset.id] = result.data;
-    // Replace the optimistic count with the authoritative response (including deduped likes).
-    const settle = item => item.id === asset.id ? { ...item, ...result.data, viewer_liked: true } : item;
-    state.images = state.images.map(settle);
-    if (state.selected?.id === asset.id) state.selected = settle(state.selected);
-    state.images = state.images.map(applyImageLikes);
-    if (state.selected?.id === asset.id) state.selected = applyImageLikes(state.selected);
+    const saved = { viewer_liked: result.data.viewer_liked ?? liking, like_count: result.data.like_count };
+    state.likedResults[asset.id] = saved;
+    settle(saved);
+    return liking && saved.viewer_liked && result.data.changed !== false;
   } catch (error) {
     if (owner !== currentUserId.value) return;
-    const rollback = item => item.id === asset.id ? { ...item, ...previous } : item;
-    state.images = state.images.map(rollback);
-    if (state.selected?.id === asset.id) state.selected = rollback(state.selected);
+    settle(previous);
     state.likeError = error.message;
     showMessage(error.message, 'error');
   } finally {
-    delete state.liking[asset.id];
+    if (owner === currentUserId.value) delete state.liking[asset.id];
   }
 }
 
@@ -213,15 +215,17 @@ async function openLinkedImage() {
   const id = new URLSearchParams(window.location.search).get('image');
   if (!id || id.length > 200) return;
   const requestId = ++linkedRequestId;
+  const atStart = { ...state.likedResults };
   try {
-    let asset = state.images.find(item => item.id === id);
+    const listed = state.images.find(item => item.id === id);
+    let asset = listed;
     if (!asset) {
       const result = await parseResponse(await readGalleryImage(id));
       if (!result.success) throw new Error(result.message || t('图片已删除或未公开', 'This image is unavailable.'));
       asset = result.data;
     }
     if (!galleryActive || requestId !== linkedRequestId) return;
-    state.selected = applyImageLikes(asset);
+    state.selected = listed || applyImageLikes(asset, atStart);
     hydrateUserLevels([asset.owner_id]).catch(() => {});
   } catch (error) {
     if (requestId === linkedRequestId) showMessage(error.message, 'error');
@@ -246,6 +250,7 @@ async function personalizeImages(assets) {
 async function browseRandom() {
   if (state.randomLoading) return;
   const requestId = ++randomRequestId;
+  const atStart = { ...state.likedResults };
   state.randomLoading = true;
   try {
     const response = await apiFetch('/api/assets/gallery/public?limit=1&random=1', { headers: { Accept: 'application/json' } });
@@ -254,7 +259,7 @@ async function browseRandom() {
     const asset = (await personalizeImages(result.data?.assets || []))[0];
     if (!galleryActive || requestId !== randomRequestId) return;
     if (!asset) { showMessage(t('图库暂时还没有图片', 'No images in the gallery yet')); return; }
-    state.selected = applyImageLikes(asset);
+    state.selected = applyImageLikes(asset, atStart);
     hydrateUserLevels([asset.owner_id]).catch(() => {});
   } catch (error) {
     if (requestId === randomRequestId) showMessage(error.message, 'error');
@@ -303,11 +308,20 @@ watch(() => Boolean(state.selected), async (open) => {
 });
 watch(() => state.selected?.id, () => { state.likeError = ''; });
 
+watch(currentUserId, () => {
+  state.likedResults = {};
+  state.liking = {};
+  state.images = state.images.map(item => ({ ...item, viewer_liked: false }));
+  if (state.selected) state.selected = { ...state.selected, viewer_liked: false };
+  if (galleryActive) { loadImages(state.page); openLinkedImage(); }
+});
+
 let galleryLoadedAt = 0;
 let galleryActive = true;
 let galleryWasDeactivated = false;
 async function loadImages(page = 1, { background = false } = {}) {
   const requestId = ++listRequestId;
+  const atStart = { ...state.likedResults };
   if (isManageMode.value && !isAuthed.value) {
     state.images = [];
     state.page = 1;
@@ -339,7 +353,7 @@ async function loadImages(page = 1, { background = false } = {}) {
     if (!result.success) throw new Error(result.message || '图库读取失败');
     const images = await personalizeImages(result.data?.assets || []);
     if (requestId !== listRequestId) return;
-    state.images = images.map(applyImageLikes);
+    state.images = images.map(asset => applyImageLikes(asset, atStart));
     hydrateUserLevels(state.images.map((asset) => asset.owner_id)).catch(() => {});
     state.page = result.data?.pagination?.page || 1;
     state.totalPages = result.data?.pagination?.totalPages || 1;
@@ -636,11 +650,10 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
               <time :datetime="imageDate(asset)">{{ imageDate(asset).slice(5).replace('-', ' / ') }}</time>
             </div>
             <div class="gallery-card-actions">
-              <TsToggle size="sm" class="gallery-like-button" :class="{ 'is-liked': asset.viewer_liked }" type="button" :aria-label="t(`${asset.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(asset)}，${asset.like_count || 0} 个赞`, `${asset.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(asset)}, ${asset.like_count || 0} likes`)" :pressed="Boolean(asset.viewer_liked)" :aria-busy="Boolean(state.liking[asset.id])" :disabled="asset.viewer_liked || state.liking[asset.id]" @click="likeImage(asset)">
-                <TsIcon name="heart" :size="15" />
+              <LikeButton data-ui="ghost" data-size="sm" :icon-size="15" class="ts-button gallery-like-button" :class="{ 'is-liked': asset.viewer_liked }" type="button" :aria-label="t(`${asset.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(asset)}，${asset.like_count || 0} 个赞`, `${asset.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(asset)}, ${asset.like_count || 0} likes`)" :pressed="Boolean(asset.viewer_liked)" :aria-busy="Boolean(state.liking[asset.id])" :disabled="Boolean(state.liking[asset.id])" :toggle="() => likeImage(asset)">
                 <span>{{ asset.viewer_liked ? t('已赞', 'Liked') : t('点赞', 'Like') }}</span>
                 <span class="gallery-like-count">{{ asset.like_count || 0 }}</span>
-              </TsToggle>
+              </LikeButton>
               <button v-if="isManageMode" data-ui="ghost" data-size="sm" type="button" @click="copyMarkdown(asset)">
                 <TsIcon name="copy" :size="15" />
                 Markdown
@@ -713,11 +726,10 @@ useContentTranslationRefresh(() => { if (!isManageMode.value) loadImages(state.p
             </div>
           </div>
           <div class="gallery-viewer-actions">
-            <TsToggle size="sm" class="gallery-like-button" :class="{ 'is-liked': state.selected.viewer_liked }" type="button" :aria-label="t(`${state.selected.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(state.selected)}，${state.selected.like_count || 0} 个赞`, `${state.selected.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(state.selected)}, ${state.selected.like_count || 0} likes`)" :pressed="Boolean(state.selected.viewer_liked)" :aria-busy="Boolean(state.liking[state.selected.id])" :disabled="state.selected.viewer_liked || state.liking[state.selected.id]" @click="likeImage(state.selected)">
-              <TsIcon name="heart" :size="16" />
+            <LikeButton :key="state.selected.id" data-ui="ghost" data-size="sm" :icon-size="16" class="ts-button gallery-like-button" :class="{ 'is-liked': state.selected.viewer_liked }" type="button" :aria-label="t(`${state.selected.viewer_liked ? '已点赞' : '点赞'}：${imageTitle(state.selected)}，${state.selected.like_count || 0} 个赞`, `${state.selected.viewer_liked ? 'Liked' : 'Like'}: ${imageTitle(state.selected)}, ${state.selected.like_count || 0} likes`)" :pressed="Boolean(state.selected.viewer_liked)" :aria-busy="Boolean(state.liking[state.selected.id])" :disabled="Boolean(state.liking[state.selected.id])" :toggle="() => likeImage(state.selected)">
               <span>{{ state.selected.viewer_liked ? t('已赞', 'Liked') : t('点赞', 'Like') }}</span>
               <span class="gallery-like-count">{{ state.selected.like_count || 0 }}</span>
-            </TsToggle>
+            </LikeButton>
             <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">
               <TsIcon name="copy" :size="16" />
               Markdown

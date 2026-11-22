@@ -2,10 +2,14 @@ const db = require('../db');
 const assetRepository = require('../repositories/asset-repository');
 const notificationRepository = require('../repositories/notification-repository');
 
-function likeGalleryImage(assetId, actor) {
+function setGalleryLike(assetId, actor, liking) {
     return db.transaction(() => {
         const asset = assetRepository.findGalleryAssetById(assetId, actor.id);
         if (!asset) return null;
+        if (!liking) {
+            const removed = db.prepare('DELETE FROM gallery_likes WHERE user_id = ? AND asset_id = ?').run(actor.id, asset.id).changes;
+            return { id: asset.id, like_count: Number(asset.like_count) - removed, viewer_liked: false, changed: Boolean(removed) };
+        }
         const added = db.prepare(`
             INSERT INTO gallery_likes (user_id, asset_id) VALUES (?, ?)
             ON CONFLICT(user_id, asset_id) DO NOTHING
@@ -28,9 +32,10 @@ function likeGalleryImage(assetId, actor) {
         return {
             id: asset.id,
             like_count: Number(asset.like_count || 0) + Number(added),
-            viewer_liked: true
+            viewer_liked: true,
+            changed: added
         };
     })();
 }
 
-module.exports = { likeGalleryImage };
+module.exports = { setGalleryLike };

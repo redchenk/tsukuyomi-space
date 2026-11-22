@@ -213,6 +213,13 @@ function deleteArtwork(id) {
     return tx();
 }
 
+function artworkLikeStates(ids, userId) {
+    return db.prepare(`
+        SELECT a.id, a.like_count, EXISTS(SELECT 1 FROM pixel_art_likes l WHERE l.artwork_id = a.id AND l.user_id = ?) AS viewer_liked
+        FROM pixel_artworks a WHERE a.id IN (${ids.map(() => '?').join(',')})
+    `).all(userId, ...ids).map(row => ({ ...row, viewer_liked: Boolean(row.viewer_liked) }));
+}
+
 function findArtworkLike(artworkId, userId) {
     if (!artworkId || !userId) return null;
     return db.prepare(`
@@ -239,6 +246,16 @@ function likeArtwork(artworkId, userId) {
     return findArtworkById(artworkId, userId);
 }
 
+function unlikeArtwork(artworkId, userId) {
+    return db.transaction(() => {
+        const removed = db.prepare('DELETE FROM pixel_art_likes WHERE artwork_id = ? AND user_id = ?').run(artworkId, userId);
+        if (removed.changes) {
+            db.prepare('UPDATE pixel_artworks SET like_count = MAX(0, like_count - 1), updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(artworkId);
+        }
+        return findArtworkById(artworkId, userId);
+    })();
+}
+
 module.exports = {
     listArtworks,
     listManageArtworks,
@@ -247,5 +264,7 @@ module.exports = {
     updateArtwork,
     deleteArtwork,
     findArtworkLike,
-    likeArtwork
+    artworkLikeStates,
+    likeArtwork,
+    unlikeArtwork
 };

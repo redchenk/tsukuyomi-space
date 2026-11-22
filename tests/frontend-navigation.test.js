@@ -556,15 +556,16 @@ describe('frontend navigation routes', () => {
         const arena = source('src/frontend/pages/ArenaPage.vue');
         const article = source('src/frontend/pages/ArticlePage.vue');
         const plaza = source('src/frontend/pages/PlazaPage.vue');
-        const polish = source('src/frontend/styles/jingyue/components.css');
+        const likeButton = source('src/frontend/components/LikeButton.vue');
 
         assert.match(arena, /DEFAULT_CANVAS_PRESET = CANVAS_PRESETS\[CANVAS_PRESETS\.length - 1\]/);
         assert.doesNotMatch(arena, /class="arena-size-options"|setCanvasPreset\(/);
         for (const page of [arena, article, plaza]) {
             assert.match(page, /class="[^"]*like-btn[^"]*"/);
-            assert.match(page, /:aria-pressed=/);
+            assert.match(page, /<LikeButton[\s\S]*?:pressed=/);
         }
-        assert.match(polish, /\.like-btn\.liked \.ts-icon\s*\{[\s\S]*color: #ff5f73;[\s\S]*fill: currentColor;/);
+        assert.match(likeButton, /:aria-pressed="pressed"/);
+        assert.match(likeButton, /fill: currentColor; color: var\(--danger\)/);
         assert.doesNotMatch(`${arena}\n${article}\n${plaza}`, /localStorage\.(?:getItem|setItem)\(`(?:pixel_art_)?liked_/);
         assert.match(arena, /Boolean\(artwork\?\.viewer_liked\)/);
         assert.match(article, /viewer_liked/);

@@ -1,4 +1,5 @@
 <script setup>
+import LikeButton from '../components/LikeButton.vue';
 import MobileSheet from '../components/MobileSheet.vue';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import { nameInitial } from '../utils/userName.mjs';
@@ -361,6 +362,7 @@ async function toggleArticleLike() {
     const completed = applyArticleGrowth(result.growth, owner);
     if (completed) articleTaskMessage.value = completed;
     showMessage('');
+    return !previous.liked && articleLike.liked && result.changed !== false && getSession()?.user?.id === owner;
   } catch (error) {
     if (isCurrentArticle(context)) {
       Object.assign(articleLike, previous);
@@ -503,26 +505,21 @@ async function submitReply(commentId, text) {
 
 async function likeComment(commentId) {
   if (!requireLogin()) return;
-  if (isCommentLiked(commentId)) {
-    showMessage('已经点过赞了');
-    return;
-  }
-
+  const liking = !isCommentLiked(commentId);
+  const owner = getSession()?.user?.id;
+  const context = { id: articleId.value, revision: articleLoadRevision };
   try {
     const response = await authFetch(`/api/messages/${commentId}/like`, {
-      method: 'POST',
-      headers: authHeaders()
+      method: liking ? 'POST' : 'DELETE', headers: authHeaders()
     });
     const result = await parseResponse(response);
+    if (!isCurrentArticle(context) || owner !== getSession()?.user?.id) return;
     if (!result.success) throw new Error(result.message || '点赞失败');
-    if (result.data?.id) patchComment(result.data);
-    else {
-      const target = comments.value.find((item) => item.id === commentId);
-      if (target) target.like_count = Number(target.like_count || 0) + 1;
-    }
+    patchComment(result.data);
     showMessage('');
+    return liking && result.data.viewer_liked;
   } catch (error) {
-    showMessage(error.message || '点赞失败');
+    if (isCurrentArticle(context)) showMessage(error.message || '点赞失败');
   }
 }
 
@@ -631,10 +628,9 @@ watch(() => route.hash, revealCommentHash);
             <p>{{ article.excerpt }}</p>
           </section>
           <div class="article-social-actions ui-actions">
-            <button data-ui="ghost" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
-              <TsIcon :class="{ 'ts-status-loader-icon': articleLike.loading }" :name="articleLike.loading ? 'loader' : 'heart'" :size="17" />
+            <LikeButton data-ui="ghost" class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :pressed="articleLike.liked" :icon-size="17" :toggle="toggleArticleLike">
               <span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }} {{ articleLike.count.toLocaleString(lang) }}</span>
-            </button>
+            </LikeButton>
             <button data-ui="ghost" class="article-bookmark-btn" type="button" @click="openArticleShare">
               <TsIcon name="external" :size="17" />
               <span>{{ readerCopy.share }}</span>
@@ -714,16 +710,15 @@ watch(() => route.hash, revealCommentHash);
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
-                <button data-ui="quiet"
+                <LikeButton data-ui="quiet"
                   class="icon-btn comment-tool-btn like-btn"
                   :class="{ liked: isCommentLiked(comment.id) }"
-                  :aria-pressed="isCommentLiked(comment.id)"
+                  :pressed="isCommentLiked(comment.id)"
                   type="button"
-                  @click="likeComment(comment.id)"
+                  :toggle="() => likeComment(comment.id)"
                 >
-                  <TsIcon name="heart" :size="16" />
                   <span>喜欢 {{ comment.like_count || 0 }}</span>
-                </button>
+                </LikeButton>
                 <button data-ui="quiet" class="icon-btn comment-tool-btn" type="button" @click="toggleReply(comment.id)">
                   <TsIcon name="message" :size="16" />
                   <span>回复</span>
@@ -774,7 +769,7 @@ watch(() => route.hash, revealCommentHash);
   <MobileSheet :open="contentsOpen" :return-focus="contentsTrigger" :title="readerCopy.toc" @close="contentsOpen = false"><nav class="mobile-article-toc" :aria-label="readerCopy.toc"><button class="ghost-btn" type="button" @click="contentsOpen = false; nextTick(() => jumpToArticleTarget('article-top'))"><TsIcon name="chevronUp" :size="18" />{{ replyLabels.top }}</button><a v-for="heading in headings" :key="heading.id" :href="`#${heading.id}`" :class="{ 'is-subheading': heading.level === 3 }" :aria-current="activeHeading === heading.id ? 'location' : undefined" @click.prevent="selectHeading(heading.id)">{{ heading.text }}</a><p v-if="!headings.length">{{ lang === 'en' ? 'This story has no headings.' : '这篇故事没有分节标题，可以直接阅读。' }}</p></nav></MobileSheet>
   <nav v-if="article && !loading && !keyboardOpen" class="article-reading-tools" :aria-label="replyLabels.navigation">
     <button data-ui="secondary" ref="contentsTrigger" type="button" :aria-label="lang === 'en' ? 'Table of contents (TOC)' : readerCopy.toc" aria-haspopup="dialog" :aria-expanded="contentsOpen" @click="contentsOpen = true"><TsIcon name="list" :size="20" /><span>{{ readerCopy.tocButton }}</span></button>
-    <button data-ui="secondary" type="button" :aria-pressed="articleLike.liked" :disabled="articleLike.loading" @click="toggleArticleLike"><TsIcon name="heart" :size="20" /><span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }}</span></button>
+    <LikeButton data-ui="secondary" type="button" :pressed="articleLike.liked" :disabled="articleLike.loading" :icon-size="20" :toggle="toggleArticleLike"><span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }}</span></LikeButton>
     <button data-ui="secondary" type="button" :aria-pressed="bookmark.bookmarked" :disabled="bookmark.loading" @click="toggleBookmark"><TsIcon name="bookmark" :size="20" /><span>{{ bookmark.bookmarked ? readerCopy.saved : readerCopy.bookmark }}</span></button>
     <button data-ui="secondary" type="button" :aria-label="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="20" /><span>{{ readerCopy.comments }}</span></button>
     <button data-ui="secondary" type="button" @click="openArticleShare"><TsIcon name="external" :size="20" /><span>{{ readerCopy.share }}</span></button>

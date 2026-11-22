@@ -17,7 +17,7 @@ const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
-const { likeGalleryImage } = require('../services/gallery-likes');
+const { setGalleryLike } = require('../services/gallery-likes');
 const uploads = require('../services/asset-uploads');
 const { validateUploadSizeForOwner } = require('../services/attachment-policy');
 const { createRateLimiter } = require('../middleware/security');
@@ -563,19 +563,21 @@ router.get('/gallery/:id', optionalAuth, (req, res) => {
     }
 });
 
-router.post('/gallery/:id/like', authenticateToken,
-    createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'gallery-like', keyGenerator: req => req.user.id }),
-    (req, res) => {
-        try {
-            const result = likeGalleryImage(req.params.id, req.user);
-            if (!result) return fail(res, 404, '图库图片不存在或未公开');
-            clearPublicGalleryCache();
-            ok(res, result, '已点赞');
-        } catch (error) {
-            console.error('Like gallery image failed:', error);
-            fail(res, 500, '点赞失败，请稍后重试');
-        }
-    });
+const galleryLikeLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'gallery-like', keyGenerator: req => req.user.id });
+function updateGalleryLike(req, res) {
+    try {
+        const liking = req.method === 'POST';
+        const result = setGalleryLike(req.params.id, req.user, liking);
+        if (!result) return fail(res, 404, '图库图片不存在或未公开');
+        clearPublicGalleryCache();
+        ok(res, result, liking ? '已点赞' : '已取消点赞');
+    } catch (error) {
+        console.error('Update gallery like failed:', error);
+        fail(res, 500, '点赞操作失败，请稍后重试');
+    }
+}
+router.post('/gallery/:id/like', authenticateToken, galleryLikeLimiter, updateGalleryLike);
+router.delete('/gallery/:id/like', authenticateToken, galleryLikeLimiter, updateGalleryLike);
 
 router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperAdmin, (req, res) => {
     try {

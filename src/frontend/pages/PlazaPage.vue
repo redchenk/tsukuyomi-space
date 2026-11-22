@@ -1,4 +1,5 @@
 <script setup>
+import LikeButton from '../components/LikeButton.vue';
 import TsButtonLink from '../components/TsButtonLink.vue';
 import TsPageHeader from '../components/TsPageHeader.vue';
 import MobileSheet from '../components/MobileSheet.vue';
@@ -298,8 +299,8 @@ async function loadPlazaStats() {
 
 function keepLikeResults(messages) {
   return messages.map(item => {
-    const liked = successfulLikes.get(String(item.id)) || pendingLikes[item.id];
-    return liked ? { ...item, viewer_liked: true, like_count: Math.max(Number(item.like_count || 0), liked.like_count) } : item;
+    const local = pendingLikes[item.id] || successfulLikes.get(String(item.id));
+    return local ? { ...item, ...local } : item;
   });
 }
 
@@ -321,12 +322,17 @@ function plazaRequestKey() {
 
 async function loadPlazaMessages({ force = false, anchorId = null, background = false } = {}) {
   const revision = ++plazaRequestRevision;
+  const atStart = new Map(successfulLikes);
   const owner = user.value?.id || '';
   if (!background) plaza.loading = true;
   plaza.loadError = '';
   try {
     const result = await loadPlazaPage({ page: plaza.page, sort: plaza.filter, search: plaza.query, anchorId }, { force });
     if (revision !== plazaRequestRevision || owner !== (user.value?.id || '')) return;
+    for (const item of result.messages || []) {
+      const key = String(item.id);
+      if (atStart.get(key) === successfulLikes.get(key)) successfulLikes.delete(key);
+    }
     plaza.messages = keepLikeResults(result.messages || []);
     plaza.activity = result.activity || [];
     plaza.pagination = result.pagination;
@@ -534,17 +540,14 @@ async function plazaLikeMessage(id) {
   }
   const current = plaza.messages.find((item) => item.id === id);
   if (!current || pendingLikes[id]) return;
-  if (current.viewer_liked) {
-    showPlazaToast(props.t.alreadyLiked, 'error');
-    return;
-  }
+  const liking = !current.viewer_liked;
   const owner = user.value?.id;
   const previous = { viewer_liked: Boolean(current.viewer_liked), like_count: Number(current.like_count || 0) };
-  pendingLikes[id] = { like_count: previous.like_count + 1 };
-  patchPlazaMessage({ id, viewer_liked: true, like_count: previous.like_count + 1 });
+  pendingLikes[id] = { viewer_liked: liking, like_count: Math.max(0, previous.like_count + (liking ? 1 : -1)) };
+  patchPlazaMessage({ id, ...pendingLikes[id] });
   try {
     const response = await authFetch(`/api/messages/${id}/like`, {
-      method: 'POST',
+      method: liking ? 'POST' : 'DELETE',
       headers: authHeaders()
     });
     const result = await parseResponse(response);
@@ -552,21 +555,17 @@ async function plazaLikeMessage(id) {
     if (owner !== user.value?.id) return;
     if (result.growth) applyGrowthResult(result.growth);
     clearPlazaMessageCache();
-    if (result.data?.id) {
-      successfulLikes.set(String(result.data.id), result.data);
-      patchPlazaMessage(result.data);
-    }
-    else {
-      const target = plaza.messages.find((item) => item.id === id);
-      if (target) successfulLikes.set(String(id), { like_count: target.like_count });
-    }
-    showPlazaToast(props.t.likedToast);
+    const saved = { viewer_liked: result.data.viewer_liked, like_count: result.data.like_count };
+    successfulLikes.set(String(id), saved);
+    patchPlazaMessage({ id, ...saved });
+    if (liking) showPlazaToast(props.t.likedToast);
+    return liking && saved.viewer_liked;
   } catch (error) {
     if (owner !== user.value?.id) return;
     patchPlazaMessage({ id, ...previous });
     showPlazaToast(error.message || props.t.likeFailed, 'error');
   } finally {
-    delete pendingLikes[id];
+    if (owner === user.value?.id) delete pendingLikes[id];
   }
 }
 
@@ -676,6 +675,8 @@ function plazaFormatUptime(seconds) {
 
 watch(() => user.value?.id, (current, previous) => {
   if (current === previous) return;
+  successfulLikes.clear();
+  for (const id of Object.keys(pendingLikes)) delete pendingLikes[id];
   composerDraft.value = '';
   composeOpen.value = false;
   messageActions.value = null;
@@ -812,18 +813,17 @@ useContentTranslationRefresh(() => refreshPlaza({ background: true }));
               @topic="plazaSelectTopic"
             />
             <div class="plaza-msg-footer">
-              <button data-ui="quiet"
+              <LikeButton data-ui="quiet"
                 class="icon-btn like-btn"
                 :class="{ liked: isPlazaMessageLiked(msg) }"
-                :aria-pressed="isPlazaMessageLiked(msg)"
+                :pressed="isPlazaMessageLiked(msg)"
                 :aria-busy="Boolean(pendingLikes[msg.id])"
                 :disabled="Boolean(pendingLikes[msg.id])"
                 type="button"
-                @click="plazaLikeMessage(msg.id)"
+                :icon-size="15" :toggle="() => plazaLikeMessage(msg.id)"
               >
-                <TsIcon name="heart" :size="15" />
                 <span>{{ t.like }} {{ msg.like_count || 0 }}</span>
-              </button>
+              </LikeButton>
               <button data-ui="quiet" class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">
                 <TsIcon name="message" :size="15" />
                 <span>{{ t.reply }} {{ msg.reply_count || 0 }}</span>

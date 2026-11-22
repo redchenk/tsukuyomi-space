@@ -244,7 +244,7 @@ for (const method of ['post', 'delete']) {
                     actorName: req.user.nickname || req.user.username || '访客'
                 });
             }
-            res.json({ success: true, data, growth });
+            res.json({ success: true, data, growth, changed: wasLiked !== data.liked });
         } catch (error) {
             console.error('Article like failed:', error);
             res.status(500).json({ success: false, message: '点赞操作失败' });

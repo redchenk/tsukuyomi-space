@@ -14,10 +14,11 @@ export async function loadMessageLikeIds(ids = null) {
 }
 
 export async function applyMessageLikeState(messages) {
-  const ids = [...new Set((Array.isArray(messages) ? messages : []).map(item => String(item.id)))];
+  const snapshot = Array.from(messages || []);
+  const ids = [...new Set(snapshot.map(item => String(item.id)))];
   if (!ids.length) return messages;
   const likedIds = await loadMessageLikeIds(ids.length <= 64 ? ids : null);
-  for (const message of Array.isArray(messages) ? messages : []) {
+  for (const message of snapshot) {
     message.viewer_liked = likedIds.has(String(message.id));
   }
   return messages;

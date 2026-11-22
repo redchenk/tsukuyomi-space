@@ -864,7 +864,9 @@ if (response.ok) {
 
 - `GET /api/assets/gallery/:id`：读取一张公开图库图片，用于 `/gallery?image=<id>` 的通知直达预览。私有附件、非图库内容和已删除图片返回 404。
 - `GET /api/assets/gallery-likes?ids=<逗号分隔的ID>`：一次读取最多 24 张公开图片的点赞计数和当前账号状态。供海外界面从原鉴权 API 获取状态，不通过公共翻译服务传递会话。
-- `POST /api/assets/gallery/:id/like`：使用站点登录会话及现有 Origin／CSRF 保护，返回 `{id, like_count, viewer_liked: true}`。沿用站内一次点赞的交互；同一账号重复提交仍返回成功，不重复计数或通知。每账号最多 60 次／10 分钟，另受全局限流约束。
+- `POST /api/assets/gallery/:id/like` 为当前账号点赞，`DELETE` 取消。两者共享每账号 60 次／10 分钟的限额，均返回 `{id, like_count, viewer_liked, changed}`。重复提交相同状态时，`changed` 为 `false`。
+- 留言、文章评论和像素画分别通过 `DELETE /api/messages/:id/like` 和 `DELETE /api/pixel-art/:id/like` 取消当前账号的赞。响应包含更新后的 `like_count` 和 `viewer_liked`。重复取消返回当前状态。
+- `GET /api/pixel-art/like-states?ids=1,2` 为登录用户返回最多 12 幅作品的点赞计数和个人状态，供公共翻译列表使用。
 
 首次点赞与上传者站内信在同一 SQLite 事务内提交，任何一项失败都会回滚。通知类型为 `like`，链接直达该图片；本人点赞和没有上传者账号的站点归档图片不发信。身份与收件人均由服务端确定，忽略请求中的发帖／收件身份参数。
 
