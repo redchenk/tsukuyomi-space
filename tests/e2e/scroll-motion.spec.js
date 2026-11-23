@@ -89,7 +89,8 @@ test('Hub parallax pins, reverses at the same position, and becomes static with 
   const position = () => scene.evaluate(el => ({
     top: Math.round(el.getBoundingClientRect().top),
     layers: Array.from(el.querySelectorAll('.hub-scene-layer'), layer => {
-      return Math.round(new DOMMatrix(getComputedStyle(layer).transform).m42 * 100) / 100;
+      const offset = new DOMMatrix(getComputedStyle(layer).transform).m42;
+      return Math.abs(offset) < .005 ? 0 : Math.round(offset * 100) / 100;
     })
   }));
   await scroll(0);
@@ -99,6 +100,16 @@ test('Hub parallax pins, reverses at the same position, and becomes static with 
   await scroll(halfway);
   await expect.poll(async () => (await position()).layers[2]).toBeLessThan(-10);
   const middle = await position();
+  const timeline = await track.evaluate(el => {
+    const supported = CSS.supports('animation-timeline: --hub-scene') &&
+      CSS.supports('animation-range: contain 0% contain 100%') && CSS.supports('view-timeline-inset: 0px 0px');
+    const planes = Array.from(el.querySelectorAll('.hub-scene-layer'));
+    return {
+      supported,
+      attached: planes.filter(plane => plane.getAnimations().some(a => a.timeline?.subject === el)).length
+    };
+  });
+  if (timeline.supported) expect(timeline.attached).toBe(3);
   expect(middle.top).toEqual(start.top);
   expect(middle.layers[2]).toBeLessThan(middle.layers[1]);
   expect(middle.layers[1]).toBeLessThan(middle.layers[0]);
