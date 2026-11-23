@@ -9,6 +9,7 @@ import { activeSeason } from '../composables/useSeasonTheme';
 import { storeRoomEntryDraft } from '../services/roomEntryDraft.mjs';
 import TsIcon from '../components/TsIcon.vue';
 import NoticeMarkdown from '../components/NoticeMarkdown.vue';
+import HubHeroScene from '../components/HubHeroScene.vue';
 import wikiArt from '../assets/navigation/wiki-study.webp';
 import gameArt from '../assets/navigation/kaguya-run.webp';
 import driftArt from '../assets/drift/lantern/lake-wide.webp';
@@ -64,9 +65,7 @@ watch(() => props.lang, load);
 
 <template>
   <main data-ui-layout="scene" class="hub" :aria-busy="loading">
-    <section class="home-hero" aria-labelledby="home-title">
-      <img class="home-hero-art" :src="siteArt.hero" :alt="tr('月光湖畔的八千代', 'Yachiyo by the moonlit lake')" width="1672" height="941" fetchpriority="high">
-      <div class="hero-shade" aria-hidden="true"></div>
+    <HubHeroScene :art="siteArt.hero" :season="activeSeason" :alt="tr('月光湖畔的八千代', 'Yachiyo by the moonlit lake', '月明かりの湖畔の八千代')">
       <div class="home-hero-content">
         <p class="hero-eyebrow"><span></span> {{ tr('留一点月光，给自己', 'A LITTLE MOONLIGHT, JUST FOR YOU', 'あなたのための月明かり') }}</p>
         <h1 id="home-title">{{ tr('给日常', 'A little light,', '日々に、') }}<br>{{ tr('留一点月光。', 'a little closer.', '月明かりを。') }}</h1>
@@ -81,7 +80,7 @@ watch(() => props.lang, load);
         <div class="hero-suggestions"><button data-ui-part="tool" v-for="text in suggestions" :key="text" @click="enterRoom(text)">{{ text }}<TsIcon name="arrowUpRight" :size="13" /></button></div>
       </div>
       <div class="hero-footnote"><span>{{ lang === 'en' ? season[1] : season[0] }} <i></i> {{ tr('月见八千代', 'TSUKIMI YACHIYO') }}</span><a href="#under-the-moon">{{ tr('向下，发现更多', 'A little more to discover') }}<TsIcon name="chevronDown" :size="17" /></a></div>
-    </section>
+    </HubHeroScene>
 
     <div class="home-content">
       <details v-if="notice" class="home-notice"><summary><span class="notice-label"><TsIcon name="bell" :size="16" />{{ tr('月读公告', 'NOTICE') }}</span><span class="notice-title">{{ notice.title }}</span><span class="notice-more">{{ tr('展开', 'Read') }}<TsIcon name="chevronDown" :size="16" /></span></summary><NoticeMarkdown class="home-notice-content" :content="notice.content" /></details>

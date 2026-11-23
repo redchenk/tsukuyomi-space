@@ -70,3 +70,56 @@ test('public routes use native scrolling without animation errors', async ({ pag
   }
   expect(errors).toEqual([]);
 });
+
+test('Hub parallax pins, reverses at the same position, and becomes static with reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/hub');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  const track = page.locator('.hub-scene-track');
+  const scene = track.locator('.home-hero');
+  const metrics = await track.evaluate(el => {
+    const panel = el.querySelector('.home-hero');
+    return {
+      start: Math.round(el.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(panel).top)),
+      distance: el.offsetHeight - panel.offsetHeight
+    };
+  });
+  expect(metrics.distance).toBeGreaterThan(150);
+  const scroll = offset => page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), metrics.start + offset);
+  const position = () => scene.evaluate(el => ({
+    top: Math.round(el.getBoundingClientRect().top),
+    layers: Array.from(el.querySelectorAll('.hub-scene-layer'), layer => {
+      return Math.round(new DOMMatrix(getComputedStyle(layer).transform).m42 * 100) / 100;
+    })
+  }));
+  await scroll(0);
+  const start = await position();
+  expect(start.layers).toEqual([0, 0, 0]);
+  const halfway = Math.round(metrics.distance / 2);
+  await scroll(halfway);
+  await expect.poll(async () => (await position()).layers[2]).toBeLessThan(-10);
+  const middle = await position();
+  expect(middle.top).toEqual(start.top);
+  expect(middle.layers[2]).toBeLessThan(middle.layers[1]);
+  expect(middle.layers[1]).toBeLessThan(middle.layers[0]);
+  expect(middle.layers[0]).toBeLessThan(0);
+  await scroll(metrics.distance + 90);
+  await expect.poll(async () => (await position()).top).toBeLessThan(start.top - 80);
+  await expect.poll(async () => (await position()).layers[2]).toBeLessThan(middle.layers[2] - 10);
+  await scroll(halfway);
+  await expect.poll(position).toEqual(middle);
+  await scroll(0);
+  await expect.poll(position).toEqual(start);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(scene).toHaveCSS('position', 'relative');
+  expect(await track.evaluate(el => el.offsetHeight - el.firstElementChild.offsetHeight)).toBe(0);
+  await scroll(100);
+  await expect(track.locator('.scene-sky')).toHaveCSS('transform', 'none');
+  await expect(track.locator('.scene-shore')).toBeHidden();
+  await expect(track.locator('.scene-near')).toBeHidden();
+  await page.locator('#home-chat').fill('Parallax draft');
+  await expect(page.locator('#home-chat')).toHaveValue('Parallax draft');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await scroll(halfway);
+  await expect.poll(position).toEqual(middle);
+});
