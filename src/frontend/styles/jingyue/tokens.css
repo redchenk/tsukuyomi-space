@@ -20,6 +20,12 @@
   --display: 'Songti SC', 'Noto Serif SC', var(--serif);
   --r-control: 12px;
   --r-button: var(--r-pill);
+  /* Ink and highlights printed over full-colour illustrations in either theme. */
+  --art-indigo: #101629;
+  --art-indigo-light: #25273e;
+  --art-moon: #f5f5fb;
+  --art-blossom: #f6cedd;
+  --art-lantern: #edd9c0;
   --lens-sky: #efdfce;
   --lens-hill: #a888a2;
   --lens-far: #d2a0b1;
