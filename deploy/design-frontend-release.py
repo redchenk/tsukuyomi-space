@@ -28,7 +28,7 @@ def get(route):
 
 def verify():
     assert sha(current / 'index.html') == manifest['after']
-    for route in ['/users/redchenk','/gallery','/hub','/room','/payments']:
+    for route in ['/','/access','/users/redchenk','/gallery','/hub','/room','/payments']:
         assert manifest['entry'].encode() in get(route), route
     assert hashlib.sha256(get(manifest['entry'])).hexdigest() == manifest['files'][manifest['entry'][1:]]
     assert json.loads(get('/api/health'))['status'] == 'ok'
