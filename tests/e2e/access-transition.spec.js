@@ -6,6 +6,54 @@ async function entry(page) {
   await expect(page.locator('.access-enter')).toBeEnabled();
 }
 
+test('skip intro on a narrow screen waits only for Hub and returns to a usable entrance', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  let releaseChunk;
+  const chunk = new Promise(resolve => { releaseChunk = resolve; });
+  await page.route('**/*HubPage-*.js', async route => { await chunk; await route.continue(); });
+  try {
+    await entry(page);
+    const skip = page.getByRole('button', { name: /跳过动画|スキップ|Skip intro/ });
+    const button = await skip.boundingBox();
+    const brand = await page.locator('.access-brand').boundingBox();
+    expect(button.height).toBeGreaterThanOrEqual(44);
+    expect(button.x).toBeGreaterThanOrEqual(brand.x + brand.width + 8);
+    expect(button.x + button.width).toBeLessThanOrEqual(320);
+    const historyLength = await page.evaluate(() => history.length);
+    await skip.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect(skip).toBeDisabled();
+    await expect(page.locator('.access-page :is(video,canvas)')).toHaveCount(0);
+    await expect(page.locator('.access-enter')).toHaveAttribute('aria-busy', 'true');
+    await expect(page).toHaveURL(/\/$/);
+    releaseChunk();
+    await expect(page.locator('.access-gate')).toHaveCount(0);
+    await expect(page.locator('.hub h1')).toBeFocused();
+    expect(await page.evaluate(() => history.length)).toBe(historyLength + 1);
+    await page.goBack();
+    await expect(skip).toBeEnabled();
+    await expect(page.locator('.access-enter')).toBeEnabled();
+  } finally {
+    releaseChunk();
+  }
+});
+
+test('skip intro interrupts the playing departure film and reaches Hub', async ({ page }) => {
+  await entry(page);
+  await page.locator('.access-enter').click();
+  await expect(page.locator('.access-page')).toHaveAttribute('data-nightfall', 'playing');
+  await expect(page.locator('.access-content')).toHaveAttribute('inert', '');
+  const skip = page.getByRole('button', { name: /跳过动画|スキップ|Skip intro/ });
+  await expect(skip).toBeEnabled();
+  const nightfall = await page.locator('.access-nightfall').elementHandle();
+  await skip.click();
+  await expect(page.locator('.access-gate')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/hub$/);
+  await expect(page.locator('.hub h1')).toBeFocused();
+  expect(await nightfall.evaluate(video => video.paused && !video.ended)).toBe(true);
+});
+
 async function pauseReveal(page) {
   await page.addInitScript(() => {
     new MutationObserver(() => {

@@ -9,6 +9,7 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
   const gate = ref(null);
   const phase = ref('idle');
   const failed = ref(false);
+  const skipping = ref(false);
   let revision = 0;
   let animation;
   let controller;
@@ -24,7 +25,17 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
     animation = null;
     releaseScroll?.();
     releaseScroll = null;
+    skipping.value = false;
     phase.value = 'idle';
+  }
+
+  function skip() {
+    if (failed.value || skipping.value) return;
+    if (phase.value === 'idle' && route.name !== 'access') return;
+    skipping.value = true;
+    if (phase.value === 'idle') return enter();
+    // Stop the optional film immediately, while the original Hub load continues.
+    controller?.abort();
   }
 
   async function enter(playNightfall, sound) {
@@ -58,25 +69,28 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
       await nextTick();
       if (run !== revision || route.name !== 'hub') return;
       const artwork = document.querySelector('.hub img[fetchpriority="high"]');
-      if (artwork?.decode) {
+      if (!skipping.value && artwork?.decode) {
         // Give the visible artwork a bounded head start. Live data continues
         // updating underneath; a slow or failed image cannot hold the entrance.
         await Promise.race([
           artwork.decode().catch(() => {}),
+          new Promise(resolve => controller.signal.addEventListener('abort', resolve, { once: true })),
           new Promise(resolve => { deadline = window.setTimeout(resolve, 900); })
         ]);
         if (run !== revision) return;
         window.clearTimeout(deadline);
       }
       if (run !== revision || route.name !== 'hub') return;
-      const element = gate.value;
-      phase.value = 'revealing';
-      const dissolve = reachedGate && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      animation = element.animate([{ opacity: 1 }, { opacity: 0 }], {
-        duration: dissolve ? 720 : 140, easing: 'ease-in-out', fill: 'forwards'
-      });
-      await animation.finished;
-      if (run !== revision) return;
+      if (!skipping.value) {
+        const element = gate.value;
+        phase.value = 'revealing';
+        const dissolve = reachedGate && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        animation = element.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: dissolve ? 720 : 140, easing: 'ease-in-out', fill: 'forwards'
+        });
+        await animation.finished;
+        if (run !== revision) return;
+      }
       if (reachedGate) {
         seen = true;
         try { sessionStorage.setItem(seenKey, '1'); } catch (_) {}
@@ -113,5 +127,5 @@ export function useAccessTransition({ route, router, onEntered, onEntrySound }) 
     window.removeEventListener('resize', finishOnResize);
     document.removeEventListener('visibilitychange', finishWhenHidden);
   });
-  return { gate, phase, failed, enter };
+  return { gate, phase, failed, skipping, enter, skip };
 }

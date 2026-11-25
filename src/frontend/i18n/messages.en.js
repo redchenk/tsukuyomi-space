@@ -4,6 +4,7 @@ export const en = {
   heroCopy: 'Welcome to Tsukuyomi Space, connecting a private Live2D room, articles, the message plaza and your personal center.',
   accessInvitation: 'Chat with Yachiyo, discover stories and art, and meet kindred spirits.',
   accessEnter: 'Enter Tsukuyomi Space',
+  accessSkip: 'Skip intro',
   accessOpening: 'Opening Tsukuyomi Space',
   accessReload: 'Reload entrance',
   accessRetry: 'Unable to load the page. Reload the entrance and try again.',
