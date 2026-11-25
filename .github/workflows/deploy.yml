@@ -1,4 +1,4 @@
-name: Publish the static Hub overseas
+name: Publish public creator profiles overseas
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/hub-static-rollout'
+    if: github.ref == 'refs/heads/codex/users-profile-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 89049464fca822ae52e8886264fd86ee75f2ac2a
+          ref: 71875201d26cc67925932f418d4155a00d904795
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,7 +36,7 @@ jobs:
           npm ci
           node --test tests/frontend-navigation.test.js
           npm run build:web:overseas
-          echo 'e97183d575a7744d7d4e48a983cf121dc232a00eb261ada649ca63ca5606a569  dist/frontend/index.html' | sha256sum -c -
+          echo '3d2356d1413a144ce9ee574da03c836f8b691b59a4b036cd7fd4d6fc43dee100  dist/frontend/index.html' | sha256sum -c -
           cp ../deploy/design-frontend-manifest.json "$RUNNER_TEMP/manifest.json"
           tar -czf "$RUNNER_TEMP/design-frontend.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" design-frontend-release.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
