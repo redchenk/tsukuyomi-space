@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import BeianLink from '../components/BeianLink.vue';
+import TsButton from '../components/TsButton.vue';
 import TsIcon from '../components/TsIcon.vue';
 import AccessShrine from '../components/AccessShrine.vue';
 import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
@@ -13,10 +14,11 @@ import mobilePoster from '../assets/access/shrine/shrine-poster-mobile.webp';
 
 const props = defineProps({
   t: { type: Object, required: true },
+  skipping: Boolean,
   entering: { type: Boolean, default: false },
   entryFailed: { type: Boolean, default: false }
 });
-const emit = defineEmits(['enter', 'warm']);
+const emit = defineEmits(['enter', 'warm', 'skip']);
 const videoEl = ref(null);
 const nightfallEl = ref(null);
 const shrine = ref(null);
@@ -34,6 +36,7 @@ function syncEndingOrientation() {
   if (!nightfall.value && !finishNightfall) endingPortrait.value = orientation.matches;
 }
 const motionAllowed = ref(false);
+const showMotion = computed(() => motionAllowed.value && !props.skipping);
 const bootDismissed = ref(!document.getElementById('boot-splash'));
 const userPaused = ref(false);
 const standbyEnded = ref(false);
@@ -55,7 +58,7 @@ function markVideoFailed() {
 
 function tryPlayAccessVideo() {
   const video = videoEl.value;
-  if (!video || !bootDismissed.value || standbyEnded.value || nightfall.value || isMotionPaused.value || videoState.failed || document.hidden || disposed) return;
+  if (!video || props.skipping || !bootDismissed.value || standbyEnded.value || nightfall.value || isMotionPaused.value || videoState.failed || document.hidden || disposed) return;
   video.muted = true;
   video.playsInline = true;
   const attempt = ++playVersion;
@@ -238,30 +241,38 @@ onBeforeUnmount(() => {
         <img class="access-poster" :src="desktopPoster" alt="" fetchpriority="high" decoding="async" data-image-bloom="off"
           @load="posterReady = true; entryReady()" @error="entryReady">
       </picture>
-      <video v-if="motionAllowed && !(standbyEnded && (posterReady || holdPainted))" ref="videoEl" class="access-video" :src="accessVideoSrc"
+      <video v-if="showMotion && !(standbyEnded && (posterReady || holdPainted))" ref="videoEl" class="access-video" :src="accessVideoSrc"
         :autoplay="bootDismissed && !standbyEnded && !userPaused" muted playsinline webkit-playsinline disablepictureinpicture disableremoteplayback
         controlslist="nodownload noplaybackrate noremoteplayback" x-webkit-airplay="deny" tabindex="-1"
         preload="auto" aria-hidden="true" @loadeddata="!bootDismissed && !videoState.failed && markVideoReady()"
         @playing="markVideoReady" @canplay="tryPlayAccessVideo" @ended="standbyEnded = true"
         @error="markVideoFailed" @webkitbeginfullscreen="preventVideoFullscreen"></video>
-      <AccessShrine v-if="motionAllowed && (videoState.ready || videoState.failed || standbyEnded)"
+      <AccessShrine v-if="showMotion && (videoState.ready || videoState.failed || standbyEnded)"
         ref="shrine" :holding="(standbyEnded || videoState.failed) && !nightfall"
         :paused="userPaused" @available="liveAvailable = $event" @hold-painted="holdPainted = true" />
-      <video v-if="motionAllowed" ref="nightfallEl" class="access-nightfall" :src="accessNightfallSrc"
+      <video v-if="showMotion" ref="nightfallEl" class="access-nightfall" :src="accessNightfallSrc"
         preload="metadata" muted playsinline webkit-playsinline disablepictureinpicture disableremoteplayback
         tabindex="-1" @webkitbeginfullscreen="nightfallEl?.webkitExitFullscreen?.(); finishNightfall?.()"></video>
       <div class="access-overlay" aria-hidden="true"></div>
+    </div>
+    <div class="access-controls">
+      <div v-if="!entering" class="access-playback-controls">
+        <button data-ui-part="media" v-if="motionAllowed && (liveAvailable || (!standbyEnded && !videoState.failed))" class="access-motion-control" type="button"
+          :aria-label="userPaused ? t.accessPlay : t.accessPause" :title="userPaused ? t.accessPlay : t.accessPause"
+          :aria-pressed="userPaused" @click="toggleMotion">
+          <TsIcon :name="userPaused ? 'play' : 'pause'" :size="18" />
+        </button>
+      </div>
+      <TsButton v-if="!entryFailed" class="access-skip" :busy="skipping" @click="emit('skip')">
+        <span>{{ t.accessSkip }}</span>
+        <TsIcon name="skipForward" :size="15" />
+      </TsButton>
     </div>
     <div class="access-content" :inert="Boolean(nightfall)">
       <header class="access-brand">
         <img :src="brandLogo" alt="" width="64" height="64" decoding="async">
         <span>{{ t.brand }}</span>
       </header>
-      <button data-ui-part="media" v-if="motionAllowed && (liveAvailable || (!standbyEnded && !videoState.failed))" class="access-motion-control" type="button"
-        :aria-label="userPaused ? t.accessPlay : t.accessPause" :title="userPaused ? t.accessPlay : t.accessPause"
-        :aria-pressed="userPaused" @click="toggleMotion">
-        <TsIcon :name="userPaused ? 'play' : 'pause'" :size="18" />
-      </button>
       <section class="access-hero" aria-labelledby="access-title">
         <p class="access-kicker">TSUKUYOMI SPACE</p>
         <h1 id="access-title" class="access-title">{{ t.title }}</h1>

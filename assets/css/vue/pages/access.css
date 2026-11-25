@@ -1,6 +1,7 @@
 /* The portal keeps the optical core and the gate clear in the center of the shot. */
 body.vue-access-route { overflow-y: auto; }
 .page.access-page {
+    --edge: clamp(24px, 6vw, 110px);
     --access-ink: #fff6e9;
     --ts-unified-primary-bg: #f6e6ce;
     --ts-unified-primary-bg-hover: #fff3df;
@@ -58,7 +59,6 @@ body.vue-access-route { overflow-y: auto; }
     z-index: 1;
     transform: translateZ(0);
     isolation: isolate;
-    --edge: clamp(24px, 6vw, 110px);
     font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif);
     text-shadow: 0 2px 14px #17132099;
     transition: opacity 190ms ease-out;
@@ -134,10 +134,25 @@ body.vue-access-route { overflow-y: auto; }
 .access-enter-moon { fill: currentColor; stroke: none; }
 .access-page .access-enter > .ts-icon { width: 19px; height: 19px; flex-shrink: 0; }
 .access-page .access-enter:disabled { cursor: progress; }
-.access-page .access-motion-control {
+/* Stay above the film when the title and primary entry action fade away. */
+.access-controls {
     position: absolute;
+    z-index: 2;
     top: max(20px, env(safe-area-inset-top));
     right: max(var(--edge), env(safe-area-inset-right));
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.access-playback-controls { display: flex; gap: 4px; }
+.access-page .access-skip {
+    --surface: #1e1929cf;
+    --ink: var(--access-ink);
+    --control-glass: #1e1929ef;
+    --control-rim: #ffe4c676;
+    --control-pearl: rgb(255 246 233 / .18);
+}
+.access-page .access-motion-control {
     display: grid;
     place-items: center;
     width: 44px;
@@ -149,7 +164,7 @@ body.vue-access-route { overflow-y: auto; }
     color: var(--access-ink);
     cursor: pointer;
 }
-.access-page :is(.access-enter, .access-motion-control):focus-visible { outline: 3px solid #fff4e1; outline-offset: 4px; }
+.access-page :is(.access-enter, .access-skip, .access-motion-control):focus-visible { outline: 3px solid #fff4e1; outline-offset: 4px; }
 .access-page .access-beian {
     position: absolute;
     inset: auto var(--edge) max(16px, env(safe-area-inset-bottom));
@@ -200,6 +215,13 @@ body.vue-access-route { overflow-y: auto; }
     .access-page .access-enter { gap: 9px; padding-inline: 18px; }
     .access-kicker { margin-bottom: 6px; }
     .access-subtitle { margin: 7px 0 14px; }
+}
+@media (max-width: 480px) {
+    .access-controls {
+        right: max(14px, env(safe-area-inset-right));
+        flex-direction: column-reverse;
+        align-items: flex-end;
+    }
 }
 @media (orientation: portrait) and (max-width: 360px) {
     :lang(en) .access-page .access-brand { gap: 6px; font-size: 14px; letter-spacing: .06em; }

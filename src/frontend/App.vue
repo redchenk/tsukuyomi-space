@@ -58,7 +58,7 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
   ? 'ページを読み込み中'
   : lang.value === 'en' ? 'Loading page' : '页面加载中');
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
-const { gate: accessGate, phase: entryPhase, failed: entryFailed, enter: enterSpace } = useAccessTransition({
+const { gate: accessGate, phase: entryPhase, failed: entryFailed, skipping: skippingEntry, enter: enterSpace, skip: skipEntry } = useAccessTransition({
   route, router, onEntered: () => {
     try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
     // WebKit needs a layout frame after the overlaid entrance releases inert.
@@ -451,7 +451,7 @@ onUnmounted(() => {
   <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
     :data-phase="entryPhase" :inert="entryPhase === 'revealing'">
     <AccessPage :t="t" :entering="entryActive" :entry-failed="entryFailed"
-      @enter="enterSpace" @warm="warmRoutePath('/hub')" />
+      :skipping="skippingEntry" @enter="enterSpace" @skip="skipEntry" @warm="warmRoutePath('/hub')" />
   </div>
   <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang" :t="t"
     :cinematic="roomEntryCinematic" :loaded="roomEntryLoaded" :waiting="roomEntryWaiting" :can-enter="isRoomRoute"
