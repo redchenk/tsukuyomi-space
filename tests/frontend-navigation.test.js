@@ -573,7 +573,9 @@ describe('frontend navigation routes', () => {
         const hub = source('src/frontend/pages/HubPage.vue');
         const background = source('src/frontend/styles/jingyue/background.css');
         const theme = source('src/frontend/composables/useSeasonTheme.js');
-        assert.match(hub, /:src="siteArt\.hero"/);
+        const scene = source('src/frontend/components/HubHeroScene.vue');
+        assert.match(hub, /<HubHeroScene\b[^>]*:art="siteArt\.hero"/);
+        assert.match(scene, /<img\b[^>]*:src="art"/);
         assert.match(background, /var\(--site-background-image\)/);
         assert.match(theme, /--site-background-light/);
         assert.match(theme, /--site-background-dark/);
