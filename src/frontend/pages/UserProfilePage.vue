@@ -1,6 +1,6 @@
 <script setup>
-import { nameInitial, encodedAvatarInitial } from '../utils/userName.mjs';
-import { computed, onMounted, ref, watch } from 'vue';
+import { nameInitial } from '../utils/userName.mjs';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
@@ -9,7 +9,14 @@ import { useUserLevels } from '../composables/useUserLevels';
 import { assetUrl } from '../utils/assetUrl';
 import profileMetadata from '../../../shared/profile-search.cjs';
 import { applySeo } from '../utils/seo';
-import { formatDateOnly } from '../utils/time';
+import { formatDateOnly, compareAppDate } from '../utils/time';
+
+import TsButton from '../components/TsButton.vue';
+import TsButtonLink from '../components/TsButtonLink.vue';
+import TsFilterChip from '../components/TsFilterChip.vue';
+import TsIconButton from '../components/TsIconButton.vue';
+import { readingTimeLabel } from '../utils/reading';
+import { isEnglishSite } from '../utils/siteVariant';
 
 const props = defineProps({
   lang: { type: String, required: true },
@@ -23,6 +30,7 @@ const profile = ref(null);
 const loading = ref(true);
 const message = ref('');
 const followLoading = ref(false);
+const avatarFailed = ref(false);
 const failedCovers = ref(new Set());
 const { hydrateUserLevels, userLevel } = useUserLevels();
 
@@ -33,24 +41,64 @@ const profileUser = computed(() => profile.value?.user || null);
 const profileStats = computed(() => profile.value?.stats || {});
 const viewer = computed(() => profile.value?.viewer || {});
 const profileArticles = computed(() => Array.isArray(profile.value?.articles) ? profile.value.articles : []);
-const roleIcon = computed(() => profileUser.value?.role === 'admin' ? 'crown' : 'user');
-const roleText = computed(() => {
-  if (!profileUser.value?.role) return 'Creator';
-  if (profileUser.value.role === 'admin') return props.lang === 'zh' ? '管理员' : 'Admin';
-  return props.lang === 'zh' ? '创作者' : 'Creator';
+const tr = (zh, en, ja) => props.lang === 'en' ? en : props.lang === 'ja' ? ja : zh;
+const category = ref(null);
+const search = ref('');
+const sort = ref('latest');
+const copied = ref('');
+const shareInput = ref(null);
+let generation = 0;
+
+const articleDate = item => item.published_at || item.publish_date || item.created_at;
+const displayName = computed(() => profileUser.value?.nickname || profileUser.value?.username);
+const articleCategory = item => String(item.category || '').trim();
+const categoryLabel = value => value || tr('未分类', 'Uncategorized', '未分類');
+const categories = computed(() => {
+  const counts = new Map();
+  for (const article of profileArticles.value) {
+    const key = articleCategory(article);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
 });
-const profileInitial = computed(() => nameInitial(profileUser.value?.nickname || profileUser.value?.username));
-const latestArticle = computed(() => profileArticles.value[0] || null);
-const profileCategoryChips = computed(() => {
-  const categories = profileArticles.value.map((article) => String(article.category || '').trim()).filter(Boolean);
-  return [...new Set(categories)].slice(0, 6);
+const sortedArticles = computed(() =>
+  [...profileArticles.value].sort((a, b) => compareAppDate(articleDate(b), articleDate(a)))
+);
+const visibleArticles = computed(() => {
+  const query = search.value.trim().toLocaleLowerCase();
+  const matches = sortedArticles.value.filter(article =>
+    (category.value === null || articleCategory(article) === category.value) &&
+    (!query || [article.title, article.excerpt].some(text => text?.toLocaleLowerCase().includes(query)))
+  );
+  return sort.value === 'popular' ? matches.sort((a, b) => b.view_count - a.view_count) : matches;
 });
-const profileStatCards = computed(() => [
-  { key: 'articles', icon: 'fileText', label: props.lang === 'zh' ? '文章' : 'Articles', value: profileStats.value.articles, note: props.lang === 'zh' ? '公开发布' : 'Published' },
-  { key: 'views', icon: 'layers', label: props.lang === 'zh' ? '阅读' : 'Views', value: profileStats.value.totalViews, note: props.lang === 'zh' ? '累计浏览' : 'Total reads' },
-  { key: 'followers', icon: 'users', label: props.lang === 'zh' ? '关注者' : 'Followers', value: profileStats.value.followers, note: props.lang === 'zh' ? '正在等候更新' : 'Following updates' },
-  { key: 'following', icon: 'userCheck', label: props.lang === 'zh' ? '正在关注' : 'Following', value: profileStats.value.following, note: props.lang === 'zh' ? '连接的创作者' : 'Creator links' }
+const showLead = computed(() => sort.value === 'latest' && category.value === null && !search.value.trim());
+const limited = computed(() => profileStats.value.articles > profileArticles.value.length);
+const profileStatsList = computed(() => [
+  [tr('公开文章', 'Articles', '公開記事'), profileStats.value.articles],
+  [tr('累计阅读', 'Total reads', '総閲覧数'), profileStats.value.totalViews],
+  [tr('关注者', 'Followers', 'フォロワー'), profileStats.value.followers],
+  [tr('正在关注', 'Following', 'フォロー中'), profileStats.value.following]
 ]);
+const recentDate = computed(() => articleDate(sortedArticles.value[0] || {}));
+const shareUrl = computed(() => new URL('/users/' + encodeURIComponent(username.value), window.location.origin).href);
+async function copyProfile() {
+  const run = generation;
+  try {
+    await navigator.clipboard.writeText(shareUrl.value);
+    if (run === generation) copied.value = 'done';
+  } catch {
+    if (run !== generation) return;
+    copied.value = 'manual';
+    await nextTick();
+    shareInput.value?.focus();
+    shareInput.value?.select();
+  }
+}
+function clearFilters() {
+  category.value = null;
+  search.value = '';
+}
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString(locale.value);
@@ -58,12 +106,6 @@ function formatNumber(value) {
 
 function formatDate(value) {
   return value ? formatDateOnly(value, locale.value) : '-';
-}
-
-function avatarSrc(user) {
-  if (user?.avatar) return user.avatar;
-  const initial = encodedAvatarInitial(user?.nickname || user?.username);
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ffb7c5'/%3E%3Cstop offset='1' stop-color='%237edbe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23g)'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='42' font-family='Arial' fill='%231a1025'%3E${initial}%3C/text%3E%3C/svg%3E`;
 }
 
 function articlePath(article) {
@@ -89,6 +131,12 @@ function handleArticleCoverError(article) {
 }
 
 async function loadProfile() {
+  const run = ++generation;
+  clearFilters();
+  sort.value = 'latest';
+  copied.value = '';
+  avatarFailed.value = false;
+  followLoading.value = false;
   if (!username.value) {
     message.value = '\u7528\u6237\u4e0d\u5b58\u5728';
     loading.value = false;
@@ -105,10 +153,12 @@ async function loadProfile() {
       cache: 'no-store'
     });
     const result = await parseResponse(response);
+    if (run !== generation) return;
     if (!result.success) throw new Error(result.message || '\u7528\u6237\u4e3b\u9875\u8bfb\u53d6\u5931\u8d25');
     profile.value = result.data;
     const publicUser = result.data?.user || {};
     await hydrateUserLevels([publicUser.id]).catch(() => {});
+    if (run !== generation) return;
     const publicArticles = Array.isArray(result.data?.articles) ? result.data.articles : [];
     const description = profileMetadata.profileDescription(publicUser, publicArticles);
     applySeo({
@@ -122,7 +172,7 @@ async function loadProfile() {
         '@type': 'ProfilePage',
         name: `${publicUser.nickname || publicUser.username || username.value}的公开主页`,
         description,
-        url: `https://yachiyo.hk/users/${encodeURIComponent(publicUser.username || username.value)}`,
+        url: `${isEnglishSite() ? 'https://tsukuyomi-space.com' : 'https://yachiyo.hk'}/users/${encodeURIComponent(publicUser.username || username.value)}`,
         mainEntity: {
           '@type': 'Person',
           name: publicUser.nickname || publicUser.username || username.value,
@@ -131,6 +181,7 @@ async function loadProfile() {
       }
     });
   } catch (error) {
+    if (run !== generation) return;
     profile.value = null;
     message.value = error.message || '\u7528\u6237\u4e3b\u9875\u8bfb\u53d6\u5931\u8d25';
     applySeo({
@@ -140,18 +191,20 @@ async function loadProfile() {
       noindex: true
     });
   } finally {
-    loading.value = false;
+    if (run === generation) loading.value = false;
   }
 }
 
 async function toggleFollow() {
-  if (!profileUser.value?.id) return;
+  if (!profileUser.value?.id || followLoading.value) return;
+  const run = generation;
   session.value = getSession();
   if (!isAuthed.value) {
     emit('go', '/login');
     return;
   }
 
+  message.value = '';
   followLoading.value = true;
   try {
     const following = Boolean(viewer.value.isFollowing);
@@ -160,6 +213,7 @@ async function toggleFollow() {
       headers: authHeaders()
     });
     const result = await parseResponse(response);
+    if (run !== generation) return;
     if (!result.success) throw new Error(result.message || '\u64cd\u4f5c\u5931\u8d25');
     profile.value = {
       ...profile.value,
@@ -174,167 +228,123 @@ async function toggleFollow() {
       }
     };
   } catch (error) {
+    if (run !== generation) return;
     message.value = error.message || '\u64cd\u4f5c\u5931\u8d25';
   } finally {
-    followLoading.value = false;
+    if (run === generation) followLoading.value = false;
   }
 }
 
-watch(username, loadProfile);
-onMounted(loadProfile);
+watch(username, loadProfile, { immediate: true });
 </script>
 
 <template>
-  <main data-ui-layout="content" class="page user-profile-page" :aria-busy="loading">
-    <LoadingSkeleton v-if="loading" variant="profile" :count="1" label="正在读取公开主页" />
-    <div v-else-if="message && !profile" class="user-profile-status panel" role="alert">{{ message }}</div>
-
-    <template v-else-if="profile">
-      <section class="profile-hero">
-        <div class="profile-avatar-wrap">
-          <div class="profile-avatar">
-            <img :src="avatarSrc(profileUser)" :alt="profileUser?.nickname || profileUser?.username || ''">
-          </div>
-          <span class="profile-avatar-initial">{{ profileInitial }}</span>
+  <main data-ui-layout="content" class="page user-profile-page creator-page" :aria-busy="loading">
+    <LoadingSkeleton v-if="loading" variant="profile" :count="1" :label="tr('正在读取公开主页', 'Loading profile', 'プロフィールを読み込み中')" />
+    <div v-else-if="!profile" class="creator-panel creator-empty" role="alert">{{ message }}</div>
+    <template v-else>
+      <header class="creator-panel creator-masthead">
+        <div class="creator-banner profile-actions">
+          <TsButtonLink to="/stage" size="sm" variant="secondary" class="profile-icon-action">
+            <TsIcon name="arrowLeft" :size="15" />{{ tr('回到主舞台', 'Back to Main Stage', 'メインステージへ') }}
+          </TsButtonLink>
+          <TsIcon name="moon" class="creator-emblem" :size="78" aria-hidden="true" />
         </div>
-        <div class="profile-main">
-          <div class="profile-kicker"><TsIcon name="star" :size="15" /> User Profile</div>
-          <h1 class="ui-page-title">{{ profileUser?.nickname || profileUser?.username }}</h1>
-          <UserLevelBadge v-if="profileUser?.id" :level="userLevel(profileUser.id)" :lang="lang" />
-          <p>{{ profileUser?.bio || '这位创作者还没有写下个人简介。' }}</p>
-          <div class="profile-meta">
-            <span>@{{ profileUser?.username }}</span>
-            <span><TsIcon :name="roleIcon" :size="15" /> {{ roleText }}</span>
-            <span><TsIcon name="calendar" :size="15" /> {{ formatDate(profileUser?.created_at) }}</span>
-            <span><TsIcon name="book" :size="15" /> {{ formatNumber(profileStats.articles) }} 篇公开文章</span>
+        <div class="creator-identity">
+          <div class="creator-portrait">
+            <img v-if="profileUser.avatar && !avatarFailed" :src="profileUser.avatar" alt="" @error="avatarFailed = true">
+            <span v-else>{{ nameInitial(displayName) }}</span>
           </div>
-        </div>
-        <div class="profile-actions">
-          <button
-            v-if="!viewer.isSelf"
-            class="primary-btn profile-icon-action"
-            type="button"
-            :disabled="followLoading"
-            :aria-busy="followLoading"
-            @click="toggleFollow"
-          >
-            <TsIcon :class="{ 'ts-status-loader-icon': followLoading }" :name="followLoading ? 'loader' : (viewer.isFollowing ? 'userCheck' : 'userPlus')" :size="17" />
-            <span :role="followLoading ? 'status' : undefined">{{ followLoading ? '正在更新关注状态' : (viewer.isFollowing ? '取消关注' : '关注作者') }}</span>
-          </button>
-          <a v-else class="primary-btn profile-icon-action" href="/user-center" @click.prevent="emit('go', '/user-center')">
-            <TsIcon name="penLine" :size="17" />
-            <span>编辑个人资料</span>
-          </a>
-          <a class="ghost-btn profile-icon-action" href="/stage" @click.prevent="emit('go', '/stage')">
-            <TsIcon name="book" :size="17" />
-            <span>回到主舞台</span>
-          </a>
-        </div>
-        <aside class="profile-presence">
-          <div>
-            <span>创作档案</span>
-            <strong>{{ latestArticle ? latestArticle.title : '等待新的公开记录' }}</strong>
-          </div>
-          <p>{{ latestArticle ? (latestArticle.excerpt || '最近公开的文章会出现在这里。') : '这里会收纳这个用户发布到月读空间的公开文章、关注关系和创作痕迹。' }}</p>
-          <div class="profile-presence-grid">
-            <span><b>{{ formatNumber(profileStats.totalViews) }}</b><small>累计阅读</small></span>
-            <span><b>{{ formatNumber(profileStats.followers) }}</b><small>关注者</small></span>
-          </div>
-        </aside>
-      </section>
-
-      <section class="profile-stats">
-        <div v-for="card in profileStatCards" :key="card.key" class="profile-stat">
-          <div class="profile-stat-icon"><TsIcon :name="card.icon" :size="26" /></div>
-          <div>
-            <span>{{ card.label }}</span>
-            <strong>{{ formatNumber(card.value) }}</strong>
-            <small>{{ card.note }}</small>
-          </div>
-        </div>
-      </section>
-
-      <div class="profile-content-grid">
-        <section class="panel profile-articles ui-panel">
-          <div class="profile-section-head">
-            <div>
-              <span>Published Notes</span>
-              <h2><TsIcon name="fileText" :size="19" /> 公开文章</h2>
+          <div class="creator-name">
+            <div class="creator-name-line">
+              <h1>{{ displayName }}</h1>
+              <UserLevelBadge :level="userLevel(profileUser.id)" :lang="lang" />
+              <span v-if="profileUser.role === 'admin'" class="creator-role">{{ tr('管理员', 'Admin', '管理者') }}</span>
             </div>
-            <strong>{{ formatNumber(profileArticles.length) }}</strong>
+            <p class="creator-handle">@{{ profileUser.username }} <span v-if="profileUser.created_at">· {{ tr('加入于', 'Joined', '登録日') }} {{ formatDate(profileUser.created_at) }}</span></p>
           </div>
-          <div v-if="message" class="form-message error">{{ message }}</div>
-          <div v-if="!profileArticles.length" class="profile-empty">
-            <TsIcon name="fileText" :size="28" />
-            <strong>暂无公开文章</strong>
-            <span>当这位用户发布文章后，会在这里形成公开创作列表。</span>
+          <div class="creator-actions">
+            <TsButton v-if="!viewer.isSelf" :variant="viewer.isFollowing ? 'secondary' : 'primary'" :busy="followLoading" @click="toggleFollow">
+              <TsIcon :name="viewer.isFollowing ? 'userCheck' : 'userPlus'" :size="17" />
+              {{ viewer.isFollowing ? tr('取消关注', 'Unfollow', 'フォロー解除') : tr('关注作者', 'Follow author', 'フォローする') }}
+            </TsButton>
+            <TsButtonLink v-else to="/user-center" variant="primary"><TsIcon name="penLine" :size="16" />{{ tr('编辑个人资料', 'Edit profile', 'プロフィールを編集') }}</TsButtonLink>
+            <TsIconButton icon="copy" :label="tr('复制主页链接', 'Copy profile link', 'プロフィールリンクをコピー')" @click="copyProfile" />
           </div>
-          <div v-else class="profile-article-list">
-            <article v-for="article in profileArticles" :key="article.id" class="profile-article">
-              <a class="profile-article-cover" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
-                <img
-                  v-if="articleCover(article)"
-                  :src="articleCover(article)"
-                  :alt="article.title || ''"
-                  loading="lazy"
-                  decoding="async"
-                  data-image-bloom
-                  @error="handleArticleCoverError(article)"
-                >
-                <span v-else>
-                  <TsIcon name="fileText" :size="28" />
-                  <b>{{ article.category || '未分类' }}</b>
-                </span>
-              </a>
-              <div class="profile-article-body">
-                <div class="profile-article-meta">
-                  <span>{{ article.category || '未分类' }}</span>
-                  <span>{{ formatDate(article.publish_date || article.created_at) }}</span>
-                  <span>{{ formatNumber(article.view_count) }} views</span>
-                </div>
-                <h3>
-                  <a :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">{{ article.title }}</a>
-                </h3>
-                <p>{{ article.excerpt || '这篇文章还没有摘要。' }}</p>
+        </div>
+        <div class="creator-intro">
+          <p v-if="profileUser.bio">{{ profileUser.bio }}</p>
+          <p v-if="message" role="alert" class="form-message error">{{ message }}</p>
+          <span role="status">{{ copied === 'done' ? tr('主页链接已复制', 'Profile link copied', 'リンクをコピーしました') : '' }}</span>
+          <label v-if="copied === 'manual'">{{ tr('请复制主页链接', 'Copy this profile link', 'このリンクをコピー') }}
+            <input ref="shareInput" :value="shareUrl" readonly @focus="$event.target.select()">
+          </label>
+        </div>
+        <dl class="creator-metrics">
+          <div v-for="[label, value] in profileStatsList" :key="label"><dt>{{ label }}</dt><dd>{{ formatNumber(value) }}</dd></div>
+        </dl>
+      </header>
+
+      <div class="creator-layout">
+        <section aria-labelledby="creator-works">
+          <div class="creator-section-head">
+            <h2 id="creator-works">{{ tr('公开文章', 'Published articles', '公開記事') }}</h2>
+            <span role="status" class="creator-count">{{ formatNumber(visibleArticles.length) }} / {{ formatNumber(profileStats.articles) }}</span>
+          </div>
+          <template v-if="profileArticles.length">
+            <p v-if="limited" class="creator-scope">{{ tr('筛选、排序和主题分布仅涵盖本页展示的文章。', 'Filters, sorting and topics cover the articles shown on this page.', '絞り込み・並べ替え・テーマの集計対象はこのページの記事です。') }}</p>
+            <div class="creator-filters">
+              <div class="creator-chips" role="group" :aria-label="tr('文章分类', 'Categories', 'カテゴリー')">
+                <TsFilterChip :selected="category === null" @click="category = null">{{ tr('全部', 'All', 'すべて') }}</TsFilterChip>
+                <TsFilterChip v-for="[key, count] in categories" :key="key" :selected="category === key" @click="category = key">{{ categoryLabel(key) }} {{ count }}</TsFilterChip>
               </div>
-              <a data-ui="quiet" class="icon-btn profile-icon-action" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
-                <TsIcon name="eye" :size="16" />
-                <span>阅读</span>
-              </a>
+              <div class="creator-tools">
+                <label class="creator-search"><TsIcon name="search" :size="16" />
+                  <input v-model="search" type="search" :aria-label="tr('搜索本页文章', 'Search articles on this page', 'このページの記事を検索')" :placeholder="tr('搜索标题或摘要', 'Search titles or summaries', 'タイトル・概要を検索')">
+                </label>
+                <div class="creator-sort" role="group" :aria-label="tr('文章排序', 'Sort articles', '並べ替え')">
+                  <TsButton size="sm" :variant="sort === 'latest' ? 'choice' : 'quiet'" :aria-pressed="sort === 'latest'" @click="sort = 'latest'">{{ tr('最新', 'Latest', '新着') }}</TsButton>
+                  <TsButton size="sm" :variant="sort === 'popular' ? 'choice' : 'quiet'" :aria-pressed="sort === 'popular'" @click="sort = 'popular'">{{ tr('热门', 'Popular', '人気') }}</TsButton>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div v-if="!visibleArticles.length" class="creator-panel creator-empty">
+            <h3>{{ profileArticles.length ? tr('没有匹配的文章', 'No matching articles', '該当する記事はありません') : tr('暂无公开文章', 'No published articles yet', '公開記事はまだありません') }}</h3>
+            <TsButton v-if="profileArticles.length" @click="clearFilters">{{ tr('清除筛选', 'Clear filters', '絞り込みを解除') }}</TsButton>
+          </div>
+          <div v-else class="creator-stories">
+            <article v-for="(article, i) in visibleArticles" :key="article.id" class="creator-story" :class="{ 'creator-lead': showLead && i === 0 }">
+              <div class="creator-art" aria-hidden="true">
+                <img v-if="articleCover(article)" :src="articleCover(article)" alt="" :loading="i ? 'lazy' : 'eager'" @error="handleArticleCoverError(article)">
+                <span v-else><TsIcon name="book" :size="34" /><b>{{ categoryLabel(articleCategory(article)) }}</b></span>
+              </div>
+              <div class="creator-story-copy">
+                <div class="creator-byline">
+                  <strong v-if="showLead && i === 0">{{ limited ? tr('本页最新', 'Latest on this page', 'このページの新着') : tr('最新创作', 'Latest work', '最新作') }}</strong>
+                  <span>{{ categoryLabel(articleCategory(article)) }}</span><time :datetime="articleDate(article)">{{ formatDate(articleDate(article)) }}</time>
+                </div>
+                <h3><RouterLink :to="articlePath(article)">{{ article.title }}</RouterLink></h3>
+                <p v-if="article.excerpt">{{ article.excerpt }}</p>
+                <div class="creator-byline"><span>{{ formatNumber(article.view_count) }} {{ tr('次阅读', 'views', '閲覧') }}</span><span>{{ readingTimeLabel(article, lang) }}</span></div>
+              </div>
             </article>
           </div>
         </section>
-
-        <aside class="profile-side-stack">
-          <section class="profile-side-card">
-            <div class="profile-side-title">
-              <h2>创作索引</h2>
-              <TsIcon name="grid" :size="20" />
-            </div>
-            <div class="profile-side-metrics">
-              <div>
-                <span>公开文章</span>
-                <strong>{{ formatNumber(profileStats.articles) }}</strong>
-              </div>
-              <div>
-                <span>累计阅读</span>
-                <strong>{{ formatNumber(profileStats.totalViews) }}</strong>
-              </div>
-            </div>
-            <div class="profile-topic-list">
-              <button data-ui-part="row" v-for="category in profileCategoryChips" :key="category" type="button">{{ category }}</button>
-              <span v-if="!profileCategoryChips.length">还没有可展示的文章分类</span>
-            </div>
+        <aside v-if="profileArticles.length" class="creator-rail">
+          <section class="creator-panel creator-side">
+            <h2>{{ limited ? tr('本页主题分布', 'Topics on this page', 'このページのテーマ') : tr('主题分布', 'Topics', 'テーマ分布') }}</h2>
+            <button v-for="[key, count] in categories" :key="key" data-ui-part="row" type="button" class="creator-topic" :aria-pressed="category === key" @click="category = category === key ? null : key">
+              <span>{{ categoryLabel(key) }}</span><small>{{ formatNumber(count) }} · {{ Math.round(100 * count / profileArticles.length) }}%</small>
+              <progress :value="count" :max="profileArticles.length" aria-hidden="true"></progress>
+            </button>
           </section>
-
-          <section v-if="latestArticle" class="profile-side-card profile-latest-card">
-            <span>Latest</span>
-            <h2>{{ latestArticle.title }}</h2>
-            <p>{{ latestArticle.excerpt || '最近公开的文章。' }}</p>
-            <a class="ghost-btn profile-icon-action" :href="articlePath(latestArticle)" @click.prevent="emit('go', articlePath(latestArticle))">
-              <TsIcon name="external" :size="16" />
-              <span>查看最新文章</span>
-            </a>
+          <section class="creator-panel creator-side">
+            <h2>{{ tr('创作档案', 'Writing record', '創作記録') }}</h2>
+            <dl class="creator-record">
+              <div><dt>{{ tr('本页最近发布', 'Latest on this page', 'このページの最終公開') }}</dt><dd>{{ formatDate(recentDate) }}</dd></div>
+              <div><dt>{{ tr('篇均阅读', 'Reads per article', '記事あたりの閲覧数') }}</dt><dd>{{ formatNumber(Math.round(profileStats.totalViews / (profileStats.articles || 1))) }}</dd></div>
+            </dl>
           </section>
         </aside>
       </div>
