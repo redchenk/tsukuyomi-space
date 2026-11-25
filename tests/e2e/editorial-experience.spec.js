@@ -196,7 +196,7 @@ test('public content is visible when opening an inactive window', async ({ page 
 });
 
 test('hub previews load their media and keep the pixel studio accessible', async ({ page }) => {
-    await page.route(/\/api\/(?:live\/[^/]+\/)?hub-preview(?:\?|$)/, (route) => route.fulfill({
+    await page.route(/\/(?:en-)?api\/(?:live\/[^/]+\/)?hub-preview(?:\?|$)/, (route) => route.fulfill({
         json: {
             success: true,
             data: {

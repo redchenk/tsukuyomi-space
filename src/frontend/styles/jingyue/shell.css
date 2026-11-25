@@ -1,12 +1,34 @@
 .site-header { position: sticky; top: 0; z-index: 50; height: var(--header-height); display: flex; align-items: center; gap: 40px; padding: 0 var(--gutter); background: var(--paper); border-bottom: 1px solid var(--line); view-transition-name: site-header; }
 .hub-shell .site-header { margin-bottom: calc(-1 * var(--header-height)); }
-.site-header.on-hero { color: #fff; background: rgb(11 15 25 / 72%); --badge-edge: #19202d; border-color: rgb(255 255 255 / 18%); }
+.site-header.on-hero {
+  color: #fff;
+  background: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+  --badge-edge: #19202d;
+}
+.on-hero :is(.site-brand, .desktop-nav, .site-tool-button) {
+  text-shadow: 0 1px 3px rgb(10 15 28 / 72%);
+}
 .site-brand { display: flex; align-items: center; flex-shrink: 0; gap: 11px; font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: .08em; }
 .site-brand img { border-radius: 50%; }
 .desktop-nav { display: flex; align-items: center; gap: 26px; font-size: 14px; font-weight: 500; height: 100%; }
 .desktop-nav > :is(a, button) { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0; position: relative; white-space: nowrap; }
 .nav-chatroom-label { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--r-pill); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.on-hero .nav-chatroom-label { color: inherit; background: rgb(255 255 255 / 16%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 36%); }
+.on-hero .nav-chatroom-label { color: inherit; background: transparent; padding-inline: 0; }
+.hub-shell .desktop-nav > :is(a, button) {
+  height: 44px;
+  padding-inline: clamp(4px, .65vw, 12px);
+  border-radius: var(--r-pill);
+}
+.hub-shell .desktop-nav { gap: 2px; }
+.hub-shell .desktop-nav > :is(a, button):is(:hover, :focus-visible, [aria-expanded='true']) {
+  background: var(--soft);
+  text-decoration: none;
+}
+.on-hero .desktop-nav > :is(a, button):is(:hover, :focus-visible, [aria-expanded='true']) {
+  background: rgb(255 255 255 / 16%);
+}
 .desktop-nav [aria-current='page']::after { content: ''; position: absolute; height: 2px; background: var(--accent); inset: auto 0 14px; }
 .desktop-nav a:hover, .desktop-nav button:hover { text-decoration: underline; text-underline-offset: .3em; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 5px; }

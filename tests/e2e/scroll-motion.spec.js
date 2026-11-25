@@ -71,66 +71,66 @@ test('public routes use native scrolling without animation errors', async ({ pag
   expect(errors).toEqual([]);
 });
 
-test('Hub parallax pins, reverses at the same position, and becomes static with reduced motion', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
+test('Hub artwork scrolls with the page and the navigation is transparent at the top', async ({ page }) => {
   await page.goto('/hub');
   await expect(page.locator('#boot-splash')).toHaveCount(0);
-  const track = page.locator('.hub-scene-track');
-  const scene = track.locator('.home-hero');
-  const metrics = await track.evaluate(el => {
-    const panel = el.querySelector('.home-hero');
-    return {
-      start: Math.round(el.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(panel).top)),
-      distance: el.offsetHeight - panel.offsetHeight
-    };
-  });
-  expect(metrics.distance).toBeGreaterThan(150);
-  const scroll = offset => page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), metrics.start + offset);
-  const position = () => scene.evaluate(el => ({
-    top: Math.round(el.getBoundingClientRect().top),
-    layers: Array.from(el.querySelectorAll('.hub-scene-layer'), layer => {
-      const offset = new DOMMatrix(getComputedStyle(layer).transform).m42;
-      return Math.abs(offset) < .005 ? 0 : Math.round(offset * 100) / 100;
-    })
-  }));
-  await scroll(0);
-  const start = await position();
-  expect(start.layers).toEqual([0, 0, 0]);
-  const halfway = Math.round(metrics.distance / 2);
-  await scroll(halfway);
-  await expect.poll(async () => (await position()).layers[2]).toBeLessThan(-10);
-  const middle = await position();
-  const timeline = await track.evaluate(el => {
-    const supported = CSS.supports('animation-timeline: --hub-scene') &&
-      CSS.supports('animation-range: contain 0% contain 100%') && CSS.supports('view-timeline-inset: 0px 0px');
-    const planes = Array.from(el.querySelectorAll('.hub-scene-layer'));
-    return {
-      supported,
-      attached: planes.filter(plane => plane.getAnimations().some(a => a.timeline?.subject === el)).length
-    };
-  });
-  if (timeline.supported) expect(timeline.attached).toBe(3);
-  expect(middle.top).toEqual(start.top);
-  expect(middle.layers[2]).toBeLessThan(middle.layers[1]);
-  expect(middle.layers[1]).toBeLessThan(middle.layers[0]);
-  expect(middle.layers[0]).toBeLessThan(0);
-  await scroll(metrics.distance + 90);
-  await expect.poll(async () => (await position()).top).toBeLessThan(start.top - 80);
-  await expect.poll(async () => (await position()).layers[2]).toBeLessThan(middle.layers[2] - 10);
-  await scroll(halfway);
-  await expect.poll(position).toEqual(middle);
-  await scroll(0);
-  await expect.poll(position).toEqual(start);
+  const header = page.locator('.site-header');
+  const hero = page.locator('.home-hero');
+  const art = hero.locator('img');
+  const top = locator => locator.evaluate(el => el.getBoundingClientRect().top);
+  const scroll = y => page.evaluate(value => window.scrollTo({ top: value, behavior: 'instant' }), y);
+
+  await expect(art).toHaveCount(1);
+  await expect(art).toHaveJSProperty('complete', true);
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    await page.emulateMedia({ reducedMotion });
+    await scroll(0);
+    await expect(header).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(header).toHaveCSS('background-image', 'none');
+    await expect(header).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
+    await expect(header).toHaveCSS('box-shadow', 'none');
+    await expect(header).toHaveCSS('backdrop-filter', 'none');
+    const start = await top(hero);
+    const imageStart = await top(art);
+    await scroll(200);
+    await expect.poll(() => top(hero)).toBeCloseTo(start - 200, 0);
+    await expect.poll(() => top(art)).toBeCloseTo(imageStart - 200, 0);
+    await expect.poll(() => top(header)).toBeCloseTo(0, 0);
+    await expect(header).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(art).toHaveCSS('transform', 'none');
+    expect(await art.evaluate(el => el.getAnimations().length)).toBe(0);
+  }
+  const gap = await hero.evaluate(el =>
+    document.querySelector('.home-content').getBoundingClientRect().top - el.getBoundingClientRect().bottom);
+  // The first notice may have an editorial margin. It must not leave a pinned scroll interval.
+  expect(gap).toBeLessThanOrEqual(32);
+});
+
+test('Hub destinations snap on a narrow screen and return to an editorial grid on desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(scene).toHaveCSS('position', 'relative');
-  expect(await track.evaluate(el => el.offsetHeight - el.firstElementChild.offsetHeight)).toBe(0);
-  await scroll(100);
-  await expect(track.locator('.scene-sky')).toHaveCSS('transform', 'none');
-  await expect(track.locator('.scene-shore')).toBeHidden();
-  await expect(track.locator('.scene-near')).toBeHidden();
-  await page.locator('#home-chat').fill('Parallax draft');
-  await expect(page.locator('#home-chat')).toHaveValue('Parallax draft');
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await scroll(halfway);
-  await expect.poll(position).toEqual(middle);
+  await page.goto('/hub');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  const rail = page.locator('.discovery-grid');
+  const cards = rail.locator('.discovery-item');
+  const dots = page.locator('.discovery-dots button');
+  await expect(cards).toHaveCount(4);
+  await expect(dots.first()).toHaveAttribute('aria-current', 'true');
+  await expect(rail).toHaveCSS('scroll-behavior', 'auto');
+  await dots.last().click();
+  await expect(dots.last()).toHaveAttribute('aria-current', 'true');
+  await expect(cards.last()).toBeInViewport({ ratio: .95 });
+  // Native scrolling must update the indicator independently of pagination clicks.
+  await rail.evaluate(el => el.scrollTo({ left: 0, behavior: 'instant' }));
+  await expect(dots.first()).toHaveAttribute('aria-current', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await dots.nth(1).focus();
+  await page.keyboard.press('Enter');
+  await expect(dots.nth(1)).toHaveAttribute('aria-current', 'true');
+  await expect(cards.nth(1)).toHaveAttribute('href', '/pixel');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(dots.first()).toBeHidden();
+  const widths = await cards.evaluateAll(items => items.map(item => item.getBoundingClientRect().width));
+  expect(widths[0]).toBeGreaterThan(widths[1]);
+  expect(widths[3]).toBeCloseTo(widths[0], 0);
 });

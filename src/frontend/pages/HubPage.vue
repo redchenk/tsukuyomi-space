@@ -7,6 +7,7 @@ import { announcementContent, noticeSummary } from '../../../shared/notice-markd
 import { siteArt } from '../data/siteArt';
 import { activeSeason } from '../composables/useSeasonTheme';
 import { storeRoomEntryDraft } from '../services/roomEntryDraft.mjs';
+import TsButton from '../components/TsButton.vue';
 import TsIcon from '../components/TsIcon.vue';
 import NoticeMarkdown from '../components/NoticeMarkdown.vue';
 import HubHeroScene from '../components/HubHeroScene.vue';
@@ -27,6 +28,19 @@ const places = computed(() => [
   { path: '/wiki', title: tr('走进月读世界', 'The world of Tsukuyomi'), label: tr('百科', 'WIKI'), desc: tr('人物、音乐，还有故事的另一面。', 'Characters, music and untold stories.'), image: wikiArt },
   { path: '/game', title: tr('一起玩一会儿', 'A little time to play'), label: tr('游戏中心', 'PLAY'), desc: tr('暂时放下忙碌，来一局吧。', 'Take a break. Share a game.'), image: gameArt }
 ]);
+const discoveryRail = ref(null);
+const currentPlace = ref(0);
+function updateCurrentPlace() {
+  const rail = discoveryRail.value;
+  if (rail.scrollWidth <= rail.clientWidth) { currentPlace.value = 0; return; }
+  const stride = rail.children[1].offsetLeft - rail.children[0].offsetLeft;
+  currentPlace.value = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1
+    ? places.value.length - 1 : Math.round(rail.scrollLeft / stride);
+}
+function showPlace(index) {
+  const rail = discoveryRail.value;
+  rail.scrollTo({ left: rail.children[index].offsetLeft - rail.children[0].offsetLeft });
+}
 const articlePath = article => article?.id ? `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}` : '/stage';
 const date = value => String(value || '').slice(0, 10).replaceAll('-', '.');
 const author = article => article?.author_nickname || article?.author_username || article?.author || tr('月下旅人', 'Moonlit traveler');
@@ -80,7 +94,7 @@ watch(() => props.lang, load);
     </HubHeroScene>
 
     <div class="home-content">
-      <details v-if="notice" class="home-notice"><summary><span class="notice-label"><TsIcon name="bell" :size="16" />{{ tr('月读公告', 'NOTICE') }}</span><span class="notice-title">{{ notice.title }}</span><span class="notice-more">{{ tr('展开', 'Read') }}<TsIcon name="chevronDown" :size="16" /></span></summary><NoticeMarkdown class="home-notice-content" :content="notice.content" /></details>
+      <details v-if="notice" class="home-notice"><summary><span class="notice-label"><TsIcon name="bell" :size="16" />{{ tr('月读公告', 'NOTICE') }}</span><span class="notice-title">{{ notice.title }}</span><span class="notice-more"><span class="notice-expand">{{ tr('展开', 'Read', '開く') }}</span><span class="notice-collapse">{{ tr('收起', 'Close', '閉じる') }}</span><TsIcon name="chevronDown" :size="16" /></span></summary><NoticeMarkdown class="home-notice-content" :content="notice.content" /></details>
       <section id="under-the-moon" class="home-section home-journal" aria-labelledby="journal-title">
         <header class="home-section-heading"><div><span class="eyebrow">01 — UNDER THE MOON</span><h2 id="journal-title">{{ tr('月下新鲜事', 'Under the moon', '月の下の新着') }}</h2><p>{{ tr('把值得记录的日常，变成值得阅读的故事。', 'Everyday moments, made into stories worth keeping.') }}</p></div><RouterLink to="/stage" class="ghost-btn">{{ tr('全部文章', 'All stories') }}<TsIcon name="arrowRight" :size="18" /></RouterLink></header>
         <LoadingSkeleton v-if="loading" variant="hub" :count="2" :label="t.loading" />
@@ -92,7 +106,11 @@ watch(() => props.lang, load);
       </section>
       <section class="home-section home-discover" aria-labelledby="discover-title">
         <header class="home-section-heading"><div><span class="eyebrow">02 — WANDER A LITTLE</span><h2 id="discover-title">{{ tr('随心逛逛', 'Follow your curiosity', '気ままに歩こう') }}</h2></div><p>{{ tr('喜欢的事，都能在这里找到一席之地。', 'A little space for everything you love.') }}</p></header>
-        <div class="discovery-grid"><RouterLink v-for="place in places" :key="place.path" :to="place.path" class="discovery-item"><div class="media-frame"><img :src="place.image" alt="" loading="lazy" width="480" height="600"><span>{{ place.label }}</span></div><div class="discovery-title"><h3>{{ place.title }}</h3><TsIcon name="arrowUpRight" :size="19" /></div><p>{{ place.desc }}</p></RouterLink></div>
+        <div ref="discoveryRail" class="discovery-grid" @scroll.passive="updateCurrentPlace"><RouterLink v-for="place in places" :key="place.path" :to="place.path" class="discovery-item"><div class="media-frame"><img :src="place.image" alt="" loading="lazy" width="480" height="600"><span>{{ place.label }}</span></div><div class="discovery-title"><div><h3>{{ place.title }}</h3><p>{{ place.desc }}</p></div><TsIcon name="arrowUpRight" :size="19" /></div></RouterLink></div>
+        <div class="discovery-dots" role="group" :aria-label="tr('浏览入口', 'Browse destinations', '行き先を選ぶ')">
+          <TsButton v-for="(place, index) in places" :key="place.path" variant="icon"
+            :aria-label="place.title" :aria-current="index === currentPlace ? 'true' : undefined" @click="showPlace(index)"><span class="discovery-mark" aria-hidden="true"></span></TsButton>
+        </div>
       </section>
       <section class="home-section home-community" aria-labelledby="community-title">
         <div class="community-intro"><span class="eyebrow">03 — SMALL MOMENTS, SHARED</span><h2 id="community-title">{{ tr('月光下的声音', 'Meet under the moon') }}</h2><p>{{ tr('今天的小事、想分享的心情，', 'Small moments, little thoughts,') }}<br>{{ tr('总有人愿意听。', 'and someone who’s here to listen.') }}</p><RouterLink to="/plaza" class="primary-btn">{{ tr('去广场坐坐', 'Visit the plaza') }}<TsIcon name="arrowRight" :size="16" /></RouterLink></div>
