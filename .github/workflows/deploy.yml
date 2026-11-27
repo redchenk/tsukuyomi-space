@@ -1,4 +1,4 @@
-name: Publish the skippable Access intro overseas
+name: Publish Room chat recovery overseas
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/codex/access-skip-rollout'
+    if: github.ref == 'refs/heads/codex/room-chat-release-rollout'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: b1c552fc4be81ce946a4b850fc0cfc5b0b2a0655
+          ref: 545825dd999b2d9dece16ebd26489e0cedea4d17
           path: source
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -34,9 +34,9 @@ jobs:
         run: |
           set -eu
           npm ci
-          node --test tests/frontend-navigation.test.js
+          node --test tests/room-wire-frames.test.cjs tests/room-official-api.test.mjs tests/frontend-room-session.test.js
           npm run build:web:overseas
-          echo '8726d143f4a5a2aee4be8c5953954bb5f13c60aa895f2eba0b1b25f345429f30  dist/frontend/index.html' | sha256sum -c -
+          echo '8f6d6b531a14c1c40f9fe4cf32365308e738b0a029328f2ebdb0ffb654477e36  dist/frontend/index.html' | sha256sum -c -
           cp ../deploy/design-frontend-manifest.json "$RUNNER_TEMP/manifest.json"
           tar -czf "$RUNNER_TEMP/design-frontend.tgz" -C dist frontend -C "$GITHUB_WORKSPACE/source/deploy" safe-release.py prepare-lightweight-release.sh -C "$GITHUB_WORKSPACE/deploy" design-frontend-release.py -C "$RUNNER_TEMP" manifest.json
       - name: Verify the overseas SSH host
