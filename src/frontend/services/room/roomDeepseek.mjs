@@ -4,12 +4,12 @@ import { isOfficialRoomApi, fetchOfficialRoomDashboard } from './roomOfficialApi
 
 export { deepseek };
 const account = () => String(getSession()?.user?.id || '');
-export async function deepseekRequest(settings, path, { body, file, purpose, signal, method = 'POST' } = {}) {
+export async function deepseekRequest(settings, path, { body, file, purpose, signal, dashboard, method = 'POST' } = {}) {
   const owner = account(), official = isOfficialRoomApi(settings.apiUrl);
   const headers = {}, init = { method, signal, credentials: official ? 'same-origin' : 'omit', redirect: 'error' };
   let url = deepseek.endpoint(settings, path), request = fetch;
   if (official) {
-    const dashboard = await fetchOfficialRoomDashboard({ signal });
+    dashboard ??= await fetchOfficialRoomDashboard({ signal });
     if (account() !== owner) throw new Error('账号已切换，请重新发送。');
     headers['X-Official-Expected-Account'] = dashboard.me.account_id;
     headers['Idempotency-Key'] = crypto.randomUUID();
@@ -41,7 +41,7 @@ export async function deepseekRequest(settings, path, { body, file, purpose, sig
 }
 export async function requestDeepseekReply(args) {
   const body = deepseek.buildRequest(args);
-  const response = await deepseekRequest(args.settings, '/chat/completions', { body, signal: args.signal });
+  const response = await deepseekRequest(args.settings, '/chat/completions', { body, signal: args.signal, dashboard: args.dashboard });
   return deepseek.readReply(response, { signal: args.signal, onDelta: args.onDelta, onUpdate: args.onUpdate, target: deepseek.endpoint(args.settings) });
 }
 export async function deepseekTool(settings, path, options) {

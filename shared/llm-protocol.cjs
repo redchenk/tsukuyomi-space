@@ -1,5 +1,6 @@
 // One bounded wire decoder for the browser and the server. Independently
 // implemented; AstrBot's provider/agent separation is the design reference.
+const { readRoomFrames } = require('./room-wire-frames.cjs');
 const LIMIT = 1024 * 1024;
 const bytes = value => new TextEncoder().encode(typeof value === 'string' ? value : JSON.stringify(value)).length;
 const error = (code, message) => Object.assign(new Error(message), { code });
@@ -51,6 +52,19 @@ function messagesHeaders(chatUrl, apiKey = '', model = '', { browser = false, wo
 function bounded(value, limit = LIMIT) {
     if (bytes(value) > limit) throw error('LLM_SIZE_LIMIT', '模型响应过大，请缩短请求后重试');
     return value;
+}
+// Count only new bytes. JSON may split one UTF-16 surrogate pair across deltas.
+function textBudget(limit) {
+    const encoder = new TextEncoder();
+    let size = 0, trailingHigh = false;
+    return chunk => {
+        if (!chunk) return;
+        const first = chunk.charCodeAt(0), last = chunk.charCodeAt(chunk.length - 1);
+        const joinsPair = trailingHigh && first >= 0xdc00 && first <= 0xdfff;
+        size += encoder.encode(chunk).length - (joinsPair ? 2 : 0);
+        trailingHigh = last >= 0xd800 && last <= 0xdbff;
+        if (size > limit) throw error('LLM_SIZE_LIMIT', '模型响应过大，请缩短请求后重试');
+    };
 }
 function text(content) {
     if (typeof content === 'string') return content;
@@ -145,11 +159,15 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
         if (result.reply) await onDelta(result.reply);
         return result;
     }
-    const reader = response.body.getReader(), decoder = new TextDecoder();
-    let buffer = '', reply = '', model = '', usage, completed = false, terminal = false, final;
+    let reply = '', model = '', usage, completed = false, terminal = false, final;
     let reasoning = ''; const tools = new Map(), blocks = new Map();
-    const abort = () => { reader.cancel().catch(() => {}); };
-    const emit = async value => { if (!value) return; reply = bounded(reply + value, 262144); await onDelta(value); };
+    const countReply = textBudget(262144), countReasoning = textBudget(262144);
+    const emit = async value => {
+        if (!value) return;
+        countReply(value);
+        reply += value;
+        await onDelta(value);
+    };
     async function consume(raw, event = 'message') {
         onEvent('event');
         if (raw === '[DONE]') { completed = terminal = true; return; }
@@ -193,7 +211,9 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
         } else {
             const choice = data.choices?.find(p => (p.index ?? 0) === 0);
             await emit(text(choice?.delta?.content ?? choice?.delta?.text));
-            reasoning = bounded(reasoning + (choice?.delta?.reasoning_content || ''), 262144);
+            const thought = choice?.delta?.reasoning_content || '';
+            countReasoning(thought);
+            reasoning += thought;
             for (const [i, item] of (choice?.delta?.tool_calls || []).entries()) {
                 const index = item.index ?? i;
                 const old = tools.get(index) || { id: '', name: '', arguments: '' };
@@ -207,56 +227,30 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
         }
         if (tools.size > 6 || blocks.size > 32) throw error('LLM_TOOL_LIMIT', '模型请求了过多工具');
     }
-    async function drain(flush = false) {
-        const ndjson = provider === 'ollama' || /ndjson/i.test(contentType);
-        let boundary;
-        while (!terminal && (boundary = ndjson ? /\n/.exec(buffer) : /\r?\n\r?\n/.exec(buffer))) {
-            const packet = buffer.slice(0, boundary.index); buffer = buffer.slice(boundary.index + boundary[0].length);
-            if (ndjson) { if (packet.trim()) await consume(packet.trim()); }
-            else {
-                let event = 'message'; const lines = [];
-                for (const line of packet.split(/\r?\n/)) {
-                    if (line.startsWith('event:')) event = line.slice(6).trim();
-                    if (line.startsWith('data:')) lines.push(line.slice(5).trimStart());
-                }
-                if (lines.length) await consume(lines.join('\n'), event);
-            }
-        }
-        if (flush && !terminal && buffer.trim()) { buffer += ndjson ? '\n' : '\n\n'; await drain(); }
-        bounded(buffer);
+    const ndjson = provider === 'ollama' || /ndjson/i.test(contentType);
+    for await (const frame of readRoomFrames(response.body, { signal, ndjson })) {
+        await consume(frame.data, frame.event);
+        if (terminal) break;
     }
-    signal?.addEventListener('abort', abort, { once: true });
-    try {
-        while (!terminal) {
-            if (signal?.aborted) throw signal.reason || error('LLM_ABORTED', '请求已取消');
-            const part = await reader.read(); if (part.done) break;
-            // Process large network chunks in small slices, including delimiters
-            // split across reads. Never let an unterminated event grow unchecked.
-            for (let i = 0; i < part.value.length && !terminal; i += 16384) {
-                buffer += decoder.decode(part.value.slice(i, i + 16384), { stream: true }); await drain();
-            }
-        }
-        buffer += decoder.decode(); await drain(true);
-        if (signal?.aborted) throw signal.reason || error('LLM_ABORTED', '请求已取消');
-        if (!completed || (requireDone && !terminal)) throw error('LLM_STREAM_INCOMPLETE', 'LLM stream ended before completion');
-        if (provider === 'anthropic') {
-            // A declined attempt can stop mid tool input; fromJson drops blocks before the last fallback.
-            const ordered = [...blocks.values()], cut = ordered.map(p => p.type).lastIndexOf('fallback');
-            const content = ordered.map(({ partial, ...block }, i) => ({ ...block, ...(block.type === 'tool_use' && partial && i > cut ? { input: JSON.parse(partial) } : {}) }));
-            final = content.length ? fromJson({ content, model }, { provider, allowTools }) : { reply, model }; // Compatible servers can omit block-start.
-        }
-        if (tools.size) {
-            const toolCalls = [...tools.values()].map(p => call(p.id, p.name, p.arguments));
-            final = { toolCalls, continuation: { protocol: provider, items: [{ role: 'assistant', content: reply || null,
-                ...(reasoning ? { reasoning_content: reasoning } : {}), tool_calls: toolCalls.map(p => ({ id: p.id, type: 'function', function: { name: p.name, arguments: p.arguments } })) }] } };
-        }
-        const result = finish({ reply: final?.reply || reply, model: final?.model || model, ...(usage || final?.usage ? { usage: usage || final.usage } : {}),
-            ...(provider === 'proxy' && final?.diagnostics ? { diagnostics: { httpStatus: Number(final.diagnostics.httpStatus) || null,
-                contentType: String(final.diagnostics.contentType || '').slice(0, 100), eventCount: Math.max(0, Number(final.diagnostics.eventCount) || 0) } } : {}),
-            ...(final?.toolCalls?.length ? { toolCalls: final.toolCalls, continuation: final.continuation } : {}) }, allowTools);
-        if (!reply && result.reply) await onDelta(result.reply);
-        return result;
-    } finally { signal?.removeEventListener('abort', abort); await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    if (!completed || (requireDone && !terminal)) throw error('LLM_STREAM_INCOMPLETE', 'LLM stream ended before completion');
+    if (provider === 'anthropic') {
+        // A declined attempt can stop mid tool input; fromJson drops blocks before the last fallback.
+        const ordered = [...blocks.values()], cut = ordered.map(p => p.type).lastIndexOf('fallback');
+        const content = ordered.map(({ partial, ...block }, i) => ({ ...block, ...(block.type === 'tool_use' && partial && i > cut ? { input: JSON.parse(partial) } : {}) }));
+        final = content.length ? fromJson({ content, model }, { provider, allowTools }) : { reply, model }; // Compatible servers can omit block-start.
+    }
+    if (tools.size) {
+        const toolCalls = [...tools.values()].map(p => call(p.id, p.name, p.arguments));
+        final = { toolCalls, continuation: { protocol: provider, items: [{ role: 'assistant', content: reply || null,
+            ...(reasoning ? { reasoning_content: reasoning } : {}), tool_calls: toolCalls.map(p => ({ id: p.id, type: 'function', function: { name: p.name, arguments: p.arguments } })) }] } };
+    }
+    const result = finish({ reply: final?.reply || reply, model: final?.model || model, ...(usage || final?.usage ? { usage: usage || final.usage } : {}),
+        ...(provider === 'proxy' && final?.diagnostics ? { diagnostics: { httpStatus: Number(final.diagnostics.httpStatus) || null,
+            contentType: String(final.diagnostics.contentType || '').slice(0, 100), eventCount: Math.max(0, Number(final.diagnostics.eventCount) || 0) } } : {}),
+        ...(final?.toolCalls?.length ? { toolCalls: final.toolCalls, continuation: final.continuation } : {}) }, allowTools);
+    if (!reply && result.reply) await onDelta(result.reply);
+    return result;
+
 }
 
 function withTools(payload, provider, tools = [], turns = [], { toolChoice } = {}) {
@@ -286,4 +280,4 @@ function withTools(payload, provider, tools = [], turns = [], { toolChoice } = {
     }
     return result;
 }
-module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, isClaudeApi, claudeWorkspaceId, messagesOptions, messagesHeaders, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };
+module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, isClaudeApi, claudeWorkspaceId, messagesOptions, messagesHeaders, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, textBudget, error };

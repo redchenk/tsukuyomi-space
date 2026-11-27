@@ -615,14 +615,18 @@ function roomProvider(apiUrl, model = '') {
 export async function requestRoomReply({ settings, systemPrompt, conversation = [], message, image, signal, onDelta = () => {}, onDiagnostic = () => {}, onUpdate = () => {}, files = [], features, stream = true, tools = [], agentTurns = [] }) {
   if (!roomChatConfigured(settings)) throw Object.assign(new Error('请先在房间设置中选择并配置聊天模型。'), { code: 'ROOM_MODEL_NOT_CONFIGURED' });
   if (deepseek.supported(settings) && !isOfficialRoomApi(settings.apiUrl)) return requestDeepseekReply({ settings, systemPrompt, conversation, message, image, files, features, stream, tools, agentTurns, signal, onDelta, onUpdate });
-  let officialModel;
+  let officialModel, officialAccount;
   if (isOfficialRoomApi(settings.apiUrl)) {
+    const owner = String(getSession()?.user?.id || '');
     const dashboard = await fetchOfficialRoomDashboard({ signal });
+    if (String(getSession()?.user?.id || '') !== owner) throw new Error('账号已切换，请重新发送。');
     settings = officialRoomSettings(settings, dashboard);
     officialModel = dashboard.models.find(model => model.id === settings.model);
-    if (officialModel.capabilities?.apps && deepseek.supported(settings)) return requestDeepseekReply({ settings, systemPrompt, conversation, message, image, files, features, stream, tools, agentTurns, signal, onDelta, onUpdate });
+    officialAccount = dashboard.me.account_id;
+    if (officialModel.capabilities?.apps && deepseek.supported(settings)) return requestDeepseekReply({ dashboard, settings, systemPrompt, conversation, message, image, files, features, stream, tools, agentTurns, signal, onDelta, onUpdate });
     if (image && settings.visionMode !== 'mcp' && officialModel.capabilities?.vision !== true) throw new Error('当前站内模型不支持图片，请选择支持图片的模型，或在设置中选择 MCP 识图。');
   }
+  if (files.length) throw new Error('当前模型无法读取这些附件，请选择支持文件的模型后重新发送。');
   const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
   const useLocalOllama = isOllamaApi(apiUrl);
   const activeSettings = { ...settings, apiUrl };
@@ -677,7 +681,11 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
   const body = officialModel ? officialRoomRequestBody(rawBody, officialModel) : rawBody;
   const options = {
     method: 'POST',
-    headers: chatRequestHeaders(apiUrl, settings.apiKey, body.model, settings.catalogWorkspaceId),
+    headers: {
+      ...chatRequestHeaders(apiUrl, settings.apiKey, body.model, settings.catalogWorkspaceId),
+      ...(officialAccount ? { 'X-Official-Expected-Account': officialAccount, 'Idempotency-Key': crypto.randomUUID() } : {})
+    },
+    ...(officialAccount ? { credentials: 'same-origin', redirect: 'error' } : {}),
     body: JSON.stringify(body),
     signal
   };
@@ -1225,7 +1233,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     lastFailedTurn = operation.replacement
       ? { kind: 'replacement', replacement: operation.replacement }
       : { kind: 'new', turnId: operation.turnId, message: operation.message, image: operation.image, files: operation.files, opener: operation.opener, userMessageId: operation.userMessageId };
-    generationState.value = { status: 'stopped', turnId: operation.turnId, error: '' };
+    generationState.value = { status: 'stopped', turnId: operation.turnId, error: '', partial: streamingVisibleText(operation.received) };
     return true;
   }
 
@@ -1345,7 +1353,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     messages.value.push({ id: pendingId, turnId, role: 'assistant', content: '', parts: [], pending: true, createdAt: Date.now() });
     // Read back Vue's proxy: mutating the raw object would not render deltas.
     const pendingMessage = messages.value.at(-1);
-    const operation = { controller: new AbortController(), pendingId, turnId, message, image, files, opener, userMessageId: userMessage?.id || '', replacement, committing: false, timedOut: false };
+    const operation = { received: '', controller: new AbortController(), pendingId, turnId, message, image, files, opener, userMessageId: userMessage?.id || '', replacement, committing: false, timedOut: false };
     activeGeneration = operation;
     const presenter = createRoomReplyPresenter({
       signal: operation.controller.signal,
@@ -1421,15 +1429,14 @@ export function useRoomChat({ live2d, world, diary = null }) {
       const mcpEnhancedMessage = visionToolSucceeded && image && (settings.visionMode === 'mcp' || settings.visionMode === 'auto')
         ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n\n\u4e0a\u4e0b\u6587\u5df2\u5305\u542b MCP \u5bf9\u56fe\u7247\u7684\u7406\u89e3\u7ed3\u679c\uff0c\u8bf7\u7ed3\u5408\u5b83\u56de\u7b54\u3002`
         : message;
-      let streamedText = '';
       let renderFrame = 0;
       const renderDelta = () => {
         renderFrame = 0;
-        if (activeGeneration === operation) presenter.update(streamingVisibleText(streamedText));
+        if (activeGeneration === operation) presenter.update(streamingVisibleText(operation.received));
       };
       const onDelta = (delta) => {
         if (activeGeneration !== operation || operation.controller.signal.aborted) return;
-        streamedText += delta;
+        operation.received += delta;
         generationState.value = { status: 'streaming', turnId, error: '' };
         if (typeof window.requestAnimationFrame === 'function') {
           if (!renderFrame) renderFrame = window.requestAnimationFrame(renderDelta);
@@ -1547,6 +1554,9 @@ export function useRoomChat({ live2d, world, diary = null }) {
       generationState.value = {
         status: error?.name === 'AbortError' && !operation.timedOut ? 'stopped' : 'error',
         turnId,
+        statusCode: error?.statusCode, official: isOfficialRoomApi(readJson('roomLLMSettings', {}).apiUrl),
+        partial: operation.timedOut || error?.name === 'TypeError' || ['DEEPSEEK_INTERRUPTED', 'LLM_STREAM_INCOMPLETE'].includes(error?.code)
+          ? streamingVisibleText(operation.received) : '',
         error: operation.timedOut ? '模型响应超时，请重试本轮对话' : error?.name === 'AbortError' ? '' : String(error?.message || '回复未能完成，请重试。')
       };
       return false;

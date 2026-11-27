@@ -1,14 +1,18 @@
 // DeepSeek application API contract (2026-11-13). The chat-demo lifecycle is
 // the reference; Chat Completions keeps Room's existing tool runner compatible.
+const { readRoomFrames } = require('./room-wire-frames.cjs');
 const protocol = require('./llm-protocol.cjs');
 const MODEL = 'deepseek-flash';
 const FILE_ID = /^[A-Za-z0-9_-]{1,200}$/;
 const fail = (code, message) => Object.assign(new Error(message), { code });
+function officialAppsPath(url) {
+  return ['/official-api/v1', '/official-api/v1/chat/completions', '/official-api/v1/deepseek/chat/completions'].includes(url.pathname.replace(/\/$/, ''));
+}
 function supported(settings = {}) {
   try {
     const url = new URL(settings.apiUrl);
     return /^deepseek-(?:flash|v4(?:\.1)?-flash)(?:-|$)/.test(settings.model || '') &&
-      (url.hostname === 'api.deepseek.com' || url.pathname === '/official-api/v1/chat/completions' || settings.deepseekApps === true);
+      (url.hostname === 'api.deepseek.com' || officialAppsPath(url) || settings.deepseekApps === true);
   } catch { return false; }
 }
 function options(value = {}) {
@@ -16,7 +20,7 @@ function options(value = {}) {
 }
 function endpoint(settings, path = '/chat/completions') {
   const url = new URL(settings.apiUrl);
-  if (url.pathname === '/official-api/v1/chat/completions') return `${url.origin}/official-api/v1/deepseek${path}`;
+  if (officialAppsPath(url)) return `${url.origin}/official-api/v1/deepseek${path}`;
   // Preserve compatible gateway prefixes, but never append to /messages or /responses.
   const prefix = url.hostname === 'api.deepseek.com' ? '' : url.pathname.replace(/\/(?:anthropic\/v1\/messages|chat\/completions|responses)\/?$/, '').replace(/\/$/, '');
   const suffix = prefix.endsWith('/v1') && path.startsWith('/v1/') ? path.slice(3) : path;
@@ -81,6 +85,7 @@ async function readReply(response, { signal, onDelta = () => {}, onUpdate = () =
   let reply = '', reasoning = '', usage, model = '', done = false, finishReason = '', toolCalls = new Map();
   let meta = { provider: 'deepseek', endpoint: target, files: [], server_tool_calls: [], annotations: [], title: '' };
   const events = new Map();
+  const countReply = protocol.textBudget(524288), countReasoning = protocol.textBudget(524288);
   function consume(data) {
     if (data.error) throw fail('DEEPSEEK_PROVIDER_ERROR', String(data.error.message || 'DeepSeek 未完成回复').slice(0, 400));
     model = data.model || model; usage = data.usage || usage;
@@ -89,8 +94,8 @@ async function readReply(response, { signal, onDelta = () => {}, onUpdate = () =
       reply = ''; reasoning = ''; onUpdate({ reasoning: '', refused: true, sources: [], events: [] });
       throw fail('DEEPSEEK_REFUSED', '这次内容未通过模型安全检查，请换个说法再试。');
     }
-    if (typeof delta.content === 'string') { reply += delta.content; protocol.bounded(reply, 524288); onDelta(delta.content); }
-    if (typeof delta.reasoning_content === 'string') { reasoning += delta.reasoning_content; protocol.bounded(reasoning, 524288); }
+    if (typeof delta.content === 'string') { countReply(delta.content); reply += delta.content; onDelta(delta.content); }
+    if (typeof delta.reasoning_content === 'string') { countReasoning(delta.reasoning_content); reasoning += delta.reasoning_content; }
     for (const call of delta.tool_calls || []) {
       const index = call.index || 0, prior = toolCalls.get(index) || { id: '', name: '', arguments: '' };
       if (call.id) prior.id = call.id;
@@ -104,36 +109,20 @@ async function readReply(response, { signal, onDelta = () => {}, onUpdate = () =
     if (delta.annotations) meta.annotations = delta.annotations;
     if (delta.title) meta.title = delta.title;
     if (choice?.finish_reason) finishReason = choice.finish_reason;
-    meta = metadata({ ...meta, truncated: finishReason === 'length' });
-    onUpdate({ reasoning, events: [...events.values()], sources: sources(meta), title: meta.title, truncated: meta.truncated });
+    const changedMeta = delta.server_tool_calls || delta.annotations || delta.title || choice?.finish_reason;
+    if (changedMeta) meta = metadata({ ...meta, truncated: finishReason === 'length' });
+    if (changedMeta || event?.call || delta.reasoning_content) {
+      onUpdate({ reasoning, events: [...events.values()], sources: sources(meta), title: meta.title, truncated: meta.truncated });
+    }
   }
   if (/application\/json/i.test(response.headers.get('content-type') || '')) {
     consume(await protocol.readJson(response, signal)); done = true;
   } else {
     if (!/text\/event-stream/i.test(response.headers.get('content-type') || '') || !response.body?.getReader) throw fail('DEEPSEEK_PROTOCOL', '接口没有返回流式对话。');
-    const reader = response.body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
-    let buffer = '', total = 0;
-    const abort = () => { reader.cancel().catch(() => {}); };
-    signal?.addEventListener('abort', abort, { once: true });
-    try {
-      while (!done) {
-        signal?.throwIfAborted();
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        total += chunk.value.byteLength; if (total > 16 * 1024 * 1024) throw fail('DEEPSEEK_SIZE', '模型回复超过限制。');
-        buffer += decoder.decode(chunk.value, { stream: true });
-        let boundary;
-        while ((boundary = /\r?\n\r?\n/.exec(buffer))) {
-          const frame = buffer.slice(0, boundary.index); buffer = buffer.slice(boundary.index + boundary[0].length);
-          const data = frame.split(/\r?\n/).filter(l => l.startsWith('data:')).map(l => l.slice(5).trimStart()).join('\n');
-          if (!data) continue;
-          if (data === '[DONE]') { done = true; break; }
-          consume(JSON.parse(data));
-        }
-        protocol.bounded(buffer);
-      }
-      signal?.throwIfAborted();
-    } finally { signal?.removeEventListener('abort', abort); await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    for await (const frame of readRoomFrames(response.body, { signal })) {
+      if (frame.data === '[DONE]') { done = true; break; }
+      consume(JSON.parse(frame.data));
+    }
   }
   if (!done || !finishReason) throw fail('DEEPSEEK_INTERRUPTED', '连接中断，回复尚未完成，可以重试。');
   if (!reply && !toolCalls.size) throw fail('DEEPSEEK_EMPTY', '模型没有返回正文，请重试。');

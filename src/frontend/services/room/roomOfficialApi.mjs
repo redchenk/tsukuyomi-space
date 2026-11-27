@@ -10,7 +10,9 @@ export function officialChatUrl(origin = originOf()) {
 export function isOfficialRoomApi(value, origin = originOf()) {
   try {
     const url = new URL(value, origin);
-    return url.origin === new URL(origin).origin && url.pathname === OFFICIAL_CHAT_PATH
+    const path = url.pathname.replace(/\/$/, '');
+    return url.origin === new URL(origin).origin
+      && [OFFICIAL_CHAT_PATH, '/official-api/v1', '/official-api/v1/deepseek/chat/completions'].includes(path)
       && !url.username && !url.password && !url.search && !url.hash;
   } catch { return false; }
 }
@@ -33,9 +35,9 @@ export async function fetchOfficialRoomDashboard({ signal, request = globalThis.
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await request('/official-api/api/dashboard', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal, headers: { Accept: 'application/json' } });
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
     if (!response.ok) throw Object.assign(new Error(response.status === 401 ? '请先登录月读空间，再使用站内直供。' : data?.error?.message || '站内直供暂时无法读取，请稍后刷新。'), { statusCode: response.status });
-    if (!data.me?.account_id || !Array.isArray(data.models)) throw new Error('站内直供返回的数据不完整，请稍后刷新。');
+    if (!data?.me?.account_id || !Array.isArray(data.models)) throw new Error('站内直供返回的数据不完整，请稍后刷新。');
     return { ...data, models: data.models.filter(model => model.enabled && typeof model.id === 'string' && Number.isInteger(model.max_output_tokens) && model.max_output_tokens >= 16) };
   } finally {
     clearTimeout(timeout);

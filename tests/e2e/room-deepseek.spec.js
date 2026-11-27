@@ -45,7 +45,12 @@ test('DeepSeek streams citations and keeps signed sources and file context acros
   const dir = path.resolve('output/deepseek-room'); fs.mkdirSync(dir, { recursive: true });
   await page.screenshot({ path: path.join(dir, `room-${info.project.name}.png`), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  if (info.project.name.includes('mobile')) await expect(page.locator('.room-conversation-surface')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  if (info.project.name.includes('mobile')) {
+    const panel = page.locator('.room-conversation-surface');
+    await expect(panel).toHaveAttribute('data-detent', /half|full/);
+    // The expanded mobile transcript deliberately uses a 12% paper tint.
+    await expect(panel).toHaveCSS('background-color', /(?:rgba\(.+, 0\.12\)|color\(srgb .+ \/ 0\.12\))/);
+  }
 });
 test('OCR puts recognized text into the composer and never sends it automatically', async ({ page }) => {
   await setup(page); let chats = 0;
@@ -96,7 +101,7 @@ test('official DeepSeek binds tools and chat to the signed-in account and restor
   expect(login.status()).toBe(200); const { data } = await login.json();
   await page.addInitScript(({ user, origin }) => {
     localStorage.setItem('tsukuyomi_user', JSON.stringify(user));
-    localStorage.setItem('roomLLMSettings', JSON.stringify({ apiUrl: origin + '/official-api/v1/chat/completions', model: 'deepseek-flash', apiKey: 'tsukuyomi-site-session' }));
+    localStorage.setItem('roomLLMSettings', JSON.stringify({ apiUrl: origin + '/official-api/v1/', model: 'deepseek-flash', apiKey: 'tsukuyomi-site-session' }));
     localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
   }, { user: data.user, origin: baseURL });
   await page.route('**/official-api/api/dashboard', route => route.fulfill({ json: { enabled: true, me: { account_id: 'official-fixture' }, models: [{ id: 'deepseek-flash', provider: 'deepseek', enabled: true, max_output_tokens: 4096, capabilities: { apps: true, vision: true } }] } }));
@@ -107,12 +112,16 @@ test('official DeepSeek binds tools and chat to the signed-in account and restor
     return route.request().url().endsWith('/files') ? route.fulfill({ json: { id: 'file-official', purpose: 'text_recognition', page_count: 1 } }) : route.fulfill({ contentType: 'text/event-stream', body: reply('官方文件已阅读。') });
   });
   await open(page); await page.getByLabel('添加对话文件').setInputFiles({ name: 'cloud.pdf', mimeType: 'application/pdf', buffer: Buffer.from('fixture') });
-  await expect(page.locator('.room-file-list')).toContainText('cloud.pdf');
+  await expect(page.getByRole('button', { name: '移除 cloud.pdf' })).toBeVisible();
+  await page.getByRole('button', { name: '深度思考', exact: true }).click();
+  await page.getByRole('button', { name: '联网搜索', exact: true }).click();
   await page.locator('#chatInput').fill('读这份官方文件'); await page.locator('#sendChatBtn').click();
   await expect(page.locator('.chat-message.assistant').last()).toContainText('官方文件已阅读。');
   await expect.poll(() => page.request.get('/api/room/chat').then(r => r.json()).then(j => JSON.stringify(j))).toContain('file-official');
   expect(keys.every(k => typeof k === 'string' && k.length > 20)).toBe(true); expect(new Set(keys).size).toBe(keys.length);
   expect(requests.at(-1).messages.at(-1).content[0].file_id).toBe('file-official');
+  expect(requests.at(-1).thinking.type).toBe('enabled');
+  expect(requests.at(-1).tools.map(tool => tool.type)).toEqual(expect.arrayContaining(['deepseek_web_search','deepseek_read_url']));
 });
 
 test('redesigned composer preserves text attachments through send and edit, and clears an abandoned draft', async ({ page }, info) => {
