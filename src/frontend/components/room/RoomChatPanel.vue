@@ -403,7 +403,16 @@ function endChatStatusLabel() {
           </div>
         </div>
         <div v-if="generationInterrupted" class="chat-generation-notice" :class="generationState.status" :role="generationState.status === 'error' ? 'alert' : 'status'">
-          <span>{{ generationMessage }} 请重试或放弃后再发送新消息。</span>
+          <div class="room-recovery-body">
+              <span>{{ generationMessage }}</span>
+              <RouterLink v-if="generationState.official && generationState.statusCode === 402" to="/payments">{{ englishRoom ? 'Payment center' : '支付中心' }}</RouterLink>
+              <RouterLink v-else-if="generationState.official && generationState.statusCode === 401" :to="{path:'/login', query:{redirect:'/room'}}">{{ englishRoom ? 'Sign in' : '登录' }}</RouterLink>
+              <RouterLink v-else-if="[400,401,403,404,422].includes(generationState.statusCode)" to="/room/settings">{{ englishRoom ? 'Chat settings' : '聊天设置' }}</RouterLink>
+              <details v-if="generationState.partial" class="room-interrupted-reply">
+                <summary>{{ englishRoom ? 'View unfinished reply' : '查看未完成的回复' }}</summary>
+                <p>{{ generationState.partial }}</p>
+              </details>
+            </div>
           <button data-ui-part="tool" class="chat-tts-btn" type="button" :disabled="generationBusy" @click="chat.retryLastTurn()">重试这轮</button>
           <button data-ui-part="tool" class="chat-tts-btn" type="button" :disabled="generationBusy" @click="chat.discardFailedTurn()">放弃这轮</button>
         </div>
@@ -565,4 +574,10 @@ function endChatStatusLabel() {
 @media (max-width: 860px) {
   .room-image-upload.upload-progress-card { width: calc(100% - 24px); margin: 4px 12px; padding: 10px; gap: 6px; }
 }
+</style>
+
+<style scoped>
+.room-recovery-body { flex: 1 1 12rem; min-inline-size: 0; overflow-wrap: anywhere; }
+.room-interrupted-reply summary { padding-block: .4rem; cursor: pointer; }
+.room-interrupted-reply p { max-block-size: 9rem; overflow: auto; white-space: pre-wrap; }
 </style>

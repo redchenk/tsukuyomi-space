@@ -1,3 +1,4 @@
+import deepseek from '../shared/deepseek-chat.cjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fs from 'node:fs';
@@ -54,7 +55,7 @@ test('model discovery uses only authenticated no-store GET and filters disabled 
 
 function transport(request, modelDashboard = dashboard) {
   const code = fs.readFileSync('src/frontend/composables/room/useRoomChat.js', 'utf8').replace(/^import [\s\S]*?from '[^']*';$/gm, '').replace(/^export /gm, '');
-  const context = { URL, AbortController, ReadableStream, isEnglishSite: () => false, llmProtocol: protocol, ...localTransport, ...official, ...oneclickTts,
+  const context = { crypto: globalThis.crypto, getSession: () => ({ user: { id: 'fixture' } }), deepseek, URL, AbortController, ReadableStream, isEnglishSite: () => false, llmProtocol: protocol, ...localTransport, ...official, ...oneclickTts,
     roomChatConfigured: value => official.roomChatConfigured(value, origin),
     isOfficialRoomApi: value => official.isOfficialRoomApi(value, origin),
     officialRoomSettings: (value, data) => official.officialRoomSettings(value, data, origin),
@@ -91,6 +92,8 @@ test('Room sends image content to a capable official model and keeps site authen
     assert.equal(url, settings.apiUrl);
     assert.equal(options.credentials ?? 'same-origin', 'same-origin');
     assert.equal(options.headers.Authorization, `Bearer ${official.OFFICIAL_SESSION_MARKER}`);
+    assert.equal(options.headers['X-Official-Expected-Account'], dashboard.me.account_id);
+    assert.match(options.headers['Idempotency-Key'], /^[\w-]{36}$/);
     const body = JSON.parse(options.body);
     assert.deepEqual(body.messages.at(-1).content, [{ type: 'text', text: '看到了什么？' }, { type: 'image_url', image_url: { url: dataUrl } }]);
     assert.equal(body.thinking.type, 'disabled');
@@ -110,8 +113,15 @@ test('real Room transport handles an imported legacy site config and surfaces in
     assert.equal(body.thinking.type, 'disabled');
     assert.equal(body.stream_options.include_usage, true);
     assert.equal(options.headers.Authorization, `Bearer ${official.OFFICIAL_SESSION_MARKER}`);
+    assert.equal(options.headers['X-Official-Expected-Account'], dashboard.me.account_id);
+    assert.match(options.headers['Idempotency-Key'], /^[\w-]{36}$/);
     return { ok: false, status: 402, headers: { get: () => 'application/json' }, text: async () => JSON.stringify({ error: { message: 'insufficient' } }) };
   });
   await assert.rejects(request({ settings, message: 'hi', systemPrompt: 'test' }), /余额不足/);
   assert.equal(count, 1);
+});
+
+test('expired logins survive a non-JSON gateway response and still offer sign-in', async () => {
+  const request = async () => new Response('<html>signed out</html>', { status: 401 });
+  await assert.rejects(official.fetchOfficialRoomDashboard({ request }), { statusCode: 401 });
 });

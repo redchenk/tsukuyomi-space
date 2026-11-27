@@ -390,6 +390,7 @@ test('stopping generation aborts the response and never saves a late completion'
   await tick();
   assert.equal(h.chat.generationState.value.status, 'streaming');
   assert.equal(h.chat.stopGeneration(), true);
+  assert.equal(h.chat.generationState.value.partial, '半句');
   delayed.resolve();
   assert.equal(await pending, false);
   assert.equal(saved.length, 0);
