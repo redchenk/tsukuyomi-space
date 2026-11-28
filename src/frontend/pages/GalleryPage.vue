@@ -97,7 +97,7 @@ function reliableImageUrl(asset) {
 
 function handleImageError(event, asset) {
   const image = event?.currentTarget;
-  const fallback = reliableImageUrl(asset);
+  const fallback = asset?.fallback_url || reliableImageUrl(asset);
   if (!image || image.dataset.fallbackAttempted === 'true' || !fallback) return;
   image.dataset.fallbackAttempted = 'true';
   image.src = fallback;
