@@ -13,6 +13,8 @@ wav.writeUInt16LE(1,20); wav.writeUInt16LE(1,22); wav.writeUInt32LE(32000,24); w
 outbound.fetchPinnedUrl = async (url, options) => {
     calls.push({ url, options });
     if (new URL(url).hostname === 'api.fish.audio') {
+        if (new URL(url).pathname.startsWith('/wallet/') && ['wallet-503','wallet-401'].includes(mode))
+            return Response.json({}, {status:mode==='wallet-503'?503:401});
         if (new URL(url).pathname.startsWith('/wallet/')) return Response.json({user_id:'voice-test',credit:mode==='no-credit'?'0':'1'});
         if (new URL(url).pathname.startsWith('/model/')) return Response.json({_id:'a'.repeat(32),type:'tts'});
         if (mode === 'bad') return Response.json({error:'upstream'});
@@ -204,4 +206,37 @@ test('Fish model choices follow the authenticated account, engine and available 
     } finally {
         mode='ready';db.prepare("UPDATE users SET role='user' WHERE id='one'").run();
     }
+});
+
+test('billing outage admits only verified free Fish synthesis and never opens a paid model', async t => {
+    const {settings,freeFishProbeKey}=require('../backend/services/official-tts-settings');
+    const configureFish=key=>configure({OFFICIAL_TTS_PROTOCOL:'fish-audio',OFFICIAL_TTS_MODEL:'s2.1-pro-free',
+        OFFICIAL_TTS_VOICE:'a'.repeat(32),OFFICIAL_TTS_API_KEY:key,OFFICIAL_TTS_MODELS:'s2.1-pro-free,drama-3'});
+    configureFish('wallet-outage-test');
+    const cfg=settings(), configuration=freeFishProbeKey(cfg);
+    let proof={};
+    const read=fs.readFileSync;
+    t.mock.method(fs,'readFileSync',function(file,...args){
+        if(file==='/var/lib/yachiyo-status-tts/attempt.json') return JSON.stringify(proof);
+        return read.call(this,file,...args);
+    });
+    try {
+        mode='wallet-503';
+        const balance=wallet.wallet('two').balance_atoms;
+        for (const [key,age,state] of [['old-key',0,'up'],[configuration,19*60000,'up'],[configuration,0,'down']]) {
+            proof={configuration:key,result:{state,evidence:'generated_audio',at:Date.now()-age}};
+            assert.equal((await submit({},'two')).status,503);
+        }
+        proof={configuration,result:{state:'up',evidence:'generated_audio',at:Date.now()}};
+        const health=(await call('/status')).data.data;
+        assert.equal(health.online,true);assert.equal(health.reason,'credit_unavailable');
+        assert.deepEqual(health.models,['s2.1-pro-free']);
+        assert.equal((await submit({fishModel:'drama-3'},'two')).status,403);
+        assert.equal(wallet.wallet('two').balance_atoms,balance);
+        const result=await submit({},'two');assert.equal(result.status,202);
+        assert.equal((await done(result.data.data.id,'two')).state,'ready');
+        mode='wallet-401'; configureFish('changed-test-key');
+        proof.configuration=freeFishProbeKey(settings());
+        assert.equal((await call('/status')).data.data.online,false);
+    } finally {mode='ready';}
 });
