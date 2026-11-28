@@ -5,6 +5,7 @@ const states = new Set(['up','down','degraded','unknown']);
 const explanations = {
     generated_text: '官方供应商返回了有效文本和用量。',
     completed_request: '当前模型最近的真实业务请求已完成并结算。',
+    audio_ok_credit_unavailable: '默认免费上游模型已返回有效音频。供应商余额暂时无法核实，付费上游模型暂不可选。',
     generated_audio: '默认官方音源已返回可识别的音频。',
     result_uncertain: '最近一笔实际请求未取得可确认的最终结果，用量仍待核对。',
     egress_unreachable: '真实生成检测未能通过模型出口完成连接或读取回复。',

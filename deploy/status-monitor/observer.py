@@ -141,6 +141,17 @@ def ai_state(sample, key, now):
     if not -30000<=now-checked<=180000 or not -30000<=now-observed<=1080000: return 'unknown'
     return value['state']
 
+def tts_state(result,snapshot,now):
+    data=result.get('data')
+    if not isinstance(data,dict): return 'unknown'
+    online=data.get('online')
+    measured=ai_state(snapshot,'tts',now)
+    if data.get('reason')=='credit_unavailable':
+        if measured=='up': return 'degraded' if online is True else 'unknown'
+        return measured
+    if online is False: return 'down'
+    return measured if online is True else 'unknown'
+
 def collect():
     stamp=int(time.time()*1000)
     try: snapshot=json_get('/api/health/official?check='+str(stamp))
@@ -148,10 +159,7 @@ def collect():
     def tts():
         result=json_get('/api/tts/official/status')
         if result.get('success') is not True: return 'unknown'
-        online=result.get('data',{}).get('online')
-        if online is False: return 'down'
-        if online is not True: return 'unknown'
-        return ai_state(snapshot,'tts',stamp) if snapshot else 'unknown'
+        return tts_state(result,snapshot,stamp)
     tests={'site':lambda:html('/'),'api':lambda:json_get('/api/health?check='+str(stamp))['status']=='ok',
            'login':lambda:json_get('/api/auth/me',401).get('code')=='UNAUTHORIZED','content':content,
            'gallery':lambda:isinstance(gallery(),list),'room':lambda:html('/room'),'cdn':lambda:combined_cdn(cdn_region()['state'],snapshot.get('cdnProbe'),int(time.time()*1000)),
@@ -215,6 +223,8 @@ def reconcile(key, results, history, now):
                      'degraded':'部分图片、预览路径或区域异常；请参照实际访问情况。',
                      'unknown':'图库样本或区域检测结果不足，当前可用性待验证。',
                      'down':'境内和境外均无法通过预览或备用地址读取多张图库图片。'}[state]
+        if name=='tts' and state=='degraded':
+            message='官方语音部分能力受限。默认音源的实际合成结果及受影响能力见「官方服务实时检测」。'
         if name=='llm' and state=='degraded':
             message='近期请求、模型出口或公网入口存在异常。具体生成证据及时间见官方服务实时检测。'
         # Unknown and degraded have the same platform severity but different evidence.
