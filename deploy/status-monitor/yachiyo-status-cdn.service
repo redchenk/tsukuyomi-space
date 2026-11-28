@@ -1,0 +1,16 @@
+[Unit]
+Description=Read public gallery images from the domestic network
+After=network-online.target
+[Service]
+Type=oneshot
+User=yachiyo-cdn
+Group=yachiyo-cdn
+ExecStart=/usr/bin/python3 /opt/yachiyo-status/observer.py --sample-cdn
+StateDirectory=yachiyo-status-cdn
+StateDirectoryMode=0755
+UMask=0022
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+TimeoutStartSec=50

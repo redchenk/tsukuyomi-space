@@ -14,6 +14,26 @@ class ObserverTest(unittest.TestCase):
         for snapshot in ({}, {'services':[]}, {'version':1,'services':{'tts':{'state':'up','checkedAt':1,'observedAt':1}}}):
             self.assertEqual(observer.ai_state(snapshot,'tts',200000), 'unknown')
 
+    def test_gallery_fallback_and_independent_objects(self):
+        assets=[{'id':str(i),'mime_type':'image/png','preview_url':'preview'+str(i),'access_url':'fallback'} for i in range(3)]
+        for primary,fallback,expected in [('ok','ok','up'),('http_403','ok','degraded'),('http_503','http_503','down')]:
+            with patch.object(observer,'gallery',return_value=assets), patch.object(observer,'image_result',side_effect=lambda u:fallback if u=='fallback' else primary):
+                self.assertEqual(observer.cdn_region()['state'],expected)
+        with patch.object(observer,'gallery',return_value=[assets[0],assets[0]]),patch.object(observer,'image_result',return_value='transport_error'):
+            self.assertEqual(observer.cdn_region()['state'],'unknown')
+        with patch.object(observer,'gallery',side_effect=ValueError()):
+            self.assertEqual(observer.cdn_region()['state'],'unknown')
+
+    def test_fresh_regional_corroboration_and_gateway(self):
+        now=200000
+        for external,domestic,age,expected in [('down','down',0,'down'),('up','up',0,'up'),('down','up',0,'degraded'),
+                                                ('up','down',0,'degraded'),('down','down',181000,'degraded'),('up','up',181000,'unknown')]:
+            self.assertEqual(observer.combined_cdn(external,{'state':domestic,'checkedAt':now-age},now),expected)
+        snapshot={'version':1,'services':{'llm':{'state':'up','checkedAt':now,'observedAt':now}}}
+        with patch.object(observer,'json_get',side_effect=OSError()):
+            self.assertEqual(observer.llm_gateway(snapshot,now),'degraded')
+            self.assertEqual(observer.llm_gateway({},now),'unknown')
+
     def test_read_and_write_use_the_supported_flashduty_encoding(self):
         with patch.object(observer,'fetch',return_value=(200,{},b'{"data":{}}')) as fetch:
             observer.flash('fixture','/status-page/info',{'page_id':observer.PAGE})
