@@ -18,7 +18,8 @@ API = 'https://api.flashcat.cloud'
 LABELS = {'site':'月读空间主站','api':'API 服务','login':'账号会话接口','content':'文章与广场',
           'gallery':'公开图库','room':'月读房间网页','cdn':'对象存储 / CDN','db':'数据库',
           'llm':'官方 LLM 对话','tts':'官方 TTS 语音'}
-HEADER = '站点外部探针每分钟检查公开入口。官方 LLM、TTS 分别核验有效文本和默认音源音频，最近实测见「官方服务实时检测」。邮件投递、第三方登录和音乐播放由人工通报。'
+LEGACY_HEADER = '站点外部探针每分钟检查公开入口。官方 LLM、TTS 分别核验有效文本和默认音源音频，最近实测见「官方服务实时检测」。邮件投递、第三方登录和音乐播放由人工通报。'
+HEADER = '每分钟从境内、境外各抽查最多三张图库图片，预览失败时再试网页备用地址。两地多张均失败才报 CDN 不可用。官方 LLM 核验真实业务或低频生成，详情见「官方服务实时检测」。邮件投递、第三方登录和音乐播放由人工通报。'
 PROBE_CHANGE = '月读空间自动检测'
 STATES = {'up':'operational','unknown':'degraded','degraded':'degraded','down':'full_outage'}
 MESSAGES = {'unknown':'暂时缺少有效检测结果，服务可用性待确认。','down':'连续检测未通过，当前检查的服务路径不可用。',
@@ -229,7 +230,7 @@ def reconcile(key, results, history, now):
             flash(key,'/status-page/change/timeline/create',{'page_id':PAGE,'change_id':own['change_id'],
                   'status':'resolved' if state=='up' else 'monitoring','description':message,'component_changes':changes},True)
     header=info.get('page_header','')
-    if (header==HEADER or header.startswith(HEADER+' 最近巡检')) and now-history.get('header',0)>=300:
+    if any(header==base or header.startswith(base+' 最近巡检') for base in (HEADER,LEGACY_HEADER)) and now-history.get('header',0)>=300:
         timestamp=dt.datetime.fromtimestamp(now,dt.timezone(dt.timedelta(hours=8))).strftime('%m-%d %H:%M')
         flash(key,'/status-page/update',{'page_id':PAGE,'page_header':HEADER+' 最近巡检 '+timestamp+'（北京时间）。巡检时间超过 10 分钟未更新时，页面状态待验证。'},True)
         history['header']=now
