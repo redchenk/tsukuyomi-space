@@ -39,7 +39,7 @@ jobs:
               openssl pkey -pubin -in "$RUNNER_TEMP/observer-public.pem" -noout
               ;;
             check)
-              "${conn[@]}" 'python3 - --check' < deploy/status-monitor/observer.py
+              "${conn[@]}" 'python3 -' < deploy/status-monitor/cdn-inspect.py
               ;;
             install)
               mkdir "$RUNNER_TEMP/pkg"
