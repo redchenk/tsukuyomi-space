@@ -12,7 +12,7 @@ function write(file, data, mode) {
   fs.chmodSync(temp, mode);
   fs.renameSync(temp, file);
 }
-export async function sample(directory, configuration, business, probe, lastSuccessAt) {
+export async function sample(directory, configuration, business, probe, lastSuccessAt, {confirmUnavailable=false} = {}) {
   const file = path.join(directory, 'attempt.json');
   const previous = read(file);
   const now = Date.now();
@@ -20,6 +20,9 @@ export async function sample(directory, configuration, business, probe, lastSucc
   const verdict = same && previous.result;
   if (verdict?.evidence === 'probe_failed') verdict.state = 'unknown';
   if (business && business.at >= now-period && business.at <= now && (!verdict || business.at >= verdict.at)) {
+    if (confirmUnavailable && business.state==='up' && same && business.at>(previous.businessSuccess||0)) {
+      write(file,{...previous,businessSuccess:business.at},0o600);
+    }
     if (business.state === 'up' || (lastSuccessAt >= now-period && lastSuccessAt <= now) || now - (previous.attempt || 0) < period) return business;
   }
   // Reserve before dispatch, including on configuration changes or interrupted probes.
@@ -34,6 +37,12 @@ export async function sample(directory, configuration, business, probe, lastSucc
     const code = /^[A-Z0-9_]{1,50}$/.test(error.code || '') ? error.code : error.name;
     console.error('probe error', code, frame.join(' '));
     result = {state:'unknown', evidence:'probe_failed'};
+  }
+  // A repeated timer tick can reuse one generation. Escalate only two independent
+  // unsuccessful attempts with no intervening success on the current configuration.
+  if (confirmUnavailable && result.state==='degraded' && ['degraded','down'].includes(verdict?.state) &&
+      now-verdict.at<=18*60*1000 && !(lastSuccessAt>=verdict.at) && !(previous.businessSuccess>=verdict.at)) {
+    result.state='down';
   }
   result.at = Date.now();
   write(file, {configuration, attempt:now, result}, 0o600);
