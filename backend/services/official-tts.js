@@ -3,7 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const db = require('../db');
 const config = require('../config');
-const { settings } = require('./official-tts-settings');
+const { settings, hasRecentFreeFishAudio } = require('./official-tts-settings');
 const wallet = require('./site-wallet');
 const auth = require('../repositories/auth-repository');
 const { fetchFishAudio } = require('./fish-audio-transport');
@@ -46,12 +46,20 @@ async function boundedBody(response, max) {
 }
 async function fishReady(cfg) {
     // Read-only probes do not synthesize speech or consume TTS credit.
-    const [walletInfo, voice] = await Promise.all(['/wallet/self/api-credit', '/model/' + cfg.voice].map(async path => {
+    const walletPath = '/wallet/self/api-credit';
+    const creditUnavailable = Symbol('credit-unavailable');
+    const [walletInfo, voice] = await Promise.all([walletPath, '/model/' + cfg.voice].map(async path => {
         const response = await request('https://api.fish.audio' + path, { method: 'GET', signal: AbortSignal.timeout(8000), timeoutMs: 8000 }, cfg);
-        if (!response.ok) { await response.body?.cancel(); throw new Error('Fish Audio unavailable'); }
+        if (!response.ok) {
+            await response.body?.cancel();
+            if (path === walletPath && (response.status === 429 || response.status >= 500)) return creditUnavailable;
+            throw new Error('Fish Audio unavailable');
+        }
         return JSON.parse((await boundedBody(response, 128 * 1024)).toString());
     }));
-    return { online: Boolean(walletInfo.user_id && voice._id === cfg.voice && voice.type === 'tts'),
+    const voiceReady = voice?._id === cfg.voice && voice.type === 'tts';
+    if (walletInfo === creditUnavailable) return { online:false, paid:false, creditUnavailable:voiceReady };
+    return { online: Boolean(walletInfo.user_id && voiceReady),
         paid: Number(walletInfo.credit) > 0 };
 }
 function rememberHealth(cfg, online) {
@@ -69,10 +77,10 @@ async function checkHealth(cfg) {
         || db.prepare("SELECT id FROM official_tts_jobs WHERE state='processing'").get())) return { ...health.value, checkedAt: health.checkedAt };
     if (health?.key === key && health.promise) return health.promise;
     const promise = (async () => {
-        let online = false, paid = false;
+        let online = false, paid = false, creditUnavailable = false;
         try {
             if (cfg.protocol === 'fish-audio') {
-                ({ online, paid } = await fishReady(cfg));
+                ({ online, paid, creditUnavailable } = await fishReady(cfg));
             } else if (cfg.nativeProbe) {
                 await synthesize('こんにちは。', cfg, 10000);
                 online = true;
@@ -82,7 +90,7 @@ async function checkHealth(cfg) {
                 online = response.ok && data.ready === true;
             }
         } catch (_) { /* Fail closed; never expose credentials or upstream diagnostics. */ }
-        const value = { online, paid, reason: online ? 'ready' : 'offline' };
+        const value = { online, paid, reason: creditUnavailable ? 'credit_unavailable' : online ? 'ready' : 'offline' };
         const checkedAt = Date.now();
         if (probes.get(engine)?.key === key) probes.set(engine, { key, value, checkedAt });
         return { ...value, checkedAt };
@@ -102,9 +110,10 @@ async function statusFor(cfg, userId) {
     const { online, paid, reason, checkedAt } = await checkHealth(cfg);
     if (!base.supportsEmotion) return { ...base, online, reason, checkedAt };
     const permitted = userId && auth.hasOfficialApiUnlimited(userId) ? fishAudio.models : cfg.publicModels;
-    const models = online ? permitted.filter(id => paid || id === 's2.1-pro-free') : [];
+    const available = online || (reason === 'credit_unavailable' && permitted.includes('s2.1-pro-free') && hasRecentFreeFishAudio(cfg));
+    const models = available ? permitted.filter(id => paid || id === 's2.1-pro-free') : [];
     const defaultModel = models.includes(cfg.model) ? cfg.model : models[0];
-    return { ...base, online: models.length > 0, reason: models.length ? 'ready' : 'offline', checkedAt, models, defaultModel };
+    return { ...base, online: models.length > 0, reason: reason === 'credit_unavailable' ? reason : models.length ? 'ready' : 'offline', checkedAt, models, defaultModel };
 }
 function audioPath(id) { return path.join(cacheDir, `${id}.audio`); }
 function releaseJob(row) {

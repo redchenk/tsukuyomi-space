@@ -34,6 +34,13 @@ class ObserverTest(unittest.TestCase):
             self.assertEqual(observer.llm_gateway(snapshot,now),'degraded')
             self.assertEqual(observer.llm_gateway({},now),'unknown')
 
+    def test_tts_billing_failure_uses_current_synthesis_evidence(self):
+        now=200000
+        for online,observed,expected in [(False,'unknown','unknown'),(True,'degraded','degraded'),(False,'down','down'),(True,'up','degraded')]:
+            snapshot={'version':1,'services':{'tts':{'state':observed,'checkedAt':now,'observedAt':now}}}
+            self.assertEqual(observer.tts_state({'data':{'reason':'credit_unavailable','online':online}},snapshot,now),expected)
+        self.assertEqual(observer.tts_state({'data':{'reason':'offline','online':False}},{},now),'down')
+
     def test_read_and_write_use_the_supported_flashduty_encoding(self):
         with patch.object(observer,'fetch',return_value=(200,{},b'{"data":{}}')) as fetch:
             observer.flash('fixture','/status-page/info',{'page_id':observer.PAGE})

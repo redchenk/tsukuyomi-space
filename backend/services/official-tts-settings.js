@@ -112,4 +112,18 @@ function save(input) {
         return view(next);
     }).immediate();
 }
-module.exports = { settings, view, save };
+// Both engine aliases may use the same credentials and voice. A probe of the
+// free model is evidence only for that exact combination.
+function freeFishProbeKey(cfg) {
+    return crypto.createHash('sha256').update(JSON.stringify([cfg.endpoint, cfg.voice, cfg.key, 's2.1-pro-free'])).digest('hex');
+}
+function hasRecentFreeFishAudio(cfg) {
+    try {
+        const {configuration, result} = JSON.parse(fs.readFileSync('/var/lib/yachiyo-status-tts/attempt.json','utf8'));
+        if (configuration !== freeFishProbeKey(cfg) || result?.state !== 'up' || result.evidence !== 'generated_audio' ||
+            !Number.isSafeInteger(result.at)) return false;
+        const age = Date.now()-result.at;
+        return age>=0 && age<=18*60000;
+    } catch { return false; }
+}
+module.exports = { settings, view, save, freeFishProbeKey, hasRecentFreeFishAudio };

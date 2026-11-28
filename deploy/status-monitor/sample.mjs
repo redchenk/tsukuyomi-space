@@ -12,7 +12,7 @@ function write(file, data, mode) {
   fs.chmodSync(temp, mode);
   fs.renameSync(temp, file);
 }
-export async function sample(directory, configuration, business, probe, lastSuccessAt, {confirmUnavailable=false} = {}) {
+export async function sample(directory, configuration, business, probe, lastSuccessAt, {confirmUnavailable=false,preserveResultWhileSampling=false} = {}) {
   const file = path.join(directory, 'attempt.json');
   const previous = read(file);
   const now = Date.now();
@@ -29,7 +29,7 @@ export async function sample(directory, configuration, business, probe, lastSucc
   if (now - (previous.attempt || 0) < period) {
     return verdict || {state:'unknown', evidence:'pending', at:now};
   }
-  write(file, {configuration, attempt:now}, 0o600);
+  write(file, {configuration, attempt:now, ...(preserveResultWhileSampling && verdict ? {result:verdict} : {})}, 0o600);
   let result;
   try { result = await probe(); }
   catch (error) {
