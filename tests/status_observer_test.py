@@ -1,3 +1,4 @@
+from email.message import Message
 import importlib.util
 import pathlib
 import unittest
@@ -23,6 +24,21 @@ class ObserverTest(unittest.TestCase):
             self.assertEqual(observer.cdn_region()['state'],'unknown')
         with patch.object(observer,'gallery',side_effect=ValueError()):
             self.assertEqual(observer.cdn_region()['state'],'unknown')
+
+    def test_origin_fallback_verifies_bytes_without_following_redirects(self):
+        url='/api/assets/gallery-fallback/gallery-id'
+        item={'preview_url':'preview','access_url':'old','fallback_url':url}
+        with patch.object(observer,'image_result',side_effect=['timeout','ok']) as check:
+            self.assertEqual(observer.cdn_object(item),'timeout>ok')
+            self.assertEqual([c.args[0] for c in check.call_args_list],['preview',url])
+        mime=Message()
+        mime['Content-Type']='image/jpeg'
+        for status,body,expected in [(206,bytes.fromhex('ffd8ff'),'ok'),(200,b'<html>','invalid_image'),(302,b'','http_302')]:
+            with patch.object(observer,'fetch',return_value=(status,mime,body)) as get:
+                self.assertEqual(observer.image_read(url),expected)
+                self.assertEqual(get.call_args.args[0],observer.SITE+url)
+                self.assertEqual(get.call_args.args[1]['Range'],'bytes=0-511')
+        self.assertIn('备用路径',observer.cdn_description('up','fallback'))
 
     def test_fresh_regional_corroboration_and_gateway(self):
         now=200000
