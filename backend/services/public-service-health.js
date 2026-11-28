@@ -6,6 +6,8 @@ const explanations = {
     generated_text: '官方供应商返回了有效文本和用量。',
     completed_request: '当前模型最近的真实业务请求已完成并结算。',
     generated_audio: '默认官方音源已返回可识别的音频。',
+    result_uncertain: '最近一笔实际请求未取得可确认的最终结果，用量仍待核对。',
+    egress_unreachable: '真实生成检测未能通过模型出口完成连接或读取回复。',
     request_failed: '最近的实际请求未正常完成。',
     provider_rejected: '供应商拒绝了实际请求。',
     invalid_reply: '供应商响应未包含有效文本或用量。',
@@ -30,7 +32,13 @@ async function snapshot() {
         try { return [name,sanitize(JSON.parse(await fs.readFile('/var/lib/yachiyo-status-'+name+'/public.json','utf8')))]; }
         catch { return [name,sanitize(null)]; }
     }));
-    return {version:1,services:Object.fromEntries(entries),now:Date.now()};
+    let cdnProbe = {state:'unknown',checkedAt:null};
+    try {
+        const {state,checkedAt} = JSON.parse(await fs.readFile('/var/lib/yachiyo-status-cdn/public.json','utf8'));
+        const age = Date.now()-checkedAt;
+        if (states.has(state) && Number.isSafeInteger(checkedAt) && age>=-10000 && age<=180000) cdnProbe = {state,checkedAt};
+    } catch { /* A missing regional sample is reported as unknown. */ }
+    return {version:1,services:Object.fromEntries(entries),cdnProbe,now:Date.now()};
 }
 function render(result) {
     const labels={up:'正常',down:'不可用',degraded:'部分异常',unknown:'待验证'};

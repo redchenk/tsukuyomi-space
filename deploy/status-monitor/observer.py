@@ -1,6 +1,7 @@
 """Observe public visitor paths from outside the origin and reconcile Flashduty incidents."""
 import concurrent.futures
 import datetime as dt
+import http.client
 import json
 import os
 import re
@@ -51,27 +52,78 @@ def html(path):
     status,headers,prefix=fetch(SITE+bundle[1],{'Range':'bytes=0-511'},maxbytes=512,prefix=True)
     return status in (200,206) and 'javascript' in headers.get_content_type() and bool(prefix.strip())
 
-def gallery():
-    result=json_get('/api/assets/gallery?limit=1&check='+str(int(time.time())))
+def gallery(limit=1):
+    result=json_get('/api/assets/gallery?limit='+str(limit)+'&check='+str(int(time.time())))
     items=result['data']['assets']
     if result.get('success') is not True or not isinstance(items,list): raise ValueError('gallery response')
     return items
 
-def cdn():
-    items=gallery()
-    if not items: return 'unknown'
-    item=items[0]
-    location=item.get('preview_url') or item.get('access_url') or item.get('display_url')
-    if not isinstance(location,str): return 'unknown'
-    if location.startswith('/api/assets/proxy/') and re.fullmatch(r'/api/assets/proxy/[a-zA-Z0-9-]+',location):
-        status,headers,_=fetch(SITE+location,{'Referer':SITE+'/gallery'},maxbytes=512,prefix=True)
-        if status not in (301,302,307,308): return 'unknown'
-        location=headers.get('Location','')
+def image_read(location):
+    headers={'Referer':SITE+'/gallery','Accept':'image/avif,image/webp,image/*,*/*;q=0.8'}
+    if re.fullmatch(r'/api/assets/proxy/[a-zA-Z0-9-]+',location):
+        status,redirect,_=fetch(SITE+location,headers,maxbytes=512,timeout=5,prefix=True)
+        if status==200: return 'unverified_target'
+        if status not in (301,302,303,307,308): return 'proxy_'+str(status)
+        location=redirect.get('Location','')
     url=urllib.parse.urlsplit(location)
-    if url.scheme!='https' or url.hostname!='oss.yachiyo.hk' or url.username or url.password or url.port: return 'unknown'
-    status,headers,body=fetch(url.geturl(),{'Range':'bytes=0-511','Referer':SITE+'/gallery'},maxbytes=512,prefix=True)
-    image=(body.startswith((b'\x89PNG\r\n\x1a\n',b'\xff\xd8\xff',b'GIF87a',b'GIF89a')) or body[8:12]==b'WEBP' or body[4:8]==b'ftyp')
-    return status in (200,206) and headers.get_content_type().startswith('image/') and image
+    if url.scheme!='https' or url.netloc!='oss.yachiyo.hk': return 'unverified_target'
+    # Gallery images load with an ordinary GET. Read only enough bytes to identify the file.
+    status,meta,body=fetch(location,headers,maxbytes=512,timeout=5,prefix=True)
+    if status not in (200,206): return 'http_'+str(status)
+    image=(body.startswith((b'\x89PNG\r\n\x1a\n',b'\xff\xd8\xff',b'GIF87a',b'GIF89a')) or
+           (body[:4]==b'RIFF' and body[8:12]==b'WEBP') or
+           (body[4:8]==b'ftyp' and body[8:12] in (b'avif',b'avis',b'heic',b'heix',b'mif1')))
+    return 'ok' if image and meta.get_content_type().startswith('image/') else 'invalid_image'
+
+def image_result(location):
+    try: return image_read(location)
+    except (http.client.HTTPException,OSError,ValueError,TypeError): return 'transport_error'
+
+def cdn_object(item):
+    preview=item.get('preview_url') or item.get('access_url') or item.get('display_url')
+    first=image_result(preview)
+    if first=='ok': return 'ok'
+    backup=item.get('access_url') or item.get('display_url')
+    if not backup or backup==preview: return first
+    return first+'>'+image_result(backup)
+
+def cdn_region():
+    try: items=gallery(8)
+    except (http.client.HTTPException,OSError,ValueError,TypeError,KeyError): items=[]
+    selected={}
+    for item in items:
+        if not isinstance(item,dict) or not str(item.get('mime_type','')).startswith('image/'): continue
+        ident=item.get('id')
+        if isinstance(ident,str) and ident: selected[ident]=item
+        if len(selected)>=3: break
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        samples=list(pool.map(cdn_object,selected.values()))
+    good=sum(v=='ok' or v.endswith('>ok') for v in samples)
+    verified=[v for v in samples if 'unverified_target' not in v]
+    if not samples or (not good and len(verified)<2): state='unknown'
+    elif all(v=='ok' for v in samples): state='up'
+    elif good or len(verified)!=len(samples): state='degraded'
+    else: state='down'
+    print('cdn samples: '+(','.join(samples) or 'no_gallery_samples'),file=sys.stderr,flush=True)
+    return {'state':state,'checkedAt':int(time.time()*1000)}
+
+def combined_cdn(external,domestic,now):
+    if not isinstance(domestic,dict) or type(domestic.get('checkedAt')) is not int or not -10000<=now-domestic['checkedAt']<=180000:
+        domestic={}
+    domestic=domestic.get('state','unknown')
+    if domestic not in STATES: domestic='unknown'
+    if domestic==external: return external
+    if {domestic,external}=={'up','unknown'}: return 'unknown'
+    return 'degraded'
+
+def llm_gateway(sample,now):
+    measured=ai_state(sample,'llm',now)
+    try:
+        reachable=(json_get('/official-api/healthz').get('status')=='ok' and
+                   json_get('/official-api/v1/models',401).get('error',{}).get('code')=='SITE_LOGIN_REQUIRED')
+    except (http.client.HTTPException,OSError,ValueError,KeyError,TypeError): reachable=False
+    if reachable or measured=='down': return measured
+    return 'degraded' if measured in ('up','degraded') else 'unknown'
 
 def content():
     for path in ['/api/articles?limit=1','/api/messages?limit=1']:
@@ -92,10 +144,6 @@ def collect():
     stamp=int(time.time()*1000)
     try: snapshot=json_get('/api/health/official?check='+str(stamp))
     except Exception: snapshot={}
-    def llm():
-        if json_get('/official-api/healthz').get('status')!='ok': return 'down'
-        if json_get('/official-api/v1/models',401).get('error',{}).get('code')!='SITE_LOGIN_REQUIRED': return 'down'
-        return ai_state(snapshot,'llm',stamp) if snapshot else 'unknown'
     def tts():
         result=json_get('/api/tts/official/status')
         if result.get('success') is not True: return 'unknown'
@@ -105,15 +153,15 @@ def collect():
         return ai_state(snapshot,'tts',stamp) if snapshot else 'unknown'
     tests={'site':lambda:html('/'),'api':lambda:json_get('/api/health?check='+str(stamp))['status']=='ok',
            'login':lambda:json_get('/api/auth/me',401).get('code')=='UNAUTHORIZED','content':content,
-           'gallery':lambda:isinstance(gallery(),list),'room':lambda:html('/room'),'cdn':cdn,
-           'db':lambda: snapshot.get('databaseRead','unknown'),'llm':llm,'tts':tts}
+           'gallery':lambda:isinstance(gallery(),list),'room':lambda:html('/room'),'cdn':lambda:combined_cdn(cdn_region()['state'],snapshot.get('cdnProbe'),int(time.time()*1000)),
+           'db':lambda: snapshot.get('databaseRead','unknown'),'llm':lambda:llm_gateway(snapshot,stamp),'tts':tts}
     def check(pair):
         name,fn=pair
         try:
             value=fn()
             state=('up' if value else 'down') if isinstance(value,bool) else value
             return name, state if state in STATES else 'unknown'
-        except (OSError,ValueError,KeyError,TypeError): return name,'down'
+        except (http.client.HTTPException,OSError,ValueError,KeyError,TypeError): return name,'down'
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
         return dict(pool.map(check,tests.items()))
 
@@ -161,6 +209,13 @@ def reconcile(key, results, history, now):
         own,occupied=active_by_component(active,component,title)
         if occupied or (not own and state=='up'): continue
         message=MESSAGES[state]
+        if name=='cdn':
+            message={'up':'境内和境外巡检均读到了图库图片，预览路径正常。',
+                     'degraded':'部分图片、预览路径或区域异常；请参照实际访问情况。',
+                     'unknown':'图库样本或区域检测结果不足，当前可用性待验证。',
+                     'down':'境内和境外均无法通过预览或备用地址读取多张图库图片。'}[state]
+        if name=='llm' and state=='degraded':
+            message='近期请求、模型出口或公网入口存在异常。具体生成证据及时间见官方服务实时检测。'
         # Unknown and degraded have the same platform severity but different evidence.
         changes=[{'component_id':component,'status':STATES[state]}]
         if not own:
@@ -180,6 +235,11 @@ def reconcile(key, results, history, now):
         history['header']=now
 
 def main():
+    if '--sample-cdn' in sys.argv:
+        file=Path(os.environ['STATE_DIRECTORY'])/'public.json'
+        tmp=file.with_suffix('.next')
+        tmp.write_text(json.dumps(cdn_region())); tmp.replace(file)
+        return
     results=collect()
     print(json.dumps(results,sort_keys=True),flush=True)
     if '--check' in sys.argv: return

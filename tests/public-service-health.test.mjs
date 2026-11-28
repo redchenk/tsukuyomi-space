@@ -47,3 +47,24 @@ test('actual audio requires two complete compatible Layer III frames', () => {
   assert.equal(hasMp3Frames(Buffer.alloc(500)),false);
   assert.equal(hasMp3Frames(Buffer.concat([Buffer.from('ID3'),Buffer.alloc(800)])), false);
 });
+
+test('LLM escalates independent generation failures and resets after business recovery', async t => {
+  const dir=await mkdtemp(path.join(os.tmpdir(),'tsu-llm-attempts-'));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  let now=Date.now(); t.mock.method(Date,'now',()=>now);
+  let attempts=0;
+  const run=business=>sample(dir,'revision',business,async()=>{
+    attempts++; return {state:'degraded',evidence:'egress_unreachable'};
+  },undefined,{confirmUnavailable:true});
+  assert.equal((await run()).state,'degraded');
+  now+=60000;
+  assert.equal((await run()).state,'degraded');
+  assert.equal(attempts,1);
+  now+=15*60000;
+  assert.equal((await run()).state,'down');
+  now+=30000;
+  assert.equal((await run({state:'up',evidence:'completed_request',at:now})).state,'up');
+  now+=15*60000;
+  assert.equal((await run()).state,'degraded');
+  assert.equal(attempts,3);
+});
