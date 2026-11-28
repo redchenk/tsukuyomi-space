@@ -22,11 +22,16 @@ def probe(item):
     obj=item.get('id','')[:8]
     if not re.fullmatch(r'[a-f0-9]{8}',obj):obj='gallery'
     headers={'Referer':o.SITE+'/gallery','Accept':'image/avif,image/webp,image/*,*/*;q=0.8'}
-    for path in ['preview_url','access_url']:
+    for path in ['preview_url','fallback_url']:
         start=time.monotonic()
         loc=item.get(path)
         try:
             if not isinstance(loc,str):continue
+            if path=='fallback_url':
+                if not re.fullmatch(r'/api/assets/gallery-fallback/[a-zA-Z0-9-]+',loc):continue
+                status,h,b=o.fetch(o.SITE+loc,{**headers,'Range':'bytes=0-511'},maxbytes=512,timeout=5,prefix=True)
+                print('CDN_PROBE',obj,path,status,h.get_content_type(),'bytes',len(b),'jpeg',b[:3]==bytes.fromhex('ffd8ff'),'ms',round(1000*(time.monotonic()-start)),flush=True)
+                continue
             if re.fullmatch(r'/api/assets/proxy/[a-zA-Z0-9-]+',loc):
                 status,r,_=o.fetch(o.SITE+loc,headers,maxbytes=512,timeout=15,prefix=True)
                 if status not in (301,302,303,307,308):
