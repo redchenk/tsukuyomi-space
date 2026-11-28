@@ -288,3 +288,32 @@ test('configured OSS overrides local requests and defaults for gallery, covers a
     assert.equal(db.prepare('SELECT count(*) n FROM article_assets').get().n, count);
   } finally { storage.putObject = put; settings = configured; }
 });
+
+test('public gallery fallback streams image bytes and excludes private assets', async t => {
+  const repository = require('../backend/repositories/asset-repository');
+  const add = visibility => repository.createAsset({
+    id: crypto.randomUUID(), ownerId: 'upload-user', assetType: 'gallery-image',
+    mimeType: 'image/png', url: '', storageKey: visibility + '.png',
+    metadata: { storage: 'oss', visibility, collection: 'gallery' }
+  });
+  const item = add('public');
+  const privateItem = add('private');
+  const png = Buffer.from('89504e470d0a1a0a', 'hex');
+  const get = t.mock.method(storage, 'getObject', async (key, options) => {
+    assert.equal(key, 'public.png');
+    assert.deepEqual(options, { range: 'bytes=0-7', stream: true });
+    return { body: new Response(png).body, status: 206, contentLength: png.length, contentRange: 'bytes 0-7/32' };
+  });
+  const gallery = await request('GET', '/gallery?limit=8', undefined, '');
+  const path = gallery.data.assets.find(asset => asset.id === item.id).fallback_url;
+  assert.equal(path, '/api/assets/gallery-fallback/' + item.id);
+  const result = await fetch(base + path, { headers: { Range: 'bytes=0-7' }, redirect: 'manual' });
+  assert.equal(result.status, 206);
+  assert.equal(result.headers.get('content-type'), 'image/png');
+  assert.equal(result.headers.get('content-range'), 'bytes 0-7/32');
+  assert.deepEqual(Buffer.from(await result.arrayBuffer()), png);
+  const hidden = '/gallery-fallback/' + privateItem.id;
+  assert.equal((await request('GET', hidden, undefined, '')).status, 401);
+  assert.equal((await request('GET', hidden)).status, 404);
+  assert.equal(get.mock.callCount(), 1);
+});

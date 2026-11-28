@@ -5,6 +5,8 @@ import http.client
 import json
 import os
 import re
+import socket
+import ssl
 import sys
 import time
 import urllib.error
@@ -66,10 +68,13 @@ def image_read(location):
         if status==200: return 'unverified_target'
         if status not in (301,302,303,307,308): return 'proxy_'+str(status)
         location=redirect.get('Location','')
-    url=urllib.parse.urlsplit(location)
-    if url.scheme!='https' or url.netloc!='oss.yachiyo.hk': return 'unverified_target'
-    # Gallery images load with an ordinary GET. Read only enough bytes to identify the file.
-    status,meta,body=fetch(location,headers,maxbytes=512,timeout=5,prefix=True)
+    if re.fullmatch(r'/api/assets/gallery-fallback/[a-zA-Z0-9-]+',location):
+        # This endpoint streams the original via the site. A redirect is not proof of fallback.
+        status,meta,body=fetch(SITE+location,{**headers,'Range':'bytes=0-511'},maxbytes=512,timeout=5,prefix=True)
+    else:
+        url=urllib.parse.urlsplit(location)
+        if url.scheme!='https' or url.netloc!='oss.yachiyo.hk': return 'unverified_target'
+        status,meta,body=fetch(location,headers,maxbytes=512,timeout=5,prefix=True)
     if status not in (200,206): return 'http_'+str(status)
     image=(body.startswith((b'\x89PNG\r\n\x1a\n',b'\xff\xd8\xff',b'GIF87a',b'GIF89a')) or
            (body[:4]==b'RIFF' and body[8:12]==b'WEBP') or
@@ -78,13 +83,18 @@ def image_read(location):
 
 def image_result(location):
     try: return image_read(location)
-    except (http.client.HTTPException,OSError,ValueError,TypeError): return 'transport_error'
+    except (http.client.HTTPException,OSError,ValueError,TypeError) as exc:
+        cause=getattr(exc,'reason',exc)
+        if isinstance(cause,(TimeoutError,socket.timeout)): return 'timeout'
+        if isinstance(cause,socket.gaierror): return 'dns_error'
+        if isinstance(cause,ssl.SSLError): return 'tls_error'
+        return 'transport_error'
 
 def cdn_object(item):
     preview=item.get('preview_url') or item.get('access_url') or item.get('display_url')
     first=image_result(preview)
     if first=='ok': return 'ok'
-    backup=item.get('access_url') or item.get('display_url')
+    backup=item.get('fallback_url') or item.get('access_url') or item.get('display_url')
     if not backup or backup==preview: return first
     return first+'>'+image_result(backup)
 
@@ -106,13 +116,18 @@ def cdn_region():
     elif good or len(verified)!=len(samples): state='degraded'
     else: state='down'
     print('cdn samples: '+(','.join(samples) or 'no_gallery_samples'),file=sys.stderr,flush=True)
-    return {'state':state,'checkedAt':int(time.time()*1000)}
+    return {'state':state,'checkedAt':int(time.time()*1000),
+            'allDeliveredViaPreviewOrFallback':bool(samples) and good==len(samples)}
 
-def combined_cdn(external,domestic,now):
+def domestic_cdn_state(domestic,now):
     if not isinstance(domestic,dict) or type(domestic.get('checkedAt')) is not int or not -10000<=now-domestic['checkedAt']<=180000:
         domestic={}
     domestic=domestic.get('state','unknown')
     if domestic not in STATES: domestic='unknown'
+    return domestic
+
+def combined_cdn(external,domestic,now):
+    domestic=domestic_cdn_state(domestic,now)
     if domestic==external: return external
     if {domestic,external}=={'up','unknown'}: return 'unknown'
     return 'degraded'
@@ -152,17 +167,31 @@ def tts_state(result,snapshot,now):
     if online is False: return 'down'
     return measured if online is True else 'unknown'
 
-def collect():
+def cdn_description(domestic,external):
+    normal={'up':'预览正常','degraded':'部分预览或图片读取异常','down':'多张预览及备用图片均未读到','unknown':'缺少有效样本',
+            'fallback':'直连预览异常，使用备用路径后抽查图片均可读取'}
+    return '境内探针'+normal[domestic]+'。境外探针'+normal[external]+'。'
+
+def collect(regions=None):
     stamp=int(time.time()*1000)
     try: snapshot=json_get('/api/health/official?check='+str(stamp))
     except Exception: snapshot={}
+    def cdn():
+        sample=cdn_region()
+        remote=sample['state']
+        local=snapshot.get('cdnProbe')
+        now=int(time.time()*1000)
+        if regions is not None:
+            external='fallback' if remote=='degraded' and sample['allDeliveredViaPreviewOrFallback'] else remote
+            regions.update(domestic=domestic_cdn_state(local,now),external=external)
+        return combined_cdn(remote,local,now)
     def tts():
         result=json_get('/api/tts/official/status')
         if result.get('success') is not True: return 'unknown'
         return tts_state(result,snapshot,stamp)
     tests={'site':lambda:html('/'),'api':lambda:json_get('/api/health?check='+str(stamp))['status']=='ok',
            'login':lambda:json_get('/api/auth/me',401).get('code')=='UNAUTHORIZED','content':content,
-           'gallery':lambda:isinstance(gallery(),list),'room':lambda:html('/room'),'cdn':lambda:combined_cdn(cdn_region()['state'],snapshot.get('cdnProbe'),int(time.time()*1000)),
+           'gallery':lambda:isinstance(gallery(),list),'room':lambda:html('/room'),'cdn':cdn,
            'db':lambda: snapshot.get('databaseRead','unknown'),'llm':lambda:llm_gateway(snapshot,stamp),'tts':tts}
     def check(pair):
         name,fn=pair
@@ -200,7 +229,7 @@ def active_by_component(incidents, component, title):
             else: occupied=True
     return own, occupied
 
-def reconcile(key, results, history, now):
+def reconcile(key, results, history, now, regions=None):
     info=flash(key,'/status-page/info',{'page_id':PAGE})
     if info.get('custom_domain')!='status.yachiyo.hk': raise RuntimeError('status page domain mismatch')
     ids={c['name']:c['component_id'] for c in info['components']}
@@ -213,6 +242,10 @@ def reconcile(key, results, history, now):
         title=PROBE_CHANGE+' · '+LABELS[name]
         previous=history.get(name,{})
         entry=thresholds(previous,state,now)
+        if name=='cdn' and regions and state=='degraded':
+            sides=tuple(regions[k] for k in ('domestic','external'))
+            regional=thresholds(previous.get('regional',{}),'/'.join(sides),now)
+            entry['regional']=regional
         history[name]=entry
         if entry['count']<2: continue
         own,occupied=active_by_component(active,component,title)
@@ -223,6 +256,10 @@ def reconcile(key, results, history, now):
                      'degraded':'部分图片、预览路径或区域异常；请参照实际访问情况。',
                      'unknown':'图库样本或区域检测结果不足，当前可用性待验证。',
                      'down':'境内和境外均无法通过预览或备用地址读取多张图库图片。'}[state]
+        if name=='cdn' and state=='degraded' and regions:
+            # Announce the affected region after two consistent observations.
+            if own and entry['regional']['count']<2 and previous.get('value')==state: continue
+            message=cdn_description(regions['domestic'],regions['external'])
         if name=='tts' and state=='degraded':
             message='官方语音部分能力受限。默认音源的实际合成结果及受影响能力见「官方服务实时检测」。'
         if name=='llm' and state=='degraded':
@@ -251,14 +288,15 @@ def main():
         tmp=file.with_suffix('.next')
         tmp.write_text(json.dumps(cdn_region())); tmp.replace(file)
         return
-    results=collect()
+    regions={}
+    results=collect(regions)
     print(json.dumps(results,sort_keys=True),flush=True)
     if '--check' in sys.argv: return
     directory=Path(os.environ['STATE_DIRECTORY'])
     memory=directory/'history.json'
     history=json.loads(memory.read_text()) if memory.exists() else {}
     key=(Path(os.environ['CREDENTIALS_DIRECTORY'])/'flashduty').read_text().strip()
-    reconcile(key, results, history, int(time.time()))
+    reconcile(key, results, history, int(time.time()),regions)
     tmp=directory/'history.next'
     tmp.write_text(json.dumps(history)); tmp.replace(memory)
 

@@ -122,6 +122,12 @@ function hasValidAssetSignature(assetId, query = {}) {
     return expectedBuffer.length === signatureBuffer.length && crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 }
 
+function hasOriginImageFallback(asset) {
+    return asset.asset_type === 'gallery-image' && asset.metadata?.storage === 'oss'
+        && asset.metadata?.visibility === 'public' && isBrowserPreviewMedia(asset)
+        && cleanMime(asset.mime_type).startsWith('image/');
+}
+
 function normalizeAsset(row, { signUrl = false } = {}) {
     if (!row) return row;
     const asset = {
@@ -139,6 +145,7 @@ function normalizeAsset(row, { signUrl = false } = {}) {
                 preferPublicBase: true
             }) || asset.access_url
             : asset.access_url;
+        if (hasOriginImageFallback(asset)) asset.fallback_url = `/api/assets/gallery-fallback/${encodeURIComponent(asset.id)}`;
     } else {
         asset.markdown_url = durableAssetUrl(asset.id);
         asset.access_url = signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id);
@@ -336,8 +343,8 @@ function streamLocalAsset(req, res, asset, metadata = {}) {
     return fs.createReadStream(target, { fd, autoClose: true }).pipe(res);
 }
 
-async function streamOssAsset(req, res, asset, metadata) {
-    if (isBrowserPreviewMedia(asset)) {
+async function streamOssAsset(req, res, asset, metadata, originFallback = false) {
+    if (isBrowserPreviewMedia(asset) && !originFallback) {
         const redirectUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
             expiresSeconds: 6 * 60 * 60,
             preferPublicBase: true
@@ -678,14 +685,16 @@ router.get('/local/*', optionalAuth, (req, res) => {
     }
 });
 
-router.get('/proxy/:id', optionalAuth, async (req, res) => {
+router.get(['/proxy/:id', '/gallery-fallback/:id'], optionalAuth, async (req, res) => {
     try {
         const asset = assetRepository.findAssetForAdmin(req.params.id);
         if (!asset) return fail(res, 404, '附件不存在');
         const metadata = asset.metadata || {};
         if (!canAccessAsset(req, asset)) return rejectAssetAccess(req, res);
+        const originFallback = req.path.startsWith('/gallery-fallback/');
+        if (originFallback && !hasOriginImageFallback(asset)) return fail(res, 404, 'Attachment not found');
         if (metadata.storage !== 'oss') return streamLocalAsset(req, res, asset, metadata);
-        return await streamOssAsset(req, res, asset, metadata);
+        return await streamOssAsset(req, res, asset, metadata, originFallback);
     } catch (error) {
         if (res.headersSent || res.destroyed) return;
         console.error('Proxy OSS asset failed:', error);
